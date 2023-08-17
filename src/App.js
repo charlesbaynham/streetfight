@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useState } from 'react';
 
 import './App.css';
 
@@ -8,16 +8,20 @@ import { FullScreen, useFullScreenHandle } from "react-full-screen";
 export default function App() {
 
   const handle = useFullScreenHandle();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const reportChange = useCallback((state, _) => {
+    setIsFullscreen(state);
+  }, [handle]);
 
   return (
     <div>
       <button onClick={handle.enter}>
-        Enter fullscreen
+        Click here to start
       </button>
 
-      <FullScreen handle={handle}>
-        <p>Any fullscreen content here</p>
-        {/* <CrossHair /> */}
+      <FullScreen handle={handle} onChange={reportChange}>
+        {isFullscreen ? <CrossHair /> : null}
       </FullScreen>
     </div>
   );
