@@ -1,4 +1,4 @@
-import logo from './logo.svg';
+// import logo from './logo.svg';
 import crosshair from './crosshair.png';
 import './App.css';
 
@@ -11,8 +11,7 @@ const SCREEN_FILL_STYLES = {
   height: "100vh",
   width: "100vw",
   left: "0",
-  top: "0",
-  objectFit: "cover"
+  top: "0"
 };
 
 const videoConstraints = {
@@ -26,7 +25,7 @@ const WebcamCapture = () => (
     audio={false}
     screenshotFormat="image/jpeg"
     videoConstraints={videoConstraints}
-    style={SCREEN_FILL_STYLES}
+    style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "cover"})}
   >
     {/* {({ getScreenshot }) => (
       <button
@@ -45,7 +44,7 @@ const WebcamCapture = () => (
 const Crosshair =() => (
   <img
   src={crosshair}
-  style={SCREEN_FILL_STYLES}
+  style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "contain"})}
   />
 );
 
