@@ -1,0 +1,59 @@
+// import logo from './logo.svg';
+import crosshair from './crosshair.png';
+import './App.css';
+
+
+import Webcam from "react-webcam";
+
+
+const SCREEN_FILL_STYLES = {
+  position: "absolute",
+  height: "100vh",
+  width: "100vw",
+  left: "0",
+  top: "0"
+};
+
+const videoConstraints = {
+  width: 1280,
+  height: 720,
+  facingMode: "user"
+};
+
+const WebcamCapture = () => (
+  <Webcam
+    audio={false}
+    screenshotFormat="image/jpeg"
+    videoConstraints={videoConstraints}
+    style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "cover"})}
+  >
+    {/* {({ getScreenshot }) => (
+      <button
+        onClick={() => {
+          const imageSrc = getScreenshot()
+
+          console.log(imageSrc)
+        }}
+      >
+        Capture photo
+      </button>
+    )} */}
+  </Webcam>
+);
+
+const CrosshairImage =() => (
+  <img
+  src={crosshair}
+  style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "contain"})}
+  />
+);
+
+export default function CrossHair() {
+
+  return <>
+        
+      <WebcamCapture />
+      <CrosshairImage />
+
+    </>;
+}
