@@ -15,19 +15,17 @@ const SCREEN_FILL_STYLES = {
   objectFit: "cover"
 };
 
-// const videoConstraints = {
-//   width: 1280,
-//   height: 720,
-//   facingMode: "user"
-// };
+const videoConstraints = {
+  width: 1280,
+  height: 720,
+  facingMode: "user"
+};
 
 const WebcamCapture = () => (
   <Webcam
     audio={false}
-    // height={720}
     screenshotFormat="image/jpeg"
-    // width={1280}
-    // videoConstraints={videoConstraints}
+    videoConstraints={videoConstraints}
     style={SCREEN_FILL_STYLES}
   >
     {/* {({ getScreenshot }) => (
