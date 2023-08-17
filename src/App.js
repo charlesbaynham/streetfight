@@ -12,7 +12,7 @@ export default function App() {
 
   const reportChange = useCallback((state, _) => {
     setIsFullscreen(state);
-  }, [handle]);
+  });
 
   return (
     <div>
