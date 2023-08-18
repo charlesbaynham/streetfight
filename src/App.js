@@ -8,7 +8,7 @@ import CrossHair from './Crosshair';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 
-const override = true;
+const override = false;
 
 export default function App() {
 
