@@ -15,7 +15,7 @@ export default function App() {
   const handle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const [numFires, setNumFires] = useState(0);
+  const [scanMode, setScanMode] = useState(false);
 
   const reportChange = useCallback((state, _) => {
     setIsFullscreen(state);
@@ -27,15 +27,15 @@ export default function App() {
         Click here to start
       </button>
 
-      <p>Num fires = {numFires}</p>
-
       <FullScreen handle={handle} onChange={reportChange}>
         {isFullscreen | override ? ( <>
-          <CrossHair scanMode={numFires > 0} />
+          <CrossHair scanMode={scanMode} />
           <FireButton onClick={
-            () => { setNumFires(numFires + 1) }
+            () => { setScanMode(false) }
           } />
-          <ScanButton />
+          <ScanButton onClick={
+            () => { setScanMode(true) }
+          } />
        </>
         ) : null}
       </FullScreen>
