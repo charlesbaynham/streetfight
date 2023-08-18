@@ -31,7 +31,7 @@ export default function App() {
 
       <FullScreen handle={handle} onChange={reportChange}>
         {isFullscreen | override ? ( <>
-          <CrossHair />
+          <CrossHair scanMode={numFires > 0} />
           <FireButton onClick={
             () => { setNumFires(numFires + 1) }
           } />

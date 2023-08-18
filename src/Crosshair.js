@@ -1,6 +1,6 @@
 // import logo from './logo.svg';
 import crosshair from './crosshair.png';
-
+import qr_guide from './qr_guide.png';
 
 import Webcam from "react-webcam";
 
@@ -47,12 +47,34 @@ const CrosshairImage =() => (
   />
 );
 
-export default function CrossHair() {
+const QRImage =() => (
+  <img
+  src={qr_guide}
+  style={
+    {
+      position: "absolute",
+      height: "50vh",
+      width: "50vw",
+      left: "25vw",
+      top: "25vh"
+    }
+  }
+  />
+);
+
+export default function CrossHair(props) {
+
+  const inScanMode = props.scanMode;
 
   return <>
         
       <WebcamCapture />
+      {inScanMode ? 
+      <QRImage />
+      :
       <CrosshairImage />
+      }
+      
 
     </>;
 }
