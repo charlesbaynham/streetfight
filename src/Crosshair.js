@@ -1,6 +1,5 @@
 // import logo from './logo.svg';
 import crosshair from './crosshair.png';
-import './App.css';
 
 
 import Webcam from "react-webcam";

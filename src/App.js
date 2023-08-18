@@ -2,8 +2,13 @@ import React, { useCallback, useState } from 'react';
 
 import './App.css';
 
-import CrossHair from './Crosshair';
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
+
+import CrossHair from './Crosshair';
+import FireButton from './FireButton';
+import ScanButton from './ScanButton';
+
+const override = false;
 
 export default function App() {
 
@@ -21,8 +26,15 @@ export default function App() {
       </button>
 
       <FullScreen handle={handle} onChange={reportChange}>
-        {isFullscreen ? <CrossHair /> : null}
+        {isFullscreen | override ? ( <>
+          <CrossHair />
+          <FireButton />
+          <ScanButton />
+       </>
+        ) : null}
       </FullScreen>
+
+      
     </div>
   );
 

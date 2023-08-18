@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="61.665253mm"
+   height="61.665253mm"
+   viewBox="0 0 61.665253 61.665253"
+   version="1.1"
+   id="svg5"
+   inkscape:version="1.2 (dc2aeda, 2022-05-15)"
+   sodipodi:docname="scanbutton.svg"
+   inkscape:export-filename="scanbutton.png"
+   inkscape:export-xdpi="96"
+   inkscape:export-ydpi="96"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <sodipodi:namedview
+     id="namedview7"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     inkscape:document-units="mm"
+     showgrid="false"
+     inkscape:zoom="0.8221893"
+     inkscape:cx="-235.34726"
+     inkscape:cy="289.47105"
+     inkscape:window-width="1280"
+     inkscape:window-height="694"
+     inkscape:window-x="0"
+     inkscape:window-y="23"
+     inkscape:window-maximized="0"
+     inkscape:current-layer="layer1" />
+  <defs
+     id="defs2" />
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-85.576271,-114.52119)">
+    <circle
+       style="fill:#0000ff;stroke:none;stroke-width:0.264583"
+       id="path61"
+       cx="116.4089"
+       cy="145.35382"
+       r="30.832626" />
+    <text
+       xml:space="preserve"
+       style="font-size:26.6176px;fill:#0000ff;stroke:#ff0000;stroke-width:2.21813"
+       x="125.75815"
+       y="113.6108"
+       id="text221"
+       transform="scale(0.71504571,1.398512)"><tspan
+         sodipodi:role="line"
+         id="tspan219"
+         x="125.75815"
+         y="113.6108"
+         style="stroke-width:2.21813">SCAN</tspan></text>
+  </g>
+</svg>
