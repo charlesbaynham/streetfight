@@ -8,7 +8,7 @@ import CrossHair from './Crosshair';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 
-const override = false;
+const override = true;
 
 export default function App() {
 
@@ -29,7 +29,7 @@ export default function App() {
         {isFullscreen | override ? ( <>
           <CrossHair />
           <FireButton />
-          <ScanButton />
+          <ScanButton test="hrllo"/>
        </>
         ) : null}
       </FullScreen>
