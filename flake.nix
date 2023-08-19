@@ -18,7 +18,6 @@
             sqlalchemy-utils
             fastapi
             uvicorn
-            psutil
 
             # Development
             pytest
