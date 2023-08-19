@@ -21,20 +21,37 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from .user_id import get_user_id
 
-logger = logging.getLogger("main")
 
-# Set the root logger level to LOG_LEVEL if specified
-load_dotenv(find_dotenv())
-if "LOG_LEVEL" in os.environ:
-    logging.getLogger().setLevel(os.environ.get("LOG_LEVEL"))
-    logger.info("Setting log level to %s", os.environ.get("LOG_LEVEL"))
-else:
-    logging.getLogger().setLevel(logging.INFO)
-    logger.info("Setting log level to INFO by default")
+def setup_logging():
+    # Redirect the uvicorn logger to root
+    root_logger = logging.getLogger()
+    uvicorn_logger = logging.getLogger("uvicorn")
+
+    for handler in root_logger.handlers:
+        root_logger.removeHandler(handler)
+
+    for handler in uvicorn_logger.handlers:
+        root_logger.addHandler(handler)
+        uvicorn_logger.removeHandler(handler)
+
+    uvicorn_logger.propagate = True
+
+    # Set the root logger level to LOG_LEVEL if specified
+    load_dotenv(find_dotenv())
+    if "LOG_LEVEL" in os.environ:
+        logging.getLogger().setLevel(os.environ.get("LOG_LEVEL"))
+        root_logger.warning(
+            "Setting log level to %s from env var config", os.environ.get("LOG_LEVEL")
+        )
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+        root_logger.warning("Setting log level to INFO by default")
 
 
+setup_logging()
 app = FastAPI()
 router = APIRouter()
+logger = logging.getLogger("main")
 
 app.add_middleware(
     SessionMiddleware,
@@ -53,6 +70,16 @@ def get_my_id(
     user_id=Depends(get_user_id),
 ):
     return user_id
+
+
+@router.post("/submit_shot")
+def submit_shot(
+    photo: str,
+    user_id=Depends(get_user_id),
+):
+    logger.info("Received shot from user %s", user_id)
+
+    return photo
 
 
 app.include_router(router, prefix="/api")
