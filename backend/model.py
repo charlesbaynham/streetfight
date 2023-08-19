@@ -75,56 +75,13 @@ class Game(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
-    players = relationship("Player", backref="game", lazy=True)
+    users = relationship("User", backref="game", lazy=True)
+    teams = relationship("Team", backref="game", lazy=True)
 
     update_tag = Column(Integer(), default=random_counter_value)
 
-    # stage = Column(Enum(GameStage), default=GameStage.LOBBY)
-    # stage_id = Column(Integer, default=0)
-
-    # # Optional settings to customise the role distribution. Must be json
-    # # parsable to a DistributionSettings object
-    # distribution_settings = Column(JSONEncodedDict, default=None)
-
-    # # Used when a stage has to be repeated, e.g. because a vote tied
-    # num_attempts_this_stage = Column(Integer, default=0)
-
-    # messages = relationship("Message", backref="game", lazy=True, order_by="Message.id")
-
-    # actions = relationship("Action", backref="game", lazy=True)
-
     def touch(self):
         self.update_tag = random_counter_value()
-
-    # def __repr__(self):
-    #     return "<Game id={}, players={}>".format(self.id, self.players)
-
-
-class Player(Base):
-    """
-    The role and current state of a player in a game.
-
-    Each User is a Player in each game that they are in.
-    Each Player is part of both a Game and a Team
-    """
-
-    __tablename__ = "players"
-
-    id = Column(Integer, primary_key=True, nullable=False)
-    time_created = Column(DateTime, server_default=func.now())
-
-    last_seen = Column(DateTime, default=func.now())
-
-    user_id = Column(UUIDType, ForeignKey("users.id"))
-    game_id = Column(Integer, ForeignKey("games.id"))
-    team_id = Column(Integer, ForeignKey("teams.id"))
-
-    user = relationship("User", lazy="joined", foreign_keys=user_id)
-    game = relationship("Game", lazy="joined", foreign_keys=game_id)
-    team = relationship("Team", lazy="joined", foreign_keys=team_id)
-
-    def touch(self):
-        self.last_seen = datetime.datetime.now()
 
 
 class Team(Base):
@@ -143,23 +100,31 @@ class Team(Base):
     game_id = Column(Integer, ForeignKey("games.id"))
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
-    players = relationship("Player", backref="team", lazy=True)
+    users = relationship("User", backref="team", lazy=True)
 
 
 class User(Base):
     """
     Details of each user, recognised by their session id
 
-    A user can be in multiple Games (as multiple Players)
+    A user is in one or zero games, and one or zero teams
     """
 
     __tablename__ = "users"
 
     id = Column(UUIDType, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
+    last_seen = Column(DateTime, default=func.now())
     name = Column(String)
 
-    player_roles = relationship("Player", lazy=True)
+    game_id = Column(Integer, ForeignKey("games.id"), default=0)
+    team_id = Column(Integer, ForeignKey("teams.id"), default=0)
+
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    team = relationship("Team", lazy="joined", foreign_keys=team_id)
+
+    def touch(self):
+        self.last_seen = datetime.datetime.now()
 
 
 # def hash_game_tag(text: str):
