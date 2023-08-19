@@ -11,13 +11,21 @@
           (pkgs.python3.withPackages (ps: with ps; [
             pip
             
+            # Runtime
             python-dotenv
-
             sqlalchemy
             psycopg2
             sqlalchemy-utils
-
             fastapi
+
+            # Development
+            pytest
+            pre-commit
+            pip-tools
+            black
+            # selenium
+            # geckodriver-autoinstaller
+            requests
           ]))
         ];
 
