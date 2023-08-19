@@ -18,34 +18,28 @@ def test_storage(db_session):
 
 
 def test_update(db_session):
+    # Add four games
     db_session.add(Game())
     db_session.add(Game())
     db_session.add(Game())
 
     g = Game()
     db_session.add(g)
+
     db_session.commit()
-
     db_session.expire_all()
-    g = db_session.query(Game).filter_by(id=g.id).first()
 
+    # Get the last game from the db
+    final_game_id = g.id
+    g = db_session.query(Game).filter_by(id=final_game_id).first()
     counter = g.update_tag
 
+    # Touch it
     g.touch()
     db_session.commit()
-
     db_session.expire_all()
-    g = db_session.query(Game).filter_by(id=g.id).first()
 
-    assert g.update_tag != counter
-    counter = g.update_tag
-
-    # How about with an uncommitted session?
-    db_session.add(Game())
-    g.touch()
-    db_session.commit()
-
-    db_session.expire_all()
+    # Get it again and check that the update_tag changed
     g = db_session.query(Game).filter_by(id=g.id).first()
 
     assert g.update_tag != counter

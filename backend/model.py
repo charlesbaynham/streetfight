@@ -77,7 +77,7 @@ class Game(Base):
 
     players = relationship("Player", backref="game", lazy=True)
 
-    # update_tag = Column(Integer(), default=random_counter_value)
+    update_tag = Column(Integer(), default=random_counter_value)
 
     # stage = Column(Enum(GameStage), default=GameStage.LOBBY)
     # stage_id = Column(Integer, default=0)
@@ -93,8 +93,8 @@ class Game(Base):
 
     # actions = relationship("Action", backref="game", lazy=True)
 
-    # def touch(self):
-    #     self.update_tag = random_counter_value()
+    def touch(self):
+        self.update_tag = random_counter_value()
 
     # def __repr__(self):
     #     return "<Game id={}, players={}>".format(self.id, self.players)
