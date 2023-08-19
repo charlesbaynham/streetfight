@@ -137,7 +137,7 @@ class UserInterface:
             game = Game(id=game_id)
             self._session.add(game)
 
-        return game
+        game.users.append(self.get_user())
 
     @db_scoped
     def submit_shot(self, image_base64: str):

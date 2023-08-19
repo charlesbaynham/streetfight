@@ -76,8 +76,8 @@ class Game(Base):
     id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
-    # users = relationship("User", backref="game", lazy=True)
-    # teams = relationship("Team", backref="game", lazy=True)
+    users = relationship("User", lazy=True)
+    teams = relationship("Team", lazy=True)
 
     update_tag = Column(Integer(), default=random_counter_value)
 
@@ -120,7 +120,7 @@ class Team(Base):
     game_id = Column(UUIDType, ForeignKey("games.id"))
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
-    # users = relationship("User", backref="team", lazy=True)
+    users = relationship("User", lazy=True)
 
 
 class User(Base):
