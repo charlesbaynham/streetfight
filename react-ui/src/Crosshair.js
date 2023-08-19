@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 import crosshair from './crosshair.png';
 import qr_guide from './qr_guide.png';
 
@@ -20,39 +20,35 @@ const videoConstraints = {
 };
 
 function WebcamCapture({trigger}) {
-  // A slight abuse here - if the "trigger" variable changes to anything other than zero, take a screenshot
+
+  // Get a reference to the webcam element
+  const webcamRef = useRef(null);
+  
+  // Define a function that will take a shot (useCallback just avoids
+  // redefining the function when renders happen)
+  const capture = useCallback(
+    () => {
+      const imageSrc = webcamRef.current.getScreenshot();
+      console.log(imageSrc)
+    },
+    [webcamRef]
+  );
+
+  // Call the capture callback when the 'trigger' prop changes
   useEffect(() => {
-    if (trigger) {
-      console.log("bing")
-    }
-  }, [trigger]);
+    if (trigger) 
+      capture()
+  }, [trigger])
 
   return (
-
-  <Webcam
-    audio={false}
-    screenshotFormat="image/jpeg"
-    videoConstraints={videoConstraints}
-    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
-  >
-    {({ getScreenshot }) => (
-      <button
-        style={{
-          position: "absolute",
-          left:"0",
-          top:"10vh"
-        }}
-        onClick={() => {
-          const imageSrc = getScreenshot()
-
-          console.log(imageSrc)
-        }}
-      >
-        Capture photo
-      </button>
-    )}
-  </Webcam>
-  )
+    <Webcam
+      ref={webcamRef}
+      audio={false}
+      screenshotFormat="image/jpeg"
+      videoConstraints={videoConstraints}
+      style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
+    />
+  );
 }
 
 const CrosshairImage = () => (
