@@ -100,7 +100,10 @@ def join_game(
     game_id: str,
     user_id=Depends(get_user_id),
 ):
-    game_id = UUID(game_id)
+    try:
+        game_id = UUID(game_id)
+    except ValueError as e:
+        raise HTTPException(400, str(e))
     logger.info("User %s joining game %s", user_id, game_id)
 
     return UserInterface(user_id).join_game(game_id)
