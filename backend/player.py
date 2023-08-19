@@ -95,19 +95,29 @@ class UserInterface:
 
         return f
 
-    @staticmethod
-    def make_user(session, user_id) -> User:
+    @db_scoped
+    def _make_user(self) -> User:
         """
         Make a new user
         """
-        raise NotImplementedError
+        user = User(
+            id=self.user_id,
+        )
+        self._session.add(user)
+
+        logger.info("Making new user {}".format(user.id))
+
+        return user
 
     @db_scoped
     def get_user(self) -> User:
-        baked_query = bakery(lambda session: session.query(User))
-        baked_query += lambda q: q.filter(User.id == bindparam("user_id"))
+        "Return an ORM object for this user, making a new one if required"
+        user = self._session.query(User).filter_by(id=self.user_id).first()
 
-        return baked_query(self._session).params(user_id=self.user_id).first()
+        if not user:
+            user = self._make_user()
+
+        return user
 
     @db_scoped
     def get_user_model(self) -> UserModel:

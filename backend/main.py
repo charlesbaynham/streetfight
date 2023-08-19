@@ -72,8 +72,8 @@ def get_my_id(
     return user_id
 
 
-@router.get("/user_model")
-def get_user_model(
+@router.get("/user_info")
+def get_user_info(
     user_id=Depends(get_user_id),
 ):
     return UserInterface(user_id).get_user_model()

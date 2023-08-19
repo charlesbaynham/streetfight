@@ -120,8 +120,8 @@ class User(Base):
     game_id = Column(Integer, ForeignKey("games.id"), default=0)
     team_id = Column(Integer, ForeignKey("teams.id"), default=0)
 
-    # game = relationship("Game", lazy="joined", foreign_keys=game_id)
-    # team = relationship("Team", lazy="joined", foreign_keys=team_id)
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    team = relationship("Team", lazy="joined", foreign_keys=team_id)
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
@@ -141,9 +141,9 @@ class GameModel(pydantic.BaseModel):
 
 class UserModel(pydantic.BaseModel):
     id: UUID
-    name: str
-    game: GameModel
-    team: "TeamModel"
+    name: Optional[str]
+    game: Optional[GameModel]
+    team: Optional["TeamModel"]
 
     class Config:
         orm_mode = True
