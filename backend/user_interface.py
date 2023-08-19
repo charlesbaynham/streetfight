@@ -129,6 +129,17 @@ class UserInterface:
         return UserModel.from_orm(u) if u else None
 
     @db_scoped
+    def join_game(self, game_id: UUID):
+        game = self._session.query(Game).filter_by(id=game_id).first()
+
+        if not game:
+            logger.info("Creating new game with uuid=%s", game_id)
+            game = Game(id=game_id)
+            self._session.add(game)
+
+        return game
+
+    @db_scoped
     def submit_shot(self, image_base64: str):
         user = self.get_user()
         game = user.game

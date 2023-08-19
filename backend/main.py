@@ -2,6 +2,7 @@ import logging
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from uuid import UUID
 
 from dotenv import find_dotenv
 from dotenv import load_dotenv
@@ -92,6 +93,17 @@ def submit_shot(
     logger.info("Received shot from user %s", user_id)
 
     UserInterface(user_id).submit_shot(shot)
+
+
+@router.post("/join_game")
+def join_game(
+    game_id: str,
+    user_id=Depends(get_user_id),
+):
+    game_id = UUID(game_id)
+    logger.info("User %s joining game %s", user_id, game_id)
+
+    return UserInterface(user_id).join_game(game_id)
 
 
 app.include_router(router, prefix="/api")
