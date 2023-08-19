@@ -36,7 +36,7 @@ function WebcamCapture({trigger}) {
           headers: { 'Content-Type': 'application/json' },
           body: imageSrc
       };
-      fetch('http://localhost:8000/api/submit_shot', requestOptions)
+      fetch('/api/submit_shot', requestOptions)
           .then(response => response.json())
           .then(data => console.log(data));
     },
@@ -47,7 +47,7 @@ function WebcamCapture({trigger}) {
   useEffect(() => {
     if (trigger) 
       capture()
-  }, [trigger])
+  }, [trigger, capture])
 
   return (
     <Webcam
