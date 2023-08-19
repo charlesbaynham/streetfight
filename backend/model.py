@@ -104,7 +104,8 @@ class Player(Base):
     """
     The role and current state of a player in a game.
 
-    Each User is a Player in each game that they are in. Each Game has a Player for each player in it.
+    Each User is a Player in each game that they are in.
+    Each Player is part of both a Game and a Team
     """
 
     __tablename__ = "players"
@@ -113,67 +114,43 @@ class Player(Base):
     time_created = Column(DateTime, server_default=func.now())
 
     last_seen = Column(DateTime, default=func.now())
-    game_id = Column(Integer, ForeignKey("games.id"))
+
     user_id = Column(UUIDType, ForeignKey("users.id"))
-
-    # votes = Column(Integer, default=0)
-    # active = Column(Boolean, default=True)
-
-    # role = Column(Enum(PlayerRole), nullable=False)
-    # state = Column(Enum(PlayerState), nullable=False)
-
-    # seed = Column(Float, default=lambda: random.random())
-
-    # previous_role = Column(Enum(PlayerRole), nullable=True)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    team_id = Column(Integer, ForeignKey("teams.id"))
 
     user = relationship("User", lazy="joined", foreign_keys=user_id)
-
-    # actions = relationship(
-    #     "Action",
-    #     lazy=True,
-    #     foreign_keys="Action.player_id",
-    #     cascade="all, delete-orphan",
-    # )
-    # selected_actions = relationship(
-    #     "Action",
-    #     lazy=True,
-    #     foreign_keys="Action.selected_player_id",
-    #     cascade="all, delete-orphan",
-    # )
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    team = relationship("Team", lazy="joined", foreign_keys=team_id)
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
 
 
-# class Action(Base):
-#     __tablename__ = "actions"
+class Team(Base):
+    """
+    A team in a game
 
-#     id = Column(Integer, primary_key=True, nullable=False)
-#     time_created = Column(DateTime, server_default=func.now())
+    Teams contain zero or more players and are associated with exactly one game
+    """
 
-#     game_id = Column(Integer, ForeignKey("games.id"))
-#     player_id = Column(Integer, ForeignKey("players.id"))
-#     stage_id = Column(Integer, index=True, nullable=False)
-#     selected_player_id = Column(Integer, ForeignKey("players.id"), nullable=True)
-#     stage = Column(Enum(GameStage), nullable=False)
-#     expired = Column(Boolean, default=False)
+    __tablename__ = "teams"
 
-#     # These fields aren't actually needed or used by the code, since we can
-#     # determine a player's role by checking the player relationship. However,
-#     # without these, I can't reproduce games from archived actions.
-#     role = Column(Enum(PlayerRole), nullable=False)
+    id = Column(UUIDType, primary_key=True, nullable=False)
+    time_created = Column(DateTime, server_default=func.now())
+    name = Column(String)
 
-#     random_field = Column(Integer)
+    game_id = Column(Integer, ForeignKey("games.id"))
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
-#     player = relationship("Player", lazy=True, foreign_keys=player_id)
-#     selected_player = relationship("Player", lazy=True, foreign_keys=selected_player_id)
+    players = relationship("Player", backref="team", lazy=True)
 
 
 class User(Base):
     """
     Details of each user, recognised by their session id
 
-    A user can be in multiple games
+    A user can be in multiple Games (as multiple Players)
     """
 
     __tablename__ = "users"
@@ -181,37 +158,8 @@ class User(Base):
     id = Column(UUIDType, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
     name = Column(String)
-    # name_is_generated = Column(Boolean, default=True)
 
     player_roles = relationship("Player", lazy=True)
-
-
-# # many-to-many relationship between players and messages
-# association_table = Table(
-#     "message_visibility",
-#     Base.metadata,
-#     Column("player_id", Integer, ForeignKey("players.id")),
-#     Column("message_id", Integer, ForeignKey("messages.id")),
-# )
-
-
-# class Message(Base):
-#     """
-#     A message in the chatlog of a game. Each Game can have many Messages.
-#     """
-
-#     __tablename__ = "messages"
-
-#     id = Column(Integer, primary_key=True, nullable=False)
-#     time_created = Column(DateTime, server_default=func.now())
-
-#     text = Column(String)
-#     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-#     is_strong = Column(Boolean, default=False)
-
-#     visible_to = relationship("Player", secondary=association_table, lazy="joined")
-
-#     expired = Column(Boolean, default=False)
 
 
 # def hash_game_tag(text: str):
