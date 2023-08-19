@@ -11,8 +11,8 @@ from fastapi import FastAPI
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
-from .player import UserInterface
 from .user_id import get_user_id
+from .user_interface import UserInterface
 
 
 def setup_logging():
