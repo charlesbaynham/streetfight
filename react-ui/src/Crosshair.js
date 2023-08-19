@@ -16,7 +16,7 @@ const SCREEN_FILL_STYLES = {
 const videoConstraints = {
   width: 1280,
   height: 720,
-  // facingMode: "environment"
+  facingMode: "environment"
 };
 
 const WebcamCapture = () => (

@@ -1,30 +1,30 @@
 repos:
   # Several generic fixes
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
-    hooks:
-      - id: trailing-whitespace
-      - id: check-merge-conflict
-      - id: end-of-file-fixer
-      - id: mixed-line-ending
-      - id: check-yaml
+- repo: https://github.com/pre-commit/pre-commit-hooks
+  rev: v4.4.0
+  hooks:
+  - id: trailing-whitespace
+  - id: check-merge-conflict
+  - id: end-of-file-fixer
+  - id: mixed-line-ending
+  - id: check-yaml
 
   # Sort python imports
-  - repo: https://github.com/asottile/reorder_python_imports
-    rev: v3.10.0
-    hooks:
-      - id: reorder-python-imports
+- repo: https://github.com/asottile/reorder_python_imports
+  rev: v3.10.0
+  hooks:
+  - id: reorder-python-imports
 
   # Format the code with a conventional PEP8 style
-  - repo: https://github.com/psf/black
-    rev: "23.7.0"
-    hooks:
-      - id: black
+- repo: https://github.com/psf/black
+  rev: 23.7.0
+  hooks:
+  - id: black
 
-  - repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
-    rev: v2.10.0
-    hooks:
-      - id: pretty-format-java
-        args: [--autofix]
-      - id: pretty-format-yaml
-        args: [--autofix, --indent, "2"]
+- repo: https://github.com/macisamuele/language-formatters-pre-commit-hooks
+  rev: v2.10.0
+  hooks:
+  - id: pretty-format-java
+    args: [--autofix]
+  - id: pretty-format-yaml
+    args: [--autofix, --indent, '2']
