@@ -3,8 +3,6 @@ from threading import RLock
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
-from fastapi import Cookie
-from fastapi import Query
 from fastapi import Request
 from fastapi import Response
 
@@ -15,14 +13,9 @@ no_cookie_lock = RLock()
 async def get_user_id(
     *,
     response: Response,
-    temporary_id: float = Query(
-        0,
-        title="A temporary ID used to identify clients before a cookie is set. Ignored if a cookie already exists",
-    ),
     request: Request,
 ):
-    if not temporary_id:
-        temporary_id = request.client.host
+    temporary_id = request.client.host
 
     try:
         session_UUID = request.session["UUID"]
