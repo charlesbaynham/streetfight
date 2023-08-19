@@ -8,7 +8,6 @@ import CrossHair from './Crosshair';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 
-const override = false;
 
 export default function App() {
 
@@ -21,6 +20,7 @@ export default function App() {
     setIsFullscreen(state);
   }, []);
 
+
   return (
     <div>
       <button onClick={handle.enter}>
@@ -28,23 +28,18 @@ export default function App() {
       </button>
 
       <FullScreen handle={handle} onChange={reportChange}>
-        {isFullscreen | override ? ( <>
-          <CrossHair scanMode={scanMode} />
-          <FireButton onClick={
-            () => { setScanMode(false) }
-          } />
-          <ScanButton onClick={
-            () => { setScanMode(true) }
-          } />
-       </>
-        ) : null}
+
+        <CrossHair scanMode={scanMode} />
+        <FireButton onClick={
+          () => { setScanMode(false) }
+        } />
+        <ScanButton onClick={
+          () => { setScanMode(true) }
+        } />
+
       </FullScreen>
 
 
-    </div>
+    </div >
   );
-
-
-
-
 }
