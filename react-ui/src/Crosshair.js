@@ -29,16 +29,21 @@ function WebcamCapture({trigger}) {
   const capture = useCallback(
     () => {
       const imageSrc = webcamRef.current.getScreenshot();
-      console.log(imageSrc)
-      // POST request using fetch inside useEffect React hook
+      const query = JSON.stringify({
+        photo: imageSrc
+      });
+      console.log(`query = ${query}`)
+      
       const requestOptions = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: imageSrc
+          body: query
       };
       fetch('/api/submit_shot', requestOptions)
           .then(response => response.json())
-          .then(data => console.log(data));
+          .then(data => console.log(`Response: ${data}`));
+
+      
     },
     [webcamRef]
   );

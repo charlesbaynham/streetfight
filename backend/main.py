@@ -9,7 +9,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from starlette.middleware.sessions import SessionMiddleware
-
+from pydantic import BaseModel
 from .user_id import get_user_id
 
 
@@ -70,14 +70,19 @@ def get_my_id(
     return user_id
 
 
+
+class Shot(BaseModel):
+    photo: str
+
+
 @router.post("/submit_shot")
 def submit_shot(
-    photo: str,
+    shot: Shot,
     user_id=Depends(get_user_id),
 ):
     logger.info("Received shot from user %s", user_id)
 
-    return photo
+    return shot.photo
 
 
 app.include_router(router, prefix="/api")

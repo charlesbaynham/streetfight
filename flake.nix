@@ -17,6 +17,7 @@
             psycopg2
             sqlalchemy-utils
             fastapi
+            websockets
             uvicorn
 
             # Development
