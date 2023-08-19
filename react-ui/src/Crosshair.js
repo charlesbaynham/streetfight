@@ -1,4 +1,4 @@
-// import logo from './logo.svg';
+import { useEffect } from 'react';
 import crosshair from './crosshair.png';
 import qr_guide from './qr_guide.png';
 
@@ -19,15 +19,29 @@ const videoConstraints = {
   facingMode: "environment"
 };
 
-const WebcamCapture = () => (
+function WebcamCapture({trigger}) {
+  // A slight abuse here - if the "trigger" variable changes to anything other than zero, take a screenshot
+  useEffect(() => {
+    if (trigger) {
+      console.log("bing")
+    }
+  }, [trigger]);
+
+  return (
+
   <Webcam
     audio={false}
     screenshotFormat="image/jpeg"
     videoConstraints={videoConstraints}
     style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
   >
-    {/* {({ getScreenshot }) => (
+    {({ getScreenshot }) => (
       <button
+        style={{
+          position: "absolute",
+          left:"0",
+          top:"10vh"
+        }}
         onClick={() => {
           const imageSrc = getScreenshot()
 
@@ -36,9 +50,10 @@ const WebcamCapture = () => (
       >
         Capture photo
       </button>
-    )} */}
+    )}
   </Webcam>
-);
+  )
+}
 
 const CrosshairImage = () => (
   <img
@@ -62,14 +77,14 @@ const QRImage = () => (
   />
 );
 
-export default function CrossHair(props) {
-
-  const inScanMode = props.scanMode;
+export default function CrossHair({
+  scanMode, trigger
+}) {
 
   return <>
 
-    <WebcamCapture />
-    {inScanMode ?
+    <WebcamCapture trigger={trigger} />
+    {scanMode ?
       <QRImage />
       :
       <CrosshairImage />

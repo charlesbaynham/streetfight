@@ -20,6 +20,8 @@ export default function App() {
     setIsFullscreen(state);
   }, []);
 
+  const [ triggerShot, setTriggerShot ] = useState(0);
+
 
   return (
     <div>
@@ -29,12 +31,14 @@ export default function App() {
 
       <FullScreen handle={handle} onChange={reportChange}>
 
-        <CrossHair scanMode={scanMode} />
+        <CrossHair trigger={triggerShot} scanMode={scanMode} />
         <FireButton onClick={
-          () => { setScanMode(false) }
+          () => {
+            setTriggerShot(triggerShot+1)
+          }
         } />
         <ScanButton onClick={
-          () => { setScanMode(true) }
+          () => { setScanMode(!scanMode) }
         } />
 
       </FullScreen>
