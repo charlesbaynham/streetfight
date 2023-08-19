@@ -1,6 +1,5 @@
 {
-  description = "Simple npm-only environment
-  ";
+  description = "Simple npm+python environment";
   inputs.flake-utils.url = "github:numtide/flake-utils";
 
   outputs = { self, nixpkgs, flake-utils }:
@@ -9,6 +8,17 @@
         pkgs = nixpkgs.legacyPackages.${system};
         reqs = [
           pkgs.nodejs
+          (pkgs.python3.withPackages (ps: with ps; [
+            pip
+            
+            python-dotenv
+
+            sqlalchemy
+            psycopg2
+            sqlalchemy-utils
+
+            fastapi
+          ]))
         ];
 
       in
