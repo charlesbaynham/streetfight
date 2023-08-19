@@ -13,6 +13,7 @@ from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
+from .admin_interface import AdminInterface
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
@@ -107,6 +108,11 @@ def join_game(
     logger.info("User %s joining game %s", user_id, game_id)
 
     return UserInterface(user_id).join_game(game_id)
+
+
+@router.post("/admin_list_games")
+def admin_list_games():
+    return AdminInterface().get_games()
 
 
 app.include_router(router, prefix="/api")

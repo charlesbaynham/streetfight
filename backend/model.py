@@ -151,8 +151,8 @@ class GameModel(pydantic.BaseModel):
     id: UUID
     update_tag: int
 
-    user_ids: List[UUID]
-    team_ids: List[int]
+    users: List["UserModel"]
+    teams: List["TeamModel"]
 
     class Config:
         orm_mode = True
