@@ -92,7 +92,7 @@ def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
-    UserInterface(user_id).submit_shot(shot)
+    UserInterface(user_id).submit_shot(shot.photo)
 
 
 @router.post("/join_game")

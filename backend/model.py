@@ -98,7 +98,7 @@ class Shot(Base):
     game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
     user = relationship("User", lazy="joined", foreign_keys=user_id)
 
     image_base64 = Column(String, nullable=False)
@@ -151,8 +151,8 @@ class GameModel(pydantic.BaseModel):
     id: UUID
     update_tag: int
 
-    users: List["UserModel"]
-    teams: List["TeamModel"]
+    user_ids: List[UUID]
+    team_ids: List[int]
 
     class Config:
         orm_mode = True
@@ -162,8 +162,8 @@ class GameModel(pydantic.BaseModel):
 class UserModel(pydantic.BaseModel):
     id: UUID
     name: Optional[str]
-    game: Optional[GameModel]
-    team: Optional["TeamModel"]
+    game_id: Optional[UUID]
+    team_id: Optional[int]
 
     class Config:
         orm_mode = True
@@ -173,8 +173,8 @@ class UserModel(pydantic.BaseModel):
 class TeamModel(pydantic.BaseModel):
     id: int
     name: str
-    game: GameModel
-    users: List[UserModel]
+    game_id: UUID
+    user_ids: List[int]
 
     class Config:
         orm_mode = True
