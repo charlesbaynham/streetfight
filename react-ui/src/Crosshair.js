@@ -16,7 +16,7 @@ const SCREEN_FILL_STYLES = {
 const videoConstraints = {
   width: 1280,
   height: 720,
-  facingMode: "environment"
+  // facingMode: "environment"
 };
 
 const WebcamCapture = () => (
@@ -24,7 +24,7 @@ const WebcamCapture = () => (
     audio={false}
     screenshotFormat="image/jpeg"
     videoConstraints={videoConstraints}
-    style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "cover"})}
+    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
   >
     {/* {({ getScreenshot }) => (
       <button
@@ -40,25 +40,25 @@ const WebcamCapture = () => (
   </Webcam>
 );
 
-const CrosshairImage =() => (
+const CrosshairImage = () => (
   <img
-  src={crosshair}
-  style={Object.assign({}, SCREEN_FILL_STYLES, {objectFit: "contain"})}
+    src={crosshair}
+    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
   />
 );
 
-const QRImage =() => (
+const QRImage = () => (
   <img
-  src={qr_guide}
-  style={
-    {
-      position: "absolute",
-      height: "50vh",
-      width: "50vw",
-      left: "25vw",
-      top: "25vh"
+    src={qr_guide}
+    style={
+      {
+        position: "absolute",
+        height: "50vh",
+        width: "50vw",
+        left: "25vw",
+        top: "25vh"
+      }
     }
-  }
   />
 );
 
@@ -68,13 +68,13 @@ export default function CrossHair(props) {
 
   return <>
 
-      <WebcamCapture />
-      {inScanMode ?
+    <WebcamCapture />
+    {inScanMode ?
       <QRImage />
       :
       <CrosshairImage />
-      }
+    }
 
 
-    </>;
+  </>;
 }
