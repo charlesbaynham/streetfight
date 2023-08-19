@@ -17,6 +17,8 @@
             psycopg2
             sqlalchemy-utils
             fastapi
+            uvicorn
+            psutil
 
             # Development
             pytest
