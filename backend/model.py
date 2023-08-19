@@ -63,14 +63,6 @@ class JSONEncodedDict(TypeDecorator):
         return value
 
 
-class GameStage(str, enum.Enum):
-    LOBBY = "LOBBY"
-    DAY = "DAY"
-    VOTING = "VOTING"
-    NIGHT = "NIGHT"
-    ENDED = "ENDED"
-
-
 def random_counter_value():
     return random.randint(1, 2147483646)
 
@@ -83,69 +75,29 @@ class Game(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
-    update_tag = Column(Integer(), default=random_counter_value)
-
-    stage = Column(Enum(GameStage), default=GameStage.LOBBY)
-    stage_id = Column(Integer, default=0)
-
-    # Optional settings to customise the role distribution. Must be json
-    # parsable to a DistributionSettings object
-    distribution_settings = Column(JSONEncodedDict, default=None)
-
-    # Used when a stage has to be repeated, e.g. because a vote tied
-    num_attempts_this_stage = Column(Integer, default=0)
-
     players = relationship("Player", backref="game", lazy=True)
 
-    messages = relationship("Message", backref="game", lazy=True, order_by="Message.id")
+    # update_tag = Column(Integer(), default=random_counter_value)
 
-    actions = relationship("Action", backref="game", lazy=True)
+    # stage = Column(Enum(GameStage), default=GameStage.LOBBY)
+    # stage_id = Column(Integer, default=0)
 
-    def touch(self):
-        self.update_tag = random_counter_value()
+    # # Optional settings to customise the role distribution. Must be json
+    # # parsable to a DistributionSettings object
+    # distribution_settings = Column(JSONEncodedDict, default=None)
 
-    def __repr__(self):
-        return "<Game id={}, players={}>".format(self.id, self.players)
+    # # Used when a stage has to be repeated, e.g. because a vote tied
+    # num_attempts_this_stage = Column(Integer, default=0)
 
+    # messages = relationship("Message", backref="game", lazy=True, order_by="Message.id")
 
-class PlayerRole(str, enum.Enum):
-    VILLAGER = "Villager"
-    WOLF = "Wolf"
-    SEER = "Seer"
-    MEDIC = "Medic"
-    JESTER = "Jester"
-    SPECTATOR = "Spectator"
-    NARRATOR = "Narrator"
-    VIGILANTE = "Vigilante"
-    MAYOR = "Mayor"
-    MILLER = "Miller"
-    ACOLYTE = "Acolyte"
-    PRIEST = "Priest"
-    PROSTITUTE = "Prostitute"
-    MASON = "Mason"
-    EXORCIST = "Exorcist"
-    FOOL = "Fool"
+    # actions = relationship("Action", backref="game", lazy=True)
 
+    # def touch(self):
+    #     self.update_tag = random_counter_value()
 
-class PlayerState(str, enum.Enum):
-    ALIVE = "ALIVE"
-    WOLFED = "WOLFED"
-    SHOT = "SHOT"
-    LYNCHED = "LYNCHED"
-    NOMINATED = "NOMINATED"
-    SECONDED = "SECONDED"
-    SPECTATING = "SPECTATING"
-
-    def is_dead(self):
-        return self in [
-            PlayerState.WOLFED,
-            PlayerState.SHOT,
-            PlayerState.LYNCHED,
-            PlayerState.SPECTATING,
-        ]
-
-
-DEAD_STATES = [PlayerState.WOLFED, PlayerState.SHOT, PlayerState.LYNCHED]
+    # def __repr__(self):
+    #     return "<Game id={}, players={}>".format(self.id, self.players)
 
 
 class Player(Base):
@@ -163,64 +115,65 @@ class Player(Base):
     last_seen = Column(DateTime, default=func.now())
     game_id = Column(Integer, ForeignKey("games.id"))
     user_id = Column(UUIDType, ForeignKey("users.id"))
-    votes = Column(Integer, default=0)
-    active = Column(Boolean, default=True)
 
-    role = Column(Enum(PlayerRole), nullable=False)
-    state = Column(Enum(PlayerState), nullable=False)
+    # votes = Column(Integer, default=0)
+    # active = Column(Boolean, default=True)
 
-    seed = Column(Float, default=lambda: random.random())
+    # role = Column(Enum(PlayerRole), nullable=False)
+    # state = Column(Enum(PlayerState), nullable=False)
 
-    previous_role = Column(Enum(PlayerRole), nullable=True)
+    # seed = Column(Float, default=lambda: random.random())
+
+    # previous_role = Column(Enum(PlayerRole), nullable=True)
 
     user = relationship("User", lazy="joined", foreign_keys=user_id)
 
-    actions = relationship(
-        "Action",
-        lazy=True,
-        foreign_keys="Action.player_id",
-        cascade="all, delete-orphan",
-    )
-    selected_actions = relationship(
-        "Action",
-        lazy=True,
-        foreign_keys="Action.selected_player_id",
-        cascade="all, delete-orphan",
-    )
+    # actions = relationship(
+    #     "Action",
+    #     lazy=True,
+    #     foreign_keys="Action.player_id",
+    #     cascade="all, delete-orphan",
+    # )
+    # selected_actions = relationship(
+    #     "Action",
+    #     lazy=True,
+    #     foreign_keys="Action.selected_player_id",
+    #     cascade="all, delete-orphan",
+    # )
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
 
 
-class Action(Base):
-    __tablename__ = "actions"
+# class Action(Base):
+#     __tablename__ = "actions"
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    time_created = Column(DateTime, server_default=func.now())
+#     id = Column(Integer, primary_key=True, nullable=False)
+#     time_created = Column(DateTime, server_default=func.now())
 
-    game_id = Column(Integer, ForeignKey("games.id"))
-    player_id = Column(Integer, ForeignKey("players.id"))
-    stage_id = Column(Integer, index=True, nullable=False)
-    selected_player_id = Column(Integer, ForeignKey("players.id"), nullable=True)
-    stage = Column(Enum(GameStage), nullable=False)
-    expired = Column(Boolean, default=False)
+#     game_id = Column(Integer, ForeignKey("games.id"))
+#     player_id = Column(Integer, ForeignKey("players.id"))
+#     stage_id = Column(Integer, index=True, nullable=False)
+#     selected_player_id = Column(Integer, ForeignKey("players.id"), nullable=True)
+#     stage = Column(Enum(GameStage), nullable=False)
+#     expired = Column(Boolean, default=False)
 
-    # These fields aren't actually needed or used by the code, since we can
-    # determine a player's role by checking the player relationship. However,
-    # without these, I can't reproduce games from archived actions.
-    role = Column(Enum(PlayerRole), nullable=False)
+#     # These fields aren't actually needed or used by the code, since we can
+#     # determine a player's role by checking the player relationship. However,
+#     # without these, I can't reproduce games from archived actions.
+#     role = Column(Enum(PlayerRole), nullable=False)
 
-    random_field = Column(Integer)
+#     random_field = Column(Integer)
 
-    player = relationship("Player", lazy=True, foreign_keys=player_id)
-    selected_player = relationship("Player", lazy=True, foreign_keys=selected_player_id)
+#     player = relationship("Player", lazy=True, foreign_keys=player_id)
+#     selected_player = relationship("Player", lazy=True, foreign_keys=selected_player_id)
 
 
 class User(Base):
     """
     Details of each user, recognised by their session id
 
-    A user can be in multiple games and will have a GameRole in each
+    A user can be in multiple games
     """
 
     __tablename__ = "users"
@@ -228,230 +181,232 @@ class User(Base):
     id = Column(UUIDType, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
     name = Column(String)
-    name_is_generated = Column(Boolean, default=True)
+    # name_is_generated = Column(Boolean, default=True)
 
     player_roles = relationship("Player", lazy=True)
 
 
-# many-to-many relationship between players and messages
-association_table = Table(
-    "message_visibility",
-    Base.metadata,
-    Column("player_id", Integer, ForeignKey("players.id")),
-    Column("message_id", Integer, ForeignKey("messages.id")),
-)
+# # many-to-many relationship between players and messages
+# association_table = Table(
+#     "message_visibility",
+#     Base.metadata,
+#     Column("player_id", Integer, ForeignKey("players.id")),
+#     Column("message_id", Integer, ForeignKey("messages.id")),
+# )
 
 
-class Message(Base):
-    """
-    A message in the chatlog of a game. Each Game can have many Messages.
-    """
+# class Message(Base):
+#     """
+#     A message in the chatlog of a game. Each Game can have many Messages.
+#     """
 
-    __tablename__ = "messages"
+#     __tablename__ = "messages"
 
-    id = Column(Integer, primary_key=True, nullable=False)
-    time_created = Column(DateTime, server_default=func.now())
+#     id = Column(Integer, primary_key=True, nullable=False)
+#     time_created = Column(DateTime, server_default=func.now())
 
-    text = Column(String)
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
-    is_strong = Column(Boolean, default=False)
+#     text = Column(String)
+#     game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+#     is_strong = Column(Boolean, default=False)
 
-    visible_to = relationship("Player", secondary=association_table, lazy="joined")
+#     visible_to = relationship("Player", secondary=association_table, lazy="joined")
 
-    expired = Column(Boolean, default=False)
-
-
-def hash_game_tag(text: str):
-    """Hash a game id into a 3-byte integer
-
-    A game ID will normally be something like "correct-horse-battery-staple",
-    but can actually be any string
-    """
-
-    # Replace all spaces with '-' and convert to lower case
-    s = text.replace(" ", "-").lower()
-    logging.debug("Hashing game tag '%s' to '%s'", text, s)
-    return hash_str_to_int(s, 3)
+#     expired = Column(Boolean, default=False)
 
 
-class PlayerModel(pydantic.BaseModel):
-    id: int
-    game_id: int
-    user_id: UUID
-    votes: int = 0
-    active: bool = True
+# def hash_game_tag(text: str):
+#     """Hash a game id into a 3-byte integer
 
-    user: "UserModel"
+#     A game ID will normally be something like "correct-horse-battery-staple",
+#     but can actually be any string
+#     """
 
-    role: PlayerRole
-    state: PlayerState
-
-    seed: float = 0
-
-    previous_role: Optional[PlayerRole]
-
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+#     # Replace all spaces with '-' and convert to lower case
+#     s = text.replace(" ", "-").lower()
+#     logging.debug("Hashing game tag '%s' to '%s'", text, s)
+#     return hash_str_to_int(s, 3)
 
 
-class MessageModel(pydantic.BaseModel):
-    id: int
-    text: str
-    game_id: int
-    is_strong: bool
-    expired: bool
+# class PlayerModel(pydantic.BaseModel):
+#     id: int
+#     game_id: int
+#     user_id: UUID
+#     votes: int = 0
+#     active: bool = True
 
-    visible_to: List[PlayerModel]
+#     user: "UserModel"
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+#     role: PlayerRole
+#     state: PlayerState
 
+#     seed: float = 0
 
-class GameModel(pydantic.BaseModel):
-    id: int
-    update_tag: int
+#     previous_role: Optional[PlayerRole]
 
-    stage: GameStage
-    stage_id: int
-
-    num_attempts_this_stage: int
-
-    players: List[PlayerModel]
-    messages: List[MessageModel]
-
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+#     class Config:
+#         orm_mode = True
+#         extra = "forbid"
 
 
-class UserModel(pydantic.BaseModel):
-    id: UUID
-    name: str
-    name_is_generated: bool
+# class MessageModel(pydantic.BaseModel):
+#     id: int
+#     text: str
+#     game_id: int
+#     is_strong: bool
+#     expired: bool
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+#     visible_to: List[PlayerModel]
 
-
-class ActionModel(pydantic.BaseModel):
-    id: int
-    game_id: int
-    player_id: int
-    stage_id: int
-    selected_player_id: Union[int, None]
-    stage: GameStage
-
-    game: GameModel
-    player: PlayerModel
-    selected_player: Union[None, PlayerModel]
-
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+#     class Config:
+#         orm_mode = True
+#         extra = "forbid"
 
 
-class DistributionSettings(pydantic.BaseModel):
-    """Settings for how to generate a game"""
+# class GameModel(pydantic.BaseModel):
+#     id: int
+#     update_tag: int
 
-    number_of_wolves: Optional[int] = None
-    probability_of_villager: Optional[float] = None
-    role_weights: Optional[Dict[PlayerRole, float]] = None
+#     stage: GameStage
+#     stage_id: int
 
-    def is_default(self) -> bool:
-        return (
-            self.number_of_wolves is None
-            and self.role_weights is None
-            and self.probability_of_villager is None
-        )
+#     num_attempts_this_stage: int
 
-    @pydantic.validator("probability_of_villager", always=True)
-    def prob(cls, v, values):
-        if v is not None and (v < 0 or v > 1):
-            raise ValueError("probability_of_villager must be between 0 and 1")
-        return v
+#     players: List[PlayerModel]
+#     messages: List[MessageModel]
+
+#     class Config:
+#         orm_mode = True
+#         extra = "forbid"
 
 
-class FrontendState(pydantic.BaseModel):
-    """
-    Schema for the React state of a client's frontend
-    """
+# class UserModel(pydantic.BaseModel):
+#     id: UUID
+#     name: str
+#     name_is_generated: bool
 
-    state_hash: int
-
-    class UIPlayerState(pydantic.BaseModel):
-        id: UUID
-        name: str
-        # Player state. One of PlayerState
-        status: str
-        # PlayerRole to display. Players will appear as villagers unless they should be revealed
-        role: str
-        # Random float from 0-1.
-        # Will be used by the frontend to decide which picture to display if multiple are available
-        seed: float
-        # Show this player as having completed their actions this round
-        ready: bool = False
-
-        @pydantic.validator("status")
-        def status_valid(cls, v):
-            try:
-                PlayerState(v)
-            except ValueError:
-                assert v in ["MAYOR"]
-            return v
-
-        @pydantic.validator("role")
-        def role_valid(cls, v):
-            PlayerRole(v)
-            return v
-
-    players: List[UIPlayerState]
-
-    class ChatMsg(pydantic.BaseModel):
-        msg: str
-        isStrong = False
-
-    chat: List[ChatMsg]
-    showSecretChat = False
-
-    stage: GameStage
-
-    class RoleState(pydantic.BaseModel):
-        title: str
-        text: str
-        role: str
-        button_visible: bool
-        button_enabled: bool
-        button_text: Union[None, str] = None
-        button_confirm_text: Union[None, str] = None
-        button_submit_func: Union[None, str] = None
-        button_submit_person: Union[None, bool] = None
-
-        seed: float
-
-        @pydantic.validator("role")
-        def role_valid(cls, v):
-            PlayerRole(v)
-            return v
-
-        @pydantic.validator("button_text", always=True)
-        def text_present(cls, v, values):
-            logging.debug(f"Text = : {v}")
-            logging.debug(f"Values = {values}")
-            if values["button_visible"] and not v:
-                raise ValueError("No button text provided when button is visible")
-            return v
-
-    controls_state: RoleState
-
-    myID: UUID
-    myName: str
-    myNameIsGenerated: bool
-    myStatus: PlayerState
-
-    isCustomized: bool
+#     class Config:
+#         orm_mode = True
+#         extra = "forbid"
 
 
-PlayerModel.update_forward_refs()
+# class ActionModel(pydantic.BaseModel):
+#     id: int
+#     game_id: int
+#     player_id: int
+#     stage_id: int
+
+
+#     selected_player_id: Union[int, None]
+#     stage: GameStage
+
+#     game: GameModel
+#     player: PlayerModel
+#     selected_player: Union[None, PlayerModel]
+
+#     class Config:
+#         orm_mode = True
+#         extra = "forbid"
+
+
+# class DistributionSettings(pydantic.BaseModel):
+#     """Settings for how to generate a game"""
+
+#     number_of_wolves: Optional[int] = None
+#     probability_of_villager: Optional[float] = None
+#     role_weights: Optional[Dict[PlayerRole, float]] = None
+
+#     def is_default(self) -> bool:
+#         return (
+#             self.number_of_wolves is None
+#             and self.role_weights is None
+#             and self.probability_of_villager is None
+#         )
+
+#     @pydantic.validator("probability_of_villager", always=True)
+#     def prob(cls, v, values):
+#         if v is not None and (v < 0 or v > 1):
+#             raise ValueError("probability_of_villager must be between 0 and 1")
+#         return v
+
+
+# class FrontendState(pydantic.BaseModel):
+#     """
+#     Schema for the React state of a client's frontend
+#     """
+
+#     state_hash: int
+
+#     class UIPlayerState(pydantic.BaseModel):
+#         id: UUID
+#         name: str
+#         # Player state. One of PlayerState
+#         status: str
+#         # PlayerRole to display. Players will appear as villagers unless they should be revealed
+#         role: str
+#         # Random float from 0-1.
+#         # Will be used by the frontend to decide which picture to display if multiple are available
+#         seed: float
+#         # Show this player as having completed their actions this round
+#         ready: bool = False
+
+#         @pydantic.validator("status")
+#         def status_valid(cls, v):
+#             try:
+#                 PlayerState(v)
+#             except ValueError:
+#                 assert v in ["MAYOR"]
+#             return v
+
+#         @pydantic.validator("role")
+#         def role_valid(cls, v):
+#             PlayerRole(v)
+#             return v
+
+#     players: List[UIPlayerState]
+
+#     class ChatMsg(pydantic.BaseModel):
+#         msg: str
+#         isStrong = False
+
+#     chat: List[ChatMsg]
+#     showSecretChat = False
+
+#     stage: GameStage
+
+#     class RoleState(pydantic.BaseModel):
+#         title: str
+#         text: str
+#         role: str
+#         button_visible: bool
+#         button_enabled: bool
+#         button_text: Union[None, str] = None
+#         button_confirm_text: Union[None, str] = None
+#         button_submit_func: Union[None, str] = None
+#         button_submit_person: Union[None, bool] = None
+
+#         seed: float
+
+#         @pydantic.validator("role")
+#         def role_valid(cls, v):
+#             PlayerRole(v)
+#             return v
+
+#         @pydantic.validator("button_text", always=True)
+#         def text_present(cls, v, values):
+#             logging.debug(f"Text = : {v}")
+#             logging.debug(f"Values = {values}")
+#             if values["button_visible"] and not v:
+#                 raise ValueError("No button text provided when button is visible")
+#             return v
+
+#     controls_state: RoleState
+
+#     myID: UUID
+#     myName: str
+#     myNameIsGenerated: bool
+#     myStatus: PlayerState
+
+#     isCustomized: bool
+
+
+# PlayerModel.update_forward_refs()

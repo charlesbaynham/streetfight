@@ -1,7 +1,6 @@
 from uuid import uuid4 as uuid
 
 from backend.model import Game
-from backend.model import GameStage
 from backend.model import User
 
 
@@ -19,7 +18,6 @@ def test_storage(db_session):
 
 
 def test_update(db_session):
-
     db_session.add(Game())
     db_session.add(Game())
     db_session.add(Game())
@@ -32,11 +30,6 @@ def test_update(db_session):
     g = db_session.query(Game).filter_by(id=g.id).first()
 
     counter = g.update_tag
-
-    g.stage = GameStage.NIGHT
-    db_session.commit()
-
-    assert g.update_tag == counter
 
     g.touch()
     db_session.commit()
