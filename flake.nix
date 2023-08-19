@@ -6,7 +6,7 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        reqs = [
+        reqs = with pkgs; [
           pkgs.nodejs
           (pkgs.python3.withPackages (ps: with ps; [
             pip
@@ -20,13 +20,12 @@
 
             # Development
             pytest
-            pre-commit
-            pip-tools
-            black
             # selenium
             # geckodriver-autoinstaller
             requests
           ]))
+          pkgs.pre-commit
+          pkgs.black
         ];
 
       in
