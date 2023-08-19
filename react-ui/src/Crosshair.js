@@ -19,11 +19,11 @@ const videoConstraints = {
   facingMode: "environment"
 };
 
-function WebcamCapture({trigger}) {
+function WebcamCapture({ trigger }) {
 
   // Get a reference to the webcam element
   const webcamRef = useRef(null);
-  
+
   // Define a function that will take a shot (useCallback just avoids
   // redefining the function when renders happen)
   const capture = useCallback(
@@ -33,24 +33,24 @@ function WebcamCapture({trigger}) {
         photo: imageSrc
       });
       console.log(`query = ${query}`)
-      
+
       const requestOptions = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: query
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: query
       };
       fetch('/api/submit_shot', requestOptions)
-          .then(response => response.json())
-          .then(data => console.log(`Response: ${data}`));
+        .then(response => response.json())
+        .then(data => console.log(`Response: ${data}`));
 
-      
+
     },
     [webcamRef]
   );
 
   // Call the capture callback when the 'trigger' prop changes
   useEffect(() => {
-    if (trigger) 
+    if (trigger)
       capture()
   }, [trigger, capture])
 
@@ -58,7 +58,7 @@ function WebcamCapture({trigger}) {
     <Webcam
       ref={webcamRef}
       audio={false}
-      screenshotFormat="image/jpeg"
+      screenshotFormat="image/png"
       videoConstraints={videoConstraints}
       style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
     />

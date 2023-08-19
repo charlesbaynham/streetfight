@@ -154,8 +154,8 @@ class UserInterface:
         self._session.add(shot_entry)
 
         # Save to folder
-        f = open("logs/out.jpg", "wb")
-        f.write(base64.b64decode(image_base64))
+        f = open("logs/out.txt", "w")
+        f.write(image_base64)
         f.close()
 
     @db_scoped
