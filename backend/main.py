@@ -8,8 +8,10 @@ from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
-from starlette.middleware.sessions import SessionMiddleware
 from pydantic import BaseModel
+from starlette.middleware.sessions import SessionMiddleware
+
+from .player import UserInterface
 from .user_id import get_user_id
 
 
@@ -69,6 +71,12 @@ def get_my_id(
 ):
     return user_id
 
+
+@router.get("/user_model")
+def get_user_model(
+    user_id=Depends(get_user_id),
+):
+    return UserInterface(user_id).get_user_model()
 
 
 class Shot(BaseModel):

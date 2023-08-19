@@ -75,8 +75,8 @@ class Game(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
-    users = relationship("User", backref="game", lazy=True)
-    teams = relationship("Team", backref="game", lazy=True)
+    # users = relationship("User", backref="game", lazy=True)
+    # teams = relationship("Team", backref="game", lazy=True)
 
     update_tag = Column(Integer(), default=random_counter_value)
 
@@ -100,7 +100,7 @@ class Team(Base):
     game_id = Column(Integer, ForeignKey("games.id"))
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
-    users = relationship("User", backref="team", lazy=True)
+    # users = relationship("User", backref="team", lazy=True)
 
 
 class User(Base):
@@ -120,59 +120,11 @@ class User(Base):
     game_id = Column(Integer, ForeignKey("games.id"), default=0)
     team_id = Column(Integer, ForeignKey("teams.id"), default=0)
 
-    game = relationship("Game", lazy="joined", foreign_keys=game_id)
-    team = relationship("Team", lazy="joined", foreign_keys=team_id)
+    # game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    # team = relationship("Team", lazy="joined", foreign_keys=team_id)
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
-
-
-# def hash_game_tag(text: str):
-#     """Hash a game id into a 3-byte integer
-
-#     A game ID will normally be something like "correct-horse-battery-staple",
-#     but can actually be any string
-#     """
-
-#     # Replace all spaces with '-' and convert to lower case
-#     s = text.replace(" ", "-").lower()
-#     logging.debug("Hashing game tag '%s' to '%s'", text, s)
-#     return hash_str_to_int(s, 3)
-
-
-# class PlayerModel(pydantic.BaseModel):
-#     id: int
-#     game_id: int
-#     user_id: UUID
-#     votes: int = 0
-#     active: bool = True
-
-#     user: "UserModel"
-
-#     role: PlayerRole
-#     state: PlayerState
-
-#     seed: float = 0
-
-#     previous_role: Optional[PlayerRole]
-
-#     class Config:
-#         orm_mode = True
-#         extra = "forbid"
-
-
-# class MessageModel(pydantic.BaseModel):
-#     id: int
-#     text: str
-#     game_id: int
-#     is_strong: bool
-#     expired: bool
-
-#     visible_to: List[PlayerModel]
-
-#     class Config:
-#         orm_mode = True
-#         extra = "forbid"
 
 
 class GameModel(pydantic.BaseModel):
