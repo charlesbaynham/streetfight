@@ -1,8 +1,8 @@
 {
-  "name": "wurwolves",
+  "name": "streetfight",
   "version": "0.0.1",
   "private": true,
-  "description": "A simple werewolves (/ mafia) webapp using a React+Redux frontend with a Python+FastAPI+SQLAlchemy backend, served by a static node server",
+  "description": "Hacky streetfight app, will probably go nowhere",
   "scripts": {
     "start": "concurrently \"npm run frontend\" \"npm run resetdb && uvicorn backend.main:app --host 0.0.0.0\"",
     "dev": "concurrently \"cd react-ui && npm start\" \"npm run backend\"",
@@ -22,9 +22,6 @@
     "react-ui/node_modules"
   ],
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.34",
-    "@fortawesome/free-solid-svg-icons": "^5.15.2",
-    "@fortawesome/react-fontawesome": "^0.1.14",
     "concurrently": "^5.2.0",
     "express": "^4.16.4",
     "framer-motion": "^3.3.0",
@@ -36,14 +33,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/charlesbaynham/wurwolves.git"
+    "url": "https://github.com/charlesbaynham/streetfight.git"
   },
   "keywords": [
     "node",
     "heroku",
     "fastapi",
     "react",
-    "wurwolves"
   ],
   "license": "None",
   "devDependencies": {}

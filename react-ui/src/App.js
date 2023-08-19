@@ -1,55 +1,50 @@
-import React from 'react';
-import {
-  BrowserRouter as Router,
-  Route,
-  Switch
-} from 'react-router-dom'
+import React, { useCallback, useState } from 'react';
 
-import { useSelector } from 'react-redux';
-
-import 'bootstrap/dist/css/bootstrap.css';
 import './App.css';
 
-import Game from './game'
-import Home from './home'
+import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import Footer from './features/Footer'
+import CrossHair from './Crosshair';
+import FireButton from './FireButton';
+import ScanButton from './ScanButton';
 
-import {
-  selectStage
-} from './features/selectors'
+const override = false;
 
-import ReactGA from 'react-ga'
+export default function App() {
 
-// Analytics
-ReactGA.initialize('UA-186218553-1');
-ReactGA.pageview(window.location.pathname + window.location);
+  const handle = useFullScreenHandle();
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
-// Disable console.log in production
-function noop() { }
-if (process.env.NODE_ENV !== 'development') {
-  console.debug = noop;
-  console.log = noop;
-  console.warn = noop;
-  console.error = noop;
-}
+  const [scanMode, setScanMode] = useState(false);
 
+  const reportChange = useCallback((state, _) => {
+    setIsFullscreen(state);
+  }, []);
 
-function App() {
-  const game_stage = useSelector(selectStage)
   return (
-    <div className={game_stage}>
-      <div id="main" className="min-vh-100 bg-night-black">
-        <Router>
-          <Switch>
-            <Route path="/:game_tag" component={Game} />
-            <Route path="/" component={Home} />
-          </Switch>
-        </Router>
-        <Footer />
-      </div>
+    <div>
+      <button onClick={handle.enter}>
+        Click here to start
+      </button>
+
+      <FullScreen handle={handle} onChange={reportChange}>
+        {isFullscreen | override ? ( <>
+          <CrossHair scanMode={scanMode} />
+          <FireButton onClick={
+            () => { setScanMode(false) }
+          } />
+          <ScanButton onClick={
+            () => { setScanMode(true) }
+          } />
+       </>
+        ) : null}
+      </FullScreen>
+
+      
     </div>
   );
-}
 
-export default App;
+
+
+  
+}

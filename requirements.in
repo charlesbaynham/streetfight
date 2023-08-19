@@ -5,10 +5,8 @@
 
 python-dotenv
 
-alembic
 sqlalchemy
 psycopg2
 sqlalchemy_utils
-psutil
 
 fastapi[all]
