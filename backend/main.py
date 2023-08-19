@@ -12,7 +12,8 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
-from fastapi import Path
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 from fastapi import Query
 from fastapi import Request
 from fastapi import Response
@@ -35,6 +36,13 @@ def setup_logging():
         uvicorn_logger.removeHandler(handler)
 
     uvicorn_logger.propagate = True
+
+    # Add a file handler
+    rotating_handler = RotatingFileHandler(
+        Path(__file__) / "../../logs/backend.log", backupCount=10
+    )
+    root_logger.addHandler(rotating_handler)
+    rotating_handler.doRollover()
 
     # Set the root logger level to LOG_LEVEL if specified
     load_dotenv(find_dotenv())
