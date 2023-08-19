@@ -1,4 +1,5 @@
 import asyncio
+import base64
 import logging
 from functools import wraps
 from typing import Callable
@@ -13,7 +14,6 @@ from .model import Game
 from .model import Shot
 from .model import User
 from .model import UserModel
-
 
 logger = logging.getLogger(__name__)
 GET_HASH_TIMEOUT = 20
@@ -152,6 +152,11 @@ class UserInterface:
         shot_entry = Shot(user=user, game=game, image_base64=image_base64)
 
         self._session.add(shot_entry)
+
+        # Save to folder
+        f = open("logs/out.jpg", "wb")
+        f.write(base64.b64decode(image_base64))
+        f.close()
 
     @db_scoped
     def get_hash_now(self):

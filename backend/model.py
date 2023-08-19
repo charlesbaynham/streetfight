@@ -138,10 +138,12 @@ class User(Base):
     name = Column(String)
 
     game_id = Column(UUIDType, ForeignKey("games.id"))
-    team_id = Column(Integer, ForeignKey("teams.id"))
-
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
+
+    team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", lazy="joined", foreign_keys=team_id)
+
+    shots = relationship("Shot", lazy=True)
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
@@ -165,6 +167,8 @@ class UserModel(pydantic.BaseModel):
     game_id: Optional[UUID]
     team_id: Optional[int]
 
+    shots: List["ShotModel"]
+
     class Config:
         orm_mode = True
         extra = "forbid"
@@ -181,6 +185,18 @@ class TeamModel(pydantic.BaseModel):
         extra = "forbid"
 
 
+class ShotModel(pydantic.BaseModel):
+    id: int
+    time_created: datetime.datetime
+    game_id: UUID
+    # image_base64: str
+
+    class Config:
+        orm_mode = True
+        extra = "forbid"
+
+
 GameModel.update_forward_refs()
 UserModel.update_forward_refs()
 TeamModel.update_forward_refs()
+ShotModel.update_forward_refs()
