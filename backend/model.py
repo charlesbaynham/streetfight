@@ -9,6 +9,7 @@ from typing import List
 from typing import Optional
 from typing import Union
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 import pydantic
 import sqlalchemy.sql.functions as func
@@ -72,7 +73,7 @@ class Game(Base):
 
     __tablename__ = "games"
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
     # users = relationship("User", backref="game", lazy=True)
@@ -94,7 +95,7 @@ class Shot(Base):
     id = Column(Integer, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
-    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
@@ -116,7 +117,7 @@ class Team(Base):
     time_created = Column(DateTime, server_default=func.now())
     name = Column(String)
 
-    game_id = Column(Integer, ForeignKey("games.id"))
+    game_id = Column(UUIDType, ForeignKey("games.id"))
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
     # users = relationship("User", backref="team", lazy=True)
@@ -136,8 +137,8 @@ class User(Base):
     last_seen = Column(DateTime, default=func.now())
     name = Column(String)
 
-    game_id = Column(Integer, ForeignKey("games.id"), default=0)
-    team_id = Column(Integer, ForeignKey("teams.id"), default=0)
+    game_id = Column(UUIDType, ForeignKey("games.id"))
+    team_id = Column(Integer, ForeignKey("teams.id"))
 
     game = relationship("Game", lazy="joined", foreign_keys=game_id)
     team = relationship("Team", lazy="joined", foreign_keys=team_id)
@@ -147,7 +148,7 @@ class User(Base):
 
 
 class GameModel(pydantic.BaseModel):
-    id: int
+    id: UUID
     update_tag: int
 
     users: List["UserModel"]
