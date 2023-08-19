@@ -67,14 +67,14 @@ export default function CrossHair(props) {
   const inScanMode = props.scanMode;
 
   return <>
-        
+
       <WebcamCapture />
-      {inScanMode ? 
+      {inScanMode ?
       <QRImage />
       :
       <CrosshairImage />
       }
-      
+
 
     </>;
 }

@@ -1,16 +1,14 @@
 import logging
 import os
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
-
 from starlette.middleware.sessions import SessionMiddleware
-
 
 from .user_id import get_user_id
 

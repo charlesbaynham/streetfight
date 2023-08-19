@@ -10,7 +10,7 @@
           pkgs.nodejs
           (pkgs.python3.withPackages (ps: with ps; [
             pip
-            
+
             # Runtime
             python-dotenv
             sqlalchemy

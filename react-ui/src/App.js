@@ -40,11 +40,11 @@ export default function App() {
         ) : null}
       </FullScreen>
 
-      
+
     </div>
   );
 
 
 
-  
+
 }
