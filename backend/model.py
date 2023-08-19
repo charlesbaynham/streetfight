@@ -175,151 +175,40 @@ class User(Base):
 #         extra = "forbid"
 
 
-# class GameModel(pydantic.BaseModel):
-#     id: int
-#     update_tag: int
+class GameModel(pydantic.BaseModel):
+    id: int
+    update_tag: int
 
-#     stage: GameStage
-#     stage_id: int
+    users: List["UserModel"]
+    teams: List["TeamModel"]
 
-#     num_attempts_this_stage: int
-
-#     players: List[PlayerModel]
-#     messages: List[MessageModel]
-
-#     class Config:
-#         orm_mode = True
-#         extra = "forbid"
+    class Config:
+        orm_mode = True
+        extra = "forbid"
 
 
-# class UserModel(pydantic.BaseModel):
-#     id: UUID
-#     name: str
-#     name_is_generated: bool
+class UserModel(pydantic.BaseModel):
+    id: UUID
+    name: str
+    game: GameModel
+    team: "TeamModel"
 
-#     class Config:
-#         orm_mode = True
-#         extra = "forbid"
-
-
-# class ActionModel(pydantic.BaseModel):
-#     id: int
-#     game_id: int
-#     player_id: int
-#     stage_id: int
+    class Config:
+        orm_mode = True
+        extra = "forbid"
 
 
-#     selected_player_id: Union[int, None]
-#     stage: GameStage
+class TeamModel(pydantic.BaseModel):
+    id: int
+    name: str
+    game: GameModel
+    users: List[UserModel]
 
-#     game: GameModel
-#     player: PlayerModel
-#     selected_player: Union[None, PlayerModel]
-
-#     class Config:
-#         orm_mode = True
-#         extra = "forbid"
-
-
-# class DistributionSettings(pydantic.BaseModel):
-#     """Settings for how to generate a game"""
-
-#     number_of_wolves: Optional[int] = None
-#     probability_of_villager: Optional[float] = None
-#     role_weights: Optional[Dict[PlayerRole, float]] = None
-
-#     def is_default(self) -> bool:
-#         return (
-#             self.number_of_wolves is None
-#             and self.role_weights is None
-#             and self.probability_of_villager is None
-#         )
-
-#     @pydantic.validator("probability_of_villager", always=True)
-#     def prob(cls, v, values):
-#         if v is not None and (v < 0 or v > 1):
-#             raise ValueError("probability_of_villager must be between 0 and 1")
-#         return v
+    class Config:
+        orm_mode = True
+        extra = "forbid"
 
 
-# class FrontendState(pydantic.BaseModel):
-#     """
-#     Schema for the React state of a client's frontend
-#     """
-
-#     state_hash: int
-
-#     class UIPlayerState(pydantic.BaseModel):
-#         id: UUID
-#         name: str
-#         # Player state. One of PlayerState
-#         status: str
-#         # PlayerRole to display. Players will appear as villagers unless they should be revealed
-#         role: str
-#         # Random float from 0-1.
-#         # Will be used by the frontend to decide which picture to display if multiple are available
-#         seed: float
-#         # Show this player as having completed their actions this round
-#         ready: bool = False
-
-#         @pydantic.validator("status")
-#         def status_valid(cls, v):
-#             try:
-#                 PlayerState(v)
-#             except ValueError:
-#                 assert v in ["MAYOR"]
-#             return v
-
-#         @pydantic.validator("role")
-#         def role_valid(cls, v):
-#             PlayerRole(v)
-#             return v
-
-#     players: List[UIPlayerState]
-
-#     class ChatMsg(pydantic.BaseModel):
-#         msg: str
-#         isStrong = False
-
-#     chat: List[ChatMsg]
-#     showSecretChat = False
-
-#     stage: GameStage
-
-#     class RoleState(pydantic.BaseModel):
-#         title: str
-#         text: str
-#         role: str
-#         button_visible: bool
-#         button_enabled: bool
-#         button_text: Union[None, str] = None
-#         button_confirm_text: Union[None, str] = None
-#         button_submit_func: Union[None, str] = None
-#         button_submit_person: Union[None, bool] = None
-
-#         seed: float
-
-#         @pydantic.validator("role")
-#         def role_valid(cls, v):
-#             PlayerRole(v)
-#             return v
-
-#         @pydantic.validator("button_text", always=True)
-#         def text_present(cls, v, values):
-#             logging.debug(f"Text = : {v}")
-#             logging.debug(f"Values = {values}")
-#             if values["button_visible"] and not v:
-#                 raise ValueError("No button text provided when button is visible")
-#             return v
-
-#     controls_state: RoleState
-
-#     myID: UUID
-#     myName: str
-#     myNameIsGenerated: bool
-#     myStatus: PlayerState
-
-#     isCustomized: bool
-
-
-# PlayerModel.update_forward_refs()
+GameModel.update_forward_refs()
+UserModel.update_forward_refs()
+TeamModel.update_forward_refs()

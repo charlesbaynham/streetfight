@@ -1,33 +1,68 @@
-
-
 from .model import Player
+import logging
+
+import asyncio
+import datetime
+import logging
+import os
+import random
+import time
+from functools import wraps
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import Optional
+from typing import Union
+from uuid import UUID
+
+import pydantic
+from fastapi import HTTPException
+from sqlalchemy import bindparam
+from sqlalchemy import or_
+from sqlalchemy.ext import baked
+
+from . import resolver
+from . import roles
+from .model import Action
+from .model import ActionModel
+from .model import DistributionSettings
+from .model import FrontendState
+from .model import Game
+from .model import GameModel
+from .model import GameStage
+from .model import hash_game_tag
+from .model import Message
+from .model import Player
+from .model import PlayerModel
+from .model import PlayerRole
+from .model import PlayerState
+from .model import User
+from .model import UserModel
+from .roles import get_action_func_name
+from .roles import get_apparant_role
 
 
-class PlayerInterface:
+logger = logging.getLogger(__name__)
+
+
+update_events: Dict[int, asyncio.Event] = {}
+
+
+# A bakery for SQLAlchemy queries
+bakery = baked.bakery()
+
+
+class UserInterface:
     """
-    Class to query / interact with Players
+    Class to query / interact with Users
     """
 
-    def __init__(self, game_tag: str, session=None):
-        """Make a new WurwolvesGame for controlling / getting information about a game
-
-        Arguments:
-        game_tag (str): Tag of the game. This will be hashed to become the database id
-        """
-        self.game_id = hash_game_tag(game_tag)
+    def __init__(self, user_id: str, session=None):
+        self.user_id = user_id
         self._session = session
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
-
-    @classmethod
-    def from_id(cls, game_id: int, **kwargs) -> "WurwolvesGame":
-        """
-        Make a WurwolvesGame from a game ID instead of a tag
-        """
-        g = WurwolvesGame("", **kwargs)
-        g.game_id = game_id
-        return g
 
     def _check_for_dirty_session(self):
         if self._session.dirty or self._session.new or self._session.deleted:
@@ -43,13 +78,12 @@ class PlayerInterface:
         Close the session once all @db_scoped methods are finished (if the session is not external)
 
         If any of the decorated functions altered the database state, also release an asyncio
-        event marking this game as having been updated
+        event marking this user as having been updated
         """
         from . import database
 
         @wraps(func)
         def f(self, *args, **kwargs):
-
             if not self._session:
                 self._session = database.Session()
             if self._session_users == 0:
@@ -78,8 +112,7 @@ class PlayerInterface:
                     # calling get_game will reopen a new session before the
                     # old one is closed.
                     logger.debug("Touching game")
-                    g = self.get_game()
-                    g.touch()
+                    self.get_user().touch()
 
                 self._session_users -= 1
 
@@ -162,18 +195,16 @@ class PlayerInterface:
         return user
 
     @db_scoped
-    def get_game(self) -> Game:
-        baked_query = bakery(lambda session: session.query(Game))
-        baked_query += lambda q: q.filter(Game.id == bindparam("game_id"))
+    def get_user(self) -> User:
+        baked_query = bakery(lambda session: session.query(User))
+        baked_query += lambda q: q.filter(User.id == bindparam("user_id"))
 
-        result = baked_query(self._session).params(game_id=self.game_id).first()
-
-        return result
+        return baked_query(self._session).params(game_id=self.game_id).first()
 
     @db_scoped
-    def get_game_model(self) -> GameModel:
-        g = self.get_game()
-        return GameModel.from_orm(g) if g else None
+    def get_user_model(self) ->UserModel:
+        u = self.get_user()
+        return UserModel.from_orm(u) if u else None
 
     @db_scoped
     def get_player_id(self, user_id: UUID) -> int:
@@ -985,7 +1016,6 @@ class PlayerInterface:
 
         player_states = []
         for p in players:
-
             status = p.state
 
             ready = False
