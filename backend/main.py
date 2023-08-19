@@ -1,22 +1,14 @@
-import json
 import logging
 import os
-import random
-from typing import Optional
 
-
-import pydantic
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
-from fastapi import HTTPException
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from fastapi import Query
-from fastapi import Request
-from fastapi import Response
+
 from starlette.middleware.sessions import SessionMiddleware
 
 
