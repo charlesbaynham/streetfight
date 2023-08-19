@@ -1,0 +1,236 @@
+body, a {
+  color: #212529;
+}
+
+.text-muted, .text-muted a {
+  color: #6c757d !important;
+}
+
+.NIGHT .bg-night-black {
+  background: black !important;
+}
+
+.NIGHT .bg-night-dark {
+  background: #343a40 !important
+}
+
+.NIGHT {
+  color: white;
+}
+
+#logo,#help {
+  width: 1cm;
+}
+
+.player {
+  cursor: pointer;
+  transition: transform .2s;
+}
+
+.playerWrapperOuter {
+  position: relative;
+  padding-bottom: 100%;
+  height: 0;
+}
+
+.playerWrapperInner {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  right: 0;
+}
+
+.player img {
+  background: white;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.player:hover img {
+  transform: scale(1.05);
+}
+
+.player img.selected {
+  border: 0.3rem solid blue !important;
+}
+
+.player .tick {
+  position: absolute;
+  right: 0;
+  top: 0;
+  width: 25%;
+  transform: translateX(50%);
+  transform: translateY(-50%);
+}
+
+.NIGHT .player img {
+  background: #AAA;
+}
+
+#main {
+  display: flex;
+  flex-direction: column;
+}
+#content-box {
+  flex-grow: 1;
+}
+
+@media (min-width: 1200px) {
+  #content-box {
+      max-width: 900px;
+  }
+}
+
+@media (min-width: 768px) {
+  #home-content-box {
+      max-width: 720px;
+  }
+}
+
+.navbar {
+  justify-content: normal;
+  flex-wrap: nowrap;
+}
+
+.navbar-nav {
+  margin-bottom: 1rem;
+}
+
+.navbar-nav .nav-link {
+  padding-left: 1rem;
+  padding-right: 1rem;
+}
+
+.role-desc-image {
+  width: 3cm;
+  max-width: 100%;
+  float: right;
+}
+
+#home-title {
+  text-align: center;
+  padding-bottom: 1em;
+}
+
+#grid-and-chat {
+  min-height: 7.5cm;
+  /* The height of the chat-box is determined by the height of the
+  player grid, so it mustn't get too small */
+}
+
+#chat-box {
+  overflow-y: scroll;
+  font-size: 10pt;
+}
+
+.chat-holder {
+  max-height: 10cm;
+  width: 100%;
+}
+
+@media (min-width: 768px) {
+  /* = bootstrap "medium" */
+  .chat-holder {
+      /* When the chatbox is at the side, lift it out of the flow so
+      that its parent gets the height of the grid-and-chat */
+      height: 100%;
+      position: absolute;
+      max-height: none;
+  }
+}
+
+
+@media (max-width: 576px) {
+  /* = bootstrap "small" */
+  .navbar-brand {
+    font-size: 1rem;
+  }
+}
+
+
+ /* The animation code */
+ @keyframes spinToFlat {
+  from {opacity: 1; transform: rotateY(0);}
+  to {opacity: 0; transform: rotateY(2000deg);}
+}
+@keyframes spinFromFlat {
+  from {opacity: 0; transform: rotateY(2000deg);}
+  to {opacity: 1; transform: rotateY(0);}
+}
+.spinToFlat {
+  animation-name: spinToFlat;
+  animation-duration: 1s;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-in;
+}
+.spinFromFlat {
+  animation-name: spinFromFlat;
+  animation-duration: 1s;
+  animation-delay: -0.5s;
+  animation-fill-mode: forwards;
+  animation-timing-function: ease-out;
+}
+
+.chat-box p {
+  margin: 0
+}
+
+/* Footer code */
+html {
+  position: relative;
+  min-height: 100%;
+}
+
+#main {
+  padding-bottom: 30px;
+  /* Margin bottom = footer height */
+}
+
+.footer {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  height: 30px;
+  /* Set the fixed height of the footer here */
+  line-height: 30px;
+}
+
+#buymeabeer {
+  font-style: italic;
+  font-size: 0.8rem;
+}
+
+#bike {
+  height: 100%;
+  margin: 0 0.5em;
+}
+#bike img {
+  height: 80%;
+}
+
+/* Shake animation */
+.error {
+  animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both;
+  transform: translate3d(0, 0, 0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+@keyframes shake {
+  10%, 90% {
+    transform: translate3d(-1px, 0, 0);
+  }
+
+  20%, 80% {
+    transform: translate3d(2px, 0, 0);
+  }
+
+  30%, 50%, 70% {
+    transform: translate3d(-4px, 0, 0);
+  }
+
+  40%, 60% {
+    transform: translate3d(4px, 0, 0);
+  }
+}
