@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
+from fastapi import HTTPException
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
@@ -90,7 +91,7 @@ def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
-    return shot.photo
+    UserInterface(user_id).submit_shot(shot)
 
 
 app.include_router(router, prefix="/api")

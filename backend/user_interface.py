@@ -3,10 +3,14 @@ import logging
 from functools import wraps
 from typing import Callable
 from typing import Dict
+from uuid import UUID
+from uuid import uuid4 as get_uuid
 
-from sqlalchemy import bindparam
+from fastapi import HTTPException
 from sqlalchemy.ext import baked
 
+from .model import Game
+from .model import Shot
 from .model import User
 from .model import UserModel
 
@@ -123,6 +127,17 @@ class UserInterface:
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None
+
+    @db_scoped
+    def submit_shot(self, image_base64: str):
+        user = self.get_user()
+        game = user.game
+
+        if not game:
+            raise HTTPException(405, "User is not in a game yet")
+
+        shot_entry = Shot(user=user, game=game, image_base64=image_base64)
+        self._session.add(shot_entry)
 
     @db_scoped
     def get_hash_now(self):

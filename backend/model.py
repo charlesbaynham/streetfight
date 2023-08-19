@@ -84,6 +84,25 @@ class Game(Base):
         self.update_tag = random_counter_value()
 
 
+class Shot(Base):
+    """
+    A shot from a user in a game
+    """
+
+    __tablename__ = "shots"
+
+    id = Column(Integer, primary_key=True, nullable=False)
+    time_created = Column(DateTime, server_default=func.now())
+
+    game_id = Column(Integer, ForeignKey("games.id"), nullable=False)
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user = relationship("User", lazy="joined", foreign_keys=user_id)
+
+    image_base64 = Column(String, nullable=False)
+
+
 class Team(Base):
     """
     A team in a game
