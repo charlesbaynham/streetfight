@@ -5,7 +5,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 
 export default function ShotQueue() {
 
-    const [shots, setShots] = useState([]);
+    const [shot, setShot] = useState(null);
     const [numShots, setNumShots] = useState(0);
 
     const update = useCallback(
@@ -14,11 +14,13 @@ export default function ShotQueue() {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
             };
-            fetch('/api/admin_get_shots', requestOptions)
+            fetch('/api/admin_get_shots?' + new URLSearchParams({
+                limit: 1
+            }), requestOptions)
                 .then(response => response.json())
                 .then(response => {
                     setNumShots(response.numInQueue);
-                    setShots(response.shots);
+                    setShot(response.shots[0]);
                 });
         },
         []
@@ -51,25 +53,25 @@ export default function ShotQueue() {
 
     return (
         <>
-            <h1>Unchecked shots ({numShots} in queue):</h1>
+            <h1>Next unchecked shot ({numShots} in queue):</h1>
 
-            {shots.map((shot, idx) => (
-                <>
-                    <em>By {shot.user.id}</em>
-                    <img src={shot.image_base64} key={idx} />
-                    Other users:
-                    <ul>
-                        {
-                            shot.game.users.map((user, idx_user) => (
-                                <li key={idx_user}>
-                                    {user.id}
-                                    <button onClick={() => { killUser(user.id) }}>Kill</button>
-                                </li>
-                            ))
-                        }
-                    </ul>
-                </>
-            ))}
+            {shot ? <>
+                <em>By {shot.user.id}</em>
+                <img src={shot.image_base64} />
+                Other users:
+                <ul>
+                    {
+                        shot.game.users.map((user, idx_user) => (
+                            <li key={idx_user}>
+                                {user.id}
+                                <button onClick={() => { killUser(user.id) }}>Kill</button>
+                            </li>
+                        ))
+                    }
+                    <button onClick={() => { dismissShot() }}>Missed</button>
+                </ul>
+            </> : null}
+
         </>
     );
 }
