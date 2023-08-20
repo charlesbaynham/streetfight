@@ -53,3 +53,18 @@ class AdminInterface:
     @classmethod
     def kill_user(cls, user_id):
         UserInterface(user_id).kill()
+
+    @classmethod
+    def mark_shot_checked(cls, shot_id):
+        session = database.Session()
+
+        shot = session.query(Shot).filter_by(id=shot_id).first()
+
+        if not shot:
+            raise HTTPException(404, f"Shot id {shot_id} not found")
+
+        if shot.checked:
+            raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        shot.checked = True
+        session.commit()

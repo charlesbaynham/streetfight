@@ -49,6 +49,31 @@ export default function ShotQueue() {
         []
     );
 
+    const dismissShot = useCallback(
+        () => {
+            console.log("Dismissing this shot")
+
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            };
+
+            const url = '/api/admin_mark_shot_checked?' + new URLSearchParams({
+                shot_id: shot.id
+            })
+
+            fetch(url, requestOptions)
+                .then(response => response.json())
+                .then(response => {
+                    console.log(response);
+                });
+
+            update()
+
+        },
+        [shot]
+    );
+
     useEffect(update, [])
 
     return (
