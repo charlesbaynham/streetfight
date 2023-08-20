@@ -191,7 +191,7 @@ class ShotModel(pydantic.BaseModel):
     time_created: datetime.datetime
     game_id: UUID
     checked: bool
-    # image_base64: str
+    image_base64: str
 
     class Config:
         orm_mode = True

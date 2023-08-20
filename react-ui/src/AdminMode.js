@@ -21,6 +21,43 @@ function GamesView({ games }) {
 }
 
 
+
+
+
+function ShotQueue() {
+
+    const [shots, setShots] = useState([]);
+
+    const update = useCallback(
+        () => {
+            const requestOptions = {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+            };
+            fetch('/api/admin_get_shots', requestOptions)
+                .then(response => response.json())
+                .then(data => {
+                    console.log("Response");
+                    console.dir(data);
+                    setShots(data);
+                });
+        },
+        []
+    );
+
+    useEffect(update, [])
+
+    return (
+        <>
+            {shots.map((shot, idx) => (
+                <img src={shot.image_base64} key={idx} />
+            ))}
+        </>
+    );
+}
+
+
+
 export default function AdminMode() {
 
     const [games, setGames] = useState([]);
@@ -51,6 +88,8 @@ export default function AdminMode() {
             <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
             <GamesView games={games} />
+
+            <ShotQueue />
         </>
     );
 }
