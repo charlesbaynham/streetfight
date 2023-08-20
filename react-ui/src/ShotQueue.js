@@ -6,10 +6,11 @@ import React, { useCallback, useEffect, useState } from 'react';
 export default function ShotQueue() {
 
     const [shot, setShot] = useState(null);
-    const [numShots, setNumShots] = useState(0);
+    const [numShots, setNumShots] = useState("");
 
     const update = useCallback(
         () => {
+            console.log("Checking for new shot")
             const requestOptions = {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
@@ -20,7 +21,11 @@ export default function ShotQueue() {
                 .then(response => response.json())
                 .then(response => {
                     setNumShots(response.numInQueue);
-                    setShot(response.shots[0]);
+                    if (response.shots.length > 0) {
+                        setShot(response.shots[0]);
+                    } else {
+                        setShot(null);
+                    }
                 });
         },
         []
@@ -66,9 +71,10 @@ export default function ShotQueue() {
                 .then(response => response.json())
                 .then(response => {
                     console.log(response);
+                    update()
                 });
 
-            update()
+
 
         },
         [shot]
@@ -89,7 +95,10 @@ export default function ShotQueue() {
                         shot.game.users.map((user, idx_user) => (
                             <li key={idx_user}>
                                 {user.id}
-                                <button onClick={() => { killUser(user.id) }}>Kill</button>
+                                <button onClick={() => {
+                                    killUser(user.id);
+                                    dismissShot();
+                                }}>Kill</button>
                             </li>
                         ))
                     }
