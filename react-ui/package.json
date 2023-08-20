@@ -1,7 +1,7 @@
 {
   "name": "streetfight",
   "version": "0.1.0",
-  "homepage": "http://charlesbaynham.github.io/streetfight",
+  "homepage": "http://localhost/",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.17.0",
@@ -10,6 +10,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-full-screen": "^1.1.1",
+    "react-router-dom": "^6.15.0",
     "react-scripts": "5.0.1",
     "react-webcam": "^7.1.1",
     "web-vitals": "^2.1.4"
@@ -43,5 +44,5 @@
   "devDependencies": {
     "gh-pages": "^6.0.0"
   },
-  "proxy": "http://localhost:8000"  
+  "proxy": "http://localhost:8000"
 }

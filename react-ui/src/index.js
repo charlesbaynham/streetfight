@@ -1,26 +1,28 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import * as React from "react";
+import * as ReactDOM from "react-dom/client";
+
+import {
+  createBrowserRouter,
+  RouterProvider,
+} from "react-router-dom";
+
+import ShootMode from "./ShootMode";
+import AdminMode from "./AdminMode";
 
 
-import AdminMode from './AdminMode';
+const router = createBrowserRouter([
+  {
+    path: "/",
+    element: <ShootMode />,
+  },
+  {
+    path: "admin",
+    element: <AdminMode />,
+  },
+]);
 
-export default function App() {
-  return (
-
-
-    <BrowserRouter>
-      <Routes>
-        <Route path="*" element={<AdminMode />} />
-      </Routes>
-    </BrowserRouter>
-
-  );
-}
-
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <App />
+    <RouterProvider router={router} />
   </React.StrictMode>
 );
