@@ -144,6 +144,9 @@ class User(Base):
     team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship("Team", lazy="joined", foreign_keys=team_id)
 
+    num_bullets = Column(Integer, nullable=False, default=0)
+    hit_points = Column(Integer, nullable=False, default=1)
+
     shots = relationship("Shot", lazy=True)
 
     def touch(self):
@@ -167,6 +170,9 @@ class UserModel(pydantic.BaseModel):
     name: Optional[str]
     game_id: Optional[UUID]
     team_id: Optional[int]
+
+    num_bullets: int
+    hit_points: int
 
     class Config:
         orm_mode = True

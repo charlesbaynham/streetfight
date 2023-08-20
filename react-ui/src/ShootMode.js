@@ -5,6 +5,7 @@ import { FullScreen, useFullScreenHandle } from "react-full-screen";
 import CrossHair from './Crosshair';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
+import BulletCount from './BulletCount';
 
 
 export default function ShootMode() {
@@ -24,10 +25,11 @@ export default function ShootMode() {
   return (
     <div>
       <button onClick={handle.enter}>
-        Click here to start
+        Fullscreen
       </button>
 
       <FullScreen handle={handle} onChange={reportChange}>
+        <BulletCount />
 
         <CrossHair trigger={triggerShot} scanMode={scanMode} />
         <FireButton onClick={

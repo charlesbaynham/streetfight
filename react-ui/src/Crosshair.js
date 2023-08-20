@@ -10,7 +10,8 @@ const SCREEN_FILL_STYLES = {
   height: "100vh",
   width: "100vw",
   left: "0",
-  top: "0"
+  top: "0",
+  zIndex: -1
 };
 
 const videoConstraints = {

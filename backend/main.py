@@ -110,6 +110,7 @@ def join_game(
     return UserInterface(user_id).join_game(game_id)
 
 
+######## ADMIN ###########
 @router.post("/admin_create_game")
 def admin_create_game():
     game_id = AdminInterface.create_game()
