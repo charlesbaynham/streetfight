@@ -21,6 +21,16 @@ logger = logging.getLogger(__name__)
 
 
 class AdminInterface:
-    def get_games(self) -> List[GameModel]:
+    @classmethod
+    def get_games(cls) -> List[GameModel]:
         session = database.Session()
         return [GameModel.from_orm(g) for g in session.query(Game).all()]
+
+    @classmethod
+    def create_game(cls) -> UUID:
+        session = database.Session()
+        g = Game()
+        session.add(g)
+        session.commit()
+
+        return g.id

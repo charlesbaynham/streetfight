@@ -110,9 +110,16 @@ def join_game(
     return UserInterface(user_id).join_game(game_id)
 
 
-@router.post("/admin_list_games")
+@router.post("/admin_create_game")
+def admin_create_game():
+    game_id = AdminInterface.create_game()
+    logger.info("Created new game with id = %s", game_id)
+    return game_id
+
+
+@router.get("/admin_list_games")
 def admin_list_games():
-    return AdminInterface().get_games()
+    return AdminInterface.get_games()
 
 
 app.include_router(router, prefix="/api")
