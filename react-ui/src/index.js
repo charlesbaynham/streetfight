@@ -1,8 +1,23 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+
 import './index.css';
-import App from './App';
+
 import reportWebVitals from './reportWebVitals';
+import ShootMode from './ShootMode';
+
+export default function App() {
+  return (
+    <>
+      <BrowserRouter>
+        <Routes>
+          <Route path="*" element={<ShootMode />} />
+        </Routes>
+      </BrowserRouter>
+    </>
+  );
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(

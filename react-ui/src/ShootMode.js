@@ -1,7 +1,5 @@
 import React, { useCallback, useState } from 'react';
 
-import './App.css';
-
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
 import CrossHair from './Crosshair';
@@ -9,7 +7,7 @@ import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 
 
-export default function App() {
+export default function ShootMode() {
 
   const handle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -20,7 +18,7 @@ export default function App() {
     setIsFullscreen(state);
   }, []);
 
-  const [ triggerShot, setTriggerShot ] = useState(0);
+  const [triggerShot, setTriggerShot] = useState(0);
 
 
   return (
@@ -34,7 +32,7 @@ export default function App() {
         <CrossHair trigger={triggerShot} scanMode={scanMode} />
         <FireButton onClick={
           () => {
-            setTriggerShot(triggerShot+1)
+            setTriggerShot(triggerShot + 1)
           }
         } />
         <ScanButton onClick={
