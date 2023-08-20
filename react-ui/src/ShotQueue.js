@@ -1,7 +1,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 
-// admin_list_users_in_game
 
 
 export default function ShotQueue() {
@@ -25,6 +24,29 @@ export default function ShotQueue() {
         []
     );
 
+    const killUser = useCallback(
+        (user_id) => {
+
+            console.log(`Killing user ${user_id}`)
+
+            const requestOptions = {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            };
+
+            const url = '/api/admin_kill_user?' + new URLSearchParams({
+                user_id: user_id
+            })
+
+            fetch(url, requestOptions)
+                .then(response => response.json())
+                .then(response => {
+                    console.log(response);
+                });
+        },
+        []
+    );
+
     useEffect(update, [])
 
     return (
@@ -39,7 +61,10 @@ export default function ShotQueue() {
                     <ul>
                         {
                             shot.game.users.map((user, idx_user) => (
-                                <li key={idx_user}>{user.id}</li>
+                                <li key={idx_user}>
+                                    {user.id}
+                                    <button onClick={() => { killUser(user.id) }}>Kill</button>
+                                </li>
                             ))
                         }
                     </ul>

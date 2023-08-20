@@ -10,6 +10,7 @@ from .model import Game
 from .model import GameModel
 from .model import Shot
 from .model import ShotModel
+from .user_interface import UserInterface
 
 
 logger = logging.getLogger(__name__)
@@ -48,3 +49,7 @@ class AdminInterface:
         filtered_shots = query.limit(limit).all()
 
         return num_shots, [ShotModel.from_orm(s) for s in filtered_shots]
+
+    @classmethod
+    def kill_user(cls, user_id):
+        UserInterface(user_id).kill()

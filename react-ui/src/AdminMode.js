@@ -34,8 +34,6 @@ export default function AdminMode() {
             fetch('/api/admin_list_games', requestOptions)
                 .then(response => response.json())
                 .then(data => {
-                    console.log("Response");
-                    console.dir(data);
                     setGames(data);
                 });
         },

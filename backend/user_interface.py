@@ -124,6 +124,11 @@ class UserInterface:
         return user
 
     @db_scoped
+    def kill(self) -> User:
+        "Take a hitpoint from the user"
+        self.get_user().hit_points -= 1
+
+    @db_scoped
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None

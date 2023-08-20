@@ -129,11 +129,9 @@ def admin_get_shots(limit=5):
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
-@router.get("/admin_list_users_in_game")
-def admin_list_users_in_game(game_id):
-    game = AdminInterface.get_game(game_id)
-
-    return game.users
+@router.post("/admin_kill_user")
+def admin_kill_user(user_id):
+    AdminInterface.kill_user(user_id)
 
 
 app.include_router(router, prefix="/api")
