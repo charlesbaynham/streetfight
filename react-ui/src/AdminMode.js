@@ -49,8 +49,13 @@ function ShotQueue() {
 
     return (
         <>
+            <h1>Unchecked shots:</h1>
+
             {shots.map((shot, idx) => (
-                <img src={shot.image_base64} key={idx} />
+                <>
+                    <em>By {shot.user.id}</em>
+                    <img src={shot.image_base64} key={idx} />
+                </>
             ))}
         </>
     );

@@ -168,8 +168,6 @@ class UserModel(pydantic.BaseModel):
     game_id: Optional[UUID]
     team_id: Optional[int]
 
-    shots: List["ShotModel"]
-
     class Config:
         orm_mode = True
         extra = "forbid"
@@ -192,6 +190,8 @@ class ShotModel(pydantic.BaseModel):
     game_id: UUID
     checked: bool
     image_base64: str
+
+    user: UserModel
 
     class Config:
         orm_mode = True
