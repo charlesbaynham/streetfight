@@ -102,6 +102,7 @@ class Shot(Base):
     user = relationship("User", lazy="joined", foreign_keys=user_id)
 
     image_base64 = Column(String, nullable=False)
+    checked = Column(Boolean, nullable=False, default=False)
 
 
 class Team(Base):
@@ -189,6 +190,7 @@ class ShotModel(pydantic.BaseModel):
     id: int
     time_created: datetime.datetime
     game_id: UUID
+    checked: bool
     # image_base64: str
 
     class Config:

@@ -1,21 +1,13 @@
-import asyncio
 import logging
-from functools import wraps
-from typing import Callable
-from typing import Dict
 from typing import List
 from uuid import UUID
-from uuid import uuid4 as get_uuid
-
-from fastapi import HTTPException
-from sqlalchemy.ext import baked
 
 from . import database
 from .model import Game
 from .model import GameModel
 from .model import Shot
-from .model import User
-from .model import UserModel
+from .model import ShotModel
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +26,15 @@ class AdminInterface:
         session.commit()
 
         return g.id
+
+    @classmethod
+    def get_unchecked_shots(cls, limit=5) -> List[ShotModel]:
+        session = database.Session()
+        return [
+            ShotModel.from_orm(s)
+            for s in session.query(Shot)
+            .filter_by(checked=False)
+            .order_by(Shot.time_created)
+            .limit(limit)
+            .all()
+        ]

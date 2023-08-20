@@ -122,4 +122,9 @@ def admin_list_games():
     return AdminInterface.get_games()
 
 
+@router.get("/admin_get_shots")
+def admin_get_shots(limit=5):
+    return AdminInterface.get_unchecked_shots(limit=limit)
+
+
 app.include_router(router, prefix="/api")
