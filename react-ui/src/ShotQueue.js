@@ -1,6 +1,9 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 
+// admin_list_users_in_game
+
+
 export default function ShotQueue() {
 
     const [shots, setShots] = useState([]);
@@ -14,9 +17,9 @@ export default function ShotQueue() {
             };
             fetch('/api/admin_get_shots', requestOptions)
                 .then(response => response.json())
-                .then(data => {
-                    setNumShots(data.numInQueue);
-                    setShots(data.shots);
+                .then(response => {
+                    setNumShots(response.numInQueue);
+                    setShots(response.shots);
                 });
         },
         []
@@ -32,6 +35,14 @@ export default function ShotQueue() {
                 <>
                     <em>By {shot.user.id}</em>
                     <img src={shot.image_base64} key={idx} />
+                    Other users:
+                    <ul>
+                        {
+                            shot.game.users.map((user, idx_user) => (
+                                <li key={idx_user}>{user.id}</li>
+                            ))
+                        }
+                    </ul>
                 </>
             ))}
         </>

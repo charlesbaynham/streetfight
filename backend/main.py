@@ -129,4 +129,11 @@ def admin_get_shots(limit=5):
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
+@router.get("/admin_list_users_in_game")
+def admin_list_users_in_game(game_id):
+    game = AdminInterface.get_game(game_id)
+
+    return game.users
+
+
 app.include_router(router, prefix="/api")

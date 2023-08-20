@@ -3,6 +3,8 @@ from typing import List
 from typing import Tuple
 from uuid import UUID
 
+from fastapi import HTTPException
+
 from . import database
 from .model import Game
 from .model import GameModel
@@ -18,6 +20,14 @@ class AdminInterface:
     def get_games(cls) -> List[GameModel]:
         session = database.Session()
         return [GameModel.from_orm(g) for g in session.query(Game).all()]
+
+    @classmethod
+    def get_game(cls, game_id=None) -> GameModel:
+        session = database.Session()
+        g = session.query(Game).filter_by(id=game_id).first()
+        if not g:
+            raise HTTPException(404, f"Game {game_id} not found")
+        return GameModel.from_orm(g)
 
     @classmethod
     def create_game(cls) -> UUID:

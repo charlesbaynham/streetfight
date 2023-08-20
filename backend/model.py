@@ -198,6 +198,7 @@ class ShotModel(pydantic.BaseModel):
     image_base64: str
 
     user: UserModel
+    game: GameModel
 
     class Config:
         orm_mode = True
