@@ -21,48 +21,6 @@ function GamesView({ games }) {
 }
 
 
-
-
-
-function ShotQueue() {
-
-    const [shots, setShots] = useState([]);
-
-    const update = useCallback(
-        () => {
-            const requestOptions = {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            };
-            fetch('/api/admin_get_shots', requestOptions)
-                .then(response => response.json())
-                .then(data => {
-                    console.log("Response");
-                    console.dir(data);
-                    setShots(data);
-                });
-        },
-        []
-    );
-
-    useEffect(update, [])
-
-    return (
-        <>
-            <h1>Unchecked shots:</h1>
-
-            {shots.map((shot, idx) => (
-                <>
-                    <em>By {shot.user.id}</em>
-                    <img src={shot.image_base64} key={idx} />
-                </>
-            ))}
-        </>
-    );
-}
-
-
-
 export default function AdminMode() {
 
     const [games, setGames] = useState([]);
@@ -94,7 +52,7 @@ export default function AdminMode() {
 
             <GamesView games={games} />
 
-            <ShotQueue />
+
         </>
     );
 }

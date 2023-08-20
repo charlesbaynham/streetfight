@@ -8,6 +8,7 @@ import {
 
 import ShootMode from "./ShootMode";
 import AdminMode from "./AdminMode";
+import ShotQueue from "./ShotQueue";
 
 
 const router = createBrowserRouter([
@@ -18,6 +19,10 @@ const router = createBrowserRouter([
   {
     path: "admin",
     element: <AdminMode />,
+  },
+  {
+    path: "admin/shots",
+    element: <ShotQueue />
   },
 ]);
 

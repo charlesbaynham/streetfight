@@ -1,5 +1,6 @@
 import logging
 from typing import List
+from typing import Tuple
 from uuid import UUID
 
 from . import database
@@ -28,13 +29,12 @@ class AdminInterface:
         return g.id
 
     @classmethod
-    def get_unchecked_shots(cls, limit=5) -> List[ShotModel]:
+    def get_unchecked_shots(cls, limit=5) -> Tuple[int, List[ShotModel]]:
         session = database.Session()
-        return [
-            ShotModel.from_orm(s)
-            for s in session.query(Shot)
-            .filter_by(checked=False)
-            .order_by(Shot.time_created)
-            .limit(limit)
-            .all()
-        ]
+
+        query = session.query(Shot).filter_by(checked=False).order_by(Shot.time_created)
+
+        num_shots = query.count()
+        filtered_shots = query.limit(limit).all()
+
+        return num_shots, [ShotModel.from_orm(s) for s in filtered_shots]
