@@ -119,7 +119,7 @@ class Team(Base):
 
     __tablename__ = "teams"
 
-    id = Column(UUIDType, primary_key=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
     name = Column(String)
 
@@ -191,7 +191,7 @@ class UserModel(pydantic.BaseModel):
 
 
 class TeamModel(pydantic.BaseModel):
-    id: int
+    id: UUID
     name: str
     game_id: UUID
     user_ids: List[int]

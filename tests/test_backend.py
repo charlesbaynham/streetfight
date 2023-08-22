@@ -47,4 +47,4 @@ def test_make_team(api_client):
     print(response_team.json())
 
     assert response_team.status_code == 200
-    assert isinstance(response_team.json(), int)
+    assert UUID(response_team.json())
