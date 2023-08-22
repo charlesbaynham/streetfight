@@ -31,3 +31,20 @@ def test_make_game(api_client):
 
     assert response.status_code == 200
     assert UUID(response.json())
+
+
+def test_make_team(api_client):
+    response_game = api_client.post("/api/admin_create_game")
+
+    game_id = response_game.json()
+    game_name = "A new game"
+
+    response_team = api_client.post(
+        f"/api/admin_create_team?game_id={game_id}&team_name={game_name}"
+    )
+
+    print(response_team)
+    print(response_team.json())
+
+    assert response_team.status_code == 200
+    assert isinstance(response_team.json(), int)
