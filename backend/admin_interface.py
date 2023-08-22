@@ -7,9 +7,11 @@ from fastapi import HTTPException
 
 from . import database
 from .model import Game
-from .model import GameModel, Team, TeamModel
+from .model import GameModel
 from .model import Shot
 from .model import ShotModel
+from .model import Team
+from .model import TeamModel
 from .user_interface import UserInterface
 
 
@@ -27,7 +29,6 @@ class AdminInterface:
         return g
 
     def get_games(self) -> List[GameModel]:
-
         return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
 
     def get_game(self, game_id) -> GameModel:
