@@ -108,6 +108,7 @@ class UserInterface:
             id=self.user_id,
         )
         self._session.add(user)
+        self._session.commit()
 
         logger.info("Making new user {}".format(user.id))
 
