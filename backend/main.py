@@ -113,30 +113,30 @@ def join_game(
 ######## ADMIN ###########
 @router.post("/admin_create_game")
 def admin_create_game():
-    game_id = AdminInterface.create_game()
+    game_id = AdminInterface().create_game()
     logger.info("Created new game with id = %s", game_id)
     return game_id
 
 
 @router.get("/admin_list_games")
 def admin_list_games():
-    return AdminInterface.get_games()
+    return AdminInterface().get_games()
 
 
 @router.get("/admin_get_shots")
 def admin_get_shots(limit=5):
-    num_in_queue, filtered_shots = AdminInterface.get_unchecked_shots(limit=limit)
+    num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(limit=limit)
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
 @router.post("/admin_kill_user")
 def admin_kill_user(user_id):
-    AdminInterface.kill_user(user_id)
+    AdminInterface().kill_user(user_id)
 
 
 @router.post("/admin_mark_shot_checked")
 def admin_mark_shot_checked(shot_id):
-    AdminInterface.mark_shot_checked(shot_id)
+    AdminInterface().mark_shot_checked(shot_id)
 
 
 app.include_router(router, prefix="/api")
