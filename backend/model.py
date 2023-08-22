@@ -76,8 +76,9 @@ class Game(Base):
     id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
-    users = relationship("User", lazy=True)
-    teams = relationship("Team", lazy=True)
+    users = relationship("User", lazy=True, back_populates="game")
+    teams = relationship("Team", lazy=True, back_populates="game")
+    shots = relationship("Shot", lazy=True, back_populates="game")
 
     update_tag = Column(Integer(), default=random_counter_value)
 
@@ -96,10 +97,14 @@ class Shot(Base):
     time_created = Column(DateTime, server_default=func.now())
 
     game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
-    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    game = relationship(
+        "Game", lazy="joined", foreign_keys=game_id, back_populates="shots"
+    )
 
     user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
-    user = relationship("User", lazy="joined", foreign_keys=user_id)
+    user = relationship(
+        "User", lazy="joined", foreign_keys=user_id, back_populates="shots"
+    )
 
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
@@ -119,9 +124,11 @@ class Team(Base):
     name = Column(String)
 
     game_id = Column(UUIDType, ForeignKey("games.id"))
-    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    game = relationship(
+        "Game", lazy="joined", foreign_keys=game_id, back_populates="teams"
+    )
 
-    users = relationship("User", lazy=True)
+    users = relationship("User", lazy=True, back_populates="team")
 
 
 class User(Base):
@@ -139,15 +146,19 @@ class User(Base):
     name = Column(String)
 
     game_id = Column(UUIDType, ForeignKey("games.id"))
-    game = relationship("Game", lazy="joined", foreign_keys=game_id)
+    game = relationship(
+        "Game", lazy="joined", foreign_keys=game_id, back_populates="users"
+    )
 
     team_id = Column(Integer, ForeignKey("teams.id"))
-    team = relationship("Team", lazy="joined", foreign_keys=team_id)
+    team = relationship(
+        "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
+    )
 
     num_bullets = Column(Integer, nullable=False, default=0)
     hit_points = Column(Integer, nullable=False, default=1)
 
-    shots = relationship("Shot", lazy=True)
+    shots = relationship("Shot", lazy=True, back_populates="user")
 
     def touch(self):
         self.last_seen = datetime.datetime.now()
