@@ -1,22 +1,34 @@
-import React, { useCallback, useEffect, useState } from 'react';
-
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 
 function GamesView({ games }) {
+    const newTeamInput = useRef(null);
+
+    const addNewTeam = useCallback(() => { console.log(newTeamInput.current.value) }, [])
+
+
     return games.map((game, idx_game) => (
-        <>
-            <h2 key={idx_game}>Game {game.id}</h2>
+        <div key={idx_game}>
+            <h2>Game {game.id}</h2>
+            <h3>Users</h3>
             {
                 game.users.map((user, idx_user) => (
                     <p key={idx_user}>User: {user.id} "{user.name}"</p>
                 ))
             }
+            <h3>Teams</h3>
             {
                 game.teams.map((team, idx_team) => (
                     <p key={idx_team}>Team: {team.id}</p>
                 ))
             }
-        </>
+            {
+                <>
+                    <input ref={newTeamInput}></input>
+                    <button onClick={addNewTeam}>Add new team</button>
+                </>
+            }
+        </div>
     ))
 }
 
