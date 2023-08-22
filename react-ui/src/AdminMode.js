@@ -4,7 +4,21 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 function GamesView({ games }) {
     const newTeamInput = useRef(null);
 
-    const addNewTeam = useCallback(() => { console.log(newTeamInput.current.value) }, [])
+    const addNewTeam = useCallback((game_id, team_name) => {
+        const url = '/api/admin_create_team?' + new URLSearchParams({
+            game_id: game_id,
+            team_name: team_name,
+        })
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        };
+        fetch(url, requestOptions)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+            });
+    }, [])
 
 
     return games.map((game, idx_game) => (
@@ -17,18 +31,22 @@ function GamesView({ games }) {
                 ))
             }
             <h3>Teams</h3>
-            {
-                game.teams.map((team, idx_team) => (
-                    <p key={idx_team}>Team: {team.id}</p>
-                ))
-            }
+            <ul>
+                {
+
+                    game.teams.map((team, idx_team) => (
+                        <li key={idx_team}><em>{team.name}</em></li>
+                    ))
+                }
+            </ul>
+
             {
                 <>
                     <input ref={newTeamInput}></input>
-                    <button onClick={addNewTeam}>Add new team</button>
+                    <button onClick={() => { addNewTeam(game.id, newTeamInput.current.value) }}>Add new team</button>
                 </>
             }
-        </div>
+        </div >
     ))
 }
 

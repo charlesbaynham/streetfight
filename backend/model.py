@@ -194,7 +194,7 @@ class TeamModel(pydantic.BaseModel):
     id: UUID
     name: str
     game_id: UUID
-    user_ids: List[int]
+    users: List[UserModel]
 
     class Config:
         orm_mode = True
