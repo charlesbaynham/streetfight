@@ -118,6 +118,12 @@ def admin_create_game():
     return game_id
 
 
+@router.post("/admin_create_team")
+def admin_list_games(game_id: UUID, team_name: str) -> int:
+    logger.info("Creating new team '%s' for game %s", team_name, game_id)
+    return AdminInterface().create_team(game_id, team_name)
+
+
 @router.get("/admin_list_games")
 def admin_list_games():
     return AdminInterface().get_games()
