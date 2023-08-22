@@ -12,6 +12,7 @@ from sqlalchemy.ext import baked
 
 from .model import Game
 from .model import Shot
+from threading import RLock
 from .model import User
 from .model import UserModel
 
@@ -20,9 +21,7 @@ GET_HASH_TIMEOUT = 20
 
 update_events: Dict[int, asyncio.Event] = {}
 
-
-# A bakery for SQLAlchemy queries
-bakery = baked.bakery()
+make_user_lock = RLock()
 
 
 class UserInterface:
@@ -117,10 +116,12 @@ class UserInterface:
     @db_scoped
     def get_user(self) -> User:
         "Return an ORM object for this user, making a new one if required"
-        user = self._session.query(User).filter_by(id=self.user_id).first()
 
-        if not user:
-            user = self._make_user()
+        with make_user_lock:
+            user = self._session.query(User).filter_by(id=self.user_id).first()
+
+            if not user:
+                user = self._make_user()
 
         return user
 
