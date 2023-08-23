@@ -6,7 +6,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from . import database
-from .model import Game
+from .model import Game, User
 from .model import GameModel, Team, TeamModel
 from .model import Shot
 from .model import ShotModel
@@ -20,11 +20,23 @@ class AdminInterface:
     def __init__(self) -> None:
         self.session = database.Session()
 
-    def _get_game_orm(self, game_id):
+    def _get_user_orm(self, user_id) -> User:
+        g = self.session.query(User).filter_by(id=game_id).first()
+        if not g:
+            raise HTTPException(404, f"User {user_id} not found")
+        return g
+
+    def _get_game_orm(self, game_id) -> Game:
         g = self.session.query(Game).filter_by(id=game_id).first()
         if not g:
             raise HTTPException(404, f"Game {game_id} not found")
         return g
+
+    def _get_team_orm(self, team_id) -> Team:
+        t = self.session.query(Team).filter_by(id=team_id).first()
+        if not t:
+            raise HTTPException(404, f"Team {team_id} not found")
+        return t
 
     def get_games(self) -> List[GameModel]:
 
@@ -45,6 +57,15 @@ class AdminInterface:
         game = self._get_game_orm(game_id)
         team = Team(name=name)
         game.teams.append(team)
+        self.session.commit()
+
+        return team.id
+
+    def add_user_to_team(self, user_id: UUID, team_id: UUID):
+        team = self._get_team_orm(team_id)
+        game = team.game
+
+        team.users.append()
         self.session.commit()
 
         return team.id

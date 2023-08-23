@@ -20,6 +20,22 @@ function GamesView({ games }) {
             });
     }, [])
 
+    const adduserToTeam = useCallback((user_id, team_id) => {
+        const url = '/api/admin_add_user_to_team?' + new URLSearchParams({
+            user_id: user_id,
+            team_id: team_id,
+        })
+        const requestOptions = {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        };
+        fetch(url, requestOptions)
+            .then(response => response.json())
+            .then(data => {
+                console.log(data)
+            });
+    }, [])
+
 
     return games.map((game, idx_game) => (
         <div key={idx_game}>
@@ -46,6 +62,27 @@ function GamesView({ games }) {
                     <button onClick={() => { addNewTeam(game.id, newTeamInput.current.value) }}>Add new team</button>
                 </>
             }
+
+            <h3>Controls</h3>
+            <label for="user">Add user</label>
+            <select name="user" id="user_dropdown">
+                {
+
+                    game.users.map((user, idx_user) => (
+                        <option key={idx_user} value={user.id}>{user.id}</option> // FIXME: Show user name instead of ID
+                    ))
+                }
+            </select>
+            <label for="team">to team</label>
+            <select name="team" id="team_dropdown">
+                {
+
+                    game.teams.map((team, idx_team) => (
+                        <option key={idx_team} value={team.id}>{team.name}</option>
+                    ))
+                }
+            </select>
+            <button onClick={null}>Submit</button>
         </div >
     ))
 }
