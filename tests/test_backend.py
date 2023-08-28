@@ -48,3 +48,8 @@ def test_make_team(api_client):
 
     assert response_team.status_code == 200
     assert UUID(response_team.json())
+
+
+def test_username_starts_empty(api_client):
+    user_info = UserModel(**api_client.get("/api/user_info").json())
+    assert user_info.name is None
