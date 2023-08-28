@@ -6,10 +6,13 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from . import database
-from .model import Game, User
-from .model import GameModel, Team, TeamModel
+from .model import Game
+from .model import GameModel
 from .model import Shot
 from .model import ShotModel
+from .model import Team
+from .model import TeamModel
+from .model import User
 from .user_interface import UserInterface
 
 

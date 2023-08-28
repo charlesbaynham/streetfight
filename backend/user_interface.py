@@ -2,6 +2,7 @@ import asyncio
 import base64
 import logging
 from functools import wraps
+from threading import RLock
 from typing import Callable
 from typing import Dict
 from uuid import UUID
@@ -12,7 +13,6 @@ from sqlalchemy.ext import baked
 
 from .model import Game
 from .model import Shot
-from threading import RLock
 from .model import User
 from .model import UserModel
 
