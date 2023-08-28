@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
@@ -14,6 +14,23 @@ export default function UserMode() {
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [scanMode, setScanMode] = useState(false);
+
+  const [userState, setUserState] = useState(null);
+
+  const updateUserState = useCallback(() => {
+    const url = '/api/user_info';
+    const requestOptions = {
+      method: 'GET',
+      headers: { 'Content-Type': 'application/json' },
+    };
+    fetch(url, requestOptions)
+      .then(response => response.json())
+      .then(data => {
+        setUserState(data)
+      });
+  }, [setUserState]);
+
+  useEffect(updateUserState, []);
 
   const reportChange = useCallback((state, _) => {
     setIsFullscreen(state);
