@@ -30,7 +30,7 @@ export default function UserMode() {
       });
   }, [setUserState]);
 
-  useEffect(updateUserState, []);
+  useEffect(updateUserState);
 
   const reportChange = useCallback((state, _) => {
     setIsFullscreen(state);
@@ -38,8 +38,9 @@ export default function UserMode() {
 
   const [triggerShot, setTriggerShot] = useState(0);
 
-
-  return (
+  const loadingView = <p>Loading...</p>;
+  const noNameView = <p>Not implemented...</p>;
+  const playingView = (
     <>
       <button onClick={handle.enter}>
         Fullscreen
@@ -62,4 +63,15 @@ export default function UserMode() {
 
     </ >
   );
+
+  if (userState === null) {
+    return loadingView;
+  }
+
+
+  if (userState.name === null) {
+    return noNameView;
+  }
+
+  return playingView;
 }
