@@ -8,7 +8,7 @@ import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
 
 
-export default function ShootMode() {
+export default function UserMode() {
 
   const handle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);

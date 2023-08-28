@@ -6,7 +6,7 @@ import {
   RouterProvider,
 } from "react-router-dom";
 
-import ShootMode from "./ShootMode";
+import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 
@@ -14,7 +14,7 @@ import ShotQueue from "./ShotQueue";
 const router = createBrowserRouter([
   {
     path: "/",
-    element: <ShootMode />,
+    element: <UserMode />,
   },
   {
     path: "admin",
