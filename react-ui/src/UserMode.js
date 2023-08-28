@@ -40,7 +40,7 @@ export default function UserMode() {
 
 
   return (
-    <div>
+    <>
       <button onClick={handle.enter}>
         Fullscreen
       </button>
@@ -60,6 +60,6 @@ export default function UserMode() {
 
       </FullScreen>
 
-    </div >
+    </ >
   );
 }
