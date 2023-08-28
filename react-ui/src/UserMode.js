@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
@@ -6,6 +6,7 @@ import CrossHair from './Crosshair';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
+import { sendAPIRequest } from './utils';
 
 
 export default function UserMode() {
@@ -39,7 +40,17 @@ export default function UserMode() {
   const [triggerShot, setTriggerShot] = useState(0);
 
   const loadingView = <p>Loading...</p>;
-  const noNameView = <p>Not implemented...</p>;
+
+  const setUserName = useCallback((username) => {
+    sendAPIRequest("set_name", { name: username }, 'POST', updateUserState);
+  });
+
+  const setNameInput = useRef();
+  const noNameView = <>
+    <span>Enter your name:</span>
+    <input ref={setNameInput} />
+    <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
+  </>;
   const playingView = (
     <>
       <button onClick={handle.enter}>
