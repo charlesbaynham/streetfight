@@ -69,7 +69,9 @@ function GamesView({ games }) {
                 {
 
                     game.users.map((user, idx_user) => (
-                        <option key={idx_user} value={user.id}>{user.id}</option> // FIXME: Show user name instead of ID
+                        <option key={idx_user} value={user.id}>{
+                            user.name ? user.name : user.id
+                        }</option>
                     ))
                 }
             </select>
