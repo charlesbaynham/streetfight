@@ -96,6 +96,15 @@ def submit_shot(
     UserInterface(user_id).submit_shot(shot.photo)
 
 
+@router.post("/set_name")
+def submit_shot(
+    name: str,
+    user_id=Depends(get_user_id),
+):
+    logger.info("Changing user %s name to %s", user_id, name)
+    UserInterface(user_id).set_name(name)
+
+
 @router.post("/join_game")
 def join_game(
     game_id: str,

@@ -136,6 +136,10 @@ class UserInterface:
         return UserModel.from_orm(u) if u else None
 
     @db_scoped
+    def set_name(self, new_name: str):
+        self.get_user().name = new_name
+
+    @db_scoped
     def join_game(self, game_id: UUID):
         game = self._session.query(Game).filter_by(id=game_id).first()
 
