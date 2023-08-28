@@ -53,3 +53,11 @@ def test_make_team(api_client):
 def test_username_starts_empty(api_client):
     user_info = UserModel(**api_client.get("/api/user_info").json())
     assert user_info.name is None
+
+
+def test_can_set_username(api_client):
+    this_user_name = "Stinky Smelly"
+    api_client.post(f"/api/set_name?name={this_user_name}")
+
+    user_info = UserModel(**api_client.get("/api/user_info").json())
+    assert user_info.name == this_user_name
