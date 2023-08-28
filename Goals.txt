@@ -1,0 +1,36 @@
+Goals
+-----
+
+
+TODO: Users should be required to set their name
+    - [ ] Python API
+    - [ ] Frontend
+TODO: Users should be able to join teams / be added to teams
+    - [ ] Admin interface
+    - [ ] QR code interface?
+TODO: User interfaces should update without reloads
+    - [ ] Long-poll for user hash?
+TODO: Dead users should not be able to shoot
+    - [ ] UI (state already exists)
+    - [ ] Backend validation
+TODO: Dead users should know that they are dead!
+    - [ ] UI (state already exists)
+    - [ ] Backend validation
+TODO: Users should be able to collect items
+    - [ ] QR codes in react working
+    - [ ] Decide QR code encoding scheme - keep it flexible
+    - [ ] Backend for collecting items from QR codes
+    - [ ] Admin backend for creating new items
+TODO: Admins should be able to award items
+    - [ ] Backend
+    - [ ] Admin UI
+TODO: The interface should not look shit
+TODO: The admin interface should help the admins decide if someone was shot or not
+    - [ ] Overlay crosshair on photos
+    - [ ] Add zoomed view of centre
+
+Backburner:
+
+
+TODO: The admin interface should have a password
+TODO: Users should be able to send items to other users (on their team? only bullets?)
