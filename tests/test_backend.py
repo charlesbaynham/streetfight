@@ -1,5 +1,5 @@
-GAME_ID = "hot-potato"
 from uuid import UUID
+import pytest
 from backend.model import UserModel
 
 
@@ -61,3 +61,14 @@ def test_can_set_username(api_client):
 
     user_info = UserModel(**api_client.get("/api/user_info").json())
     assert user_info.name == this_user_name
+
+
+@pytest.fixture
+def three_users(api_client):
+    import random
+
+    names = [
+        "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10)) for _ in range(3)
+    ]
+    for name in names:
+        api_client.post(f"/api/set_name?name={name}")
