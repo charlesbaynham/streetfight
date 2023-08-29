@@ -70,5 +70,22 @@ def three_users(api_client):
     names = [
         "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10)) for _ in range(3)
     ]
+    ids = []
     for name in names:
+        ids.append(api_client.get(f"/api/my_id").json())
         api_client.post(f"/api/set_name?name={name}")
+
+    return ids
+
+
+def test_get_users(api_client, three_users):
+
+    response = api_client.get(f"/api/get_all_users")
+    assert response.ok
+    all_users = response.json()
+
+    models = [UserModel(**user).id for user in all_users]
+    for user in models:
+        assert user in three_users
+    for id in three_users:
+        assert id in [model.id for model in models]
