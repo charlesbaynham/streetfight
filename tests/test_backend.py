@@ -80,7 +80,7 @@ def three_users(api_client):
 
 def test_get_users(api_client, three_users):
 
-    response = api_client.get(f"/api/get_all_users")
+    response = api_client.get(f"/api/get_users")
     assert response.ok
     all_users = response.json()
 

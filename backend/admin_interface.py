@@ -24,7 +24,7 @@ class AdminInterface:
         self.session = database.Session()
 
     def _get_user_orm(self, user_id) -> User:
-        g = self.session.query(User).filter_by(id=game_id).first()
+        g = self.session.query(User).filter_by(id=user_id).first()
         if not g:
             raise HTTPException(404, f"User {user_id} not found")
         return g
@@ -42,7 +42,6 @@ class AdminInterface:
         return t
 
     def get_games(self) -> List[GameModel]:
-
         return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
 
     def get_game(self, game_id) -> GameModel:

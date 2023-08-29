@@ -119,6 +119,20 @@ def join_game(
     return UserInterface(user_id).join_game(game_id)
 
 
+@router.get("/get_users")
+def get_users(game_id: str = None, team_id: str = None):
+    if game_id is not None:
+        try:
+            game_id = UUID(game_id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    if team_id is not None:
+        try:
+            team_id = UUID(team_id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+
 ######## ADMIN ###########
 @router.post("/admin_create_game")
 def admin_create_game():
