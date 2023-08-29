@@ -1,7 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { sendAPIRequest } from './utils';
 
 
 function GamesView({ games }) {
+    const [allUsers, setAllUsers] = useState([]);
+    useEffect(() => {
+        sendAPIRequest("get_users", null, "GET", (users) => { setAllUsers(users) })
+    }, [])
+
     const newTeamInput = useRef(null);
 
     const addNewTeam = useCallback((game_id, team_name) => {
@@ -20,20 +26,11 @@ function GamesView({ games }) {
             });
     }, [])
 
-    const adduserToTeam = useCallback((user_id, team_id) => {
-        const url = '/api/admin_add_user_to_team?' + new URLSearchParams({
+    const addUserToTeam = useCallback((user_id, team_id) => {
+        sendAPIRequest("admin_add_user_to_team", {
             user_id: user_id,
             team_id: team_id,
-        })
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        };
-        fetch(url, requestOptions)
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-            });
+        }, "POST")
     }, [])
 
 
@@ -68,7 +65,7 @@ function GamesView({ games }) {
             <select name="user" id="user_dropdown">
                 {
 
-                    game.users.map((user, idx_user) => (
+                    allUsers.map((user, idx_user) => (
                         <option key={idx_user} value={user.id}>{
                             user.name ? user.name : user.id
                         }</option>
@@ -84,7 +81,9 @@ function GamesView({ games }) {
                     ))
                 }
             </select>
-            <button onClick={null}>Submit</button>
+            <button onClick={() => {
+                addUserToTeam();
+            }}>Submit</button>
         </div >
     ))
 }
