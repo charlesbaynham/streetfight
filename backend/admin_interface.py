@@ -11,7 +11,7 @@ from .model import GameModel
 from .model import Shot
 from .model import ShotModel
 from .model import Team
-from .model import TeamModel
+from .model import TeamModel, UserModel
 from .model import User
 from .user_interface import UserInterface
 
@@ -43,6 +43,16 @@ class AdminInterface:
 
     def get_games(self) -> List[GameModel]:
         return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
+
+    def get_users(self, team_id: UUID = None, game_id: UUID = None) -> List[UserModel]:
+        q = self.session.query(User)
+
+        if team_id:
+            q.filter_by(team_id=team_id)
+        if game_id:
+            q.filter_by(game_id=game_id)
+
+        return [UserModel.from_orm(g) for g in q.all()]
 
     def get_game(self, game_id) -> GameModel:
         g = self._get_game_orm(game_id)

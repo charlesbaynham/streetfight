@@ -132,6 +132,8 @@ def get_users(game_id: str = None, team_id: str = None):
         except ValueError as e:
             raise HTTPException(400, str(e))
 
+    return AdminInterface().get_users(game_id=game_id, team_id=team_id)
+
 
 ######## ADMIN ###########
 @router.post("/admin_create_game")
