@@ -1,6 +1,9 @@
 from uuid import UUID
 
+import pytest
+
 from backend.model import UserModel
+from backend.user_interface import UserInterface
 
 
 def test_read_main(api_client):
@@ -77,3 +80,17 @@ def test_add_user_to_team(api_client, one_team, three_users):
         f"/api/admin_add_user_to_team?user_id={the_lucky_user}&team_id={one_team}"
     )
     assert response.ok
+
+
+@pytest.mark.parametrize("num", range(-3, 3))
+def test_admin_give_hp(api_client, user_factory, num):
+    user_id = user_factory()
+    api_client.post(f"/api/admin_give_hp?user_id={user_id}&num={num}")
+    assert UserInterface(user_id).get_user_model().hit_points == 1 + num
+
+
+@pytest.mark.parametrize("num", range(-3, 3))
+def test_admin_give_ammo(api_client, user_factory, num):
+    user_id = user_factory()
+    api_client.post(f"/api/admin_give_ammo?user_id={user_id}&num={num}")
+    assert UserInterface(user_id).get_user_model().num_bullets == num

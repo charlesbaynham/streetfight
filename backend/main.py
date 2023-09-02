@@ -172,12 +172,12 @@ def admin_kill_user(user_id):
 
 
 @router.post("/admin_give_hp")
-def admin_give_hp(user_id, num=1):
-    AdminInterface().award_user_HP(user_id, num_points=num)
+def admin_give_hp(user_id, num: int = 1):
+    AdminInterface().award_user_HP(user_id, num=num)
 
 
 @router.post("/admin_give_ammo")
-def admin_give_ammo(user_id, num=1):
+def admin_give_ammo(user_id, num: int = 1):
     AdminInterface().award_user_ammo(user_id, num=num)
 
 

@@ -151,8 +151,6 @@ export default function AdminMode() {
             <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
             <AllGamesView games={games} />
-
-
         </>
     );
 }
