@@ -171,46 +171,46 @@ class UserInterface:
         f.write(image_base64)
         f.close()
 
-    @db_scoped
-    def get_hash_now(self):
-        user = self.get_user()
+    # @db_scoped
+    # def get_hash_now(self):
+    #     user = self.get_user()
 
-        update_tag = user.game.update_tag
+    #     update_tag = user.game.update_tag
 
-        ret = update_tag[0] if update_tag else 0
-        logger.info(f"Current hash {ret}, user {self.user_id}")
-        return ret
+    #     ret = update_tag[0] if update_tag else 0
+    #     logger.info(f"Current hash {ret}, user {self.user_id}")
+    #     return ret
 
-    async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
-        """
-        Gets the latest hash of this user
+    # async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
+    #     """
+    #     Gets the latest hash of this user
 
-        If known_hash is provided and is the same as the current hash,
-        do not return immediately: wait for up to timeout seconds.
+    #     If known_hash is provided and is the same as the current hash,
+    #     do not return immediately: wait for up to timeout seconds.
 
-        Note that this function is not @db_scoped, but it calls one that is:
-        this is to prevent the database being locked while it waits
-        """
-        current_hash = self.get_hash_now()
+    #     Note that this function is not @db_scoped, but it calls one that is:
+    #     this is to prevent the database being locked while it waits
+    #     """
+    #     current_hash = self.get_hash_now()
 
-        # Return immediately if the hash has changed or if there's no known hash
-        if known_hash is None or known_hash != current_hash:
-            return current_hash
+    #     # Return immediately if the hash has changed or if there's no known hash
+    #     if known_hash is None or known_hash != current_hash:
+    #         return current_hash
 
-        # Otherwise, lookup / make an event and subscribe to it
-        if self.user_id not in update_events:
-            update_events[self.user_id] = asyncio.Event()
-            logger.info("Made new event for game %s", self.user_id)
-        else:
-            logger.info("Subscribing to event for %s", self.user_id)
+    #     # Otherwise, lookup / make an event and subscribe to it
+    #     if self.user_id not in update_events:
+    #         update_events[self.user_id] = asyncio.Event()
+    #         logger.info("Made new event for game %s", self.user_id)
+    #     else:
+    #         logger.info("Subscribing to event for %s", self.user_id)
 
-        try:
-            event = update_events[self.user_id]
-            await asyncio.wait_for(event.wait(), timeout=timeout)
-            logger.info(f"Event received for game {self.user_id}")
-            return self.get_hash_now()
-        except asyncio.TimeoutError:
-            return current_hash
+    #     try:
+    #         event = update_events[self.user_id]
+    #         await asyncio.wait_for(event.wait(), timeout=timeout)
+    #         logger.info(f"Event received for game {self.user_id}")
+    #         return self.get_hash_now()
+    #     except asyncio.TimeoutError:
+    #         return current_hash
 
 
 def trigger_update_event(user_id: int):
