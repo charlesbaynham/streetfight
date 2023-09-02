@@ -34,7 +34,7 @@ def test_user_shots_respect_ammo(db_session, team_factory, user_factory):
     team_id = team_factory()
     user_id = user_factory()
 
-    test_data = b64encode(b"123")
+    test_data = str(b64encode(b"123"))
 
     UserInterface(user_id).join_team(team_id)
 
