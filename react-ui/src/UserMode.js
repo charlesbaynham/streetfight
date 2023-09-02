@@ -19,16 +19,9 @@ export default function UserMode() {
   const [userState, setUserState] = useState(null);
 
   const updateUserState = useCallback(() => {
-    const url = '/api/user_info';
-    const requestOptions = {
-      method: 'GET',
-      headers: { 'Content-Type': 'application/json' },
-    };
-    fetch(url, requestOptions)
-      .then(response => response.json())
-      .then(data => {
-        setUserState(data)
-      });
+    sendAPIRequest("/api/user_info", null, "GET", data => {
+      setUserState(data)
+    })
   }, [setUserState]);
 
   useEffect(updateUserState, [updateUserState]);
