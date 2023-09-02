@@ -142,11 +142,35 @@ class UserInterface:
 
     @db_scoped
     def join_team(self, team_id: UUID):
+        from .admin_interface import AdminInterface
+
         team = self._session.query(Team).filter_by(id=team_id).first()
 
         if not team:
+            game_ids = self._session.query(Game.id).filter_by().all()
+            if len(game_ids) == 0:
+                game_id = AdminInterface().create_game()
+                logger.warning(
+                    "Team does not exist and no games are running - creating it and making a new game (%s)",
+                    game_id,
+                )
+            elif len(game_ids) > 1:
+                logger.error(
+                    "Cannot assign team to game automatically since multiple teams exist"
+                )
+                raise HTTPException(
+                    405,
+                    "Cannot join team - team does not exist and multiple games are running",
+                )
+            else:
+                game_id = game_ids[0]
+                logger.warning(
+                    "Team does not exist - creating it and adding it to the only game (%s)",
+                    game_id,
+                )
+
             logger.info("Creating new team with uuid=%s", team_id)
-            team = Team(id=team_id)
+            team = Team(id=team_id, game_id=game_id)
             self._session.add(team)
 
         team.users.append(self.get_user())

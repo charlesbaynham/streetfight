@@ -207,6 +207,21 @@ def api_client_factory(db_session):
 
 
 @pytest.fixture
+def game_factory(db_session):
+    from backend.model import Game
+
+    def factory():
+        game = Game()
+
+        db_session.add(game)
+        db_session.commit()
+
+        return game.id
+
+    return factory
+
+
+@pytest.fixture
 def user_factory(db_session):
     import random
 
@@ -225,14 +240,14 @@ def user_factory(db_session):
 
 
 @pytest.fixture
-def team_factory(db_session):
+def team_factory(db_session, one_game):
     import random
 
     from backend.model import Team
 
     def factory():
         name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        team = Team(name=name)
+        team = Team(name=name, game_id=one_game)
 
         db_session.add(team)
         db_session.commit()
@@ -250,3 +265,8 @@ def three_users(user_factory):
 @pytest.fixture
 def one_team(team_factory):
     return team_factory()
+
+
+@pytest.fixture
+def one_game(game_factory):
+    return game_factory()

@@ -99,7 +99,7 @@ class Team(Base):
     time_created = Column(DateTime, server_default=func.now())
     name = Column(String)
 
-    game_id = Column(UUIDType, ForeignKey("games.id"))
+    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
     game = relationship(
         "Game", lazy="joined", foreign_keys=game_id, back_populates="teams"
     )
