@@ -57,6 +57,9 @@ class Game(Base):
 class Shot(Base):
     """
     A shot from a user in a game
+
+    Note that we record what team the user that fired the shot was
+    in when the shot was fired, in case the user later switches team
     """
 
     __tablename__ = "shots"
@@ -72,6 +75,11 @@ class Shot(Base):
     user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False)
     user = relationship(
         "User", lazy="joined", foreign_keys=user_id, back_populates="shots"
+    )
+
+    team_id = Column(UUIDType, ForeignKey("teams.id"), nullable=False)
+    team = relationship(
+        "Team", lazy="joined", foreign_keys=team_id, back_populates="shots"
     )
 
     image_base64 = Column(String, nullable=False)
@@ -97,6 +105,7 @@ class Team(Base):
     )
 
     users = relationship("User", lazy=True, back_populates="team")
+    shots = relationship("Shot", lazy=True, back_populates="team")
 
 
 class User(Base):

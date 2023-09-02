@@ -162,7 +162,7 @@ class UserInterface:
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
-        shot_entry = Shot(user=user, game=game, image_base64=image_base64)
+        shot_entry = Shot(user=user, team=team, game=game, image_base64=image_base64)
 
         self._session.add(shot_entry)
 
