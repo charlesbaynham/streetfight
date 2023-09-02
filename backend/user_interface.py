@@ -84,7 +84,7 @@ class UserInterface:
                     # Check this before we reduce session_users to 0, else
                     # calling get_game will reopen a new session before the
                     # old one is closed.
-                    logger.debug("Touching game")
+                    logger.debug("Touching user")
                     self.get_user().touch()
 
                 self._session_users -= 1
@@ -237,21 +237,23 @@ class UserInterface:
 
         # Return immediately if the hash has changed or if there's no known hash
         if known_hash is None or known_hash != current_hash:
+            logger.debug("Out of date hash - returning immediately")
             return current_hash
 
         # Otherwise, lookup / make an event and subscribe to it
         if self.user_id not in update_events:
             update_events[self.user_id] = asyncio.Event()
-            logger.info("Made new event for game %s", self.user_id)
+            logger.info("Made new event for user %s", self.user_id)
         else:
-            logger.info("Subscribing to event for %s", self.user_id)
+            logger.info("Subscribing to event for user %s", self.user_id)
 
         try:
             event = update_events[self.user_id]
             await asyncio.wait_for(event.wait(), timeout=timeout)
-            logger.info(f"Event received for game {self.user_id}")
+            logger.info(f"Event received for user {self.user_id}")
             return self.get_hash_now()
         except asyncio.TimeoutError:
+            logger.info(f"Event timeout for user {self.user_id}")
             return current_hash
 
 
@@ -259,5 +261,8 @@ def trigger_update_event(user_id: int):
     logger.info(f"Triggering updates for user {user_id}")
     global update_events
     if user_id in update_events:
+        logger.debug("Update event found")
         update_events[user_id].set()
         del update_events[user_id]
+    else:
+        logger.debug("No update event found")

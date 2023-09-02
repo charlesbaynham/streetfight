@@ -32,6 +32,8 @@ from .utils import hash_str_to_int
 
 Base = declarative_base()
 
+logger = logging.getLogger(__name__)
+
 
 def random_counter_value():
     return random.randint(1, 2147483646)
@@ -130,7 +132,10 @@ class User(Base):
     update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
-        self.update_tag = random_counter_value()
+        old = self.update_tag
+        new = random_counter_value()
+        logger.debug("Changing update_tag for user %s from %s to %s", self.id, old, new)
+        self.update_tag = new
         self.last_seen = datetime.datetime.now()
 
 
