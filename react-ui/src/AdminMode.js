@@ -18,7 +18,15 @@ function GameView({ game }) {
 }
 
 function UserControls({ user }) {
-    return <li>{user.name}</li>
+    return <li>
+        {user.name} ({user.hit_points}❤️  {user.num_bullets}A)
+
+        <button>+❤️</button>
+        <button>-❤️</button>
+
+        <button>+A</button>
+        <button>-A</button>
+    </li>
 }
 
 function TeamsView({ teams }) {
