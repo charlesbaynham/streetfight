@@ -76,7 +76,6 @@ class Game(Base):
     id = Column(UUIDType, primary_key=True, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
-    users = relationship("User", lazy=True, back_populates="game")
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
 
@@ -145,11 +144,6 @@ class User(Base):
     last_seen = Column(DateTime, default=func.now())
     name = Column(String)
 
-    game_id = Column(UUIDType, ForeignKey("games.id"))
-    game = relationship(
-        "Game", lazy="joined", foreign_keys=game_id, back_populates="users"
-    )
-
     team_id = Column(Integer, ForeignKey("teams.id"))
     team = relationship(
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
@@ -168,7 +162,6 @@ class GameModel(pydantic.BaseModel):
     id: UUID
     update_tag: int
 
-    users: List["UserModel"]
     teams: List["TeamModel"]
 
     class Config:
@@ -179,7 +172,7 @@ class GameModel(pydantic.BaseModel):
 class UserModel(pydantic.BaseModel):
     id: UUID
     name: Optional[str]
-    game_id: Optional[UUID]
+
     team_id: Optional[int]
 
     num_bullets: int
