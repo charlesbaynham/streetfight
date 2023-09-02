@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
@@ -8,6 +8,7 @@ import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
+import UserStateUpdater from './UserUpdater';
 
 
 export default function UserMode() {
@@ -52,6 +53,8 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
+      <UserStateUpdater known_hash={0} />
+
       <button onClick={handle.enter}>
         Fullscreen
       </button>
@@ -77,14 +80,12 @@ export default function UserMode() {
         } />
 
       </FullScreen>
-
     </ >
   ) : null;
 
   if (userState === null) {
     return loadingView;
   }
-
 
   if (userState.name === null) {
     return noNameView;
