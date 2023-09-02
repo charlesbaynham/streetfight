@@ -1,5 +1,7 @@
 from uuid import UUID
+
 import pytest
+
 from backend.model import UserModel
 
 
@@ -33,7 +35,8 @@ def test_make_game(api_client):
     assert UUID(response.json())
 
 
-def test_make_team(api_client):
+@pytest.fixture
+def one_team(api_client):
     response_game = api_client.post("/api/admin_create_game")
 
     game_id = response_game.json()
@@ -47,7 +50,12 @@ def test_make_team(api_client):
     print(response_team.json())
 
     assert response_team.status_code == 200
-    assert UUID(response_team.json())
+    return UUID(response_team.json())
+
+
+def test_make_team(one_team):
+    # Just run the fixture
+    assert isinstance(one_team, UUID)
 
 
 def test_username_starts_empty(api_client):
@@ -88,3 +96,11 @@ def test_get_users(api_client, three_users):
         assert retrieved_id in three_users
     for id in three_users:
         assert id in retrieved_ids
+
+
+def test_add_user_to_team(api_client, one_team, three_users):
+    the_lucky_user = three_users[0]
+    response = api_client.post(
+        f"/api/admin_add_user_to_team?user_id={the_lucky_user}&team_id={one_team}"
+    )
+    assert response.ok

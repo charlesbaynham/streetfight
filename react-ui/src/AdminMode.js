@@ -5,7 +5,7 @@ import { sendAPIRequest } from './utils';
 function GamesView({ games }) {
     const [allUsers, setAllUsers] = useState([]);
     useEffect(() => {
-        sendAPIRequest("get_users", null, "GET", (users) => { setAllUsers(users) })
+        sendAPIRequest("get_users", {}, "GET", (users) => { setAllUsers(users) })
     }, [])
 
     const newTeamInput = useRef(null);
@@ -27,11 +27,16 @@ function GamesView({ games }) {
     }, [])
 
     const addUserToTeam = useCallback((user_id, team_id) => {
+        console.log(user_id)
+        console.log(team_id)
         sendAPIRequest("admin_add_user_to_team", {
             user_id: user_id,
             team_id: team_id,
         }, "POST")
     }, [])
+
+    const ref_add_user_to_team_team = useRef(null);
+    const ref_add_user_to_team_user = useRef(null);
 
 
     return games.map((game, idx_game) => (
@@ -62,7 +67,7 @@ function GamesView({ games }) {
 
             <h3>Controls</h3>
             <label for="user">Add user</label>
-            <select name="user" id="user_dropdown">
+            <select name="user" id="user_dropdown" ref={ref_add_user_to_team_user}>
                 {
 
                     allUsers.map((user, idx_user) => (
@@ -73,7 +78,7 @@ function GamesView({ games }) {
                 }
             </select>
             <label for="team">to team</label>
-            <select name="team" id="team_dropdown">
+            <select name="team" id="team_dropdown" ref={ref_add_user_to_team_team}>
                 {
 
                     game.teams.map((team, idx_team) => (
@@ -82,7 +87,10 @@ function GamesView({ games }) {
                 }
             </select>
             <button onClick={() => {
-                addUserToTeam();
+                addUserToTeam(
+                    ref_add_user_to_team_user.current.value,
+                    ref_add_user_to_team_team.current.value
+                );
             }}>Submit</button>
         </div >
     ))
