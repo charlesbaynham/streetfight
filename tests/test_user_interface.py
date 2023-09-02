@@ -18,6 +18,16 @@ def test_can_join_existing_team(user_factory, team_factory):
     UserInterface(user_id=user_id).join_team(team_factory())
 
 
+def test_cannot_join_new_team_if_multiple_games(game_factory, user_factory):
+    game_factory()
+    game_factory()
+
+    user_id = user_factory()
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_id=user_id).join_team(uuid())
+
+
 def test_user_shots_respect_ammo(db_session, team_factory, user_factory):
     from base64 import b64encode
 
