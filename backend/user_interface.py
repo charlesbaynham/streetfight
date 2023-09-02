@@ -160,11 +160,18 @@ class UserInterface:
 
         game = team.game
 
+        if user.hit_points <= 0:
+            raise HTTPException(403, "User is dead")
+
+        if user.num_bullets <= 0:
+            raise HTTPException(403, "User has no ammo")
+
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
         shot_entry = Shot(user=user, team=team, game=game, image_base64=image_base64)
-
         self._session.add(shot_entry)
+
+        user.num_bullets -= 1
 
         # Save to folder
         f = open("logs/out.txt", "w")
