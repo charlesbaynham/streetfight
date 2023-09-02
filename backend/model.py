@@ -73,7 +73,7 @@ class Game(Base):
 
     __tablename__ = "games"
 
-    id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
+    id = Column(UUIDType, primary_key=True, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
     users = relationship("User", lazy=True, back_populates="game")
@@ -140,7 +140,7 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(UUIDType, primary_key=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
     last_seen = Column(DateTime, default=func.now())
     name = Column(String)
