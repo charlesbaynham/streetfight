@@ -20,7 +20,7 @@ export default function UserMode() {
   const [userState, setUserState] = useState(null);
 
   const updateUserState = useCallback(() => {
-    sendAPIRequest("/api/user_info", null, "GET", data => {
+    sendAPIRequest("user_info", null, "GET", data => {
       setUserState(data)
     })
   }, [setUserState]);

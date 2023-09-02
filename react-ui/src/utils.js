@@ -12,7 +12,15 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
     };
 
     fetch(url, requestOptions)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                console.log(`Error in api call to ${url}:`)
+                console.dir(response)
+                console.dir(response.json())
+                return null
+            }
+            return response.json()
+        })
         .then(data => {
             if (callback) {
                 callback(data);
