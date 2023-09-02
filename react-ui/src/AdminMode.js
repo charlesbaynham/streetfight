@@ -27,8 +27,6 @@ function GamesView({ games }) {
     }, [])
 
     const addUserToTeam = useCallback((user_id, team_id) => {
-        console.log(user_id)
-        console.log(team_id)
         sendAPIRequest("admin_add_user_to_team", {
             user_id: user_id,
             team_id: team_id,
@@ -42,14 +40,25 @@ function GamesView({ games }) {
     return games.map((game, idx_game) => (
         <div key={idx_game}>
             <h2>Game {game.id}</h2>
-            <h3>Teams</h3>
-            <ul>
-                {
-                    game.teams.map((team, idx_team) => (
-                        <li key={idx_team}><em>{team.name}</em></li>
-                    ))
+
+            {
+                game.teams.map((team, idx_team) => {
+
+                    const list_of_users = team.users.map(
+                        (user, idx_user) => (
+                            <li key={idx_user}>{user.name}</li>
+                        ));
+
+                    return <div key={idx_team}>
+                        <h3>Team: <em>{team.name}</em></h3>
+
+                        <ul>
+                            {list_of_users}
+                        </ul>
+                    </div>
                 }
-            </ul>
+                )
+            }
 
             {
                 <>
