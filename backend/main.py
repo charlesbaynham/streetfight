@@ -119,6 +119,28 @@ def join_game(
     return UserInterface(user_id).join_game(game_id)
 
 
+@router.get("/get_hash")
+async def get_hash(
+    known_hash: int = 0,
+    timeout: int = 30,
+    user_id=Depends(get_user_id),
+) -> int:
+    """
+    Get a hash that will change if this user's state changes
+
+    This method may take up to `timeout` seconds to return
+    if the state is currently the same as `known_state`.
+
+    Args:
+        known_hash (int, optional): _description_. Defaults to 0.
+        timeout (int, optional): _description_. Defaults to 30.
+
+    Returns:
+        int: Hash of the user's current state
+    """
+    return await UserInterface(user_id).get_hash(known_hash=known_hash, timeout=timeout)
+
+
 @router.get("/get_users")
 def get_users(game_id: str = None, team_id: str = None):
     if game_id is not None:

@@ -48,11 +48,6 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
 
-    update_tag = Column(Integer(), default=random_counter_value)
-
-    def touch(self):
-        self.update_tag = random_counter_value()
-
 
 class Shot(Base):
     """
@@ -132,13 +127,15 @@ class User(Base):
 
     shots = relationship("Shot", lazy=True, back_populates="user")
 
+    update_tag = Column(Integer(), default=random_counter_value)
+
     def touch(self):
+        self.update_tag = random_counter_value()
         self.last_seen = datetime.datetime.now()
 
 
 class GameModel(pydantic.BaseModel):
     id: UUID
-    update_tag: int
 
     teams: List["TeamModel"]
 
