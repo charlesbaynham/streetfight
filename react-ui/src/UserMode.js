@@ -45,6 +45,7 @@ export default function UserMode() {
     <input ref={setNameInput} />
     <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
   </>;
+
   const playingView = userState ? (
     <>
       <button onClick={handle.enter}>
@@ -56,7 +57,7 @@ export default function UserMode() {
 
         <WebcamView trigger={triggerShot} />
 
-        {userState.hit_points >= 0 ?
+        {(userState.hit_points > 0) ?
           (scanMode ? <QRImage /> : <CrosshairImage />)
           :
           <DeadImage />
