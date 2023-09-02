@@ -1,7 +1,5 @@
 from uuid import UUID
 
-import pytest
-
 from backend.model import UserModel
 
 

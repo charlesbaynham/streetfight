@@ -13,6 +13,7 @@ from sqlalchemy.ext import baked
 
 from .model import Game
 from .model import Shot
+from .model import Team
 from .model import User
 from .model import UserModel
 
@@ -140,15 +141,15 @@ class UserInterface:
         self.get_user().name = new_name
 
     @db_scoped
-    def join_game(self, game_id: UUID):
-        game = self._session.query(Game).filter_by(id=game_id).first()
+    def join_team(self, team_id: UUID):
+        team = self._session.query(Team).filter_by(id=team_id).first()
 
-        if not game:
-            logger.info("Creating new game with uuid=%s", game_id)
-            game = Game(id=game_id)
-            self._session.add(game)
+        if not team:
+            logger.info("Creating new team with uuid=%s", team_id)
+            team = Team(id=team_id)
+            self._session.add(team)
 
-        game.users.append(self.get_user())
+        team.users.append(self.get_user())
 
     @db_scoped
     def submit_shot(self, image_base64: str):
