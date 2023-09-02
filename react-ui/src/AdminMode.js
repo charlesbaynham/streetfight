@@ -18,14 +18,29 @@ function GameView({ game }) {
 }
 
 function UserControls({ user }) {
+
+    const give_n_health = useCallback((n) => {
+        sendAPIRequest("admin_give_hp", {
+            user_id: user.id,
+            num: n,
+        }, "POST")
+    }, [user.id])
+
+    const give_n_ammo = useCallback((n) => {
+        sendAPIRequest("admin_give_ammo", {
+            user_id: user.id,
+            num: n,
+        }, "POST")
+    }, [user.id])
+
     return <li>
         {user.name} ({user.hit_points}❤️  {user.num_bullets}A)
 
-        <button>+❤️</button>
-        <button>-❤️</button>
+        <button onClick={() => { give_n_health(+1) }}>+❤️</button>
+        <button onClick={() => { give_n_health(-1) }}>-❤️</button>
 
-        <button>+A</button>
-        <button>-A</button>
+        <button onClick={() => { give_n_ammo(+1) }}>+A</button>
+        <button onClick={() => { give_n_ammo(-1) }}>-A</button>
     </li>
 }
 
