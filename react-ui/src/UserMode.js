@@ -46,6 +46,8 @@ export default function UserMode() {
     <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
   </>;
 
+  const isAlive = userState ? (userState.hit_points > 0) : false;
+
   const playingView = userState ? (
     <>
       <button onClick={handle.enter}>
@@ -57,13 +59,13 @@ export default function UserMode() {
 
         <WebcamView trigger={triggerShot} />
 
-        {(userState.hit_points > 0) ?
+        {isAlive ?
           (scanMode ? <QRImage /> : <CrosshairImage />)
           :
           <DeadImage />
         }
 
-        <FireButton onClick={
+        <FireButton isAlive={isAlive} onClick={
           () => {
             setTriggerShot(triggerShot + 1)
           }

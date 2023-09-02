@@ -2,14 +2,14 @@
 import fireButtonImg from './firebutton.png';
 
 
-export default function FireButton(props) {
+export default function FireButton({ isAlive, onClick }) {
   return (
-    <button onClick={props.onClick} style={{
-        position: 'absolute',
-        right: 0,
-        bottom: 0
+    <button disabled={!isAlive} onClick={onClick} style={{
+      position: 'absolute',
+      right: 0,
+      bottom: 0
     }}>
-        <img src={fireButtonImg} />
+      <img src={fireButtonImg} />
     </button>
   );
 }

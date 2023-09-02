@@ -11,12 +11,12 @@ Goals
     - [ ] QR code interface?
 - [ ]: User interfaces should update without reloads
     - [ ] Long-poll for user hash?
-- [ ]: Dead users should not be able to shoot
-    - [ ] UI (state already exists)
+- [x]: Dead users should not be able to shoot
+    - [x] UI (state already exists)
     - [x] Backend validation
-- [ ]: Dead users should know that they are dead!
-    - [ ] UI (state already exists)
-    - [ ] Backend validation
+- [x]: Dead users should know that they are dead!
+    - [x] UI (state already exists)
+    - [x] Backend validation
 - [ ]: Users should be able to collect items
     - [ ] QR codes in react working
     - [ ] Decide QR code encoding scheme - keep it flexible
