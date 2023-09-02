@@ -204,3 +204,49 @@ def api_client_factory(db_session):
     from backend.main import app
 
     return lambda: TestClient(app)
+
+
+@pytest.fixture
+def user_factory(db_session):
+    import random
+
+    from backend.model import User
+
+    def factory():
+        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        user = User(name=name)
+
+        db_session.add(user)
+        db_session.commit()
+
+        return user.id
+
+    return factory
+
+
+@pytest.fixture
+def team_factory(db_session):
+    import random
+
+    from backend.model import Team
+
+    def factory():
+        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        team = Team(name=name)
+
+        db_session.add(team)
+        db_session.commit()
+
+        return team.id
+
+    return factory
+
+
+@pytest.fixture
+def three_users(user_factory):
+    return [user_factory() for _ in range(3)]
+
+
+@pytest.fixture
+def one_team(team_factory):
+    return team_factory()

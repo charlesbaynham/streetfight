@@ -4,7 +4,7 @@ from backend.model import Game
 from backend.model import User
 
 
-def test_fixtures(db_session):
+def test_db_init(db_session):
     assert len(db_session.query(Game).all()) == 0
     assert len(db_session.query(User).all()) == 0
 

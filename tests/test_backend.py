@@ -5,64 +5,6 @@ import pytest
 from backend.model import UserModel
 
 
-@pytest.fixture
-def user_factory(db_session):
-    import random
-
-    from backend.model import User
-
-    def factory():
-        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        user = User(name=name)
-
-        db_session.add(user)
-        db_session.commit()
-
-        return user.id
-
-    return factory
-
-
-@pytest.fixture
-def team_factory(db_session):
-    import random
-
-    from backend.model import Team
-
-    def factory():
-        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        team = Team(name=name)
-
-        db_session.add(team)
-        db_session.commit()
-
-        return team.id
-
-    return factory
-
-
-@pytest.fixture
-def three_users(user_factory):
-    return [user_factory() for _ in range(3)]
-
-
-@pytest.fixture
-def one_team(team_factory):
-    return team_factory()
-
-
-def test_three_users(three_users):
-    assert [isinstance(u, UUID) for u in three_users]
-
-
-def test_one_team(one_team):
-    return isinstance(one_team, UUID)
-
-
-def test_client(api_client):
-    pass
-
-
 def test_read_main(api_client):
     response = api_client.get("/api/hello")
     assert response.status_code == 200
