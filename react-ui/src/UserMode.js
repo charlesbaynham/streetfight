@@ -2,11 +2,12 @@ import React, { useCallback, useEffect, useReducer, useRef, useState } from 'rea
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import CrossHair from './Crosshair';
+import { CrosshairImage, QRImage } from './GuideImages';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
+import WebcamView from './WebcamView';
 
 
 export default function UserMode() {
@@ -53,7 +54,10 @@ export default function UserMode() {
       <FullScreen handle={handle} onChange={reportChange}>
         <BulletCount />
 
-        <CrossHair trigger={triggerShot} scanMode={scanMode} />
+        <WebcamView trigger={triggerShot} />
+
+        {scanMode ? <QRImage /> : <CrosshairImage />}
+
         <FireButton onClick={
           () => {
             setTriggerShot(triggerShot + 1)

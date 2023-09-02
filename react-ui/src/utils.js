@@ -20,4 +20,15 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
         });
 }
 
+
+export const SCREEN_FILL_STYLES = {
+    position: "absolute",
+    height: "100vh",
+    width: "100vw",
+    left: "0",
+    top: "0",
+    zIndex: -1
+};
+
+
 export default null;
