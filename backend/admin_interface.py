@@ -11,8 +11,9 @@ from .model import GameModel
 from .model import Shot
 from .model import ShotModel
 from .model import Team
-from .model import TeamModel, UserModel
+from .model import TeamModel
 from .model import User
+from .model import UserModel
 from .user_interface import UserInterface
 
 
@@ -75,9 +76,12 @@ class AdminInterface:
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         team = self._get_team_orm(team_id)
-        game = team.game
+        user = self._get_user_orm(user_id)
 
-        team.users.append()
+        print(f"team.id = {team.id}, team.name={team.name}")
+        print(f"user.id = {user.id}")
+
+        team.users.append(user)
         self.session.commit()
 
         return team.id
