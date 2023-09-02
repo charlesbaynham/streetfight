@@ -9,8 +9,10 @@ Goals
     - [x] Default teams for setup
     - [x] Admin interface
     - [ ] QR code interface?
-- [ ]: User interfaces should update without reloads
-    - [ ] Long-poll for user hash?
+- [x]: User interfaces should update without reloads
+    - [x] Long-poll for user hash?
+    - [ ] Changes from AdminInterface should bump users where required
+    - [ ] Admin interface UI should also auto-update
 - [x]: Dead users should not be able to shoot
     - [x] UI (state already exists)
     - [x] Backend validation
