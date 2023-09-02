@@ -25,6 +25,9 @@ Goals
 - [ ]: Admins should be able to award items
     - [ ] Backend
     - [ ] Admin UI
+- [ ]: Admins should be able to kill
+    - [x] Backend
+    - [ ] Admin UI
 - [ ]: The interface should not look shit
 - [ ]: The admin interface should help the admins decide if someone was shot or not
     - [ ] Overlay crosshair on photos
