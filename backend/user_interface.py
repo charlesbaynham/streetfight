@@ -132,9 +132,14 @@ class UserInterface:
         self.get_user().hit_points -= 1
 
     @db_scoped
-    def award_HP(self, num_points=1) -> User:
+    def award_HP(self, num=1) -> User:
         "Give health to the user"
-        self.get_user().hit_points += num_points
+        self.get_user().hit_points += num
+
+    @db_scoped
+    def award_ammo(self, num=1) -> User:
+        "Give ammo to the user"
+        self.get_user().num_bullets += num
 
     @db_scoped
     def get_user_model(self) -> UserModel:

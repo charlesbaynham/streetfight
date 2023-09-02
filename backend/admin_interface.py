@@ -97,8 +97,11 @@ class AdminInterface:
     def kill_user(self, user_id):
         UserInterface(user_id).kill()
 
-    def award_user_HP(self, user_id, num_points=1):
-        UserInterface(user_id).award_HP(num_points=1)
+    def award_user_HP(self, user_id, num=1):
+        UserInterface(user_id).award_HP(num=num)
+
+    def award_user_ammo(self, user_id, num=1):
+        UserInterface(user_id).award_ammo(num=num)
 
     def mark_shot_checked(self, shot_id):
         shot = self.session.query(Shot).filter_by(id=shot_id).first()

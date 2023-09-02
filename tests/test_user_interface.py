@@ -85,6 +85,22 @@ def test_can_give_health(user_factory):
 def test_can_give_multiple_health(user_factory):
     user_id = user_factory()
 
-    UserInterface(user_id).award_HP(num_points=10)
+    UserInterface(user_id).award_HP(num=10)
 
     assert UserInterface(user_id).get_user_model().hit_points == 11
+
+
+def test_can_give_ammo(user_factory):
+    user_id = user_factory()
+
+    UserInterface(user_id).award_ammo()
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 1
+
+
+def test_can_give_multiple_ammo(user_factory):
+    user_id = user_factory()
+
+    UserInterface(user_id).award_ammo(num=10)
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 10

@@ -171,6 +171,16 @@ def admin_kill_user(user_id):
     AdminInterface().kill_user(user_id)
 
 
+@router.post("/admin_give_hp")
+def admin_give_hp(user_id, num=1):
+    AdminInterface().award_user_HP(user_id, num_points=num)
+
+
+@router.post("/admin_give_ammo")
+def admin_give_ammo(user_id, num=1):
+    AdminInterface().award_user_ammo(user_id, num=num)
+
+
 @router.post("/admin_mark_shot_checked")
 def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
