@@ -75,16 +75,12 @@ class AdminInterface:
         return team.id
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
-        team = self._get_team_orm(team_id)
         user = self._get_user_orm(user_id)
 
-        print(f"team.id = {team.id}, team.name={team.name}")
         print(f"user.id = {user.id}")
 
-        team.users.append(user)
+        user.team_id = team_id
         self.session.commit()
-
-        return team.id
 
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
         query = (

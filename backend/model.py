@@ -33,37 +33,6 @@ from .utils import hash_str_to_int
 Base = declarative_base()
 
 
-class JSONEncodedDict(TypeDecorator):
-    """Represents an immutable structure as a json-encoded string.
-
-    See
-    https://docs.sqlalchemy.org/en/13/core/custom_types.html#marshal-json-strings
-
-    Usage::
-        JSONEncodedDict(255)
-    """
-
-    impl = VARCHAR
-
-    class UUIDEncoder(json.JSONEncoder):
-        def default(self, obj):
-            if isinstance(obj, UUID):
-                # if the obj is uuid, we simply return the value of uuid
-                return obj.hex
-            return json.JSONEncoder.default(self, obj)
-
-    def process_bind_param(self, value, dialect):
-        if value is not None:
-            value = json.dumps(value, cls=self.UUIDEncoder)
-
-        return value
-
-    def process_result_value(self, value, dialect):
-        if value is not None:
-            value = json.loads(value)
-        return value
-
-
 def random_counter_value():
     return random.randint(1, 2147483646)
 
@@ -144,7 +113,7 @@ class User(Base):
     last_seen = Column(DateTime, default=func.now())
     name = Column(String)
 
-    team_id = Column(Integer, ForeignKey("teams.id"))
+    team_id = Column(UUIDType, ForeignKey("teams.id"))
     team = relationship(
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
     )
