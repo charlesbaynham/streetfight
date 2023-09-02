@@ -132,6 +132,11 @@ class UserInterface:
         self.get_user().hit_points -= 1
 
     @db_scoped
+    def award_HP(self, num_points=1) -> User:
+        "Give health to the user"
+        self.get_user().hit_points += num_points
+
+    @db_scoped
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None

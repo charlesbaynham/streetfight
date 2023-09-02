@@ -72,3 +72,19 @@ def test_user_cannot_shoot_when_dead(db_session, team_factory, user_factory):
 
     with pytest.raises(HTTPException):
         UserInterface(user_id).submit_shot(test_data)
+
+
+def test_can_give_health(user_factory):
+    user_id = user_factory()
+
+    UserInterface(user_id).award_HP()
+
+    assert UserInterface(user_id).get_user_model().hit_points == 2
+
+
+def test_can_give_multiple_health(user_factory):
+    user_id = user_factory()
+
+    UserInterface(user_id).award_HP(num_points=10)
+
+    assert UserInterface(user_id).get_user_model().hit_points == 11
