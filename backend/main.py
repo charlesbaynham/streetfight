@@ -64,19 +64,19 @@ app.add_middleware(
 
 
 @router.get("/hello")
-def hello():
+async def hello():
     return {"msg": "Hello world!"}
 
 
 @router.get("/my_id")
-def get_my_id(
+async def get_my_id(
     user_id=Depends(get_user_id),
 ):
     return user_id
 
 
 @router.get("/user_info")
-def get_user_info(
+async def get_user_info(
     user_id=Depends(get_user_id),
 ):
     return UserInterface(user_id).get_user_model()
@@ -87,7 +87,7 @@ class Shot(BaseModel):
 
 
 @router.post("/submit_shot")
-def submit_shot(
+async def submit_shot(
     shot: Shot,
     user_id=Depends(get_user_id),
 ):
@@ -97,7 +97,7 @@ def submit_shot(
 
 
 @router.post("/set_name")
-def submit_shot(
+async def submit_shot(
     name: str,
     user_id=Depends(get_user_id),
 ):
@@ -106,7 +106,7 @@ def submit_shot(
 
 
 @router.post("/join_game")
-def join_game(
+async def join_game(
     game_id: str,
     user_id=Depends(get_user_id),
 ):
@@ -142,7 +142,7 @@ async def get_hash(
 
 
 @router.get("/get_users")
-def get_users(game_id: str = None, team_id: str = None):
+async def get_users(game_id: str = None, team_id: str = None):
     if game_id is not None:
         try:
             game_id = UUID(game_id)
@@ -159,52 +159,52 @@ def get_users(game_id: str = None, team_id: str = None):
 
 ######## ADMIN ###########
 @router.post("/admin_create_game")
-def admin_create_game():
+async def admin_create_game():
     game_id = AdminInterface().create_game()
     logger.info("Created new game with id = %s", game_id)
     return game_id
 
 
 @router.post("/admin_create_team")
-def admin_list_games(game_id: UUID, team_name: str) -> int:
+async def admin_list_games(game_id: UUID, team_name: str) -> int:
     logger.info("Creating new team '%s' for game %s", team_name, game_id)
     return AdminInterface().create_team(game_id, team_name)
 
 
 @router.post("/admin_add_user_to_team")
-def admin_list_games(user_id: UUID, team_id: UUID) -> int:
+async def admin_list_games(user_id: UUID, team_id: UUID) -> int:
     logger.info("Adding user %s to team %s", user_id, team_id)
     return AdminInterface().add_user_to_team(user_id, team_id)
 
 
 @router.get("/admin_list_games")
-def admin_list_games():
+async def admin_list_games():
     return AdminInterface().get_games()
 
 
 @router.get("/admin_get_shots")
-def admin_get_shots(limit=5):
+async def admin_get_shots(limit=5):
     num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(limit=limit)
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
 @router.post("/admin_kill_user")
-def admin_kill_user(user_id):
+async def admin_kill_user(user_id):
     AdminInterface().kill_user(user_id)
 
 
 @router.post("/admin_give_hp")
-def admin_give_hp(user_id, num: int = 1):
+async def admin_give_hp(user_id, num: int = 1):
     AdminInterface().award_user_HP(user_id, num=num)
 
 
 @router.post("/admin_give_ammo")
-def admin_give_ammo(user_id, num: int = 1):
+async def admin_give_ammo(user_id, num: int = 1):
     AdminInterface().award_user_ammo(user_id, num=num)
 
 
 @router.post("/admin_mark_shot_checked")
-def admin_mark_shot_checked(shot_id):
+async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
 

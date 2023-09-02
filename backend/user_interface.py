@@ -5,6 +5,7 @@ from functools import wraps
 from threading import RLock
 from typing import Callable
 from typing import Dict
+from typing import Union
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -30,8 +31,14 @@ class UserInterface:
     Class to query / interact with Users
     """
 
-    def __init__(self, user_id: str, session=None):
-        self.user_id = user_id
+    def __init__(self, user_id: Union[UUID, str], session=None):
+        if isinstance(user_id, str):
+            self.user_id = UUID(user_id)
+        elif isinstance(user_id, UUID):
+            self.user_id = user_id
+        else:
+            raise TypeError
+
         self._session = session
         self._session_users = 0
         self._session_is_external = bool(session)
@@ -244,11 +251,10 @@ class UserInterface:
         if self.user_id not in update_events:
             update_events[self.user_id] = asyncio.Event()
             logger.info("Made new event for user %s", self.user_id)
-        else:
-            logger.info("Subscribing to event for user %s", self.user_id)
 
         try:
             event = update_events[self.user_id]
+            logger.info("Subscribing to event %s for user %s", event, self.user_id)
             await asyncio.wait_for(event.wait(), timeout=timeout)
             logger.info(f"Event received for user {self.user_id}")
             return self.get_hash_now()
@@ -257,9 +263,12 @@ class UserInterface:
             return current_hash
 
 
-def trigger_update_event(user_id: int):
-    logger.info(f"Triggering updates for user {user_id}")
+def trigger_update_event(user_id: UUID):
     global update_events
+
+    logger.info(f"Triggering updates for user {user_id}")
+    logger.debug(f"update_events = %s, user_id=%s", update_events, user_id)
+
     if user_id in update_events:
         logger.debug("Update event found")
         update_events[user_id].set()
