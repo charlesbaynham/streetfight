@@ -27,7 +27,7 @@ export default function UserMode() {
     })
   }, [setUserState]);
 
-  useEffect(updateUserState, [updateUserState]);
+  useEffect(updateUserState, [updateUserState, userStateHash]);
 
   const reportChange = useCallback((state, _) => {
     setIsFullscreen(state);
