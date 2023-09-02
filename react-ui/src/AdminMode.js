@@ -11,19 +11,10 @@ function GamesView({ games }) {
     const newTeamInput = useRef(null);
 
     const addNewTeam = useCallback((game_id, team_name) => {
-        const url = '/api/admin_create_team?' + new URLSearchParams({
+        sendAPIRequest("admin_create_team", {
             game_id: game_id,
             team_name: team_name,
-        })
-        const requestOptions = {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-        };
-        fetch(url, requestOptions)
-            .then(response => response.json())
-            .then(data => {
-                console.log(data)
-            });
+        }, "POST")
     }, [])
 
     const addUserToTeam = useCallback((user_id, team_id) => {
@@ -105,17 +96,8 @@ export default function AdminMode() {
 
     const updatePanel = useCallback(
         () => {
-            const requestOptions = {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            };
-            fetch('/api/admin_list_games', requestOptions)
-                .then(response => response.json())
-                .then(data => {
-                    setGames(data);
-                });
-        },
-        []
+            return sendAPIRequest("admin_list_games", null, "GET", (data) => { setGames(data) })
+        }, []
     );
 
     useEffect(updatePanel, [])
