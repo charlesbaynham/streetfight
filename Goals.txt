@@ -5,9 +5,9 @@ Goals
 - [x]: Users should be required to set their name
     - [x] Python API
     - [x] Frontend
-- [ ]: Users should be able to join teams / be added to teams
-    - [ ] Default teams for setup
-    - [ ] Admin interface
+- [?]: Users should be able to join teams / be added to teams
+    - [x] Default teams for setup
+    - [x] Admin interface
     - [ ] QR code interface?
 - [ ]: User interfaces should update without reloads
     - [ ] Long-poll for user hash?
