@@ -12,6 +12,7 @@ import UserStateUpdater from './UserUpdater';
 
 
 export default function UserMode() {
+  const [userStateHash, setUserStateHash] = useState(0);
 
   const handle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -53,14 +54,14 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
-      <UserStateUpdater known_hash={0} callback={(d) => { console.log(`callback ${d}`) }} />
+      <UserStateUpdater known_hash={userStateHash} callback={(d) => { setUserStateHash(d) }} />
 
       <button onClick={handle.enter}>
         Fullscreen
       </button>
 
       <FullScreen handle={handle} onChange={reportChange}>
-        <BulletCount />
+        <BulletCount user={userState} />
 
         <WebcamView trigger={triggerShot} />
 
