@@ -17,13 +17,13 @@ Goals
 - [x]: Dead users should know that they are dead!
     - [x] UI (state already exists)
     - [x] Backend validation
-- [ ]: Users should be able to collect items
+- [ ]: Users should be able to collect pickups
     - [ ] QR codes in react working
     - [ ] Decide QR code encoding scheme - keep it flexible
-    - [ ] Backend for collecting items from QR codes
-    - [ ] Admin backend for creating new items
-- [ ]: Admins should be able to award items
-    - [ ] Backend
+    - [ ] Backend for collecting pickups from QR codes
+    - [ ] Admin backend for creating new pickups
+- [ ]: Admins should be able to award health
+    - [x] Backend
     - [ ] Admin UI
 - [ ]: Admins should be able to kill
     - [x] Backend
