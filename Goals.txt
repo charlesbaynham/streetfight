@@ -13,7 +13,7 @@ Goals
     - [ ] Long-poll for user hash?
 - [ ]: Dead users should not be able to shoot
     - [ ] UI (state already exists)
-    - [ ] Backend validation
+    - [x] Backend validation
 - [ ]: Dead users should know that they are dead!
     - [ ] UI (state already exists)
     - [ ] Backend validation
