@@ -1,7 +1,7 @@
 Goals
 -----
 
-- [ ]: Finish admin interface to add user to team
+- [x]: Finish admin interface to add user to team
 - [x]: Users should be required to set their name
     - [x] Python API
     - [x] Frontend
