@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useReducer, useRef, useState } from 'rea
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import { CrosshairImage, QRImage } from './GuideImages';
+import { CrosshairImage, QRImage, DeadImage } from './GuideImages';
 import FireButton from './FireButton';
 import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
@@ -45,7 +45,7 @@ export default function UserMode() {
     <input ref={setNameInput} />
     <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
   </>;
-  const playingView = (
+  const playingView = userState ? (
     <>
       <button onClick={handle.enter}>
         Fullscreen
@@ -56,7 +56,11 @@ export default function UserMode() {
 
         <WebcamView trigger={triggerShot} />
 
-        {scanMode ? <QRImage /> : <CrosshairImage />}
+        {userState.hit_points >= 0 ?
+          (scanMode ? <QRImage /> : <CrosshairImage />)
+          :
+          <DeadImage />
+        }
 
         <FireButton onClick={
           () => {
@@ -70,7 +74,7 @@ export default function UserMode() {
       </FullScreen>
 
     </ >
-  );
+  ) : null;
 
   if (userState === null) {
     return loadingView;

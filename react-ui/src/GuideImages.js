@@ -4,11 +4,20 @@ import { SCREEN_FILL_STYLES } from './utils';
 
 import crosshair from './crosshair.png';
 import qr_guide from './qr_guide.png';
+import dead_image from './you_are_dead.png';
 
 
 export const CrosshairImage = () => (
   <img
     src={crosshair}
+    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
+  />
+);
+
+
+export const DeadImage = () => (
+  <img
+    src={dead_image}
     style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
   />
 );
