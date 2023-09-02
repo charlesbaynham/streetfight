@@ -53,7 +53,7 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
-      <UserStateUpdater known_hash={0} />
+      <UserStateUpdater known_hash={0} callback={(d) => { console.log(`callback ${d}`) }} />
 
       <button onClick={handle.enter}>
         Fullscreen

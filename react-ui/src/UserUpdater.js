@@ -6,78 +6,88 @@
  * via the passed callback.
  */
 
-import { Component } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { makeAPIURL } from './utils'
 
-class UserStateUpdater extends Component {
 
-    constructor() {
-        super()
+export default function UserStateUpdater({ known_hash, callback }) {
+    const [updateBumper, setUpdateBumper] = useState(0);
 
-        this.timeoutID = null
-        this.cancelled = false
-        this.checkAndReschedule = this.checkAndReschedule.bind(this)
-    }
+    const errorCheckRate = 1000
+    const successCheckRate = 500
 
-    componentDidMount() {
-        this.checkAndReschedule()
-    }
-
-    componentWillUnmount() {
-        this.stopPolling()
-    }
-
-
-    checkAndReschedule() {
-        const errorCheckRate = 1000
-        const successCheckRate = 500
-
+    const checkAndBump = useCallback(() => {
+        console.log("checkAndBump")
         const successHandler = r => {
-            console.log(`New hash received - cancelled=${this.cancelled}`)
 
-            if (!this.cancelled) {
-                this.timeoutID = setTimeout(this.checkAndReschedule, (r.ok ? successCheckRate : errorCheckRate))
+            setTimeout(() => {
+                setUpdateBumper(updateBumper + 1);
+            }, (r.ok ? successCheckRate : errorCheckRate))
 
-                console.log(`New hash received - rescheduling check (${this.timeoutID})`)
-
-                if (!r.ok) {
-                    // Unknown error: log it to console
-                    console.log("Fetch state failed with error " + r.status);
-                    console.log(r);
-                    return;
-                }
-
-                // Otherwise, process the json and update the state if required
-                return r.json().then(new_hash => {
-                    if (new_hash !== this.props.known_hash) {
-                        this.props.callback(new_hash)
-                    }
-                })
+            if (!r.ok) {
+                // Unknown error: log it to console
+                console.log("Fetch state failed with error " + r.status);
+                console.log(r);
+                return;
             }
+
+            // Otherwise, process the json and update the state if required
+            return r.json().then(new_hash => {
+                if (new_hash !== known_hash) {
+                    callback(new_hash)
+                }
+            })
         }
 
         const failureHandler = r => {
-            if (!this.cancelled) {
-                this.timeoutID = setTimeout(this.checkAndReschedule, errorCheckRate)
-                console.log(`Remounted updater after error with id ${this.timeoutID} after failure`)
-            }
+            setTimeout(() => {
+                setUpdateBumper(updateBumper + 1);
+            }, errorCheckRate)
+
+            console.log(`Remounted updater after error after failure`)
         }
 
-        const url = makeAPIURL("get_hash", { known_hash: this.props.known_hash })
+        const url = makeAPIURL("get_hash", { known_hash: known_hash })
 
-        return fetch(url).then(successHandler, failureHandler)
-    }
+        fetch(url).then(successHandler, failureHandler)
+    }, [known_hash, callback, updateBumper, setUpdateBumper]);
 
-    stopPolling() {
-        console.log(`Unmounting updater with id ${this.timeoutID}`)
-        clearTimeout(this.timeoutID)
-        this.cancelled = true
-    }
+    useEffect(checkAndBump, [updateBumper]);
 
-    render() {
-        return null
-    }
+    return null;
 }
 
 
-export default UserStateUpdater;
+
+// class UserStateUpdater extends Component {
+
+//     constructor() {
+//         super()
+
+//         this.timeoutID = null
+//         this.cancelled = false
+//         this.checkAndReschedule = this.checkAndReschedule.bind(this)
+//     }
+
+//     componentDidMount() {
+//         console.log("componentDidMount")
+//         this.checkAndReschedule()
+//     }
+
+//     componentWillUnmount() {
+//         console.log("componentWillUnmount")
+//         this.stopPolling()
+//     }
+
+
+
+//     stopPolling() {
+//         console.log(`Unmounting updater with id ${this.timeoutID}`)
+//         clearTimeout(this.timeoutID)
+//         this.cancelled = true
+//     }
+
+//     render() {
+//         return null
+//     }
+// }
