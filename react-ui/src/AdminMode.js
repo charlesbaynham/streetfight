@@ -42,16 +42,9 @@ function GamesView({ games }) {
     return games.map((game, idx_game) => (
         <div key={idx_game}>
             <h2>Game {game.id}</h2>
-            <h3>Users</h3>
-            {
-                game.users.map((user, idx_user) => (
-                    <p key={idx_user}>User: {user.id} "{user.name}"</p>
-                ))
-            }
             <h3>Teams</h3>
             <ul>
                 {
-
                     game.teams.map((team, idx_team) => (
                         <li key={idx_team}><em>{team.name}</em></li>
                     ))
