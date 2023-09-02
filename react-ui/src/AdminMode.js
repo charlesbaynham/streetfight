@@ -1,15 +1,43 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { sendAPIRequest } from './utils';
 
+function GameView({ game }) {
+    return <>
+        <h2>Game {game.id}</h2>
 
-function GamesView({ games }) {
-    const [allUsers, setAllUsers] = useState([]);
-    useEffect(() => {
-        sendAPIRequest("get_users", {}, "GET", (users) => { setAllUsers(users) })
-    }, [])
+        <h3>Teams</h3>
 
-    const newTeamInput = useRef(null);
+        <TeamsView teams={game.teams} />
 
+        <h3>Controls</h3>
+
+        <CreateNewTeam game_id={game} />
+        <br />
+        <AddUserToTeam teams={game.teams} />
+    </>
+}
+
+function UserControls({ user }) {
+    return <li>{user.name}</li>
+}
+
+function TeamsView({ teams }) {
+    return teams.map((team, idx_team) => (
+        <div key={idx_team}>
+            <h4>{team.name}</h4>
+
+            <ul>
+                {
+                    team.users.map(
+                        (user, idx_user) => <UserControls key={idx_user} user={user} />
+                    )
+                }
+            </ul>
+        </div>
+    ));
+}
+
+function CreateNewTeam({ game_id }) {
     const addNewTeam = useCallback((game_id, team_name) => {
         sendAPIRequest("admin_create_team", {
             game_id: game_id,
@@ -17,6 +45,17 @@ function GamesView({ games }) {
         }, "POST")
     }, [])
 
+    const newTeamInput = useRef(null);
+
+    return <>
+        <input ref={newTeamInput}></input>
+        <button onClick={() => { addNewTeam(game_id, newTeamInput.current.value) }}>Add new team</button>
+    </>
+
+}
+
+
+function AddUserToTeam({ teams }) {
     const addUserToTeam = useCallback((user_id, team_id) => {
         sendAPIRequest("admin_add_user_to_team", {
             user_id: user_id,
@@ -24,67 +63,47 @@ function GamesView({ games }) {
         }, "POST")
     }, [])
 
+    const [allUsers, setAllUsers] = useState([]);
+
     const ref_add_user_to_team_team = useRef(null);
     const ref_add_user_to_team_user = useRef(null);
 
+    useEffect(() => {
+        sendAPIRequest("get_users", {}, "GET", (users) => { setAllUsers(users) })
+    }, [])
 
+    return <>
+        <label for="user">Add user</label>
+        <select name="user" id="user_dropdown" ref={ref_add_user_to_team_user}>
+            {
+                allUsers.map((user, idx_user) => (
+                    <option key={idx_user} value={user.id}>{
+                        user.name ? user.name : user.id
+                    }</option>
+                ))
+            }
+        </select>
+        <label for="team">to team</label>
+        <select name="team" id="team_dropdown" ref={ref_add_user_to_team_team}>
+            {
+                teams.map((team, idx_team) => (
+                    <option key={idx_team} value={team.id}>{team.name}</option>
+                ))
+            }
+        </select>
+        <button onClick={() => {
+            addUserToTeam(
+                ref_add_user_to_team_user.current.value,
+                ref_add_user_to_team_team.current.value
+            );
+        }}>Submit</button>
+    </>
+}
+
+function AllGamesView({ games }) {
     return games.map((game, idx_game) => (
         <div key={idx_game}>
-            <h2>Game {game.id}</h2>
-
-            {
-                game.teams.map((team, idx_team) => {
-
-                    const list_of_users = team.users.map(
-                        (user, idx_user) => (
-                            <li key={idx_user}>{user.name}</li>
-                        ));
-
-                    return <div key={idx_team}>
-                        <h3>Team: <em>{team.name}</em></h3>
-
-                        <ul>
-                            {list_of_users}
-                        </ul>
-                    </div>
-                }
-                )
-            }
-
-            {
-                <>
-                    <input ref={newTeamInput}></input>
-                    <button onClick={() => { addNewTeam(game.id, newTeamInput.current.value) }}>Add new team</button>
-                </>
-            }
-
-            <h3>Controls</h3>
-            <label for="user">Add user</label>
-            <select name="user" id="user_dropdown" ref={ref_add_user_to_team_user}>
-                {
-
-                    allUsers.map((user, idx_user) => (
-                        <option key={idx_user} value={user.id}>{
-                            user.name ? user.name : user.id
-                        }</option>
-                    ))
-                }
-            </select>
-            <label for="team">to team</label>
-            <select name="team" id="team_dropdown" ref={ref_add_user_to_team_team}>
-                {
-
-                    game.teams.map((team, idx_team) => (
-                        <option key={idx_team} value={team.id}>{team.name}</option>
-                    ))
-                }
-            </select>
-            <button onClick={() => {
-                addUserToTeam(
-                    ref_add_user_to_team_user.current.value,
-                    ref_add_user_to_team_team.current.value
-                );
-            }}>Submit</button>
+            <GameView game={game} />
         </div >
     ))
 }
@@ -108,7 +127,7 @@ export default function AdminMode() {
 
             <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
-            <GamesView games={games} />
+            <AllGamesView games={games} />
 
 
         </>
