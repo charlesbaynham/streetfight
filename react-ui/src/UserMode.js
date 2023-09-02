@@ -47,6 +47,8 @@ export default function UserMode() {
   </>;
 
   const isAlive = userState ? (userState.hit_points > 0) : false;
+  const isInTeam = userState ? ("team_id" in userState) : false;
+  const hasBullets = userState ? (userState.num_bullets > 0) : false;
 
   const playingView = userState ? (
     <>
@@ -65,7 +67,7 @@ export default function UserMode() {
           <DeadImage />
         }
 
-        <FireButton isAlive={isAlive} onClick={
+        <FireButton buttonActive={isInTeam && isAlive && hasBullets} onClick={
           () => {
             setTriggerShot(triggerShot + 1)
           }

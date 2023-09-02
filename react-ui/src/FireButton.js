@@ -2,9 +2,9 @@
 import fireButtonImg from './firebutton.png';
 
 
-export default function FireButton({ isAlive, onClick }) {
+export default function FireButton({ buttonActive, onClick }) {
   return (
-    <button disabled={!isAlive} onClick={onClick} style={{
+    <button disabled={!buttonActive} onClick={onClick} style={{
       position: 'absolute',
       right: 0,
       bottom: 0
