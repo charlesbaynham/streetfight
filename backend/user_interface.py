@@ -153,10 +153,12 @@ class UserInterface:
     @db_scoped
     def submit_shot(self, image_base64: str):
         user = self.get_user()
-        game = user.game
+        team = user.team
 
-        if not game:
-            raise HTTPException(405, "User is not in a game yet")
+        if not team:
+            raise HTTPException(405, "User is not in a team yet")
+
+        game = team.game
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
