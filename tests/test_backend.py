@@ -40,10 +40,10 @@ def one_team(api_client):
     response_game = api_client.post("/api/admin_create_game")
 
     game_id = response_game.json()
-    game_name = "A new game"
+    team_name = "A new team"
 
     response_team = api_client.post(
-        f"/api/admin_create_team?game_id={game_id}&team_name={game_name}"
+        f"/api/admin_create_team?game_id={game_id}&team_name={team_name}"
     )
 
     print(response_team)
