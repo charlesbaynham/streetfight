@@ -1,11 +1,13 @@
-from backend.user_interface import UserInterface
-import pytest
+import os
 from uuid import UUID
-from backend.items import DecodedItem
+
+import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.items import DecodedItem
+from backend.user_interface import UserInterface
+
 # Mocking the environment variable for testing
-import os
 
 os.environ["SECRET_KEY"] = "test_secret_key"
 

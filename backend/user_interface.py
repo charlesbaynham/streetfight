@@ -1,6 +1,4 @@
-from .items import DecodedItem
 import asyncio
-
 import logging
 from functools import wraps
 from threading import RLock
@@ -13,8 +11,10 @@ from uuid import uuid4 as get_uuid
 from fastapi import HTTPException
 from sqlalchemy.ext import baked
 
+from .items import DecodedItem
 from .model import Game
-from .model import Shot, Item
+from .model import Item
+from .model import Shot
 from .model import Team
 from .model import User
 from .model import UserModel

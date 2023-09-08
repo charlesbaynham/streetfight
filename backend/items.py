@@ -1,16 +1,16 @@
-from typing import Dict
+import base64
 import crypt
-import logging
 import json
-from fastapi.exceptions import HTTPException
-from uuid import UUID
+import logging
 import os
+from typing import Dict
+from typing import Optional
+from uuid import UUID
 
 import pydantic
 from dotenv import find_dotenv
-import base64
 from dotenv import load_dotenv
-from typing import Optional
+from fastapi.exceptions import HTTPException
 
 
 logger = logging.getLogger(__name__)
