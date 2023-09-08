@@ -252,7 +252,8 @@ class UserInterface:
 
         # TODO: Check here if the user is in a team, can collect the item, etc
 
-        item.do_actions(user_id)
+        # if item.item_type == "health":
+        #     num_health_points = item.data
 
         return item.store(user_id)
 

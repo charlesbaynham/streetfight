@@ -10,9 +10,9 @@ import os
 os.environ["SECRET_KEY"] = "test_secret_key"
 
 SAMPLE_ITEM_DATA = {
-    "id": "00000000-0000-0000-0000-000000000002",
+    "id": UUID("00000000-0000-0000-0000-000000000002"),
     "item_type": "test_item",
-    "data": "test_data",
+    "data": {},
     "signature": "texQMZVWLJhHI",
     "salt": "test_salt",
 }
@@ -30,7 +30,7 @@ def test_fixture(valid_encoded_item):
 
 def test_decoded_item_from_base64(valid_encoded_item):
     item = DecodedItem.from_base64(valid_encoded_item)
-    assert item.id == UUID(SAMPLE_ITEM_DATA["id"])
+    assert item.id == SAMPLE_ITEM_DATA["id"]
     assert item.item_type == SAMPLE_ITEM_DATA["item_type"]
     assert item.data == SAMPLE_ITEM_DATA["data"]
     assert item.signature == SAMPLE_ITEM_DATA["signature"]

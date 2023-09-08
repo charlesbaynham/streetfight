@@ -1,3 +1,4 @@
+from typing import Dict
 import crypt
 import logging
 import json
@@ -26,7 +27,7 @@ class _UUIDEncoder(json.JSONEncoder):
 class DecodedItem(pydantic.BaseModel):
     id: UUID
     item_type: str
-    data: str
+    data: Dict
     signature: str
     salt: Optional[str]
 
@@ -61,6 +62,9 @@ class DecodedItem(pydantic.BaseModel):
 
         return None
 
+    def _json_data(self) -> str:
+        return json.dumps(self.data)
+
     def get_signature(self) -> str:
         load_dotenv(find_dotenv())
         secret_key = os.environ["SECRET_KEY"]
@@ -68,6 +72,6 @@ class DecodedItem(pydantic.BaseModel):
         if not self.salt:
             self.salt = crypt.mksalt()
 
-        payload = str(self.id) + self.item_type + self.data + secret_key
+        payload = str(self.id) + self.item_type + self._json_data() + secret_key
 
         return crypt.crypt(payload, salt=self.salt)
