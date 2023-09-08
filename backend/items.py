@@ -67,10 +67,10 @@ class DecodedItem(pydantic.BaseModel):
 
         logger.debug("Decoded result: %s", decoded_dict)
 
-        return cls.from_orm(decoded_dict)
+        return cls(**decoded_dict)
 
     def to_base64(self):
-        return base64.b64encode(json.dumps(self.dict()))
+        return base64.b64encode(json.dumps(self.dict()).encode("utf-8"))
 
     def validate_signature(self):
         valid_signature = self.get_signature()
