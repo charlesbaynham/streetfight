@@ -1,12 +1,14 @@
-from .user_interface import UserInterface
-
+import os
+from dotenv import load_dotenv, find_dotenv
+import pydantic
+import crypt
 
 def collect_item(encoded_item: str, user_id:UUID) -> int:
     """Add the scanned item into a user's inventory"""
     
     item = decode_item(encoded_item)
 
-    item_validation_error = item.validate()
+    item_validation_error = item.validate_signature()
     if item_validation_error:
         raise HTTPException(402, f"The scanned item is invalid - error {error}")
 
@@ -17,3 +19,30 @@ def collect_item(encoded_item: str, user_id:UUID) -> int:
     item.do_actions(user_id)
 
     return item.store(user_id)
+
+
+class DecodedItem(pydantic.BaseModel):
+
+    item_type: str
+    data: str
+    signature: str
+    salt: Optional[str]
+    
+    def validate_signature(self):
+        valid_signature = sign_item(self.item_type, self.data, self.salt)
+        if valid_signature != self.signature:
+            return "Signature mismatch"
+
+        return None
+    
+    def get_signature(self) -> str:
+
+        load_dotenv(find_dotenv())
+        secret_key = os.environ['SECRET_KEY']
+        if not self.salt:
+            self.salt = crypt.mksalt()
+
+        payload = self.item_type + self.data + secret_key
+
+        return crypt.crypt(payload, salt=self.salt)
+
