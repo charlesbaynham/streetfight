@@ -55,6 +55,7 @@ class DecodedItem(pydantic.BaseModel):
 
     def validate_signature(self):
         valid_signature = self.get_signature()
+        logger.debug("Correct sig=%s, current sig=%s", valid_signature, self.signature)
         if valid_signature != self.signature:
             return "Signature mismatch"
 

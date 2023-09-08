@@ -9,18 +9,19 @@ import os
 
 os.environ["SECRET_KEY"] = "test_secret_key"
 
+SAMPLE_ITEM_DATA = {
+    "id": "00000000-0000-0000-0000-000000000002",
+    "item_type": "test_item",
+    "data": "test_data",
+    "signature": "texQMZVWLJhHI",
+    "salt": "test_salt",
+}
+
 
 @pytest.fixture
 def valid_encoded_item():
     # Create a valid base64-encoded item
-    item_data = {
-        "id": "00000000-0000-0000-0000-000000000002",
-        "item_type": "test_item",
-        "data": "test_data",
-        "signature": "tevQXfO6j64ng",
-        "salt": "test_salt",
-    }
-    return DecodedItem(**item_data).to_base64()
+    return DecodedItem(**SAMPLE_ITEM_DATA).to_base64()
 
 
 def test_fixture(valid_encoded_item):
@@ -29,10 +30,11 @@ def test_fixture(valid_encoded_item):
 
 def test_decoded_item_from_base64(valid_encoded_item):
     item = DecodedItem.from_base64(valid_encoded_item)
-    assert item.item_type == "test_item"
-    assert item.data == "test_data"
-    assert item.signature == "tevQXfO6j64ng"
-    assert item.salt == "test_salt"
+    assert item.id == UUID(SAMPLE_ITEM_DATA["id"])
+    assert item.item_type == SAMPLE_ITEM_DATA["item_type"]
+    assert item.data == SAMPLE_ITEM_DATA["data"]
+    assert item.signature == SAMPLE_ITEM_DATA["signature"]
+    assert item.salt == SAMPLE_ITEM_DATA["salt"]
 
 
 def test_decoded_item_to_base64(valid_encoded_item):
