@@ -148,7 +148,7 @@ class Item(Base):
 
     __tablename__ = "items"
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
     item_type = Column(String)  # TODO: Convert this to an enum?
@@ -167,7 +167,7 @@ class Item(Base):
 
 
 class ItemModel(pydantic.BaseModel):
-    id: int
+    id: UUID
     item_type: str
     data: str
     game_id: UUID

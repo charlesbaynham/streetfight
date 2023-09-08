@@ -10,12 +10,21 @@ from dotenv import find_dotenv
 import base64
 from dotenv import load_dotenv
 from typing import Optional
-from typing import List
+
 
 logger = logging.getLogger(__name__)
 
 
+class _UUIDEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, UUID):
+            # if the obj is uuid, we simply return the value of uuid
+            return obj.hex
+        return json.JSONEncoder.default(self, obj)
+
+
 class DecodedItem(pydantic.BaseModel):
+    id: UUID
     item_type: str
     data: str
     signature: str
@@ -41,7 +50,8 @@ class DecodedItem(pydantic.BaseModel):
         return cls(**decoded_dict)
 
     def to_base64(self):
-        return base64.b64encode(json.dumps(self.dict()).encode("utf-8")).decode("utf-8")
+        json_encoded_obj = json.dumps(self.dict(), cls=_UUIDEncoder)
+        return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
     def validate_signature(self):
         valid_signature = self.get_signature()
@@ -57,6 +67,6 @@ class DecodedItem(pydantic.BaseModel):
         if not self.salt:
             self.salt = crypt.mksalt()
 
-        payload = self.item_type + self.data + secret_key
+        payload = str(self.id) + self.item_type + self.data + secret_key
 
         return crypt.crypt(payload, salt=self.salt)

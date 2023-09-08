@@ -14,6 +14,7 @@ os.environ["SECRET_KEY"] = "test_secret_key"
 def valid_encoded_item():
     # Create a valid base64-encoded item
     item_data = {
+        "id": "00000000-0000-0000-0000-000000000002",
         "item_type": "test_item",
         "data": "test_data",
         "signature": "tevQXfO6j64ng",

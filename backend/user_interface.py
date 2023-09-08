@@ -1,6 +1,6 @@
 from .items import DecodedItem
 import asyncio
-import base64
+
 import logging
 from functools import wraps
 from threading import RLock
@@ -14,7 +14,7 @@ from fastapi import HTTPException
 from sqlalchemy.ext import baked
 
 from .model import Game
-from .model import Shot
+from .model import Shot, Item
 from .model import Team
 from .model import User
 from .model import UserModel
@@ -155,6 +155,10 @@ class UserInterface:
         return UserModel.from_orm(u) if u else None
 
     @db_scoped
+    def _get_item_from_database(self, item_id: int) -> Item:
+        return self._session.query(Item).filter_by(id=item_id).first()
+
+    @db_scoped
     def set_name(self, new_name: str):
         self.get_user().name = new_name
 
@@ -243,7 +247,7 @@ class UserInterface:
                 402, f"The scanned item is invalid - error {item_validation_error}"
             )
 
-        if item.is_in_database():
+        if self._get_item_from_database(item.id):
             raise HTTPException(403, "Item has already been collected")
 
         # TODO: Check here if the user is in a team, can collect the item, etc
