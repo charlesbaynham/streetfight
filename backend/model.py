@@ -140,6 +140,7 @@ class User(Base):
         self.update_tag = new
         self.last_seen = datetime.datetime.now()
 
+
 class Item(Base):
     """
     An item that has been collected by a user. Items are stored in the real world (probably as signed QR codes): these can be validated and, if validated, are stored in this table to prevent duplicate pickups.
@@ -149,7 +150,7 @@ class Item(Base):
 
     id = Column(Integer, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
-    
+
     item_type = Column(String)  # TODO: Convert this to an enum?
     data = Column(String)
     "Arbitary data for objects of this type. Might be used for special, per-item code"
@@ -163,6 +164,7 @@ class Item(Base):
     user = relationship(
         "User", lazy="joined", foreign_keys=user_id, back_populates="items"
     )
+
 
 class ItemModel(pydantic.BaseModel):
     id: int
