@@ -1,3 +1,4 @@
+from .items import DecodedItem
 import asyncio
 import base64
 import logging
@@ -229,6 +230,27 @@ class UserInterface:
         ret = update_tag if update_tag else 0
         logger.info(f"Current hash {ret}, user {self.user_id}")
         return ret
+
+    @db_scoped
+    def collect_item(self, encoded_item: str, user_id: UUID) -> int:
+        """Add the scanned item into a user's inventory"""
+
+        item = DecodedItem.from_base64(encoded_item)
+
+        item_validation_error = item.validate_signature()
+        if item_validation_error:
+            raise HTTPException(
+                402, f"The scanned item is invalid - error {item_validation_error}"
+            )
+
+        if item.is_in_database():
+            raise HTTPException(403, "Item has already been collected")
+
+        # TODO: Check here if the user is in a team, can collect the item, etc
+
+        item.do_actions(user_id)
+
+        return item.store(user_id)
 
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """
