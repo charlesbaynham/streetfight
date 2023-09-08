@@ -54,25 +54,20 @@ def test_invalid_signature(valid_encoded_item):
     assert item.validate_signature() == "Signature mismatch"
 
 
-def test_collect_item_valid(valid_encoded_item):
-    user_id = UUID("00000000-0000-0000-0000-000000000001")
-    result = UserInterface(user_id).collect_item(valid_encoded_item, user_id)
-    assert isinstance(result, int)
+def test_collect_item_valid(valid_encoded_item, user_in_team):
+    UserInterface(user_in_team).collect_item(valid_encoded_item)
 
 
-def test_collect_item_invalid_signature(valid_encoded_item):
-    user_id = UUID("00000000-0000-0000-0000-000000000001")
+def test_collect_item_invalid_signature(valid_encoded_item, user_in_team):
     item = DecodedItem.from_base64(valid_encoded_item)
     item.signature = "invalid_signature"
     invalid_encoded_item = item.to_base64()
 
     with pytest.raises(HTTPException, match="The scanned item is invalid"):
-        UserInterface(user_id).collect_item(invalid_encoded_item, user_id)
+        UserInterface(user_in_team).collect_item(invalid_encoded_item)
 
 
-def test_collect_item_duplicate_item(valid_encoded_item, monkeypatch):
-    user_id = UUID("00000000-0000-0000-0000-000000000001")
-
+def test_collect_item_duplicate_item(valid_encoded_item, monkeypatch, user_in_team):
     # Mock the is_in_database() method to return True (duplicate item)
     def mock_is_in_database():
         return True
@@ -80,4 +75,4 @@ def test_collect_item_duplicate_item(valid_encoded_item, monkeypatch):
     monkeypatch.setattr(DecodedItem, "is_in_database", mock_is_in_database)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
-        UserInterface(user_id).collect_item(valid_encoded_item, user_id)
+        UserInterface(user_in_team).collect_item(valid_encoded_item)

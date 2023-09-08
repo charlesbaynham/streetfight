@@ -62,7 +62,7 @@ class DecodedItem(pydantic.BaseModel):
 
         return None
 
-    def _json_data(self) -> str:
+    def data_as_json(self) -> str:
         return json.dumps(self.data)
 
     def get_signature(self) -> str:
@@ -72,6 +72,6 @@ class DecodedItem(pydantic.BaseModel):
         if not self.salt:
             self.salt = crypt.mksalt()
 
-        payload = str(self.id) + self.item_type + self._json_data() + secret_key
+        payload = str(self.id) + self.item_type + self.data_as_json() + secret_key
 
         return crypt.crypt(payload, salt=self.salt)

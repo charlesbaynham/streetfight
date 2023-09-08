@@ -236,7 +236,7 @@ class UserInterface:
         return ret
 
     @db_scoped
-    def collect_item(self, encoded_item: str, user_id: UUID) -> int:
+    def collect_item(self, encoded_item: str) -> None:
         """Add the scanned item into a user's inventory"""
 
         item = DecodedItem.from_base64(encoded_item)
@@ -250,12 +250,39 @@ class UserInterface:
         if self._get_item_from_database(item.id):
             raise HTTPException(403, "Item has already been collected")
 
-        # TODO: Check here if the user is in a team, can collect the item, etc
+        user = self.get_user()
 
-        # if item.item_type == "health":
-        #     num_health_points = item.data
+        if user.team is None:
+            raise HTTPException(
+                403,
+                "Cannot collect item, you are not in a game. How did you even get here?",
+            )
 
-        return item.store(user_id)
+        if item.item_type == "armour":
+            if user.hit_points <= 0:
+                raise HTTPException(403, "Cannot collect armour, you are dead!")
+
+            self.award_HP(item.data["num"])
+        elif item.item_type == "medpack":
+            if user.hit_points >= 0:
+                raise HTTPException(403, "Medpacks can only be used on dead players")
+
+            self.award_HP(1 - user.hit_points)
+        elif item.item_type == "ammo":
+            if user.hit_points <= 0:
+                raise HTTPException(403, "Cannot collect ammo, you are dead!")
+
+            self.award_ammo(item.data["num"])
+
+        self._session.add(
+            Item(
+                id=item.id,
+                item_type=item.item_type,
+                data=item.data_as_json(),
+                user=user,
+                game=user.team.game,
+            )
+        )
 
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """

@@ -270,3 +270,14 @@ def one_team(team_factory):
 @pytest.fixture
 def one_game(game_factory):
     return game_factory()
+
+
+@pytest.fixture
+def user_in_team(team_factory, user_factory):
+    from backend.user_interface import UserInterface
+
+    team_id = team_factory()
+    user_id = user_factory()
+    UserInterface(user_id).join_team(team_id)
+
+    return user_id
