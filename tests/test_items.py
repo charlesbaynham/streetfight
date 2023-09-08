@@ -14,6 +14,16 @@ def test_cannot_collect_invalid_item():
     raise NotImplementedError
 
 @pytest.mark.xfail
+def test_cannot_collect_item_twice():
+    raise NotImplementedError
+
+@pytest.mark.xfail
+def test_can_generate_valid_item():
+    raise NotImplementedError
+
+
+
+@pytest.mark.xfail
 def test_collecting_armour_when_alive():
     raise NotImplementedError
 

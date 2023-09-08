@@ -164,6 +164,17 @@ class Item(Base):
         "User", lazy="joined", foreign_keys=user_id, back_populates="items"
     )
 
+class ItemModel(pydantic.BaseModel):
+    id: int
+    item_type: str
+    data: str
+    game_id: UUID
+    user_id: UUID
+
+    class Config:
+        orm_mode = True
+        extra = "forbid"
+
 
 class GameModel(pydantic.BaseModel):
     id: UUID
