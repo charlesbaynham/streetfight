@@ -9,6 +9,7 @@ Goals
     - [x] Default teams for setup
     - [x] Admin interface
     - [ ] QR code interface?
+    - [ ] Users should not have access to the camera interface until they have been added
 - [x]: User interfaces should update without reloads
     - [x] Long-poll for user hash?
     - [x] Changes from AdminInterface should bump users where required

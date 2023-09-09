@@ -83,7 +83,7 @@ function CreateNewTeam({ game_id }) {
 function AddUserToTeam({ teams }) {
     const addUserToTeam = useCallback((user_id, team_id) => {
         sendAPIRequest("admin_add_user_to_team", {
-            item_type: user_id,
+            user_id: user_id,
             team_id: team_id,
         }, "POST")
     }, [])
