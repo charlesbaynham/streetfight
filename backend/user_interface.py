@@ -273,6 +273,8 @@ class UserInterface:
                 raise HTTPException(403, "Cannot collect ammo, you are dead!")
 
             self.award_ammo(item.data["num"])
+        else:
+            raise HTTPException(404, "Unknown item type")
 
         self._session.add(
             Item(

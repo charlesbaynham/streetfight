@@ -10,10 +10,11 @@ from uuid import UUID
 import pydantic
 from dotenv import find_dotenv
 from dotenv import load_dotenv
-from fastapi.exceptions import HTTPException
 
 
 logger = logging.getLogger(__name__)
+
+load_dotenv(find_dotenv())
 
 
 class _UUIDEncoder(json.JSONEncoder):
@@ -66,7 +67,6 @@ class DecodedItem(pydantic.BaseModel):
         return json.dumps(self.data)
 
     def get_signature(self) -> str:
-        load_dotenv(find_dotenv())
         secret_key = os.environ["SECRET_KEY"]
 
         if not self.salt:
@@ -74,4 +74,10 @@ class DecodedItem(pydantic.BaseModel):
 
         payload = str(self.id) + self.item_type + self.data_as_json() + secret_key
 
-        return crypt.crypt(payload, salt=self.salt)
+        
+
+        hash = crypt.crypt(payload, salt=self.salt)
+
+        logger.debug("Hash of payload %s, salt=%s is %s", payload, self.salt, hash)
+
+        return hash
