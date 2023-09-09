@@ -1,5 +1,5 @@
 import base64
-import crypt
+import hashlib
 import json
 import logging
 import os
@@ -69,15 +69,33 @@ class DecodedItem(pydantic.BaseModel):
     def get_signature(self) -> str:
         secret_key = os.environ["SECRET_KEY"]
 
-        if not self.salt:
-            self.salt = crypt.mksalt()
-
+        # Input password to be hashed
         payload = str(self.id) + self.item_type + self.data_as_json() + secret_key
 
-        
+        # Generate a random salt
+        if not self.salt:
+            self.salt = os.urandom(16).hex()
 
-        hash = crypt.crypt(payload, salt=self.salt)
+        # Parameters for scrypt (adjust these as needed)
+        n = 16384  # CPU/memory cost factor
+        r = 8  # Block size
+        p = 1  # Parallelization factor
 
-        logger.debug("Hash of payload %s, salt=%s is %s", payload, self.salt, hash)
+        # Hash the password using scrypt
+        hashed_payload = hashlib.scrypt(
+            payload.encode("utf-8"),
+            salt=self.salt.encode("utf-8"),
+            n=n,
+            r=r,
+            p=p,
+            dklen=64,
+        )
 
-        return hash
+        # Convert the hashed password to hexadecimal representation
+        hashed_password_hex = hashed_payload.hex()
+
+        logger.debug(
+            "Hash of payload %s, salt=%s is %s", payload, self.salt, hashed_password_hex
+        )
+
+        return hashed_password_hex

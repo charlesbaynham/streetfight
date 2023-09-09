@@ -17,8 +17,8 @@ os.environ["SECRET_KEY"] = "test_secret_key"
 SAMPLE_ITEM_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "item_type": "armour",
-    "data": {"num":1},
-    "signature": "texQMZVWLJhHI",
+    "data": {"num": 1},
+    "signature": "1ffe1639435c5cb1e5280d3b56a768ef55ed9c747b0a3e08d933a68e37e7d3fc47b84bbe67e4d37f21a1f440e523f960e7788b8defa814cf48e3699cdaffd4d3",
     "salt": "test_salt",
 }
 
@@ -52,6 +52,7 @@ def test_valid_signature(valid_encoded_item):
     item = DecodedItem.from_base64(valid_encoded_item)
     assert item.validate_signature() is None
 
+
 def test_signature_changes(valid_encoded_item):
     item = DecodedItem.from_base64(valid_encoded_item)
     assert item.validate_signature() is None
@@ -78,22 +79,18 @@ def test_collect_item_invalid_signature(valid_encoded_item, user_in_team):
         UserInterface(user_in_team).collect_item(invalid_encoded_item)
 
 
-def test_collect_item_duplicate_item(valid_encoded_item,  user_in_team):
+def test_collect_item_duplicate_item(valid_encoded_item, user_in_team):
     UserInterface(user_in_team).collect_item(valid_encoded_item)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
         UserInterface(user_in_team).collect_item(valid_encoded_item)
 
 
-
-
-
-
 # def test_can_generate_valid_item():
 #     raise NotImplementedError
 
 
-def test_collecting_armour_when_alive(valid_encoded_item, user_in_team): 
+def test_collecting_armour_when_alive(valid_encoded_item, user_in_team):
     UserInterface(user_in_team).collect_item(valid_encoded_item)
 
 
