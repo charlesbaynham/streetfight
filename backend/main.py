@@ -226,9 +226,15 @@ async def admin_mark_shot_checked(shot_id):
 @router.post("/admin_make_new_item")
 async def admin_make_new_item(item_type: str, item_data: Dict):
     try:
-        return AdminInterface().make_new_item(item_type, item_data)
+        encoded_item = AdminInterface().make_new_item(item_type, item_data)
     except pydantic.ValidationError as e:
         raise HTTPException(400, f"Invalid submission - {e}")
+
+    return {
+        "item_type": item_type,
+        "item_data": item_data,
+        "encoded_item": encoded_item,
+    }
 
 
 app.include_router(router, prefix="/api")

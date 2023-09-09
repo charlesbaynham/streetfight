@@ -104,7 +104,12 @@ def test_admin_make_item(api_client, user_in_team):
         json={"num": 123},
     )
 
-    encoded_item = r.json()
+    encoded_item_data = r.json()
+
+    assert encoded_item_data["item_type"] == "ammo"
+    assert encoded_item_data["item_data"]["num"] == 123
+
+    encoded_item = encoded_item_data["encoded_item"]
 
     UserInterface(user_in_team).collect_item(encoded_item)
 
