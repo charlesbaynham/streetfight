@@ -75,6 +75,7 @@ class DecodedItem(pydantic.BaseModel):
 
     def to_base64(self):
         json_encoded_obj = json.dumps(self.dict(), cls=_UUIDEncoder)
+        logger.debug("JSON encoded: %s", json_encoded_obj)
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
     def sign(self):
@@ -107,7 +108,7 @@ class DecodedItem(pydantic.BaseModel):
 
         # Generate a random salt
         if not self.salt:
-            self.salt = os.urandom(16).hex()
+            self.salt = os.urandom(8).hex()
 
         # Parameters for scrypt (adjust these as needed)
         n = 16384  # CPU/memory cost factor
