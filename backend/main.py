@@ -231,7 +231,7 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
         raise HTTPException(400, f"Invalid submission - {e}")
 
     return {
-        "item_type": item_type,
+        "itype": item_type,
         "item_data": item_data,
         "encoded_item": encoded_item,
     }

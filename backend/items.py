@@ -47,7 +47,7 @@ ITEM_TYPE_VALIDATORS = {
 
 class DecodedItem(pydantic.BaseModel):
     id: UUID
-    item_type: ItemType
+    itype: ItemType
     data: Dict
     sig: Optional[str]
     salt: Optional[str]
@@ -104,7 +104,7 @@ class DecodedItem(pydantic.BaseModel):
         secret_key = os.environ["SECRET_KEY"]
 
         # Input password to be hashed
-        payload = str(self.id) + self.item_type + self.data_as_json() + secret_key
+        payload = str(self.id) + self.itype + self.data_as_json() + secret_key
 
         # Generate a random salt
         if not self.salt:
@@ -136,10 +136,10 @@ class DecodedItem(pydantic.BaseModel):
 
     @pydantic.validator("data")
     def parse_item_data(cls, v, values):
-        if "item_type" not in values:
+        if "itype" not in values:
             raise pydantic.ValidationError
 
-        item_type: ItemType = values["item_type"]
+        item_type: ItemType = values["itype"]
 
         ITEM_TYPE_VALIDATORS[item_type](**v)
 

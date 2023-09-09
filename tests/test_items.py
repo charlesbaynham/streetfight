@@ -14,7 +14,7 @@ os.environ["SECRET_KEY"] = "test_secret_key"
 
 SAMPLE_SIGNED_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
-    "item_type": "armour",
+    "itype": "armour",
     "data": {"num": 1},
     "sig": "1ffe1639435c5cb1e5280d3b56a768ef",
     "salt": "test_salt",
@@ -23,19 +23,19 @@ SAMPLE_SIGNED_ARMOUR_DATA = {
 
 SAMPLE_MEDPACK_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
-    "item_type": "medpack",
+    "itype": "medpack",
     "data": {},
 }
 
 SAMPLE_AMMO_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
-    "item_type": "ammo",
+    "itype": "ammo",
     "data": {"num": 1},
 }
 
 SAMPLE_INVALID_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
-    "item_type": "random",
+    "itype": "random",
     "data": {"num": 1},
 }
 
@@ -66,7 +66,7 @@ def test_decoded_item_from_base64(valid_encoded_signed_armour):
     print(f"Decoded: {item.dict()}")
 
     assert item.id == SAMPLE_SIGNED_ARMOUR_DATA["id"]
-    assert item.item_type == SAMPLE_SIGNED_ARMOUR_DATA["item_type"]
+    assert item.itype == SAMPLE_SIGNED_ARMOUR_DATA["itype"]
     assert item.data == SAMPLE_SIGNED_ARMOUR_DATA["data"]
     assert item.sig == SAMPLE_SIGNED_ARMOUR_DATA["sig"]
     assert item.salt == SAMPLE_SIGNED_ARMOUR_DATA["salt"]
@@ -86,7 +86,7 @@ def test_valid_signature(valid_encoded_signed_armour):
 def test_signature_changes(valid_encoded_signed_armour):
     item = DecodedItem.from_base64(valid_encoded_signed_armour)
     assert item.validate_signature() is None
-    item.item_type = "armour1"
+    item.itype = "armour1"
     assert item.validate_signature() is not None
 
 

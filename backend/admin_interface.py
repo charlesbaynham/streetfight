@@ -122,7 +122,7 @@ class AdminInterface:
                 "Invalid item type. Valid choices are %s" % [t.value for t in ItemType],
             )
 
-        item = DecodedItem(id=get_uuid(), item_type=item_type, data=item_data)
+        item = DecodedItem(id=get_uuid(), itype=item_type, data=item_data)
         item.sign()
 
         encoded_item = item.to_base64()

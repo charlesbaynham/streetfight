@@ -5,7 +5,7 @@ import QRCode from "react-qr-code";
 import { sendAPIRequest } from './utils';
 
 function ItemDisplay({ item }) {
-    const item_type = item["item_type"];
+    const item_type = item["itype"];
     const item_data = item["item_data"];
     const encoded_item = item["encoded_item"];
 

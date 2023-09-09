@@ -258,17 +258,17 @@ class UserInterface:
                 "Cannot collect item, you are not in a game. How did you even get here?",
             )
 
-        if item.item_type == "armour":
+        if item.itype == "armour":
             if user.hit_points <= 0:
                 raise HTTPException(403, "Cannot collect armour, you are dead!")
 
             self.award_HP(item.data["num"])
-        elif item.item_type == "medpack":
+        elif item.itype == "medpack":
             if user.hit_points > 0:
                 raise HTTPException(403, "Medpacks can only be used on dead players")
 
             self.award_HP(1 - user.hit_points)
-        elif item.item_type == "ammo":
+        elif item.itype == "ammo":
             if user.hit_points <= 0:
                 raise HTTPException(403, "Cannot collect ammo, you are dead!")
 
@@ -279,7 +279,7 @@ class UserInterface:
         self._session.add(
             Item(
                 id=item.id,
-                item_type=item.item_type,
+                item_type=item.itype,
                 data=item.data_as_json(),
                 user=user,
                 game=user.team.game,
