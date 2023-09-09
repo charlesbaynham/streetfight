@@ -55,6 +55,12 @@ class DecodedItem(pydantic.BaseModel):
         json_encoded_obj = json.dumps(self.dict(), cls=_UUIDEncoder)
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
+    def sign(self):
+        self.signature = self.get_signature()
+        logger.debug("Signed item %s with signature %s", self, self.signature)
+
+        return self
+
     def validate_signature(self):
         if self.signature is None:
             return "Item not signed"

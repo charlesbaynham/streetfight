@@ -264,7 +264,7 @@ class UserInterface:
 
             self.award_HP(item.data["num"])
         elif item.item_type == "medpack":
-            if user.hit_points >= 0:
+            if user.hit_points > 0:
                 raise HTTPException(403, "Medpacks can only be used on dead players")
 
             self.award_HP(1 - user.hit_points)

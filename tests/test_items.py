@@ -29,9 +29,9 @@ SAMPLE_MEDPACK_DATA = {
     "data": {},
 }
 
-SAMPLE_HEALTH_DATA = {
+SAMPLE_AMMO_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
-    "item_type": "health",
+    "item_type": "ammo",
     "data": {"num": 1},
 }
 
@@ -44,8 +44,17 @@ SAMPLE_INVALID_DATA = {
 
 @pytest.fixture
 def valid_encoded_armour():
-    # Create a valid base64-encoded item
     return DecodedItem(**SAMPLE_SIGNED_ARMOUR_DATA).to_base64()
+
+
+@pytest.fixture
+def valid_encoded_ammo():
+    return DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+
+
+@pytest.fixture
+def valid_encoded_medpack():
+    return DecodedItem(**SAMPLE_MEDPACK_DATA).sign().to_base64()
 
 
 def test_fixture(valid_encoded_armour):
@@ -91,6 +100,16 @@ def test_no_signature(valid_encoded_armour):
     assert item.validate_signature() == "Item not signed"
 
 
+def test_can_sign(valid_encoded_armour):
+    item = DecodedItem.from_base64(valid_encoded_armour)
+    item.signature = None
+    item.salt = None
+
+    item.sign()
+
+    assert item.validate_signature() == None
+
+
 def test_collect_item_valid(valid_encoded_armour, user_in_team):
     UserInterface(user_in_team).collect_item(valid_encoded_armour)
 
@@ -112,20 +131,56 @@ def test_collect_item_duplicate_item(valid_encoded_armour, user_in_team):
 
 
 def test_can_generate_valid_item():
-    item = DecodedItem(**SAMPLE_HEALTH_DATA)
+    assert DecodedItem(**SAMPLE_AMMO_DATA).sign().validate_signature() is None
+
+
+def test_can_encode_valid_item():
+    DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+
+
+def test_can_encode_and_decode_valid_item():
+    encoded = DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+
+    decoded = DecodedItem.from_base64(encoded)
+
+    assert isinstance(encoded, str)
+
+    assert decoded.validate_signature() is None
+
+
+def test_cannnot_collect_invalid_data_but_valid_signature(user_in_team):
+    encoded_item = DecodedItem(**SAMPLE_INVALID_DATA).sign().to_base64()
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(encoded_item)
 
 
 def test_collecting_armour_when_alive(valid_encoded_armour, user_in_team):
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
     UserInterface(user_in_team).collect_item(valid_encoded_armour)
+    assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
-# def test_collecting_armour_when_dead():
-#     raise NotImplementedError
+def test_collecting_armour_when_dead(valid_encoded_armour, user_in_team):
+    UserInterface(user_in_team).award_HP(-1)
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_encoded_armour)
 
 
-# def test_collecting_ammo():
-#     raise NotImplementedError
+def test_collecting_ammo_when_alive(valid_encoded_ammo, user_in_team):
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
 
 
-# def test_collecting_revive():
-#     raise NotImplementedError
+def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_encoded_medpack)
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+
+def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
+    UserInterface(user_in_team).award_HP(-1)
+    assert UserInterface(user_in_team).get_user_model().hit_points == 0
+    UserInterface(user_in_team).collect_item(valid_encoded_medpack)
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
