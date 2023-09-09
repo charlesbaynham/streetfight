@@ -98,7 +98,7 @@ function AddUserToTeam({ teams }) {
     }, [])
 
     return <>
-        <label for="user">Add user</label>
+        <label htmlFor="user">Add user</label>
         <select name="user" id="user_dropdown" ref={ref_add_user_to_team_user}>
             {
                 allUsers.map((user, idx_user) => (
@@ -108,7 +108,7 @@ function AddUserToTeam({ teams }) {
                 ))
             }
         </select>
-        <label for="team">to team</label>
+        <label htmlFor="team">to team</label>
         <select name="team" id="team_dropdown" ref={ref_add_user_to_team_team}>
             {
                 teams.map((team, idx_team) => (
