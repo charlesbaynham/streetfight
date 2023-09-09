@@ -31,15 +31,23 @@ function CollectItemFromQueryParam() {
     if (data !== null) {
       console.log(`Collecting item with d=${data}`)
 
-      sendAPIRequest("collect_item", {}, "POST", null, {
-        data: data
-      })
-        .then((r) => {
-          console.log(r)
+      function onTimeout() {
+        sendAPIRequest("collect_item", {}, "POST", null, {
+          data: data
         })
-        .then((_) => {
-          navigate("/")
-        })
+          .then((r) => {
+            console.log(r)
+          })
+          .then((_) => {
+            navigate("/")
+          })
+      }
+      const timeoutId = setTimeout(onTimeout, 200);
+
+      return () => {
+        console.log('Cancel collection');
+        clearTimeout(timeoutId);
+      };
     }
   }, [data]);
 
