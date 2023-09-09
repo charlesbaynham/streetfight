@@ -29,7 +29,7 @@ class DecodedItem(pydantic.BaseModel):
     id: UUID
     item_type: str
     data: Dict
-    signature: str
+    signature: Optional[str]
     salt: Optional[str]
 
     @classmethod
@@ -56,8 +56,13 @@ class DecodedItem(pydantic.BaseModel):
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
     def validate_signature(self):
+        if self.signature is None:
+            return "Item not signed"
+
         valid_signature = self.get_signature()
+
         logger.debug("Correct sig=%s, current sig=%s", valid_signature, self.signature)
+
         if valid_signature != self.signature:
             return "Signature mismatch"
 
