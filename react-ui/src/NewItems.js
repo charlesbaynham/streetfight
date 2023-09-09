@@ -7,48 +7,54 @@ import { sendAPIRequest } from './utils';
 export default function NewItems() {
     const [data, setData] = useState(null);
 
-    const getItem = useCallback((item_type, item_num) => {
-        const item_data = {
-            num: item_num
+    const [selectedItemType, setSelectedItemType] = useState("ammo");
+    const [selectedItemNum, setSelectedItemNum] = useState(1);
+
+    const numDisabled = selectedItemType === "medpack";
+
+    const updateItemQR = useCallback(() => {
+        const item_data = numDisabled ? {} : {
+            num: selectedItemNum
         };
 
         const callback = (d) => {
-            console.log(`New ${item_type}/${item_num}:`)
+            console.log(`New ${selectedItemType}/${selectedItemNum}:`)
             console.log(d)
             setData(d)
         };
 
         sendAPIRequest(
             "admin_make_new_item",
-            { "item_type": item_type },
+            { "item_type": selectedItemType },
             'POST',
             callback,
             item_data
         );
-    }, [setData]);
-
-    const itemTypeRef = useRef();
-    const itemNumRef = useRef();
+    }, [setData, selectedItemNum, selectedItemType, numDisabled]);
 
     return <>
 
         <>
             <span>Type:</span>
 
-            <select ref={itemTypeRef} >
+            <select
+                value={selectedItemType}
+                onChange={(e) => { setSelectedItemType(e.target.value) }}
+            >
                 <option value="ammo">Ammo</option>
-                <option value="medkit">Medkit</option>
+                <option value="medpack">Medpack</option>
                 <option value="armour">Armour</option>
             </select>
 
             <span>Num:</span>
-            <input ref={itemNumRef} type="number" />
+            <input
+                type="number"
+                value={selectedItemNum}
+                disabled={numDisabled}
+                onChange={(e) => { setSelectedItemNum(e.target.value) }}
+            />
 
-            <button onClick={() => {
-                getItem(itemTypeRef.current.value, parseInt(itemNumRef.current.value))
-            }
-            }
-            >Generate</button>
+            <button onClick={updateItemQR}>Generate</button>
 
         </>
         <br />
