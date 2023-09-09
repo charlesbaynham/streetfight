@@ -69,12 +69,9 @@ def test_collect_item_invalid_signature(valid_encoded_item, user_in_team):
         UserInterface(user_in_team).collect_item(invalid_encoded_item)
 
 
-def test_collect_item_duplicate_item(valid_encoded_item, monkeypatch, user_in_team):
-    # Mock the is_in_database() method to return True (duplicate item)
-    def mock_is_in_database():
-        return True
-
-    monkeypatch.setattr(DecodedItem, "is_in_database", mock_is_in_database)
+def test_collect_item_duplicate_item(valid_encoded_item,  user_in_team):
+    UserInterface(user_in_team).collect_item(valid_encoded_item)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
         UserInterface(user_in_team).collect_item(valid_encoded_item)
+
