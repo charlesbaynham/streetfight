@@ -9,13 +9,24 @@ export function makeAPIURL(endpoint, query_params = null) {
     return url
 }
 
-export function sendAPIRequest(endpoint, query_params = null, method = 'GET', callback = null) {
+export function sendAPIRequest(endpoint, query_params = null, method = 'GET', callback = null, post_object = null) {
     const url = makeAPIURL(endpoint, query_params)
 
-    const requestOptions = {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-    };
+    var requestOptions;
+    if (post_object !== null) {
+        const query = JSON.stringify(post_object);
+
+        requestOptions = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: query
+        };
+    } else {
+        requestOptions = {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+        };
+    }
 
     fetch(url, requestOptions)
         .then(response => {

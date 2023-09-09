@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+
 import { sendAPIRequest } from './utils';
+import NewItems from './NewItems';
 
 function GameView({ game }) {
     return <>
@@ -81,7 +83,7 @@ function CreateNewTeam({ game_id }) {
 function AddUserToTeam({ teams }) {
     const addUserToTeam = useCallback((user_id, team_id) => {
         sendAPIRequest("admin_add_user_to_team", {
-            user_id: user_id,
+            item_type: user_id,
             team_id: team_id,
         }, "POST")
     }, [])
@@ -151,6 +153,8 @@ export default function AdminMode() {
             <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
             <AllGamesView games={games} />
+
+            <NewItems />
         </>
     );
 }
