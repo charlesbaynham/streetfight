@@ -18,6 +18,8 @@ function ItemDisplay({ item }) {
         {"num" in item_data ?
             <>Num: {item_data.num}</>
             : null}
+        <br />
+        Code: {encoded_item}
     </>
 }
 
