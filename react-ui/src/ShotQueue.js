@@ -1,5 +1,6 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { sendAPIRequest } from './utils';
 
 
 
@@ -10,15 +11,7 @@ export default function ShotQueue() {
 
     const update = useCallback(
         () => {
-            console.log("Checking for new shot")
-            const requestOptions = {
-                method: 'GET',
-                headers: { 'Content-Type': 'application/json' },
-            };
-            fetch('/api/admin_get_shots?' + new URLSearchParams({
-                limit: 1
-            }), requestOptions)
-                .then(response => response.json())
+            sendAPIRequest("admin_get_shots", { limit: 1 })
                 .then(response => {
                     setNumShots(response.numInQueue);
                     if (response.shots.length > 0) {
@@ -92,15 +85,18 @@ export default function ShotQueue() {
                 Other users:
                 <ul>
                     {
-                        shot.game.users.map((user, idx_user) => (
-                            <li key={idx_user}>
-                                {user.id}
-                                <button onClick={() => {
-                                    killUser(user.id);
-                                    dismissShot();
-                                }}>Kill</button>
-                            </li>
-                        ))
+                        shot.game.teams.map((team, idx_team) => {
+                            team.users.map((user, idx_user) => (
+                                <li key={idx_user ** 2 + idx_team ** 3}>
+                                    {user.id}
+                                    <button onClick={() => {
+                                        killUser(user.id);
+                                        dismissShot();
+                                    }}>Kill</button>
+                                </li>
+                            ))
+                        }
+                        )
                     }
                     <button onClick={() => { dismissShot() }}>Missed</button>
                 </ul>
