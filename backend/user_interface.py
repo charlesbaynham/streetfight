@@ -1,5 +1,4 @@
 import asyncio
-import base64
 import logging
 from functools import wraps
 from threading import RLock
@@ -12,7 +11,9 @@ from uuid import uuid4 as get_uuid
 from fastapi import HTTPException
 from sqlalchemy.ext import baked
 
+from .items import DecodedItem
 from .model import Game
+from .model import Item
 from .model import Shot
 from .model import Team
 from .model import User
@@ -154,6 +155,10 @@ class UserInterface:
         return UserModel.from_orm(u) if u else None
 
     @db_scoped
+    def _get_item_from_database(self, item_id: int) -> Item:
+        return self._session.query(Item).filter_by(id=item_id).first()
+
+    @db_scoped
     def set_name(self, new_name: str):
         self.get_user().name = new_name
 
@@ -229,6 +234,57 @@ class UserInterface:
         ret = update_tag if update_tag else 0
         logger.info(f"Current hash {ret}, user {self.user_id}")
         return ret
+
+    @db_scoped
+    def collect_item(self, encoded_item: str) -> None:
+        """Add the scanned item into a user's inventory"""
+
+        item = DecodedItem.from_base64(encoded_item)
+
+        item_validation_error = item.validate_signature()
+        if item_validation_error:
+            raise HTTPException(
+                402, f"The scanned item is invalid - error {item_validation_error}"
+            )
+
+        if self._get_item_from_database(item.id):
+            raise HTTPException(403, "Item has already been collected")
+
+        user = self.get_user()
+
+        if user.team is None:
+            raise HTTPException(
+                403,
+                "Cannot collect item, you are not in a game. How did you even get here?",
+            )
+
+        if item.item_type == "armour":
+            if user.hit_points <= 0:
+                raise HTTPException(403, "Cannot collect armour, you are dead!")
+
+            self.award_HP(item.data["num"])
+        elif item.item_type == "medpack":
+            if user.hit_points > 0:
+                raise HTTPException(403, "Medpacks can only be used on dead players")
+
+            self.award_HP(1 - user.hit_points)
+        elif item.item_type == "ammo":
+            if user.hit_points <= 0:
+                raise HTTPException(403, "Cannot collect ammo, you are dead!")
+
+            self.award_ammo(item.data["num"])
+        else:
+            raise HTTPException(404, "Unknown item type")
+
+        self._session.add(
+            Item(
+                id=item.id,
+                item_type=item.item_type,
+                data=item.data_as_json(),
+                user=user,
+                game=user.team.game,
+            )
+        )
 
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """

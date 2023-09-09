@@ -49,6 +49,7 @@ class Game(Base):
 
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
+    items = relationship("Item", lazy=True, back_populates="game")
 
 
 class Shot(Base):
@@ -128,6 +129,7 @@ class User(Base):
     hit_points = Column(Integer, nullable=False, default=1)
 
     shots = relationship("Shot", lazy=True, back_populates="user")
+    items = relationship("Item", lazy=True, back_populates="user")
 
     update_tag = Column(Integer(), default=random_counter_value)
 
@@ -137,6 +139,43 @@ class User(Base):
         logger.debug("Changing update_tag for user %s from %s to %s", self.id, old, new)
         self.update_tag = new
         self.last_seen = datetime.datetime.now()
+
+
+class Item(Base):
+    """
+    An item that has been collected by a user. Items are stored in the real world (probably as signed QR codes): these can be validated and, if validated, are stored in this table to prevent duplicate pickups.
+    """
+
+    __tablename__ = "items"
+
+    id = Column(UUIDType, primary_key=True, nullable=False)
+    time_created = Column(DateTime, server_default=func.now())
+
+    item_type = Column(String)  # TODO: Convert this to an enum?
+    data = Column(String)
+    "Arbitary data for objects of this type. Might be used for special, per-item code"
+
+    game_id = Column(UUIDType, ForeignKey("games.id"))
+    game = relationship(
+        "Game", lazy="joined", foreign_keys=game_id, back_populates="items"
+    )
+
+    user_id = Column(UUIDType, ForeignKey("users.id"))
+    user = relationship(
+        "User", lazy="joined", foreign_keys=user_id, back_populates="items"
+    )
+
+
+class ItemModel(pydantic.BaseModel):
+    id: UUID
+    item_type: str
+    data: str
+    game_id: UUID
+    user_id: UUID
+
+    class Config:
+        orm_mode = True
+        extra = "forbid"
 
 
 class GameModel(pydantic.BaseModel):
