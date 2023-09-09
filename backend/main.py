@@ -1,3 +1,4 @@
+import pydantic
 import logging
 from typing import Dict
 import os
@@ -224,7 +225,10 @@ async def admin_mark_shot_checked(shot_id):
 
 @router.post("/admin_make_new_item")
 async def admin_make_new_item(item_type: str, item_data: Dict):
-    return AdminInterface().make_new_item(item_type, item_data)
+    try:
+        return AdminInterface().make_new_item(item_type, item_data)
+    except pydantic.ValidationError as e:
+        raise HTTPException(400, f"Invalid submission - {e}")
 
 
 app.include_router(router, prefix="/api")
