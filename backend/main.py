@@ -121,17 +121,12 @@ async def join_game(
     return UserInterface(user_id).join_game(game_id)
 
 
-class _EncodedItem(BaseModel):
-    data: str
-
-
 @router.post("/collect_item")
 async def collect_item(
-    encoded_item: _EncodedItem,
+    d: str,
     user_id=Depends(get_user_id),
 ):
-
-    return UserInterface(user_id).collect_item(encoded_item.data)
+    return UserInterface(user_id).collect_item(d)
 
 
 @router.get("/get_hash")

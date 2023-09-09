@@ -202,8 +202,7 @@ def test_user_collect_item(api_client, team_factory):
     assert UserInterface(user_id).get_user_model().num_bullets == 0
 
     r = api_client.post(
-        "/api/collect_item",
-        json={"data": valid_encoded_ammo},
+        f"/api/collect_item?d={valid_encoded_ammo}",
     )
 
     print(r.json())
