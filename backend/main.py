@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -206,6 +207,10 @@ async def admin_give_ammo(user_id, num: int = 1):
 @router.post("/admin_mark_shot_checked")
 async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
+
+@router.post("/admin_make_new_item")
+async def admin_make_new_item(item_type:str, item_data:Dict):
+    return AdminInterface().make_new_item(item_type, item_data)
 
 
 app.include_router(router, prefix="/api")

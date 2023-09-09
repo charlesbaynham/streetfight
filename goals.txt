@@ -23,7 +23,8 @@ Goals
     - [ ] QR codes in react working
     - [x] Decide QR code encoding scheme - keep it flexible
     - [x] Backend for collecting pickups from QR codes
-    - [ ] Admin backend for creating new pickups
+    - [x] Admin backend for creating new pickups
+    - [ ] Admin frontend
 - [x]: Admins should be able to award health
     - [x] Backend
     - [x] Admin UI

@@ -1,3 +1,5 @@
+from fastapi.exceptions import HTTPException
+from backend.items import DecodedItem
 from uuid import UUID
 
 import pytest
@@ -94,3 +96,28 @@ def test_admin_give_ammo(api_client, user_factory, num):
     user_id = user_factory()
     api_client.post(f"/api/admin_give_ammo?user_id={user_id}&num={num}")
     assert UserInterface(user_id).get_user_model().num_bullets == num
+
+
+def test_admin_make_item(api_client):
+    r = api_client.post(
+        "/api/admin_make_new_item?item_type=ammo",
+        json={"num": 123},
+    )
+
+    print(r.json())
+    assert r.ok
+    assert DecodedItem.from_base64(r.json()).validate_signature() is None
+
+
+def test_user_collect_new_item(api_client, user_in_team):
+    r = api_client.post(
+        "/api/admin_make_new_item?item_type=ammo",
+        json={"num": 123},
+    )
+
+    encoded_item = r.json()
+
+    UserInterface(user_in_team).collect_item(encoded_item)
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(encoded_item)

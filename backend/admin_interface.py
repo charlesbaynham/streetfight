@@ -118,9 +118,8 @@ class AdminInterface:
             item_type = ItemType(item_type)
         except ValueError:
             raise HTTPException(
-                402,
-                "Invalid item type. Valid choices are %s",
-                [t.value for t in ItemType],
+                400,
+                "Invalid item type. Valid choices are %s" % [t.value for t in ItemType],
             )
 
         item = DecodedItem(id=get_uuid(), item_type=item_type, data=item_data)
