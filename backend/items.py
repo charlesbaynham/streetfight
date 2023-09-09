@@ -145,6 +145,4 @@ class DecodedItem(pydantic.BaseModel):
 
         item_type: ItemType = values["itype"]
 
-        ITEM_TYPE_VALIDATORS[item_type](**v)
-
-        return v
+        return ITEM_TYPE_VALIDATORS[item_type](**v).dict()

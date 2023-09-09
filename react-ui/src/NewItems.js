@@ -20,6 +20,8 @@ function ItemDisplay({ item }) {
             : null}
         <br />
         Code: {encoded_item}
+        <br />
+        <a href={"/?d=" + encoded_item}>Link</a>
     </>
 }
 
