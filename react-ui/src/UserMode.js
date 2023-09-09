@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
+import { useLocation } from "react-router-dom";
+
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
 import { CrosshairImage, QRImage, DeadImage } from './GuideImages';
@@ -10,8 +12,18 @@ import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
 import UserStateUpdater from './UserUpdater';
 
+// A custom hook that builds on useLocation to parse
+// the query string for you.
+// See https://v5.reactrouter.com/web/example/query-parameters
+function useQuery() {
+  const { search } = useLocation();
+
+  return React.useMemo(() => new URLSearchParams(search), [search]);
+}
 
 export default function UserMode() {
+  const query = useQuery();
+
   const [userStateHash, setUserStateHash] = useState(0);
 
   const handle = useFullScreenHandle();
@@ -81,6 +93,8 @@ export default function UserMode() {
         } />
 
       </FullScreen>
+
+      {query.get("test")}
     </ >
   ) : null;
 

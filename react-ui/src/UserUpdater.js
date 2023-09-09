@@ -56,38 +56,3 @@ export default function UserStateUpdater({ known_hash, callback }) {
 
     return null;
 }
-
-
-
-// class UserStateUpdater extends Component {
-
-//     constructor() {
-//         super()
-
-//         this.timeoutID = null
-//         this.cancelled = false
-//         this.checkAndReschedule = this.checkAndReschedule.bind(this)
-//     }
-
-//     componentDidMount() {
-//         console.log("componentDidMount")
-//         this.checkAndReschedule()
-//     }
-
-//     componentWillUnmount() {
-//         console.log("componentWillUnmount")
-//         this.stopPolling()
-//     }
-
-
-
-//     stopPolling() {
-//         console.log(`Unmounting updater with id ${this.timeoutID}`)
-//         clearTimeout(this.timeoutID)
-//         this.cancelled = true
-//     }
-
-//     render() {
-//         return null
-//     }
-// }
