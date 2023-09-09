@@ -138,10 +138,10 @@ class User(Base):
         self.last_seen = datetime.datetime.now()
 
 
-class ItemType(enum.Enum):
-    AMMO = enum.auto()
-    MEDKIT = enum.auto()
-    ARMOUR = enum.auto()
+class ItemType(str, enum.Enum):
+    AMMO = "ammo"
+    MEDPACK = "medpack"
+    ARMOUR = "armour"
 
 
 class Item(Base):
