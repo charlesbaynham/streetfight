@@ -6,6 +6,7 @@ import os
 from typing import Dict
 from typing import Optional
 from uuid import UUID
+from .model import ItemType
 
 import pydantic
 from dotenv import find_dotenv
@@ -27,7 +28,7 @@ class _UUIDEncoder(json.JSONEncoder):
 
 class DecodedItem(pydantic.BaseModel):
     id: UUID
-    item_type: str
+    item_type: ItemType
     data: Dict
     signature: Optional[str]
     salt: Optional[str]

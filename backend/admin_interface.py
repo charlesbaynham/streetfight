@@ -109,3 +109,4 @@ class AdminInterface:
 
         shot.checked = True
         self.session.commit()
+

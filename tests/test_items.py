@@ -1,4 +1,5 @@
 import os
+import pydantic
 from uuid import UUID
 
 import pytest
@@ -145,10 +146,15 @@ def test_can_encode_and_decode_valid_item():
     assert decoded.validate_signature() is None
 
 
-def test_cannnot_collect_invalid_data_but_valid_signature(user_in_team):
-    encoded_item = DecodedItem(**SAMPLE_INVALID_DATA).sign().to_base64()
-    with pytest.raises(HTTPException):
-        UserInterface(user_in_team).collect_item(encoded_item)
+# def test_cannnot_collect_invalid_data_but_valid_signature(user_in_team):
+#    encoded_item = DecodedItem(**SAMPLE_INVALID_DATA).sign().to_base64()
+#    with pytest.raises(HTTPException):
+#        UserInterface(user_in_team).collect_item(encoded_item)
+
+
+def test_cannot_construct_invalid_item():
+    with pytest.raises(pydantic.ValidationError):
+        DecodedItem(**SAMPLE_INVALID_DATA)
 
 
 def test_collecting_armour_when_alive(valid_encoded_armour, user_in_team):

@@ -1,13 +1,12 @@
 import datetime
+
 import enum
-import json
 import logging
 import random
-from typing import Callable
-from typing import Dict
+
 from typing import List
 from typing import Optional
-from typing import Union
+
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -17,18 +16,16 @@ from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import Enum
-from sqlalchemy import Float
+
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-from sqlalchemy import Table
+
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-from sqlalchemy.types import TypeDecorator
-from sqlalchemy.types import VARCHAR
+
 from sqlalchemy_utils import UUIDType
 
-from .utils import hash_str_to_int
 
 Base = declarative_base()
 
@@ -141,6 +138,12 @@ class User(Base):
         self.last_seen = datetime.datetime.now()
 
 
+class ItemType(enum.Enum):
+    AMMO = enum.auto()
+    MEDKIT = enum.auto()
+    ARMOUR = enum.auto()
+
+
 class Item(Base):
     """
     An item that has been collected by a user. Items are stored in the real world (probably as signed QR codes): these can be validated and, if validated, are stored in this table to prevent duplicate pickups.
@@ -151,7 +154,7 @@ class Item(Base):
     id = Column(UUIDType, primary_key=True, nullable=False)
     time_created = Column(DateTime, server_default=func.now())
 
-    item_type = Column(String)  # TODO: Convert this to an enum?
+    item_type = Column(Enum(ItemType))
     data = Column(String)
     "Arbitary data for objects of this type. Might be used for special, per-item code"
 
@@ -164,18 +167,6 @@ class Item(Base):
     user = relationship(
         "User", lazy="joined", foreign_keys=user_id, back_populates="items"
     )
-
-
-class ItemModel(pydantic.BaseModel):
-    id: UUID
-    item_type: str
-    data: str
-    game_id: UUID
-    user_id: UUID
-
-    class Config:
-        orm_mode = True
-        extra = "forbid"
 
 
 class GameModel(pydantic.BaseModel):
