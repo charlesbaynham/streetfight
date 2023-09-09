@@ -8,10 +8,10 @@ function ItemDisplay({ item }) {
     const item_type = item["itype"];
     const item_data = item["item_data"];
     const encoded_item = item["encoded_item"];
-
+    const encoded_url = item["encoded_url"];
 
     return <>
-        <QRCode value={encoded_item} />
+        <QRCode value={encoded_url} />
         <br />
         Type: {item_type}
         <br />
@@ -21,7 +21,7 @@ function ItemDisplay({ item }) {
         <br />
         Code: {encoded_item}
         <br />
-        <a href={"/?d=" + encoded_item}>Link</a>
+        <a href={encoded_url}>Link</a>
     </>
 }
 

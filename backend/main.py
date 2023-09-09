@@ -19,6 +19,8 @@ from .admin_interface import AdminInterface
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
+load_dotenv(find_dotenv())
+
 
 def setup_logging():
     # Redirect the uvicorn logger to root
@@ -42,7 +44,6 @@ def setup_logging():
     rotating_handler.doRollover()
 
     # Set the root logger level to LOG_LEVEL if specified
-    load_dotenv(find_dotenv())
     if "LOG_LEVEL" in os.environ:
         logging.getLogger().setLevel(os.environ.get("LOG_LEVEL"))
         root_logger.warning(
@@ -226,6 +227,37 @@ async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
 
+def _add_params_to_url(url: str, params: Dict):
+    """
+    A chatGPT special to add parameters to a URL
+    """
+
+    from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
+
+    parsed_url = urlparse(url)
+
+    # Extract the query parameters as a dictionary
+    query_params = parse_qs(parsed_url.query)
+
+    # Add or update query parameters
+    query_params = params
+
+    # Encode the modified query parameters
+    encoded_query = urlencode(query_params, doseq=True)
+
+    # Reconstruct the URL with the modified query parameters
+    return urlunparse(
+        (
+            parsed_url.scheme,
+            parsed_url.netloc,
+            parsed_url.path,
+            parsed_url.params,
+            encoded_query,
+            parsed_url.fragment,
+        )
+    )
+
+
 @router.post("/admin_make_new_item")
 async def admin_make_new_item(item_type: str, item_data: Dict):
     try:
@@ -237,6 +269,9 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
         "itype": item_type,
         "item_data": item_data,
         "encoded_item": encoded_item,
+        "encoded_url": _add_params_to_url(
+            os.environ["WEBSITE_URL"], {"d": encoded_item}
+        ),
     }
 
 
