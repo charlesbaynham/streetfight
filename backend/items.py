@@ -121,7 +121,7 @@ class DecodedItem(pydantic.BaseModel):
             n=n,
             r=r,
             p=p,
-            dklen=64,
+            dklen=16,
         )
 
         # Convert the hashed password to hexadecimal representation
