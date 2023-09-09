@@ -4,12 +4,25 @@ import QRCode from "react-qr-code";
 
 import { sendAPIRequest } from './utils';
 
-function ItemDisplay({ data }) {
-    return <QRCode value={data} />
+function ItemDisplay({ item }) {
+    const item_type = item["item_type"];
+    const item_data = item["item_data"];
+    const encoded_item = item["encoded_item"];
+
+
+    return <>
+        <QRCode value={encoded_item} />
+        <br />
+        Type: {item_type}
+        <br />
+        {"num" in item_data ?
+            <>Num: {item_data.num}</>
+            : null}
+    </>
 }
 
 export default function NewItems() {
-    const [itemData, setItemData] = useState(null);
+    const [item, setItem] = useState(null);
 
     const [selectedItemType, setSelectedItemType] = useState("ammo");
     const [selectedItemNum, setSelectedItemNum] = useState(1);
@@ -24,7 +37,7 @@ export default function NewItems() {
         const callback = (d) => {
             console.log(`New ${selectedItemType}/${selectedItemNum}:`)
             console.log(d)
-            setItemData(d)
+            setItem(d)
         };
 
         sendAPIRequest(
@@ -34,7 +47,7 @@ export default function NewItems() {
             callback,
             item_data
         );
-    }, [setItemData, selectedItemNum, selectedItemType, numDisabled]);
+    }, [setItem, selectedItemNum, selectedItemType, numDisabled]);
 
     useEffect(updateItemQR, [updateItemQR]);
 
@@ -66,8 +79,8 @@ export default function NewItems() {
         <br />
 
         {
-            itemData ?
-                <ItemDisplay data={itemData} />
+            item ?
+                <ItemDisplay item={item} />
                 : null
         }
 
