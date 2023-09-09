@@ -181,3 +181,28 @@ def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
     assert UserInterface(user_in_team).get_user_model().hit_points == 0
     UserInterface(user_in_team).collect_item(valid_encoded_medpack)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+
+def test_user_collect_item(api_client, team_factory):
+    user_id = api_client.get(
+        "/api/my_id",
+    ).json()
+
+    UserInterface(user_id).join_team(team_factory())
+
+    item = DecodedItem(**SAMPLE_AMMO_DATA)
+    item.data = {"num": 10}
+    item.sign()
+    valid_encoded_ammo = item.to_base64()
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 0
+
+    r = api_client.post(
+        "/api/collect_item",
+        json={"data": valid_encoded_ammo},
+    )
+
+    print(r.json())
+    assert r.ok
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 10

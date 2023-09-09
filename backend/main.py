@@ -83,13 +83,13 @@ async def get_user_info(
     return UserInterface(user_id).get_user_model()
 
 
-class Shot(BaseModel):
+class _Shot(BaseModel):
     photo: str
 
 
 @router.post("/submit_shot")
 async def submit_shot(
-    shot: Shot,
+    shot: _Shot,
     user_id=Depends(get_user_id),
 ):
     logger.info("Received shot from user %s", user_id)
@@ -98,7 +98,7 @@ async def submit_shot(
 
 
 @router.post("/set_name")
-async def submit_shot(
+async def set_name(
     name: str,
     user_id=Depends(get_user_id),
 ):
@@ -118,6 +118,19 @@ async def join_game(
     logger.info("User %s joining game %s", user_id, game_id)
 
     return UserInterface(user_id).join_game(game_id)
+
+
+class _EncodedItem(BaseModel):
+    data: str
+
+
+@router.post("/collect_item")
+async def collect_item(
+    encoded_item: _EncodedItem,
+    user_id=Depends(get_user_id),
+):
+
+    return UserInterface(user_id).collect_item(encoded_item.data)
 
 
 @router.get("/get_hash")
@@ -208,8 +221,9 @@ async def admin_give_ammo(user_id, num: int = 1):
 async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
+
 @router.post("/admin_make_new_item")
-async def admin_make_new_item(item_type:str, item_data:Dict):
+async def admin_make_new_item(item_type: str, item_data: Dict):
     return AdminInterface().make_new_item(item_type, item_data)
 
 

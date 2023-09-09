@@ -98,18 +98,7 @@ def test_admin_give_ammo(api_client, user_factory, num):
     assert UserInterface(user_id).get_user_model().num_bullets == num
 
 
-def test_admin_make_item(api_client):
-    r = api_client.post(
-        "/api/admin_make_new_item?item_type=ammo",
-        json={"num": 123},
-    )
-
-    print(r.json())
-    assert r.ok
-    assert DecodedItem.from_base64(r.json()).validate_signature() is None
-
-
-def test_user_collect_new_item(api_client, user_in_team):
+def test_admin_make_item(api_client, user_in_team):
     r = api_client.post(
         "/api/admin_make_new_item?item_type=ammo",
         json={"num": 123},
