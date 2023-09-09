@@ -140,7 +140,7 @@ export default function AdminMode() {
 
     const updatePanel = useCallback(
         () => {
-            return sendAPIRequest("admin_list_games", null, "GET", (data) => { setGames(data) })
+            sendAPIRequest("admin_list_games", null, "GET", (data) => { setGames(data) })
         }, []
     );
 

@@ -1,3 +1,4 @@
+import binascii
 import base64
 import hashlib
 import json
@@ -58,11 +59,14 @@ class DecodedItem(pydantic.BaseModel):
 
         logger.debug("Decoding item %s", encoded_string)
 
-        # Decode the base64 string
-        decoded_bytes = base64.b64decode(encoded_string)
+        try:
+            # Decode the base64 string
+            decoded_bytes = base64.b64decode(encoded_string)
 
-        # Convert bytes to a string
-        decoded_str = decoded_bytes.decode("utf-8")
+            # Convert bytes to a string
+            decoded_str = decoded_bytes.decode("utf-8")
+        except (binascii.Error, UnicodeDecodeError):
+            raise ValueError(f"Badly formatted item string: {encoded_string}")
 
         logger.debug("Raw decoded base64: %s", decoded_str)
 

@@ -28,7 +28,7 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
         };
     }
 
-    fetch(url, requestOptions)
+    return fetch(url, requestOptions)
         .then(response => {
             if (!response.ok) {
                 console.log(`Error in api call to ${url}:`)
@@ -41,6 +41,8 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
         .then(data => {
             if (callback) {
                 callback(data);
+            } else {
+                return data;
             }
         });
 }

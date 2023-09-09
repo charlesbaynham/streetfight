@@ -131,7 +131,10 @@ async def collect_item(
     user_id=Depends(get_user_id),
 ):
 
-    return UserInterface(user_id).collect_item(encoded_item.data)
+    try:
+        return UserInterface(user_id).collect_item(encoded_item.data)
+    except ValueError:
+        raise HTTPException(400, "Malformed data")
 
 
 @router.get("/get_hash")

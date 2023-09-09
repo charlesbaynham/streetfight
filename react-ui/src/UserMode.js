@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
@@ -21,9 +21,32 @@ function useQuery() {
   return React.useMemo(() => new URLSearchParams(search), [search]);
 }
 
-export default function UserMode() {
+function CollectItemFromQueryParam() {
+  const navigate = useNavigate();
   const query = useQuery();
 
+  const data = query.get("d");
+
+  useEffect(() => {
+    if (data !== null) {
+      console.log(`Collecting item with d=${data}`)
+
+      sendAPIRequest("collect_item", {}, "POST", null, {
+        data: data
+      })
+        .then((r) => {
+          console.log(r)
+        })
+        .then((_) => {
+          navigate("/")
+        })
+    }
+  }, [data]);
+
+  return null
+}
+
+export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
 
   const handle = useFullScreenHandle();
@@ -64,6 +87,9 @@ export default function UserMode() {
   const isInTeam = userState ? ("team_id" in userState) : false;
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
 
+
+
+
   const playingView = userState ? (
     <>
       <UserStateUpdater known_hash={userStateHash} callback={(d) => { setUserStateHash(d) }} />
@@ -94,7 +120,9 @@ export default function UserMode() {
 
       </FullScreen>
 
-      {query.get("test")}
+
+
+      <CollectItemFromQueryParam />
     </ >
   ) : null;
 
