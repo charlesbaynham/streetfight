@@ -45,7 +45,7 @@ export default function NewItems() {
             <input ref={itemNumRef} type="number" />
 
             <button onClick={() => {
-                getItem(itemTypeRef.current.value, parseInt(itemTypeRef.current.value))
+                getItem(itemTypeRef.current.value, parseInt(itemNumRef.current.value))
             }
             }
             >Generate</button>
