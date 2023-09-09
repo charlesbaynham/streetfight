@@ -26,6 +26,25 @@ class _UUIDEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
+class _ItemDataAmmo(pydantic.BaseModel):
+    num: int
+
+
+class _ItemDataArmour(pydantic.BaseModel):
+    num: int
+
+
+class _ItemDataMedpack(pydantic.BaseModel):
+    pass
+
+
+ITEM_TYPE_VALIDATORS = {
+    ItemType.AMMO: _ItemDataAmmo,
+    ItemType.ARMOUR: _ItemDataArmour,
+    ItemType.MEDPACK: _ItemDataMedpack,
+}
+
+
 class DecodedItem(pydantic.BaseModel):
     id: UUID
     item_type: ItemType
@@ -111,3 +130,14 @@ class DecodedItem(pydantic.BaseModel):
         )
 
         return hashed_password_hex
+
+    @pydantic.validator("data")
+    def parse_item_data(cls, v, values):
+        if "item_type" not in values:
+            raise pydantic.ValidationError
+
+        item_type: ItemType = values["item_type"]
+
+        ITEM_TYPE_VALIDATORS[item_type](**v)
+
+        return v
