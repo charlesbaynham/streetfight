@@ -55,12 +55,16 @@ def valid_encoded_medpack():
     return DecodedItem(**SAMPLE_MEDPACK_DATA).sign().to_base64()
 
 
-def test_fixture(valid_encoded_armour):
+def test_valid_encoded_armour(valid_encoded_armour):
     print(valid_encoded_armour)
 
 
 def test_decoded_item_from_base64(valid_encoded_armour):
     item = DecodedItem.from_base64(valid_encoded_armour)
+
+    print(f"Encoded: {valid_encoded_armour}")
+    print(f"Decoded: {item.dict()}")
+
     assert item.id == SAMPLE_SIGNED_ARMOUR_DATA["id"]
     assert item.item_type == SAMPLE_SIGNED_ARMOUR_DATA["item_type"]
     assert item.data == SAMPLE_SIGNED_ARMOUR_DATA["data"]

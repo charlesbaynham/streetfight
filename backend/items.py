@@ -64,6 +64,8 @@ class DecodedItem(pydantic.BaseModel):
         # Convert bytes to a string
         decoded_str = decoded_bytes.decode("utf-8")
 
+        logger.debug("Raw decoded base64: %s", decoded_str)
+
         # Parse the JSON string into a Python dictionary
         decoded_dict = json.loads(decoded_str)
 
