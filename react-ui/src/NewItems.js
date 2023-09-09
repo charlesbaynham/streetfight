@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import QRCode from "react-qr-code";
 
@@ -32,6 +32,8 @@ export default function NewItems() {
         );
     }, [setData, selectedItemNum, selectedItemType, numDisabled]);
 
+    useEffect(updateItemQR, [updateItemQR]);
+
     return <>
 
         <>
@@ -54,7 +56,7 @@ export default function NewItems() {
                 onChange={(e) => { setSelectedItemNum(e.target.value) }}
             />
 
-            <button onClick={updateItemQR}>Generate</button>
+            <button onClick={updateItemQR}>Re-generate</button>
 
         </>
         <br />
