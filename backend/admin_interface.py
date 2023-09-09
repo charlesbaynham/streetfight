@@ -2,6 +2,7 @@ import logging
 from typing import List
 from typing import Tuple
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 
@@ -11,11 +12,13 @@ from .model import GameModel
 from .model import Shot
 from .model import ShotModel
 from .model import Team
-from .model import TeamModel
+
 from .model import User
 from .model import UserModel
 from .user_interface import UserInterface
 
+from .items import DecodedItem
+from .model import ItemType
 
 logger = logging.getLogger(__name__)
 
@@ -110,3 +113,20 @@ class AdminInterface:
         shot.checked = True
         self.session.commit()
 
+    def make_new_item(self, item_type: str, item_data: dict) -> str:
+        try:
+            item_type = ItemType(item_type)
+        except ValueError:
+            raise HTTPException(
+                402,
+                "Invalid item type. Valid choices are %s",
+                [t.value for t in ItemType],
+            )
+
+        item = DecodedItem(id=get_uuid(), item_type=item_type, data=item_data)
+        item.sign()
+
+        encoded_item = item.to_base64()
+        logger.info("Made new item: %s => %s", item, encoded_item)
+
+        return encoded_item
