@@ -11,7 +11,7 @@ Goals
     - [ ] QR code interface?
 - [x]: User interfaces should update without reloads
     - [x] Long-poll for user hash?
-    - [ ] Changes from AdminInterface should bump users where required
+    - [x] Changes from AdminInterface should bump users where required
     - [ ] Admin interface UI should also auto-update
 - [x]: Dead users should not be able to shoot
     - [x] UI (state already exists)
@@ -21,13 +21,13 @@ Goals
     - [x] Backend validation
 - [ ]: Users should be able to collect pickups
     - [ ] QR codes in react working
-    - [ ] Decide QR code encoding scheme - keep it flexible
-    - [ ] Backend for collecting pickups from QR codes
+    - [x] Decide QR code encoding scheme - keep it flexible
+    - [x] Backend for collecting pickups from QR codes
     - [ ] Admin backend for creating new pickups
-- [ ]: Admins should be able to award health
+- [x]: Admins should be able to award health
     - [x] Backend
     - [x] Admin UI
-- [ ]: Admins should be able to kill
+- [x]: Admins should be able to kill
     - [x] Backend
     - [x] Admin UI
 - [ ]: The interface should not look shit
