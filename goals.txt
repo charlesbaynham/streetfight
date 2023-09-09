@@ -14,6 +14,7 @@ Goals
     - [x] Long-poll for user hash?
     - [x] Changes from AdminInterface should bump users where required
     - [ ] Admin interface UI should also auto-update
+- [ ] Shooting should have a timeout (at least until the POST completes)
 - [x]: Dead users should not be able to shoot
     - [x] UI (state already exists)
     - [x] Backend validation
@@ -25,7 +26,7 @@ Goals
     - [x] Decide QR code encoding scheme - keep it flexible
     - [x] Backend for collecting pickups from QR codes
     - [x] Admin backend for creating new pickups
-    - [ ] Admin frontend
+    - [x] Admin frontend
 - [x]: Admins should be able to award health
     - [x] Backend
     - [x] Admin UI
