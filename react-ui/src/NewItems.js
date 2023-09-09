@@ -35,8 +35,8 @@ export default function NewItems() {
         };
 
         const callback = (d) => {
-            console.log(`New ${selectedItemType}/${selectedItemNum}:`)
-            console.log(d)
+            console.log(`New ${d.item_type}/${d.item_data.num}:`)
+            console.log(d.encoded_item)
             setItem(d)
         };
 
