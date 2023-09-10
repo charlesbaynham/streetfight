@@ -49,6 +49,8 @@ Goals
   - [ ] Add ticker of events (x shot y, y missed)
   - [ ] Black and white camera when dead
   - [ ] Add sounds!
+  - [ ] Public scoreboard
+  - [ ] 10 minutes timeout to be revived, then you are dead dead
 
 Backburner:
 
