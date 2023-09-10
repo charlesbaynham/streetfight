@@ -44,6 +44,8 @@ Goals
   - [ ] Bulk generation of QR codes
   - [ ] I should be able to pause / resume games from admin mode
   - [ ] Get fullscreen working again
+  - [ ] Dark souls "You died"
+  - [ ] Black and white camera when dead
 
 
 Backburner:
