@@ -16,10 +16,9 @@ function TemporaryOverlay({
     appear,
     img,
     time_to_appear = 0.5,
-    time_to_disappear = 3,
+    time_to_disappear = 1.5,
     time_to_show = 0.5,
-    custom_variants = {},
-    debug = false
+    custom_variants = {}
 }) {
     const [visible, setVisible] = useState(false);
 
@@ -40,6 +39,8 @@ function TemporaryOverlay({
         hidden: {
             opacity: 0,
             scale: 1,
+            width: ["100%", "0%"],
+            height: ["100%", "0%"],
             transitionEnd: {
                 display: "none",
                 scale: 0,
@@ -50,6 +51,8 @@ function TemporaryOverlay({
         visible: {
             opacity: [0, 1],
             scale: 1,
+            width: ["100%", "100%"],
+            height: ["100%", "100%"],
             display: "block",
             transition: {
                 duration: time_to_appear,
@@ -60,11 +63,6 @@ function TemporaryOverlay({
 
     // Merge in any custom variant changes passed by the user
     const variants = _.merge({}, default_variants, custom_variants);
-
-    if (debug) {
-        console.debug("variants:")
-        console.debug(variants)
-    }
 
     return (
         <motion.img
