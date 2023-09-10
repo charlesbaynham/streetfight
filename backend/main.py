@@ -1,11 +1,11 @@
-import pydantic
 import logging
-from typing import Dict
 import os
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import Dict
 from uuid import UUID
 
+import pydantic
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from fastapi import APIRouter

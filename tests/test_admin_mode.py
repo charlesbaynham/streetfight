@@ -1,9 +1,8 @@
-from backend.user_interface import UserInterface
 import pytest
+from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
-
-from fastapi.exceptions import HTTPException
+from backend.user_interface import UserInterface
 
 
 def test_making_item():

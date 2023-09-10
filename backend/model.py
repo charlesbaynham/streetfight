@@ -1,12 +1,9 @@
 import datetime
-
 import enum
 import logging
 import random
-
 from typing import List
 from typing import Optional
-
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -16,14 +13,11 @@ from sqlalchemy import Boolean
 from sqlalchemy import Column
 from sqlalchemy import DateTime
 from sqlalchemy import Enum
-
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
-
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
-
 from sqlalchemy_utils import UUIDType
 
 

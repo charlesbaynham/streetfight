@@ -7,18 +7,16 @@ from uuid import uuid4 as get_uuid
 from fastapi import HTTPException
 
 from . import database
+from .items import DecodedItem
 from .model import Game
 from .model import GameModel
+from .model import ItemType
 from .model import Shot
 from .model import ShotModel
 from .model import Team
-
 from .model import User
 from .model import UserModel
 from .user_interface import UserInterface
-
-from .items import DecodedItem
-from .model import ItemType
 
 logger = logging.getLogger(__name__)
 

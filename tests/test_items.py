@@ -1,7 +1,7 @@
 import os
-import pydantic
 from uuid import UUID
 
+import pydantic
 import pytest
 from fastapi.exceptions import HTTPException
 

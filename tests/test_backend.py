@@ -1,9 +1,9 @@
-from fastapi.exceptions import HTTPException
-from backend.items import DecodedItem
 from uuid import UUID
 
 import pytest
+from fastapi.exceptions import HTTPException
 
+from backend.items import DecodedItem
 from backend.model import UserModel
 from backend.user_interface import UserInterface
 
