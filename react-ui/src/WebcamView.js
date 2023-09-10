@@ -1,12 +1,10 @@
 import { useEffect, useRef, useCallback } from 'react';
 
-import useSound from 'use-sound';
 import Webcam from "react-webcam";
 
 import QRParser from './QRParser';
 
 import { SCREEN_FILL_STYLES } from './utils';
-import bang from './bang.mp3';
 
 
 const videoConstraints = {
@@ -21,13 +19,10 @@ function WebcamCapture({ trigger }) {
     // Get a reference to the webcam element
     const webcamRef = useRef(null);
 
-    const [playBang] = useSound(bang);
-
     // Define a function that will take a shot (useCallback just avoids
     // redefining the function when renders happen)
     const capture = useCallback(
         () => {
-            playBang();
             const imageSrc = webcamRef.current.getScreenshot();
 
             const query = JSON.stringify({
@@ -45,7 +40,7 @@ function WebcamCapture({ trigger }) {
 
 
         },
-        [webcamRef, playBang]
+        [webcamRef]
     );
 
     // Call the capture callback when the 'trigger' prop changes
