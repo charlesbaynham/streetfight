@@ -17,7 +17,6 @@ export default function UserStateUpdater({ known_hash, callback }) {
     const successCheckRate = 500
 
     const checkAndBump = useCallback(() => {
-        console.log("checkAndBump")
         const successHandler = r => {
 
             setTimeout(() => {

@@ -17,7 +17,7 @@ function TemporaryOverlay({
     img,
     time_to_appear = 0.5,
     time_to_disappear = 3,
-    time_to_show = 0.1,
+    time_to_show = 0.5,
     custom_variants = {},
     debug = false
 }) {
@@ -26,9 +26,11 @@ function TemporaryOverlay({
     useEffect(() => {
         async function f() {
             if (appear === true) {
+                console.log("Animating...")
                 setVisible(true);
                 await sleep(1000 * (time_to_appear + time_to_show));
                 setVisible(false);
+                console.log("Animation completed")
             }
         }
         f()

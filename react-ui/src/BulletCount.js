@@ -18,14 +18,14 @@ function useQuery() {
 }
 
 
-function CollectItemFromQueryParam() {
+function CollectItemFromQueryParam({ enabled }) {
     const navigate = useNavigate();
     const query = useQuery();
 
     const data = query.get("d");
 
     useEffect(() => {
-        if (data !== null) {
+        if (enabled && data !== null) {
             console.log(`Collecting item with d=${data}`)
 
             function onTimeout() {
@@ -46,7 +46,7 @@ function CollectItemFromQueryParam() {
                 clearTimeout(timeoutId);
             };
         }
-    }, [data]);
+    }, [data, enabled]);
 
     return null
 }
@@ -60,12 +60,15 @@ export default function BulletCount({ user }) {
     const [showMedpackAnim, setShowMedpackAnim] = useState(false);
 
     useEffect(() => {
+        var timeoutHandle = null;
+
         if (previousUser) {
+            console.log(previousUser)
             setShowBulletAnim(user.num_bullets > previousUser.num_bullets);
             setShowArmourAnim(user.hit_points > previousUser.hit_points && previousUser.hit_points > 0);
             setShowMedpackAnim(user.hit_points == 1 && previousUser.hit_points == 0);
 
-            setTimeout(() => {
+            timeoutHandle = setTimeout(() => {
                 setShowBulletAnim(false)
                 setShowArmourAnim(false)
                 setShowMedpackAnim(false)
@@ -73,6 +76,10 @@ export default function BulletCount({ user }) {
         }
 
         setPreviousUser(user);
+
+        if (timeoutHandle) {
+            return () => { clearTimeout(timeoutHandle) }
+        }
     }, [user, previousUser]);
 
     return (
@@ -84,7 +91,9 @@ export default function BulletCount({ user }) {
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
 
 
-            <CollectItemFromQueryParam />
+            <CollectItemFromQueryParam enabled={
+                !showBulletAnim && !showArmourAnim && !showMedpackAnim
+            } />
         </div>
 
     );
