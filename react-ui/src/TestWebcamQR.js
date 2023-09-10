@@ -2,8 +2,9 @@
 
 import Webcam from 'react-webcam';
 
-import QrScanner from 'qr-scanner';
-import { useCallback, useRef } from 'react';
+import { useRef } from 'react';
+
+import QRParser from './QRParser';
 
 
 const videoConstraints = {
@@ -13,17 +14,10 @@ const videoConstraints = {
 };
 
 
+
 const TestWebcamQR = () => {
+
     const webcamRef = useRef(null);
-
-    const capture = useCallback(() => {
-        const imageSrc = webcamRef.current.getScreenshot();
-
-        QrScanner.scanImage(imageSrc)
-            .then(result => console.log(result))
-            .catch(error => console.log(error || 'No QR code found.'));
-    }, []);
-
 
     return <>
         <Webcam
@@ -32,8 +26,9 @@ const TestWebcamQR = () => {
             screenshotFormat="image/png"
             videoConstraints={videoConstraints}
         />
-        <button onClick={capture}>Capture</button>
+        <QRParser webcamRef={webcamRef} />
     </>
+        ;
 };
 
 
