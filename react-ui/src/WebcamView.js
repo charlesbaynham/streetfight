@@ -4,8 +4,6 @@ import Webcam from "react-webcam";
 import { SCREEN_FILL_STYLES } from './utils';
 
 
-import jsQR from "jsqr";
-
 const videoConstraints = {
     width: 1280,
     height: 720,
