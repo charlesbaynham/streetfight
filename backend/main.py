@@ -1,3 +1,4 @@
+import re
 import logging
 import os
 from logging.handlers import RotatingFileHandler
@@ -131,9 +132,15 @@ async def collect_item(
     encoded_item: _EncodedItem,
     user_id=Depends(get_user_id),
 ):
+    # Clean off URL prefix if present
+    match = re.match(r"https?:\/\/[^?]+?\?d=(.+)", encoded_item.data)
+    if match:
+        data = match[1]
+    else:
+        data = encoded_item.data
 
     try:
-        return UserInterface(user_id).collect_item(encoded_item.data)
+        return UserInterface(user_id).collect_item(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
