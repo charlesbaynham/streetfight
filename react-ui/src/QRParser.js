@@ -52,7 +52,7 @@ const QRParser = ({ webcamRef }) => {
         const timerID = setInterval(capture, timeout);
 
         return () => { clearInterval(timerID) }
-    }, [webcamRef])
+    }, [webcamRef, capture])
 
 
     return null;
