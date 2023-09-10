@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from 'react';
 const timeout = 750;
 
 
-const QRParser = ({ webcamRef }) => {
+const QRParser = ({ webcamRef, scannedCallback }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
 
@@ -39,9 +39,9 @@ const QRParser = ({ webcamRef }) => {
             }
         )
             .then(result => {
-                console.log(result)
+                scannedCallback(result.data)
             })
-            .catch(error => console.log(error || 'No QR code found.'))
+            .catch(error => null)
 
     }, [qrEngine, webcamRef, canvas]);
 

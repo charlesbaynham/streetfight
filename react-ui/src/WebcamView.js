@@ -56,7 +56,10 @@ function WebcamCapture({ trigger }) {
                 videoConstraints={videoConstraints}
                 style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
             />
-            <QRParser webcamRef={webcamRef} />
+            <QRParser
+                webcamRef={webcamRef}
+                scannedCallback={(d) => { console.log(d) }}
+            />
         </>
     );
 }
