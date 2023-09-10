@@ -1,61 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { useLocation, useNavigate } from "react-router-dom";
 
 import TemporaryOverlay from './TemporaryOverlay';
-import { sendAPIRequest } from './utils';
+import CollectItemFromQueryParam from './CollectItemsFromQueryParams';
 
 import styles from './BulletCount.module.css';
+
 
 const medkit = '/images/medkit.svg';
 const bullet = '/images/bullet.svg';
 const armour = '/images/helmet.svg';
 const cross = '/images/cross.svg';
 
-// A custom hook that builds on useLocation to parse
-// the query string for you.
-// See https://v5.reactrouter.com/web/example/query-parameters
-function useQuery() {
-    const { search } = useLocation();
 
-    return React.useMemo(() => new URLSearchParams(search), [search]);
-}
-
-
-function CollectItemFromQueryParam({ enabled }) {
-    const navigate = useNavigate();
-    const query = useQuery();
-
-    const data = query.get("d");
-
-    useEffect(() => {
-        if (enabled && data !== null) {
-            console.log(`Collecting item with d=${data}`)
-
-            function onTimeout() {
-                sendAPIRequest("collect_item", {}, "POST", null, {
-                    data: data
-                })
-                    .then((r) => {
-                        console.log(r)
-                    })
-                    .then((_) => {
-                        navigate("/")
-                    })
-            }
-            const timeoutId = setTimeout(onTimeout, 200);
-
-            return () => {
-                console.log('Cancel collection');
-                clearTimeout(timeoutId);
-            };
-        }
-    }, [data, enabled, navigate]);
-
-    return null
-}
-
-
-const n_images = (n, image) => Array(n).fill().map(() =>
+const make_n_images = (n, image) => Array(n).fill().map(() =>
     <img src={image} alt="" style={{ height: "1.5em", verticalAlign: "middle" }} />
 )
 
@@ -96,15 +53,15 @@ export default function BulletCount({ user }) {
                 user.num_bullets > 0 ?
                     (
                         user.num_bullets > 4 ?
-                            <>{n_images(1, bullet)} x{user.num_bullets}</> :
-                            n_images(user.num_bullets, bullet)
+                            <>{make_n_images(1, bullet)} x{user.num_bullets}</> :
+                            make_n_images(user.num_bullets, bullet)
                     ) :
-                    n_images(1, cross)
+                    make_n_images(1, cross)
             }</p>
             <p>Armour: {
                 user.hit_points > 1 ?
-                    n_images(user.hit_points - 1, armour) :
-                    n_images(1, cross)
+                    make_n_images(user.hit_points - 1, armour) :
+                    make_n_images(1, cross)
             }</p>
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />

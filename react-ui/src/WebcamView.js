@@ -12,6 +12,7 @@ const videoConstraints = {
     facingMode: "environment"
 };
 
+
 function WebcamCapture({ trigger }) {
 
     // Get a reference to the webcam element
@@ -58,7 +59,6 @@ function WebcamCapture({ trigger }) {
             />
             <QRParser
                 webcamRef={webcamRef}
-                scannedCallback={(d) => { console.log(d) }}
             />
         </>
     );

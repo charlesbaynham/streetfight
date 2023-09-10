@@ -9,9 +9,11 @@ import { useCallback, useEffect, useState } from 'react';
 const timeout = 750;
 
 
-const QRParser = ({ webcamRef, scannedCallback }) => {
+const QRParser = ({ webcamRef }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
+
+    const scannedCallback = useCallback((data) => { console.log(data) }, []);
 
     const capture = useCallback(() => {
         // Create persistent service worker and canvas for performance
