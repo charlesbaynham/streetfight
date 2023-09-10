@@ -4,9 +4,12 @@ import { useLocation, useNavigate } from "react-router-dom";
 import TemporaryOverlay from './TemporaryOverlay';
 import { sendAPIRequest } from './utils';
 
+import styles from './BulletCount.module.css';
+
 const medkit = '/images/medkit.svg';
 const bullet = '/images/bullet.svg';
 const armour = '/images/helmet.svg';
+const cross = '/images/cross.svg';
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.
@@ -52,6 +55,11 @@ function CollectItemFromQueryParam({ enabled }) {
 }
 
 
+const n_images = (n, image) => Array(n).fill().map(() =>
+    <img src={image} alt="" style={{ height: "1.5em", verticalAlign: "middle" }} />
+)
+
+
 export default function BulletCount({ user }) {
     const [previousUser, setPreviousUser] = useState(null);
 
@@ -81,10 +89,23 @@ export default function BulletCount({ user }) {
         }
     }, [user, previousUser]);
 
+
     return (
-        <div id="bullet-count">
-            <p>Bullets: {user.num_bullets}</p>
-            <p>HP: {user.hit_points}</p>
+        <div id="bullet-count" className={styles.bulletCount}>
+            <p>Ammo: {
+                user.num_bullets > 0 ?
+                    (
+                        user.num_bullets > 4 ?
+                            <>{n_images(1, bullet)} x{user.num_bullets}</> :
+                            n_images(user.num_bullets, bullet)
+                    ) :
+                    n_images(1, cross)
+            }</p>
+            <p>Armour: {
+                user.hit_points > 1 ?
+                    n_images(user.hit_points - 1, armour) :
+                    n_images(1, cross)
+            }</p>
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />

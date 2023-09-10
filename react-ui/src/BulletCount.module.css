@@ -1,0 +1,13 @@
+.bulletCount {
+    background: rgba(0, 0, 0, 0.5);
+    width: 10em;
+    color: white;
+    padding: 0.1em 1em;
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    line-height: 1em;
+    /* border-radius: 10px; */
+}
+
+.indicator {
+    text-align: right;
+}
