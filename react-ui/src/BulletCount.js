@@ -63,7 +63,6 @@ export default function BulletCount({ user }) {
         var timeoutHandle = null;
 
         if (previousUser) {
-            console.log(previousUser)
             setShowBulletAnim(user.num_bullets > previousUser.num_bullets);
             setShowArmourAnim(user.hit_points > previousUser.hit_points && previousUser.hit_points > 0);
             setShowMedpackAnim(user.hit_points === 1 && previousUser.hit_points === 0);

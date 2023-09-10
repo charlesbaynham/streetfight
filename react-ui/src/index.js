@@ -9,6 +9,7 @@ import {
 import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
+import TestWebcamQR from "./TestWebcamQR";
 
 
 const router = createBrowserRouter([
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
   {
     path: "admin/shots",
     element: <ShotQueue />
+  },
+  {
+    path: "test",
+    element: <TestWebcamQR />
   },
 ]);
 

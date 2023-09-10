@@ -46,19 +46,20 @@ function WebcamCapture({ trigger }) {
             const imageSrc = webcamRef.current.getScreenshot();
             const code = jsQR(imageSrc, videoConstraints.width, videoConstraints.height);
 
-            if (code) {
-              console.log("Found QR code", code);
+            if (true) {
+                console.log("Found QR code", code);
             }
         }
         , [webcamRef]);
 
     useEffect(() => {
-        setTimeout(() => {
+        const id = setTimeout(() => {
             console.log("Scanning...");
             check_for_qr();
         }, 1000);
+        return () => { clearTimeout(id); }
     }, []);
-    
+
     // Call the capture callback when the 'trigger' prop changes
     useEffect(() => {
         if (trigger)
