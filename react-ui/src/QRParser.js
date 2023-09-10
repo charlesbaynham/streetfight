@@ -6,18 +6,14 @@ import QrScanner from 'qr-scanner';
 import { useCallback, useEffect, useState } from 'react';
 
 
-const timeout = 2000;
+const timeout = 500;
 
 
 const QRParser = ({ webcamRef }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
-    const [timerID, setTimerID] = useState(null);
 
     const capture = useCallback(() => {
-        if (webcamRef === null)
-            return
-
         // Create persistent service worker and canvas for performance
         if (qrEngine === null) {
             QrScanner.createQrEngine(QrScanner.WORKER_PATH)
@@ -31,6 +27,9 @@ const QRParser = ({ webcamRef }) => {
         // Get an image from the webcam ref
         const imageSrc = webcamRef.current.getScreenshot();
 
+        if (imageSrc === null)
+            return
+
         // Scan it for QR codes
         QrScanner.scanImage(imageSrc,
             {
@@ -43,20 +42,17 @@ const QRParser = ({ webcamRef }) => {
                 console.log(result)
             })
             .catch(error => console.log(error || 'No QR code found.'))
-            .finally(() => {
-                // Queue the next run
-                setTimerID(setTimeout(capture, timeout));
-            });
 
-        // Return a cleanup function for dismount
-        return (timerID) => {
-            if (timerID !== null) {
-                clearTimeout(timerID);
-            }
-        }
-    }, [qrEngine, setQrEngine, webcamRef, canvas, timerID, setTimerID]);
+    }, [qrEngine, webcamRef, canvas]);
 
-    useEffect(capture, [webcamRef])
+    useEffect(() => {
+        if (webcamRef === null)
+            return
+
+        const timerID = setInterval(capture, timeout);
+
+        return () => { clearInterval(timerID) }
+    }, [webcamRef])
 
 
     return null;
