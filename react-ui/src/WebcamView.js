@@ -3,6 +3,7 @@ import { useEffect, useRef, useCallback } from 'react';
 import Webcam from "react-webcam";
 
 import QRParser from './QRParser';
+
 import { SCREEN_FILL_STYLES } from './utils';
 
 
@@ -23,10 +24,10 @@ function WebcamCapture({ trigger }) {
     const capture = useCallback(
         () => {
             const imageSrc = webcamRef.current.getScreenshot();
+
             const query = JSON.stringify({
                 photo: imageSrc
             });
-            console.log(`query = ${query}`)
 
             const requestOptions = {
                 method: 'POST',
