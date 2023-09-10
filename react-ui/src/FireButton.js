@@ -18,6 +18,7 @@ export default function FireButton({ buttonActive, onClick }) {
       disabled={!buttonActive}
       onClick={(e) => {
         playBang();
+        navigator.vibrate(200);
         return onClick(e)
       }}
     >

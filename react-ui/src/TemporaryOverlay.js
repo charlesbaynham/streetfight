@@ -27,6 +27,7 @@ function TemporaryOverlay({
     const [visible, setVisible] = useState(false);
 
     const [playBeep] = useSound(beep);
+    navigator.vibrate(200);
 
     useEffect(() => {
         async function f() {
