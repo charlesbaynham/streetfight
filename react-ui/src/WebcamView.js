@@ -27,9 +27,8 @@ function WebcamCapture({ trigger }) {
     // redefining the function when renders happen)
     const capture = useCallback(
         () => {
-            const imageSrc = webcamRef.current.getScreenshot();
-
             playBang();
+            const imageSrc = webcamRef.current.getScreenshot();
 
             const query = JSON.stringify({
                 photo: imageSrc
