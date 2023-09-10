@@ -51,7 +51,7 @@ export default function UserStateUpdater({ known_hash, callback }) {
         fetch(url).then(successHandler, failureHandler)
     }, [known_hash, callback, updateBumper, setUpdateBumper]);
 
-    useEffect(checkAndBump, [updateBumper]);
+    useEffect(checkAndBump, [updateBumper, checkAndBump]);
 
     return null;
 }

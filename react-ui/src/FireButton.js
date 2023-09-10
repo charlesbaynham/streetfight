@@ -9,7 +9,7 @@ export default function FireButton({ buttonActive, onClick }) {
       right: 0,
       bottom: 0
     }}>
-      <img src={fireButtonImg} />
+      <img src={fireButtonImg} alt="Fire button" />
     </button>
   );
 }

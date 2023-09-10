@@ -8,6 +8,7 @@ const crosshair_url = '/images/crosshair.svg';
 
 export const CrosshairImage = () => (
   <img
+    alt=""
     src={crosshair_url}
     style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
   />
@@ -16,9 +17,9 @@ export const CrosshairImage = () => (
 
 export const DeadImage = () => (
   <img
+    alt=""
     src={dead_image}
     style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
   />
 );
 
-export default null;

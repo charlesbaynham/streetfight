@@ -46,7 +46,7 @@ function CollectItemFromQueryParam({ enabled }) {
                 clearTimeout(timeoutId);
             };
         }
-    }, [data, enabled]);
+    }, [data, enabled, navigate]);
 
     return null
 }
@@ -66,7 +66,7 @@ export default function BulletCount({ user }) {
             console.log(previousUser)
             setShowBulletAnim(user.num_bullets > previousUser.num_bullets);
             setShowArmourAnim(user.hit_points > previousUser.hit_points && previousUser.hit_points > 0);
-            setShowMedpackAnim(user.hit_points == 1 && previousUser.hit_points == 0);
+            setShowMedpackAnim(user.hit_points === 1 && previousUser.hit_points === 0);
 
             timeoutHandle = setTimeout(() => {
                 setShowBulletAnim(false)

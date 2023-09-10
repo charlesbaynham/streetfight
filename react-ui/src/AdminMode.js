@@ -144,7 +144,7 @@ export default function AdminMode() {
         }, []
     );
 
-    useEffect(updatePanel, [])
+    useEffect(updatePanel, [updatePanel])
 
     return (
         <>

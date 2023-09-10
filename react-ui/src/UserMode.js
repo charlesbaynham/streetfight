@@ -16,9 +16,9 @@ export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
 
   const handle = useFullScreenHandle();
+
+  // eslint-disable-next-line
   const [isFullscreen, setIsFullscreen] = useState(false);
-
-
 
   const [userState, setUserState] = useState(null);
 
@@ -40,7 +40,7 @@ export default function UserMode() {
 
   const setUserName = useCallback((username) => {
     sendAPIRequest("set_name", { name: username }, 'POST', updateUserState);
-  });
+  }, [updateUserState]);
 
   const setNameInput = useRef();
   const noNameView = <>

@@ -56,6 +56,3 @@ export const SCREEN_FILL_STYLES = {
     top: "0",
     zIndex: -1
 };
-
-
-export default null;

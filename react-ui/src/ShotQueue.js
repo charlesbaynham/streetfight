@@ -45,10 +45,10 @@ export default function ShotQueue() {
                     update()
                 });
         },
-        [shot]
+        [shot, update]
     );
 
-    useEffect(update, [])
+    useEffect(update, [update])
 
     const list_of_user_lis = shot ? shot.game.teams.map((team, idx_team) => {
         return team.users.map((user, idx_user) => (
@@ -70,7 +70,7 @@ export default function ShotQueue() {
 
             {shot ? <>
                 <em>By {shot.user.name}</em>
-                <img src={shot.image_base64} />
+                <img alt="The next shot in the queue" src={shot.image_base64} />
                 {
                     shot.game.teams.map((team, idx_team) => (
                         <>
