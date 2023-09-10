@@ -12,8 +12,8 @@ const armour = '/images/helmet.svg';
 const cross = '/images/cross.svg';
 
 
-const make_n_images = (n, image) => Array(n).fill().map(() =>
-    <img src={image} alt="" style={{ height: "1.5em", verticalAlign: "middle" }} />
+const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
+    <img src={image} alt="" key={i} style={{ height: "1.5em", verticalAlign: "middle" }} />
 )
 
 
