@@ -210,3 +210,42 @@ def test_user_collect_item(api_client, team_factory):
     assert r.ok
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "http://example.com",
+        "https://example.com",
+        "https://example.com/subpath",
+        "https://example.com/subpath/subpath2",
+        "https://10.0.0.1/",
+    ],
+)
+def test_user_collect_url(api_client, team_factory, url):
+    from backend.main import _add_params_to_url
+
+    user_id = api_client.get(
+        "/api/my_id",
+    ).json()
+
+    UserInterface(user_id).join_team(team_factory())
+
+    item = DecodedItem(**SAMPLE_AMMO_DATA)
+    item.data = {"num": 10}
+    item.sign()
+    valid_encoded_ammo = item.to_base64()
+
+    sample_url = _add_params_to_url(url, {"d": valid_encoded_ammo})
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 0
+
+    r = api_client.post(
+        "/api/collect_item",
+        json={"data": sample_url},
+    )
+
+    print(r.json())
+    assert r.ok
+
+    assert UserInterface(user_id).get_user_model().num_bullets == 10
