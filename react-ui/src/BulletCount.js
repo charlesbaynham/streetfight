@@ -4,9 +4,9 @@ import { useLocation, useNavigate } from "react-router-dom";
 import TemporaryOverlay from './TemporaryOverlay';
 import { sendAPIRequest } from './utils';
 
-import medkit from './medkit.svg';
-import bullet from './bullet.svg';
-import armour from './helmet.svg';
+const medkit = '/images/medkit.svg';
+const bullet = '/images/bullet.svg';
+const armour = '/images/helmet.svg';
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.

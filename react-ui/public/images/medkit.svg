@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+
+<svg
+   fill="#000000"
+   width="800"
+   height="700"
+   viewBox="0 0 512 448"
+   version="1.1"
+   id="svg4"
+   sodipodi:docname="medkit.svg"
+   inkscape:version="1.2.1 (9c6d41e410, 2022-07-14)"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs8" />
+  <sodipodi:namedview
+     id="namedview6"
+     pagecolor="#ffffff"
+     bordercolor="#000000"
+     borderopacity="0.25"
+     inkscape:showpageshadow="2"
+     inkscape:pageopacity="0.0"
+     inkscape:pagecheckerboard="0"
+     inkscape:deskcolor="#d1d1d1"
+     showgrid="false"
+     inkscape:zoom="1.095"
+     inkscape:cx="400"
+     inkscape:cy="350.22831"
+     inkscape:window-width="1874"
+     inkscape:window-height="1016"
+     inkscape:window-x="46"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg4" />
+  <rect
+     style="fill:#ffffff;stroke:#ffffff;stroke-width:10.24"
+     id="rect343"
+     width="262.56381"
+     height="248.43512"
+     x="122.08866"
+     y="128.20966" />
+  <path
+     d="M 96,448 H 416 V 96 H 384 V 48 C 384,21.49 362.51,0 336,0 H 176 C 149.49,0 128,21.49 128,48 V 96 H 96 Z M 192,64 H 320 V 96 H 192 Z m 320,80 v 256 c 0,26.51 -21.49,48 -48,48 H 448 V 96 h 16 c 26.51,0 48,21.49 48,48 z M 64,448 H 48 C 21.49,448 0,426.51 0,400 V 144 C 0,117.49 21.49,96 48,96 H 64 Z M 352,240 v 32 c 0,8.837 -7.163,16 -16,16 h -48 v 48 c 0,8.837 -7.163,16 -16,16 h -32 c -8.837,0 -16,-7.163 -16,-16 v -48 h -48 c -8.837,0 -16,-7.163 -16,-16 v -32 c 0,-8.837 7.163,-16 16,-16 h 48 v -48 c 0,-8.837 7.163,-16 16,-16 h 32 c 8.837,0 16,7.163 16,16 v 48 h 48 c 8.837,0 16,7.163 16,16 z"
+     id="path2"
+     style="fill:#ff0000" />
+</svg>

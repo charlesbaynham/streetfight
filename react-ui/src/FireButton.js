@@ -3,6 +3,7 @@ import styles from './FireButton.module.css';
 
 
 const fireButtonImg = '/images/firebutton.svg';
+const fireButtonImgNoAmmo = '/images/firebutton_no_ammo.svg';
 
 
 
@@ -13,7 +14,7 @@ export default function FireButton({ buttonActive, onClick }) {
       disabled={!buttonActive}
       onClick={onClick}
     >
-      <img src={fireButtonImg} alt="Fire button" />
+      <img src={buttonActive ? fireButtonImg : fireButtonImgNoAmmo} alt="Fire button" />
     </button>
   );
 }
