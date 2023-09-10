@@ -36,9 +36,10 @@ Goals
     - [ ] Add zoomed view of centre
 - [ ] Keep all photos as files
 - [ ] Polish:
+  - [ ] Fix that scanning a QR code doesn't animate
   - [ ] The user interface looks awful - it shouldn't
   - [ ] Users should not have access to the camera interface until they have been added to a team
-  - [ ] Dump scan mode
+  - [x] Dump scan mode
   - [ ] Have a QR reader running in javascript so people don't need to switch to their cameras
   - [ ] Users need more feedback - animations and things to make them feel like something happened
   - [ ] Bulk generation of QR codes
@@ -46,7 +47,7 @@ Goals
   - [ ] Get fullscreen working again
   - [ ] Dark souls "You died"
   - [ ] Black and white camera when dead
-
+  - [ ] Add sounds!
 
 Backburner:
 
