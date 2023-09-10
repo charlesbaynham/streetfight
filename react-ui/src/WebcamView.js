@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback } from 'react';
 
 import Webcam from "react-webcam";
+
+import QRParser from './QRParser';
 import { SCREEN_FILL_STYLES } from './utils';
 
 
@@ -46,13 +48,16 @@ function WebcamCapture({ trigger }) {
     }, [trigger, capture])
 
     return (
-        <Webcam
-            ref={webcamRef}
-            audio={false}
-            screenshotFormat="image/png"
-            videoConstraints={videoConstraints}
-            style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
-        />
+        <>
+            <Webcam
+                ref={webcamRef}
+                audio={false}
+                screenshotFormat="image/png"
+                videoConstraints={videoConstraints}
+                style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
+            />
+            <QRParser webcamRef={webcamRef} />
+        </>
     );
 }
 

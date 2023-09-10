@@ -6,7 +6,7 @@ import QrScanner from 'qr-scanner';
 import { useCallback, useEffect, useState } from 'react';
 
 
-const timeout = 500;
+const timeout = 750;
 
 
 const QRParser = ({ webcamRef }) => {
