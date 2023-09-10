@@ -1,3 +1,4 @@
+from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 import re
 import logging
 import os
@@ -133,9 +134,10 @@ async def collect_item(
     user_id=Depends(get_user_id),
 ):
     # Clean off URL prefix if present
-    match = re.match(r"https?:\/\/[^?]+?\?d=(.+)", encoded_item.data)
-    if match:
-        data = match[1]
+    if re.match(r"http", encoded_item.data):
+        parsed_url = urlparse(encoded_item.data)
+        query_params = parse_qs(parsed_url.query)
+        data = query_params["d"][0]
     else:
         data = encoded_item.data
 
@@ -238,8 +240,6 @@ def _add_params_to_url(url: str, params: Dict):
     """
     A chatGPT special to add parameters to a URL
     """
-
-    from urllib.parse import urlparse, urlencode, parse_qs, urlunparse
 
     parsed_url = urlparse(url)
 
