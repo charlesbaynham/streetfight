@@ -22,4 +22,3 @@ export const DeadImage = () => (
     style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
   />
 );
-
