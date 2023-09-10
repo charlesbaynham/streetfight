@@ -39,25 +39,6 @@ function WebcamCapture({ trigger }) {
         [webcamRef]
     );
 
-    const check_for_qr = useCallback(
-        () => {
-            const imageSrc = webcamRef.current.getScreenshot();
-            const code = jsQR(imageSrc, videoConstraints.width, videoConstraints.height);
-
-            if (true) {
-                console.log("Found QR code", code);
-            }
-        }
-        , [webcamRef]);
-
-    useEffect(() => {
-        const id = setTimeout(() => {
-            console.log("Scanning...");
-            check_for_qr();
-        }, 1000);
-        return () => { clearTimeout(id); }
-    }, []);
-
     // Call the capture callback when the 'trigger' prop changes
     useEffect(() => {
         if (trigger)
@@ -81,7 +62,6 @@ export default function WebcamView({
 }) {
 
     return <>
-
         <WebcamCapture trigger={trigger} />
     </>;
 }
