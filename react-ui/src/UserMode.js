@@ -128,8 +128,6 @@ export default function UserMode() {
 
       </FullScreen>
 
-
-
       <CollectItemFromQueryParam />
     </ >
   ) : null;
