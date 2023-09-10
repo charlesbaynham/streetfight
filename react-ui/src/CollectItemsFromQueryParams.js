@@ -1,7 +1,6 @@
 import React, { useEffect } from 'react';
 import { useLocation, useNavigate } from "react-router-dom";
 
-
 import { sendAPIRequest } from './utils';
 
 

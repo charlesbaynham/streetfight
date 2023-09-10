@@ -1,9 +1,9 @@
 
-
-
+import { useCallback, useEffect, useState } from 'react';
 
 import QrScanner from 'qr-scanner';
-import { useCallback, useEffect, useState } from 'react';
+
+import { sendAPIRequest } from './utils';
 
 
 const timeout = 750;
@@ -13,7 +13,11 @@ const QRParser = ({ webcamRef }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
 
-    const scannedCallback = useCallback((data) => { console.log(data) }, []);
+    const scannedCallback = useCallback((data) => {
+        sendAPIRequest("collect_item", {}, "POST", null, {
+            data: data
+        })
+    }, []);
 
     const capture = useCallback(() => {
         // Create persistent service worker and canvas for performance
