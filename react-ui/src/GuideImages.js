@@ -3,7 +3,6 @@ import React from 'react';
 import { SCREEN_FILL_STYLES } from './utils';
 
 import crosshair from './crosshair.png';
-import qr_guide from './qr_guide.png';
 import dead_image from './you_are_dead.png';
 
 

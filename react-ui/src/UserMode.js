@@ -1,58 +1,16 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
-import { useLocation, useNavigate } from "react-router-dom";
+
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import { CrosshairImage, QRImage, DeadImage } from './GuideImages';
+import { CrosshairImage, DeadImage } from './GuideImages';
 import FireButton from './FireButton';
-import ScanButton from './ScanButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
 import UserStateUpdater from './UserUpdater';
 
-// A custom hook that builds on useLocation to parse
-// the query string for you.
-// See https://v5.reactrouter.com/web/example/query-parameters
-function useQuery() {
-  const { search } = useLocation();
-
-  return React.useMemo(() => new URLSearchParams(search), [search]);
-}
-
-function CollectItemFromQueryParam() {
-  const navigate = useNavigate();
-  const query = useQuery();
-
-  const data = query.get("d");
-
-  useEffect(() => {
-    if (data !== null) {
-      console.log(`Collecting item with d=${data}`)
-
-      function onTimeout() {
-        sendAPIRequest("collect_item", {}, "POST", null, {
-          data: data
-        })
-          .then((r) => {
-            console.log(r)
-          })
-          .then((_) => {
-            navigate("/")
-          })
-      }
-      const timeoutId = setTimeout(onTimeout, 200);
-
-      return () => {
-        console.log('Cancel collection');
-        clearTimeout(timeoutId);
-      };
-    }
-  }, [data]);
-
-  return null
-}
 
 export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
@@ -60,7 +18,7 @@ export default function UserMode() {
   const handle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const [scanMode, setScanMode] = useState(false);
+
 
   const [userState, setUserState] = useState(null);
 
@@ -112,7 +70,7 @@ export default function UserMode() {
         <WebcamView trigger={triggerShot} />
 
         {isAlive ?
-          (scanMode ? <QRImage /> : <CrosshairImage />)
+          <CrosshairImage />
           :
           <DeadImage />
         }
@@ -122,13 +80,8 @@ export default function UserMode() {
             setTriggerShot(triggerShot + 1)
           }
         } />
-        <ScanButton onClick={
-          () => { setScanMode(!scanMode) }
-        } />
 
       </FullScreen>
-
-      <CollectItemFromQueryParam />
     </ >
   ) : null;
 
