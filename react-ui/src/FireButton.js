@@ -1,5 +1,5 @@
 
-import fireButtonImg from './firebutton.png';
+const fireButtonImg = '/images/firebutton.svg';
 
 
 export default function FireButton({ buttonActive, onClick }) {
