@@ -4,6 +4,8 @@ import Webcam from "react-webcam";
 import { SCREEN_FILL_STYLES } from './utils';
 
 
+import jsQR from "jsqr";
+
 const videoConstraints = {
     width: 1280,
     height: 720,
@@ -39,6 +41,24 @@ function WebcamCapture({ trigger }) {
         [webcamRef]
     );
 
+    const check_for_qr = useCallback(
+        () => {
+            const imageSrc = webcamRef.current.getScreenshot();
+            const code = jsQR(imageSrc, videoConstraints.width, videoConstraints.height);
+
+            if (code) {
+              console.log("Found QR code", code);
+            }
+        }
+        , [webcamRef]);
+
+    useEffect(() => {
+        setTimeout(() => {
+            console.log("Scanning...");
+            check_for_qr();
+        }, 1000);
+    }, []);
+    
     // Call the capture callback when the 'trigger' prop changes
     useEffect(() => {
         if (trigger)

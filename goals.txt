@@ -46,6 +46,7 @@ Goals
   - [ ] I should be able to pause / resume games from admin mode
   - [ ] Get fullscreen working again
   - [ ] Dark souls "You died"
+  - [ ] Add ticker of events (x shot y, y missed)
   - [ ] Black and white camera when dead
   - [ ] Add sounds!
 
