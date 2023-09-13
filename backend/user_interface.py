@@ -27,16 +27,28 @@ update_events: Dict[int, asyncio.Event] = {}
 make_user_lock = RLock()
 
 
-def db_scoped(func: Callable):
+def db_scoped(func: Callable, event_name: str, touch_method: Callable):
     """
-    Start a session and store it in self._session
+    Wrapper for class methods that access a database through an SQLAlchemy session and need to perform an action
+    when the session is closed.
 
-    When a @db_scoped method returns, commit the session
+    This wrapper:
 
-    Close the session once all @db_scoped methods are finished (if the session is not external)
+    1. For the first db_scoped method, starts a session and stores it in self._session
 
-    If any of the decorated functions altered the database state, also release an asyncio
-    event marking this user as having been updated
+    2. When a @db_scoped method returns, commit the session
+
+    3. Closes the session once all @db_scoped methods are finished (if the session is not external)
+
+    4. If any of the decorated functions altered the database state,
+      a. Release an asyncio event
+      b. Call `touch_method(self)`
+
+    Example usage:
+
+    @db_scoped("users", lambda self: self.get_user().touch())
+    def do_something(self):
+        # do something with users, probably using self._session
     """
     from . import database
 
@@ -50,7 +62,6 @@ def db_scoped(func: Callable):
         try:
             self._session_users += 1
             out = func(self, *args, **kwargs)
-
             # If this commit will alter the database, set the modified flag
             self._check_for_dirty_session()
 
@@ -61,14 +72,6 @@ def db_scoped(func: Callable):
             raise e
         finally:
             if self._session_users == 1 and self._session_modified:
-                # If any of the functions altered the game state, fire
-                # the corresponding updates events if they are present
-                # in the global dict And mark the game as altered in the
-                # database.
-                #
-                # Check this before we reduce session_users to 0, else
-                # calling get_game will reopen a new session before the
-                # old one is closed.
                 logger.debug("Touching user")
                 self.get_user().touch()
 
@@ -83,8 +86,6 @@ def db_scoped(func: Callable):
                     trigger_update_event(self.user_id)
 
     return f
-
-
 
 
 class UserInterface:
@@ -109,6 +110,7 @@ class UserInterface:
         if self._session.dirty or self._session.new or self._session.deleted:
             self._session_modified = True
             logger.debug("Marking changes as present")
+
     @db_scoped
     def _make_user(self) -> User:
         """
