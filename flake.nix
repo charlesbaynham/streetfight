@@ -14,6 +14,7 @@
             # Runtime
             python-dotenv
             sqlalchemy
+            pillow
             psycopg2
             sqlalchemy-utils
             fastapi
