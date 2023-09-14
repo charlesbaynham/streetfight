@@ -10,6 +10,7 @@ from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 from sqlalchemy.ext import baked
+from sqlalchemy.orm import Session
 
 from .items import DecodedItem
 from .model import Game
@@ -27,65 +28,100 @@ update_events: Dict[int, asyncio.Event] = {}
 make_user_lock = RLock()
 
 
-def db_scoped(func: Callable, event_name: str, touch_method: Callable):
-    """
-    Wrapper for class methods that access a database through an SQLAlchemy session and need to perform an action
-    when the session is closed.
+class DatabaseScopeProvider:
+    def __init__(
+        self,
+        name: str,
+        precommit_method: Callable = lambda _: None,
+        postcommit_method: Callable = lambda _: None,
+    ) -> None:
+        self.name = name
+        self.update_events: Dict[int, asyncio.Event] = {}
+        self.thread_lock = RLock()
+        self.precommit_method = precommit_method
+        self.precommit_method = postcommit_method
 
-    This wrapper:
+    @staticmethod
+    def session_is_dirty(session: Session):
+        return session.dirty or session.new or session.deleted
 
-    1. For the first db_scoped method, starts a session and stores it in self._session
+    def db_scoped(self_outer, func: Callable):
+        """
+        Wrapper for class methods that access a database through an SQLAlchemy session and need to perform an action
+        when the session is closed.
 
-    2. When a @db_scoped method returns, commit the session
+        This wrapper:
 
-    3. Closes the session once all @db_scoped methods are finished (if the session is not external)
+        1. For the first db_scoped method, starts a session and stores it in self._session
 
-    4. If any of the decorated functions altered the database state,
-      a. Release an asyncio event
-      b. Call `touch_method(self)`
+        2. When a @db_scoped method returns, commit the session
 
-    Example usage:
+        3. Closes the session once all @db_scoped methods are finished (if the session is not external)
 
-    @db_scoped("users", lambda self: self.get_user().touch())
-    def do_something(self):
-        # do something with users, probably using self._session
-    """
-    from . import database
+        4. If any of the decorated functions altered the database state,
+            a. Release an asyncio event stored
+            b. Call `touch_method(self)`
 
-    @wraps(func)
-    def f(self, *args, **kwargs):
-        if not self._session:
-            self._session = database.Session()
-        if self._session_users == 0:
-            self._session_modified = False
+        Example usage:
 
-        try:
-            self._session_users += 1
-            out = func(self, *args, **kwargs)
-            # If this commit will alter the database, set the modified flag
-            self._check_for_dirty_session()
+        @db_scoped("users", lambda self: self.get_user().touch())
+        def do_something(self):
+            # do something with users, probably using self._session
+        """
+        from . import database
 
-            return out
-        except Exception as e:
-            logging.exception("Exception encountered! Rolling back DB")
-            self._session.rollback()
-            raise e
-        finally:
-            if self._session_users == 1 and self._session_modified:
-                logger.debug("Touching user")
-                self.get_user().touch()
+        @wraps(func)
+        def f(self, *args, **kwargs):
+            if not hasattr(self, "_database_scope_data"):
+                self._database_scope_data = {}
+            try:
+                wrapper_data = self._database_scope_data[self_outer.name]
+            except KeyError:
+                self._database_scope_data[self_outer.name] = {
+                    "session_users": 0,
+                    "session_modified": False,
+                }
+                wrapper_data = self._database_scope_data[self_outer.name]
 
-            self._session_users -= 1
+            if not self._session:
+                self._session = database.Session()
+            if wrapper_data["session_users"] == 0:
+                wrapper_data["session_modified"] = False
 
-            if self._session_users == 0:
-                logger.debug("Committing session")
-                self._session.commit()
+            try:
+                wrapper_data["session_users"] += 1
+                out = func(self, *args, **kwargs)
+                # If this commit will alter the database, set the modified flag
+                wrapper_data["session_modified"] = self_outer.session_is_dirty(
+                    self._session
+                )
 
-                if self._session_modified:
-                    logger.debug("...and triggering updates")
-                    trigger_update_event(self.user_id)
+                return out
+            except Exception as e:
+                logging.exception("Exception encountered! Rolling back DB")
+                self._session.rollback()
+                raise e
+            finally:
+                if (
+                    wrapper_data["session_users"] == 1
+                    and wrapper_data["session_modified"]
+                ):
+                    logger.debug("Calling precommit_method for %s", self_outer.name)
+                    self_outer.precommit_method(self)
 
-    return f
+                wrapper_data["session_users"] -= 1
+
+                if wrapper_data["session_users"] == 0:
+                    logger.debug("Committing session")
+                    self._session.commit()
+
+                    if wrapper_data["session_modified"]:
+                        logger.debug(
+                            "Calling postcommit_method for %s", self_outer.name
+                        )
+                        self_outer.postcommit_method(self)
+
+        return f
 
 
 class UserInterface:
@@ -105,11 +141,6 @@ class UserInterface:
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
-
-    def _check_for_dirty_session(self):
-        if self._session.dirty or self._session.new or self._session.deleted:
-            self._session_modified = True
-            logger.debug("Marking changes as present")
 
     @db_scoped
     def _make_user(self) -> User:
