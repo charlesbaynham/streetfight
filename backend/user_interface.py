@@ -47,25 +47,27 @@ class DatabaseScopeProvider:
 
     def db_scoped(self_outer, func: Callable):
         """
-        Wrapper for class methods that access a database through an SQLAlchemy session and need to perform an action
-        when the session is closed.
+        Wrapper for class methods that access a database through an SQLAlchemy
+        session and need to perform an action when the session is closed.
 
-        This wrapper:
+        This wrapper uses two class variables: `_session` (which is shared between
+        all instances of this wrapper and should be used by class code to access
+        the database), and `_database_scope_data` which is private for this
+        class.
 
-        1. For the first db_scoped method, starts a session and stores it in self._session
+        1. For the first db_scoped method, starts a session and stores it in
+           self._session
 
-        2. When a @db_scoped method returns, commit the session
+        2. When the last @db_scoped method returns, commit the session
 
-        3. Closes the session once all @db_scoped methods are finished (if the session is not external)
-
-        4. If any of the decorated functions altered the database state,
-            a. Release an asyncio event stored
-            b. Call `touch_method(self)`
+        3. If any of the decorated functions altered the database state,
+            a. Call `precommit_method(self)` before the db commit
+            b. Call `postcommit_method(self)` after the db commit
 
         Example usage:
 
-        @db_scoped("users", lambda self: self.get_user().touch())
-        def do_something(self):
+        @db_scoped("users", lambda self: self.get_user().touch()) def
+        do_something(self):
             # do something with users, probably using self._session
         """
         from . import database
