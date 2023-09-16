@@ -60,3 +60,45 @@ async def test_ticker_messages_via_user(user_in_team):
 async def test_ticker_messages_via_user_outside_team(user_factory):
     ticker = UserInterface(user_factory()).get_ticker()
     assert ticker is None
+
+
+def test_api_query_ticker_outside_team(api_client, user_factory):
+    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_factory()}")
+    assert response.ok
+
+    new_hash = response.json()["hash"]
+    messages = response.json()["messages"]
+
+    assert new_hash == 0
+    assert messages == []
+
+
+def test_api_query_ticker_inside_team(api_client, user_in_team):
+    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_in_team}")
+    assert response.ok
+
+    new_hash = response.json()["hash"]
+    messages = response.json()["messages"]
+
+    assert new_hash != 0
+    assert messages == []
+
+
+def test_api_query_ticker_messages(api_client, user_in_team):
+    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_in_team}")
+    assert response.ok
+
+    old_hash = response.json()["hash"]
+
+    UserInterface(user_in_team).get_ticker().post_message("hello")
+
+    response = api_client.get(
+        f"/api/ticker_messages_and_hash?user_id={user_in_team}&known_ticker_hash={old_hash}"
+    )
+    assert response.ok
+
+    new_hash = response.json()["hash"]
+    messages = response.json()["messages"]
+
+    assert new_hash != old_hash
+    assert messages == ["hello"]
