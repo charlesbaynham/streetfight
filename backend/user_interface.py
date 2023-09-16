@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from threading import RLock
+from typing import Optional
 from typing import Union
 from uuid import UUID
 
@@ -16,6 +17,7 @@ from .model import Shot
 from .model import Team
 from .model import User
 from .model import UserModel
+from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
@@ -267,3 +269,10 @@ class UserInterface:
         except asyncio.TimeoutError:
             logger.info(f"Event timeout for user {self.user_id}")
             return current_hash
+
+    @db_scoped
+    def get_ticker(self) -> Optional[Ticker]:
+        team = self.get_user().team
+        if team is None:
+            return None
+        return Ticker(team.game_id)

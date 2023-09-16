@@ -29,7 +29,7 @@ class Ticker:
         self._session = session
 
     @db_scoped
-    def get_messages(self, n_entries) -> List[str]:
+    def get_messages(self, num_messages) -> List[str]:
         """Gets the latest n messages for this game
 
         Args:
@@ -42,7 +42,7 @@ class Ticker:
             self._session.query(TickerEntry)
             .filter_by(game_id=self.game_id)
             .order_by(TickerEntry.id.desc())
-            .limit(n_entries)
+            .limit(num_messages)
             .all()
         )
 

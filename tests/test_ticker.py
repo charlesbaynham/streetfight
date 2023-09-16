@@ -3,6 +3,7 @@ import time
 import pytest
 
 from backend.ticker import Ticker
+from backend.user_interface import UserInterface
 
 
 @pytest.fixture
@@ -44,3 +45,18 @@ async def test_ticker_game_hash_changes(ticker):
     starting_hash = await ticker.get_hash()
     ticker.post_message("Hello")
     assert starting_hash != await ticker.get_hash()
+
+
+@pytest.mark.asyncio
+async def test_ticker_messages_via_user(user_in_team):
+    ticker = UserInterface(user_in_team).get_ticker()
+
+    starting_hash = await ticker.get_hash()
+    ticker.post_message("Hello")
+    assert starting_hash != await ticker.get_hash()
+
+
+@pytest.mark.asyncio
+async def test_ticker_messages_via_user_outside_team(user_factory):
+    ticker = UserInterface(user_factory()).get_ticker()
+    assert ticker is None
