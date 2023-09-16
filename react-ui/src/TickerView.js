@@ -1,65 +1,34 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+
+import HashUpdater from './HashUpdater';
+import { sendAPIRequest } from './utils';
 
 
 
 
 
+export default function TickerView() {
 
-export default function BulletCount({ user }) {
-    const [previousUser, setPreviousUser] = useState(null);
+    const [messages, setMessages] = useState(["test"]);
+    const [knownTickerHash, setKnownTickerHash] = useState(0);
 
-    const [showBulletAnim, setShowBulletAnim] = useState(false);
-    const [showArmourAnim, setShowArmourAnim] = useState(false);
-    const [showMedpackAnim, setShowMedpackAnim] = useState(false);
+    const updateMessages = useCallback(() => {
+        sendAPIRequest("ticker_messages", null, "GET", data => {
+            setMessages(data)
+        })
+    }, [setMessages]);
 
-    useEffect(() => {
-        var timeoutHandle = null;
+    useEffect(updateMessages, [knownTickerHash]);
 
-        if (previousUser) {
-            setShowBulletAnim(user.num_bullets > previousUser.num_bullets);
-            setShowArmourAnim(user.hit_points > previousUser.hit_points && previousUser.hit_points > 0);
-            setShowMedpackAnim(user.hit_points === 1 && previousUser.hit_points === 0);
-
-            timeoutHandle = setTimeout(() => {
-                setShowBulletAnim(false)
-                setShowArmourAnim(false)
-                setShowMedpackAnim(false)
-            }, 3000)
-        }
-
-        setPreviousUser(user);
-
-        if (timeoutHandle) {
-            return () => { clearTimeout(timeoutHandle) }
-        }
-    }, [user, previousUser]);
-
-
-    return (
-        <div id="bullet-count" className={styles.bulletCount}>
-            <p>Ammo: {
-                user.num_bullets > 0 ?
-                    (
-                        user.num_bullets > 4 ?
-                            <>{make_n_images(1, bullet)} x{user.num_bullets}</> :
-                            make_n_images(user.num_bullets, bullet)
-                    ) :
-                    make_n_images(1, cross)
-            }</p>
-            <p>Armour: {
-                user.hit_points > 1 ?
-                    make_n_images(user.hit_points - 1, armour) :
-                    make_n_images(1, cross)
-            }</p>
-            <TemporaryOverlay img={bullet} appear={showBulletAnim} />
-            <TemporaryOverlay img={armour} appear={showArmourAnim} />
-            <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
-
-
-            <CollectItemFromQueryParam enabled={
-                !showBulletAnim && !showArmourAnim && !showMedpackAnim
-            } />
-        </div>
-
-    );
+    return <>
+        <HashUpdater
+            known_hash={knownTickerHash}
+            callback={(d) => {
+                console.log(`Old hash = ${knownTickerHash}, new_hash=${d}`)
+                setKnownTickerHash(d)
+            }}
+            api_call="ticker_hash"
+        />
+        {messages.map((m) => <span>- {m}</span>)}
+    </>
 }

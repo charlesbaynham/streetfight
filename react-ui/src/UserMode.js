@@ -10,6 +10,7 @@ import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
 import HashUpdater from './HashUpdater';
+import TickerView from './TickerView';
 
 
 export default function UserMode() {
@@ -70,6 +71,7 @@ export default function UserMode() {
 
       <FullScreen handle={handle} onChange={reportChange}>
         <BulletCount user={userState} />
+        <TickerView />
 
         <WebcamView trigger={triggerShot} />
 
