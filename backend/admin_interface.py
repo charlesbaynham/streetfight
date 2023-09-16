@@ -126,6 +126,7 @@ class AdminInterface:
         self.session.commit()
 
     def make_new_item(self, item_type: str, item_data: dict) -> str:
+        logger.info("make_new_item item_type=%s, item_data=%s", item_type, item_data)
         try:
             item_type = ItemType(item_type)
         except ValueError:

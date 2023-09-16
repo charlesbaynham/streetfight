@@ -45,6 +45,11 @@ def setup_logging():
     rotating_handler = RotatingFileHandler(
         Path(__file__) / "../../logs/backend.log", backupCount=10
     )
+
+    # Configure the format for log messages
+    formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    rotating_handler.setFormatter(formatter)
+
     root_logger.addHandler(rotating_handler)
     rotating_handler.doRollover()
 
