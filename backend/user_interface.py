@@ -80,7 +80,7 @@ class UserInterface:
         "Return an ORM object for this user, making a new one if required"
 
         with make_user_lock:
-            user = self._session.query(User).filter_by(id=self.user_id).first()
+            user = self._session.query(User).get(self.user_id)
 
             if not user:
                 user = self._make_user()

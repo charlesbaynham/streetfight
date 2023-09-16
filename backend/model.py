@@ -43,6 +43,16 @@ class Game(Base):
     items = relationship("Item", lazy=True, back_populates="game")
     ticker_entries = relationship("TickerEntry", lazy=True, back_populates="game")
 
+    ticker_update_tag = Column(Integer(), default=random_counter_value)
+
+    def touch(self):
+        old = self.ticker_update_tag
+        new = random_counter_value()
+        logger.debug(
+            "Changing ticker_update_tag for game %s from %s to %s", self.id, old, new
+        )
+        self.ticker_update_tag = new
+
 
 class Shot(Base):
     """
@@ -143,7 +153,7 @@ class TickerEntry(Base):
     id = Column(Integer, primary_key=True)
     time_created = Column(DateTime, server_default=func.now())
 
-    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
+    game_id = Column(UUIDType, ForeignKey("games.id"), index=True, nullable=False)
     game = relationship(
         "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
     )
@@ -180,6 +190,7 @@ class GameModel(pydantic.BaseModel):
     id: UUID
 
     teams: List["TeamModel"]
+    ticker_update_tag: int
 
     class Config:
         orm_mode = True
