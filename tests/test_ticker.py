@@ -63,12 +63,14 @@ async def test_ticker_messages_via_user_outside_team(user_factory):
     assert ticker is None
 
 
-def test_api_query_ticker_outside_team(api_client, api_user_id):
-    response = api_client.get("/api/ticker_messages_and_hash")
+def test_api_query_ticker_outside_team(api_client):
+    response = api_client.get("/api/ticker_messages")
     assert response.ok
+    messages = response.json()
 
-    new_hash = response.json()["hash"]
-    messages = response.json()["messages"]
+    response = api_client.get("/api/ticker_hash")
+    assert response.ok
+    new_hash = response.json()
 
     assert new_hash == 0
     assert messages == []
@@ -78,11 +80,13 @@ def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
     team_id = team_factory()
     AdminInterface().add_user_to_team(api_user_id, team_id)
 
-    response = api_client.get(f"/api/ticker_messages_and_hash")
+    response = api_client.get("/api/ticker_messages")
     assert response.ok
+    messages = response.json()
 
-    new_hash = response.json()["hash"]
-    messages = response.json()["messages"]
+    response = api_client.get("/api/ticker_hash")
+    assert response.ok
+    new_hash = response.json()
 
     assert new_hash != 0
     assert messages == []
@@ -92,20 +96,19 @@ def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
     team_id = team_factory()
     AdminInterface().add_user_to_team(api_user_id, team_id)
 
-    response = api_client.get("/api/ticker_messages_and_hash")
+    response = api_client.get("/api/ticker_hash")
     assert response.ok
-
-    old_hash = response.json()["hash"]
+    old_hash = response.json()
 
     UserInterface(api_user_id).get_ticker().post_message("hello")
 
-    response = api_client.get(
-        f"/api/ticker_messages_and_hash?known_ticker_hash={old_hash}"
-    )
+    response = api_client.get("/api/ticker_messages")
     assert response.ok
+    messages = response.json()
 
-    new_hash = response.json()["hash"]
-    messages = response.json()["messages"]
+    response = api_client.get(f"/api/ticker_hash?known_ticker_hash={old_hash}")
+    assert response.ok
+    new_hash = response.json()
 
     assert new_hash != old_hash
     assert messages == ["hello"]

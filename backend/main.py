@@ -150,19 +150,28 @@ async def collect_item(
         raise HTTPException(400, "Malformed data")
 
 
-@router.get("/ticker_messages_and_hash")
-async def get_ticker_messages_and_hash(
+@router.get("/ticker_messages")
+async def get_ticker_messages(
     num_messages=3,
+    user_id=Depends(get_user_id),
+):
+    ticker = UserInterface(user_id).get_ticker()
+    if ticker is None:
+        return []
+
+    return ticker.get_messages(num_messages)
+
+
+@router.get("/ticker_hash")
+async def get_ticker_hash(
     known_ticker_hash=0,
     user_id=Depends(get_user_id),
 ):
     ticker = UserInterface(user_id).get_ticker()
     if ticker is None:
-        return {"hash": 0, "messages": []}
+        return 0
 
-    new_hash = await ticker.get_hash(known_hash=known_ticker_hash)
-
-    return {"hash": new_hash, "messages": ticker.get_messages(num_messages)}
+    return await ticker.get_hash(known_hash=known_ticker_hash)
 
 
 @router.get("/get_hash")
