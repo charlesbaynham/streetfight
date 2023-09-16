@@ -58,7 +58,11 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
-      <HashUpdater known_hash={userStateHash} callback={(d) => { setUserStateHash(d) }} />
+      <HashUpdater
+        known_hash={userStateHash}
+        callback={(d) => { setUserStateHash(d) }}
+        api_call="get_hash"
+      />
 
       <button onClick={handle.enter}>
         Fullscreen

@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { makeAPIURL } from './utils'
 
 
-export default function HashUpdater({ known_hash, callback }) {
+export default function HashUpdater({ known_hash, callback, api_call }) {
     const [updateBumper, setUpdateBumper] = useState(0);
 
     const errorCheckRate = 1000
@@ -46,7 +46,7 @@ export default function HashUpdater({ known_hash, callback }) {
             console.log(`Remounted updater after error after failure`)
         }
 
-        const url = makeAPIURL("get_hash", { known_hash: known_hash })
+        const url = makeAPIURL(api_call, { known_hash: known_hash })
 
         fetch(url).then(successHandler, failureHandler)
     }, [known_hash, callback, updateBumper, setUpdateBumper]);
