@@ -16,6 +16,8 @@ const options = {
 const apiProxy = createProxyMiddleware(options);
 
 module.exports = app => {
-    // mount `apiProxy` in web server
-    app.use('/api', apiProxy);
+  // mount `apiProxy` in web server
+  app.use('/api', apiProxy);
+  app.use('/docs', apiProxy);
+  app.use('/openapi.json', apiProxy);
 }
