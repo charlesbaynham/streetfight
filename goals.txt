@@ -52,7 +52,14 @@ Goals
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
 Bugs:
-  - [ ] Having both the game hash and the ticker hash causes the admin interface to freeze sometimes
+
+
+Backburner:
+
+- [ ] Admin interface UI should also auto-update
+- [ ]: The admin interface should have a password
+- [ ]: Users should be able to send items to other users (on their team? only bullets?)
+- [ ] Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
 
   More info: it seems to be to do with having both types of long-polling requests simultaneously. To trigger the problem:
   1. Open the admin interface and the user interface
@@ -86,10 +93,4 @@ Bugs:
 
   Confirmed: changing max-persistent-connections-per-server in about:config fixes the bug. :(
 
-
-
-Backburner:
-
-- [ ] Admin interface UI should also auto-update
-- [ ]: The admin interface should have a password
-- [ ]: Users should be able to send items to other users (on their team? only bullets?)
+  Summary: If I care, the solution is WebSockets. If I don't the solution is ignore it. Should be fine - modern browsers seem to handle 6x connections OK which is fine for all my users.
