@@ -6,7 +6,7 @@ from uuid import UUID
 
 from fastapi import HTTPException
 
-from .asyncio_triggers import get_user_trigger_event
+from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
 from .items import DecodedItem
@@ -36,7 +36,7 @@ UserScopeWrapper = DatabaseScopeProvider(
     "users",
     precommit_method=touch_user,
     postcommit_method=lambda user_interface: trigger_update_event(
-        user_interface.user_id
+        "user", user_interface.user_id
     ),
 )
 db_scoped = UserScopeWrapper.db_scoped
@@ -257,7 +257,7 @@ class UserInterface:
             return current_hash
 
         # Otherwise, lookup / make an event and subscribe to it
-        event = get_user_trigger_event(self.user_id)
+        event = get_trigger_event("user", self.user_id)
 
         try:
             logger.info("Subscribing to event %s for user %s", event, self.user_id)

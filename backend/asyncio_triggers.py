@@ -2,44 +2,53 @@ import asyncio
 import logging
 from threading import RLock
 from typing import Dict
-from uuid import UUID
+from typing import Hashable
 
 
 logger = logging.getLogger(__name__)
 
 
-update_events: Dict[int, asyncio.Event] = {}
-
-make_user_lock = RLock()
+_update_events: Dict[str, Dict[Hashable, asyncio.Event]] = {}
 
 
-def trigger_update_event(user_id: UUID):
-    global update_events
+def trigger_update_event(event_type: str, key: Hashable):
+    global _update_events
 
-    logger.info(f"Triggering updates for user {user_id}")
-    logger.debug(f"update_events = %s, user_id=%s", update_events, user_id)
+    logger.info(f"Triggering updates for type %s, key %s", event_type, key)
 
-    if user_id in update_events:
+    if event_type not in _update_events:
+        _update_events[event_type] = dict()
+
+    these_events = _update_events[event_type]
+
+    if key in these_events:
         logger.debug("Update event found")
-        update_events[user_id].set()
-        del update_events[user_id]
+        these_events[key].set()
+        del these_events[key]
     else:
         logger.debug("No update event found")
 
 
-def get_user_trigger_event(user_id: UUID) -> asyncio.Event:
-    """Get a trigger event for this user which will fire when this user changes
+def get_trigger_event(event_type: str, key: Hashable) -> asyncio.Event:
+    """
+    Get a trigger event for this type/key which will can be fired by
+    :meth:`~.trigger_update_event`
 
     Args:
-        user_id (UUID): User ID
+        event_type (str): A name to identify these events
+        key (Hashable): A hashable key to look up the event
 
     Returns:
         asyncio.Event: ASyncio event
     """
 
-    # Otherwise, lookup / make an event and subscribe to it
-    if user_id not in update_events:
-        update_events[user_id] = asyncio.Event()
-        logger.info("Made new event for user %s", user_id)
+    if event_type not in _update_events:
+        _update_events[event_type] = dict()
 
-    return update_events[user_id]
+    these_events = _update_events[event_type]
+
+    if key not in these_events:
+        these_events[key] = asyncio.Event()
+        logger.info("Made new event for type %s, key %s", event_type, key)
+
+    return these_events[key]
