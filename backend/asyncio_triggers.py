@@ -1,6 +1,5 @@
 import asyncio
 import logging
-from threading import RLock
 from typing import Dict
 from typing import Hashable
 

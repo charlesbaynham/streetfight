@@ -96,8 +96,8 @@ class Ticker:
         try:
             logger.info("Subscribing to event %s for game %s", event, self.game_id)
             await asyncio.wait_for(event.wait(), timeout=timeout)
-            logger.info(f"Event received for game {self.user_id}")
+            logger.info(f"Event received for game {self.game_id}")
             return self._get_hash_now()
         except asyncio.TimeoutError:
-            logger.info(f"Event timeout for game {self.user_id}")
+            logger.info(f"Event timeout for game ticker {self.game_id}")
             return current_hash
