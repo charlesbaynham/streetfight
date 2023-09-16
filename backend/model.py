@@ -41,6 +41,7 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
+    ticker_entries = relationship("TickerEntry", lazy=True, back_populates="game")
 
 
 class Shot(Base):
@@ -89,9 +90,7 @@ class Team(Base):
     name = Column(String)
 
     game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
-    game = relationship(
-        "Game", lazy="joined", foreign_keys=game_id, back_populates="teams"
-    )
+    game = relationship("Game", lazy=True, foreign_keys=game_id, back_populates="teams")
 
     users = relationship("User", lazy=True, back_populates="team")
     shots = relationship("Shot", lazy=True, back_populates="team")
@@ -136,6 +135,20 @@ class ItemType(str, enum.Enum):
     AMMO = "ammo"
     MEDPACK = "medpack"
     ARMOUR = "armour"
+
+
+class TickerEntry(Base):
+    __tablename__ = "ticker_entries"
+
+    id = Column(Integer, primary_key=True)
+    time_created = Column(DateTime, server_default=func.now())
+
+    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
+    game = relationship(
+        "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
+    )
+
+    message = Column(String, nullable=False)
 
 
 class Item(Base):
@@ -207,6 +220,17 @@ class ShotModel(pydantic.BaseModel):
 
     user: UserModel
     game: GameModel
+
+    class Config:
+        orm_mode = True
+        extra = "forbid"
+
+
+class TickerEntryModel(pydantic.BaseModel):
+    id: int
+    time_created: datetime.datetime
+    game_id: UUID
+    message: str
 
     class Config:
         orm_mode = True
