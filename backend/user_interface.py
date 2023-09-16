@@ -241,6 +241,10 @@ class UserInterface:
             )
         )
 
+        self.get_ticker().post_message(
+            f'{user.name} collected {item.data["num"]}x {item.itype}'
+        )
+
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """
         Gets the latest hash of this user
