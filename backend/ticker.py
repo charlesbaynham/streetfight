@@ -15,7 +15,7 @@ GET_HASH_TIMEOUT = 20
 
 TickerScopeWrapper = DatabaseScopeProvider(
     "ticker",
-    precommit_method=lambda ticker: ticker.touch_ticker(),
+    precommit_method=lambda ticker: ticker.touch_game_ticker_tag(),
     postcommit_method=lambda ticker: trigger_update_event("ticker", ticker.game_id),
 )
 
@@ -24,8 +24,9 @@ db_scoped = TickerScopeWrapper.db_scoped
 
 
 class Ticker:
-    def __init__(self, game_id: UUID) -> None:
+    def __init__(self, game_id: UUID, session=None) -> None:
         self.game_id = game_id
+        self._session = session
 
     @db_scoped
     def get_messages(self, n_entries) -> List[str]:
@@ -40,7 +41,7 @@ class Ticker:
         ticker_entries = (
             self._session.query(TickerEntry)
             .filter_by(game_id=self.game_id)
-            .order_by(TickerEntry.time_created)
+            .order_by(TickerEntry.id.desc())
             .limit(n_entries)
             .all()
         )
@@ -60,7 +61,7 @@ class Ticker:
         self._get_game().touch()
 
     @db_scoped
-    def post_messge(self, message: str):
+    def post_message(self, message: str):
         logger.info('Adding ticker entry "%s" to game %s', message, self.game_id)
         self._session.add(TickerEntry(game_id=self.game_id, message=message))
 
