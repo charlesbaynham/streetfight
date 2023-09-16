@@ -164,7 +164,7 @@ async def get_ticker_messages(
 
 @router.get("/ticker_hash")
 async def get_ticker_hash(
-    known_ticker_hash=0,
+    known_ticker_hash: int = 0,
     user_id=Depends(get_user_id),
 ):
     ticker = UserInterface(user_id).get_ticker()

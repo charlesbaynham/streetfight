@@ -83,7 +83,11 @@ class Ticker:
 
         # Return immediately if the hash has changed or if there's no known hash
         if known_hash is None or known_hash != current_hash:
-            logger.debug("Out of date hash - returning immediately")
+            logger.debug(
+                "Out of date hash (%s instead of %s) - returning immediately",
+                known_hash,
+                current_hash,
+            )
             return current_hash
 
         # Otherwise, lookup / make an event and subscribe to it

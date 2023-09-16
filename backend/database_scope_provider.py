@@ -97,11 +97,6 @@ class DatabaseScopeProvider:
 
                 wrapper_data["session_users"] -= 1
 
-                logger.debug(
-                    "Finally after commit: _database_scope_data=%s",
-                    self._database_scope_data,
-                )
-
                 if wrapper_data["session_users"] == 0:
                     logger.debug("Committing session")
                     self._session.commit()
