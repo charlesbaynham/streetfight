@@ -28,6 +28,20 @@ update_events: Dict[int, asyncio.Event] = {}
 make_user_lock = RLock()
 
 
+def trigger_update_event(user_id: UUID):
+    global update_events
+
+    logger.info(f"Triggering updates for user {user_id}")
+    logger.debug(f"update_events = %s, user_id=%s", update_events, user_id)
+
+    if user_id in update_events:
+        logger.debug("Update event found")
+        update_events[user_id].set()
+        del update_events[user_id]
+    else:
+        logger.debug("No update event found")
+
+
 class DatabaseScopeProvider:
     def __init__(
         self,
@@ -39,11 +53,11 @@ class DatabaseScopeProvider:
         self.update_events: Dict[int, asyncio.Event] = {}
         self.thread_lock = RLock()
         self.precommit_method = precommit_method
-        self.precommit_method = postcommit_method
+        self.postcommit_method = postcommit_method
 
     @staticmethod
     def session_is_dirty(session: Session):
-        return session.dirty or session.new or session.deleted
+        return bool(session.dirty or session.new or session.deleted)
 
     def db_scoped(self_outer, func: Callable):
         """
@@ -75,7 +89,7 @@ class DatabaseScopeProvider:
         @wraps(func)
         def f(self, *args, **kwargs):
             if not hasattr(self, "_database_scope_data"):
-                self._database_scope_data = {}
+                self._database_scope_data = dict()
             try:
                 wrapper_data = self._database_scope_data[self_outer.name]
             except KeyError:
@@ -97,6 +111,10 @@ class DatabaseScopeProvider:
                 wrapper_data["session_modified"] = self_outer.session_is_dirty(
                     self._session
                 )
+                logger.debug(
+                    'wrapper_data["session_modified"] = %s',
+                    wrapper_data["session_modified"],
+                )
 
                 return out
             except Exception as e:
@@ -104,6 +122,10 @@ class DatabaseScopeProvider:
                 self._session.rollback()
                 raise e
             finally:
+                logger.debug(
+                    "Finally in db_scoped. _database_scope_data=%s",
+                    self._database_scope_data,
+                )
                 if (
                     wrapper_data["session_users"] == 1
                     and wrapper_data["session_modified"]
@@ -112,6 +134,11 @@ class DatabaseScopeProvider:
                     self_outer.precommit_method(self)
 
                 wrapper_data["session_users"] -= 1
+
+                logger.debug(
+                    "Finally after commit: _database_scope_data=%s",
+                    self._database_scope_data,
+                )
 
                 if wrapper_data["session_users"] == 0:
                     logger.debug("Committing session")
@@ -124,6 +151,26 @@ class DatabaseScopeProvider:
                         self_outer.postcommit_method(self)
 
         return f
+
+
+def touch_user(user_interface: "UserInterface"):
+    logger.debug("Touching user %s", user_interface.user_id)
+    user = (
+        user_interface._session.query(User).filter_by(id=user_interface.user_id).first()
+    )
+    user.touch()
+
+
+UserScopeWrapper = DatabaseScopeProvider(
+    "users",
+    precommit_method=touch_user,
+    postcommit_method=lambda user_interface: trigger_update_event(
+        user_interface.user_id
+    ),
+)
+
+
+db_scoped = UserScopeWrapper.db_scoped
 
 
 class UserInterface:
@@ -354,17 +401,3 @@ class UserInterface:
         except asyncio.TimeoutError:
             logger.info(f"Event timeout for user {self.user_id}")
             return current_hash
-
-
-def trigger_update_event(user_id: UUID):
-    global update_events
-
-    logger.info(f"Triggering updates for user {user_id}")
-    logger.debug(f"update_events = %s, user_id=%s", update_events, user_id)
-
-    if user_id in update_events:
-        logger.debug("Update event found")
-        update_events[user_id].set()
-        del update_events[user_id]
-    else:
-        logger.debug("No update event found")
