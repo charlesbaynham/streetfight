@@ -81,10 +81,6 @@ class DatabaseScopeProvider:
                 wrapper_data["session_modified"] = self_outer.session_is_dirty(
                     self._session
                 )
-                logger.debug(
-                    'wrapper_data["session_modified"] = %s',
-                    wrapper_data["session_modified"],
-                )
 
                 return out
             except Exception as e:
@@ -92,10 +88,6 @@ class DatabaseScopeProvider:
                 self._session.rollback()
                 raise e
             finally:
-                logger.debug(
-                    "Finally in db_scoped. _database_scope_data=%s",
-                    self._database_scope_data,
-                )
                 if (
                     wrapper_data["session_users"] == 1
                     and wrapper_data["session_modified"]
