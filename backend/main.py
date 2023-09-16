@@ -17,8 +17,10 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import WebSocket
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.websockets import WebSocketDisconnect
 
 from .admin_interface import AdminInterface
 from .ticker import Ticker
@@ -320,6 +322,18 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
             os.environ["WEBSITE_URL"], {"d": encoded_item}
         ),
     }
+
+
+# WebSocket route to handle WebSocket connections
+@router.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket):
+    await websocket.accept()
+    try:
+        while True:
+            data = await websocket.receive_text()
+            await websocket.send_text(f"Echo: {data}")
+    except WebSocketDisconnect:
+        logger.info("Websocket closed")
 
 
 app.include_router(router, prefix="/api")

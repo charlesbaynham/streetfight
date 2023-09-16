@@ -5,18 +5,23 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 const PORT = process.env.PORT || 3000;
 
-// proxy middleware options
-const options = {
+// create the proxy (without context)
+const apiProxy = createProxyMiddleware({
   target: 'http://127.0.0.1:8000', // target host
   changeOrigin: false,
   ws: true,
-};
+});
 
 // create the proxy (without context)
-const apiProxy = createProxyMiddleware(options);
+const wsProxy = createProxyMiddleware({
+  target: 'http://127.0.0.1:8000/ws',
+  changeOrigin: true,
+  ws: true,
+});
 
 module.exports = app => {
   // mount `apiProxy` in web server
+  app.use('/api/ws', wsProxy);
   app.use('/api', apiProxy);
   app.use('/docs', apiProxy);
   app.use('/openapi.json', apiProxy);

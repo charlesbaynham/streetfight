@@ -1,18 +1,8 @@
-
-import useSound from 'use-sound';
-
-import beep from './beep.mp3';
-
-const BoopButton = () => {
-    const [play] = useSound(beep);
-
-    return <button onClick={play}>Boop!</button>;
-};
-
+import WebsocketTest from "./WebsocketTest";
 
 const TestPage = () => {
     return <>
-        <BoopButton />
+        <WebsocketTest />
     </>
 };
 
