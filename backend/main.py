@@ -21,6 +21,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
 from .admin_interface import AdminInterface
+from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
@@ -177,7 +178,7 @@ async def get_ticker_hash(
         user_id,
         known_hash,
     )
-    ticker = UserInterface(user_id).get_ticker()
+    ticker: Ticker = UserInterface(user_id).get_ticker()
     if ticker is None:
         return 0
 
@@ -244,6 +245,7 @@ async def admin_list_games(user_id: UUID, team_id: UUID) -> int:
 
 @router.get("/admin_list_games")
 async def admin_list_games():
+    logger.info("admin_list_games")
     return AdminInterface().get_games()
 
 
@@ -304,6 +306,7 @@ def _add_params_to_url(url: str, params: Dict):
 
 @router.post("/admin_make_new_item")
 async def admin_make_new_item(item_type: str, item_data: Dict):
+    logger.info("admin_make_new_item")
     try:
         encoded_item = AdminInterface().make_new_item(item_type, item_data)
     except pydantic.ValidationError as e:

@@ -187,7 +187,9 @@ class UserInterface:
         update_tag = user.update_tag
 
         ret = update_tag if update_tag else 0
-        logger.info(f"Current hash {ret}, user {self.user_id}")
+        logger.debug(
+            f"UserInterface get_hash_now - Current hash {ret}, user {self.user_id}"
+        )
         return ret
 
     @db_scoped

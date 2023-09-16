@@ -21,11 +21,11 @@ def trigger_update_event(event_type: str, key: Hashable):
     these_events = _update_events[event_type]
 
     if key in these_events:
-        logger.debug("Update event found")
+        logger.debug("Update event found - triggering")
         these_events[key].set()
         del these_events[key]
     else:
-        logger.debug("No update event found")
+        logger.debug("No update event found - not triggering")
 
 
 def get_trigger_event(event_type: str, key: Hashable) -> asyncio.Event:

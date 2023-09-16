@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class AdminInterface:
     def __init__(self) -> None:
+        logger.debug("Making session for AdminInterface")
         self.session = database.Session()
 
     def _get_user_orm(self, user_id) -> User:
@@ -44,9 +45,12 @@ class AdminInterface:
         return t
 
     def get_games(self) -> List[GameModel]:
+        logger.info("AdminInterface - get_games")
         return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
 
     def get_users(self, team_id: UUID = None, game_id: UUID = None) -> List[UserModel]:
+        logger.info("AdminInterface - get_users")
+
         q = self.session.query(User)
 
         if team_id:
@@ -57,10 +61,12 @@ class AdminInterface:
         return [UserModel.from_orm(g) for g in q.all()]
 
     def get_game(self, game_id) -> GameModel:
+        logger.info("AdminInterface - get_game")
         g = self._get_game_orm(game_id)
         return GameModel.from_orm(g)
 
     def create_game(self) -> UUID:
+        logger.info("AdminInterface - create_game")
         g = Game()
         self.session.add(g)
         self.session.commit()
@@ -68,6 +74,7 @@ class AdminInterface:
         return g.id
 
     def create_team(self, game_id: UUID, name: str) -> int:
+        logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)
         team = Team(name=name)
         game.teams.append(team)
@@ -76,6 +83,7 @@ class AdminInterface:
         return team.id
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
+        logger.info("AdminInterface - add_user_to_team")
         UserInterface(user_id).join_team(team_id)
 
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:

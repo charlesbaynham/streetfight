@@ -67,7 +67,11 @@ class Ticker:
 
     @db_scoped
     def _get_hash_now(self) -> int:
-        return self._get_game().ticker_update_tag
+        ret = self._get_game().ticker_update_tag
+        logger.debug(
+            f"Ticker _get_hash_now - Current hash {ret}, game_id {self.game_id}"
+        )
+        return ret
 
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """
