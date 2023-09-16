@@ -4,9 +4,6 @@ import HashUpdater from './HashUpdater';
 import { sendAPIRequest } from './utils';
 
 
-
-
-
 export default function TickerView() {
 
     const [messages, setMessages] = useState(["test"]);
@@ -29,6 +26,8 @@ export default function TickerView() {
             }}
             api_call="ticker_hash"
         />
-        {messages.map((m) => <span>- {m}</span>)}
+        <ul>
+            {messages.map((m) => <li>{m}</li>)}
+        </ul>
     </>
 }
