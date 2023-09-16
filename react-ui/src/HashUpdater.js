@@ -10,7 +10,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { makeAPIURL } from './utils'
 
 
-export default function UserStateUpdater({ known_hash, callback }) {
+export default function HashUpdater({ known_hash, callback }) {
     const [updateBumper, setUpdateBumper] = useState(0);
 
     const errorCheckRate = 1000

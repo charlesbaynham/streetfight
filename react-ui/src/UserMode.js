@@ -9,7 +9,7 @@ import FireButton from './FireButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
-import UserStateUpdater from './UserUpdater';
+import HashUpdater from './HashUpdater';
 
 
 export default function UserMode() {
@@ -58,7 +58,7 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
-      <UserStateUpdater known_hash={userStateHash} callback={(d) => { setUserStateHash(d) }} />
+      <HashUpdater known_hash={userStateHash} callback={(d) => { setUserStateHash(d) }} />
 
       <button onClick={handle.enter}>
         Fullscreen
