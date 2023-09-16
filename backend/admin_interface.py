@@ -94,10 +94,24 @@ class AdminInterface:
         UserInterface(user_id).kill()
 
     def award_user_HP(self, user_id, num=1):
-        UserInterface(user_id).award_HP(num=num)
+        ui = UserInterface(user_id)
+
+        ui.award_HP(num=num)
+
+        user_model = ui.get_user_model()
+        ticker = ui.get_ticker()
+        if ticker:
+            ticker.post_message(f"{user_model.name} was given {num} armour")
 
     def award_user_ammo(self, user_id, num=1):
-        UserInterface(user_id).award_ammo(num=num)
+        ui = UserInterface(user_id)
+
+        ui.award_ammo(num=num)
+
+        user_model = ui.get_user_model()
+        ticker = ui.get_ticker()
+        if ticker:
+            ticker.post_message(f"{user_model.name} was given {num} ammo")
 
     def mark_shot_checked(self, shot_id):
         shot = self.session.query(Shot).filter_by(id=shot_id).first()
