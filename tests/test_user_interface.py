@@ -104,3 +104,7 @@ def test_can_give_multiple_ammo(user_factory):
     UserInterface(user_id).award_ammo(num=10)
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
+
+
+def test_user_in_team(user_in_team):
+    assert UserInterface(user_in_team).get_user_model().team_id is not None

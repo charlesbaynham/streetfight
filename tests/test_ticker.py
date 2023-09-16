@@ -2,6 +2,7 @@ import time
 
 import pytest
 
+from backend.admin_interface import AdminInterface
 from backend.ticker import Ticker
 from backend.user_interface import UserInterface
 
@@ -62,8 +63,8 @@ async def test_ticker_messages_via_user_outside_team(user_factory):
     assert ticker is None
 
 
-def test_api_query_ticker_outside_team(api_client, user_factory):
-    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_factory()}")
+def test_api_query_ticker_outside_team(api_client, api_user_id):
+    response = api_client.get("/api/ticker_messages_and_hash")
     assert response.ok
 
     new_hash = response.json()["hash"]
@@ -73,8 +74,11 @@ def test_api_query_ticker_outside_team(api_client, user_factory):
     assert messages == []
 
 
-def test_api_query_ticker_inside_team(api_client, user_in_team):
-    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_in_team}")
+def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
+    team_id = team_factory()
+    AdminInterface().add_user_to_team(api_user_id, team_id)
+
+    response = api_client.get(f"/api/ticker_messages_and_hash")
     assert response.ok
 
     new_hash = response.json()["hash"]
@@ -84,16 +88,19 @@ def test_api_query_ticker_inside_team(api_client, user_in_team):
     assert messages == []
 
 
-def test_api_query_ticker_messages(api_client, user_in_team):
-    response = api_client.get(f"/api/ticker_messages_and_hash?user_id={user_in_team}")
+def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
+    team_id = team_factory()
+    AdminInterface().add_user_to_team(api_user_id, team_id)
+
+    response = api_client.get("/api/ticker_messages_and_hash")
     assert response.ok
 
     old_hash = response.json()["hash"]
 
-    UserInterface(user_in_team).get_ticker().post_message("hello")
+    UserInterface(api_user_id).get_ticker().post_message("hello")
 
     response = api_client.get(
-        f"/api/ticker_messages_and_hash?user_id={user_in_team}&known_ticker_hash={old_hash}"
+        f"/api/ticker_messages_and_hash?known_ticker_hash={old_hash}"
     )
     assert response.ok
 

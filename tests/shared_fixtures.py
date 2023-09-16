@@ -2,6 +2,7 @@ import logging
 import os
 from contextlib import contextmanager
 from pathlib import Path
+from uuid import UUID
 
 import pytest
 
@@ -281,3 +282,10 @@ def user_in_team(team_factory, user_factory):
     UserInterface(user_id).join_team(team_id)
 
     return user_id
+
+
+@pytest.fixture
+def api_user_id(api_client):
+    response = api_client.get("/api/my_id")
+    assert response.ok
+    return UUID(response.json())

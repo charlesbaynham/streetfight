@@ -76,6 +76,12 @@ def test_get_users(api_client, three_users):
         assert id in retrieved_ids
 
 
+def test_get_user_id(api_client):
+    response = api_client.get("/api/my_id")
+    assert response.ok
+    UUID(response.json())
+
+
 def test_add_user_to_team(api_client, one_team, three_users):
     the_lucky_user = three_users[0]
     response = api_client.post(
