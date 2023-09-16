@@ -41,7 +41,7 @@ function TemporaryOverlay({
             }
         }
         f()
-    }, [appear, time_to_appear, time_to_show])
+    }, [appear, time_to_appear, time_to_show, playBeep])
 
     const default_variants = {
         hidden: {

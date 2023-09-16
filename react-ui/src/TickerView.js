@@ -18,7 +18,7 @@ export default function TickerView() {
         })
     }, [setMessages]);
 
-    useEffect(updateMessages, [knownTickerHash]);
+    useEffect(updateMessages, [updateMessages, knownTickerHash]);
 
     return <>
         <HashUpdater

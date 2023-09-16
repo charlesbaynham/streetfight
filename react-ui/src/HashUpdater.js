@@ -49,7 +49,7 @@ export default function HashUpdater({ known_hash, callback, api_call }) {
         const url = makeAPIURL(api_call, { known_hash: known_hash })
 
         fetch(url).then(successHandler, failureHandler)
-    }, [known_hash, callback, updateBumper, setUpdateBumper]);
+    }, [known_hash, callback, updateBumper, setUpdateBumper, api_call]);
 
     useEffect(checkAndBump, [updateBumper, checkAndBump]);
 

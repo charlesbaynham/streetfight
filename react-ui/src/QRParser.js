@@ -49,7 +49,7 @@ const QRParser = ({ webcamRef }) => {
             })
             .catch(error => null)
 
-    }, [qrEngine, webcamRef, canvas]);
+    }, [qrEngine, webcamRef, canvas, scannedCallback]);
 
     useEffect(() => {
         if (webcamRef === null)
