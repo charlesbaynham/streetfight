@@ -79,7 +79,7 @@ class Ticker:
         Note that this function is not @db_scoped, but it calls one that is:
         this is to prevent the database being locked while it waits
         """
-        current_hash = self.get_hash_now()
+        current_hash = self._get_hash_now()
 
         # Return immediately if the hash has changed or if there's no known hash
         if known_hash is None or known_hash != current_hash:
@@ -93,7 +93,7 @@ class Ticker:
             logger.info("Subscribing to event %s for game %s", event, self.game_id)
             await asyncio.wait_for(event.wait(), timeout=timeout)
             logger.info(f"Event received for game {self.user_id}")
-            return self.get_hash_now()
+            return self._get_hash_now()
         except asyncio.TimeoutError:
             logger.info(f"Event timeout for game {self.user_id}")
             return current_hash

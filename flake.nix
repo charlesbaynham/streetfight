@@ -22,6 +22,7 @@
 
             # Development
             pytest
+            pytest-asyncio
             # selenium
             # geckodriver-autoinstaller
             requests

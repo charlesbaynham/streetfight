@@ -32,3 +32,15 @@ def test_ticker_filters_correctly_order(ticker):
         time.sleep(0.01)
 
     assert ticker.get_messages(3) == ["9", "8", "7"]
+
+
+@pytest.mark.asyncio
+async def test_ticker_game_hash(ticker):
+    await ticker.get_hash()
+
+
+@pytest.mark.asyncio
+async def test_ticker_game_hash_changes(ticker):
+    starting_hash = await ticker.get_hash()
+    ticker.post_message("Hello")
+    assert starting_hash != await ticker.get_hash()
