@@ -241,9 +241,12 @@ class UserInterface:
             )
         )
 
-        self.get_ticker().post_message(
-            f'{user.name} collected {item.data["num"]}x {item.itype}'
-        )
+        if item.itype == "medpack":
+            self.get_ticker().post_message(f"{user.name} was revived!")
+        else:
+            self.get_ticker().post_message(
+                f'{user.name} collected {item.data["num"]}x {item.itype}'
+            )
 
     async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
         """
@@ -279,4 +282,4 @@ class UserInterface:
         team = self.get_user().team
         if team is None:
             return None
-        return Ticker(team.game_id)
+        return Ticker(team.game_id, session=self._session)

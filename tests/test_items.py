@@ -259,11 +259,14 @@ def test_user_collect_item_gives_message(api_user_id, api_client, team_factory):
     item.sign()
     valid_encoded_ammo = item.to_base64()
 
-    assert UserInterface.get_ticker().get_messages(3) == []
+    assert UserInterface(api_user_id).get_ticker().get_messages(3) == []
 
     api_client.post(
         "/api/collect_item",
         json={"data": valid_encoded_ammo},
     )
 
-    assert len(UserInterface.get_ticker().get_messages(3)) == 1
+    messages = UserInterface(api_user_id).get_ticker().get_messages(3)
+    assert len(messages) == 1
+
+    assert "ammo" in messages[0]
