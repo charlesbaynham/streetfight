@@ -36,7 +36,7 @@ Goals
     - [ ] Add zoomed view of centre
 - [ ] Keep all photos as files
 - [ ] Polish:
-  - [ ] Fix that scanning a QR code doesn't animate
+  - [x] Fix that scanning a QR code doesn't animate
   - [x] The user interface looks awful - it shouldn't
   - [ ] Users should not have access to the camera interface until they have been added to a team
   - [x] Dump scan mode
@@ -46,11 +46,13 @@ Goals
   - [ ] I should be able to pause / resume games from admin mode
   - [ ] Get fullscreen working again
   - [ ] Dark souls "You died"
-  - [ ] Add ticker of events (x shot y, y missed)
+  - [x] Add ticker of events (x shot y, y missed)
   - [ ] Black and white camera when dead
   - [x] Add sounds!
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
+Bugs:
+  - [ ] If the ticker updates, the user state doesn't and vice versa
 
 Backburner:
 
