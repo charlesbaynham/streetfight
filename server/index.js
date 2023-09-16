@@ -51,9 +51,9 @@ if (!isDev && cluster.isMaster) {
   const app = express();
 
   // Redirect all calls to "/api", "/docs" or the API spec to the FastAPI backend
-  app.use('/api', apiProxy);
-  app.use('/docs', apiProxy);
-  app.use('/openapi.json', apiProxy);
+  app.use('/', apiProxy);
+  // app.use('/docs', apiProxy);
+  // app.use('/openapi.json', apiProxy);
 
   // Serve static files with a 1-year cache
   for (const static_dir of static_dirs) {
