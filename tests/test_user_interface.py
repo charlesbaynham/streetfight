@@ -74,36 +74,28 @@ def test_user_cannot_shoot_when_dead(db_session, team_factory, user_factory):
         UserInterface(user_id).submit_shot(test_data)
 
 
-def test_can_give_health(user_factory):
-    user_id = user_factory()
+def test_can_give_health(user_in_team):
+    UserInterface(user_in_team).award_HP()
 
-    UserInterface(user_id).award_HP()
-
-    assert UserInterface(user_id).get_user_model().hit_points == 2
+    assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
-def test_can_give_multiple_health(user_factory):
-    user_id = user_factory()
+def test_can_give_multiple_health(user_in_team):
+    UserInterface(user_in_team).award_HP(num=10)
 
-    UserInterface(user_id).award_HP(num=10)
-
-    assert UserInterface(user_id).get_user_model().hit_points == 11
+    assert UserInterface(user_in_team).get_user_model().hit_points == 11
 
 
-def test_can_give_ammo(user_factory):
-    user_id = user_factory()
+def test_can_give_ammo(user_in_team):
+    UserInterface(user_in_team).award_ammo()
 
-    UserInterface(user_id).award_ammo()
-
-    assert UserInterface(user_id).get_user_model().num_bullets == 1
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
 
 
-def test_can_give_multiple_ammo(user_factory):
-    user_id = user_factory()
+def test_can_give_multiple_ammo(user_in_team):
+    UserInterface(user_in_team).award_ammo(num=10)
 
-    UserInterface(user_id).award_ammo(num=10)
-
-    assert UserInterface(user_id).get_user_model().num_bullets == 10
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 10
 
 
 def test_user_in_team(user_in_team):
