@@ -7,7 +7,7 @@ function WebsocketTest() {
 
     useEffect(() => {
         // Establish a WebSocket connection
-        const newWs = new WebSocket('ws://localhost:3000/api/ws'); // Replace with your WebSocket server URL
+        const newWs = new WebSocket('wss://localhost:3000/api/ws');
 
         newWs.onopen = () => {
             console.log('WebSocket connected');
