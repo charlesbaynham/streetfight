@@ -11,7 +11,7 @@ const apiProxy = createProxyMiddleware({
 });
 
 const socketProxy = createProxyMiddleware({
-  target: 'http://127.0.0.1:8000',
+  target: 'ws://127.0.0.1:8000',
   changeOrigin: true,
   ws: true,
 });
