@@ -9,6 +9,56 @@
 import { useCallback, useEffect, useState } from 'react'
 import { makeAPIURL } from './utils'
 
+let listeners = new Map();
+
+
+function registerListener(type, callback) {
+    if (!listeners.has(type)) {
+        listeners.set(type, new Map())
+    }
+
+    const handle = Math.random();
+    listeners.get(type).set(handle, callback);
+
+    return handle;
+}
+
+function deregisterListener(type, handle) {
+    listeners.get(type).delete(handle);
+}
+
+export function WebsocketParser() {
+    const [ws, setWs] = useState(null);
+
+    useEffect(() => {
+        // Establish a WebSocket connection
+        const newWs = new WebSocket('wss://localhost:3000/api/ws_updates');
+
+        newWs.onopen = () => {
+            console.log('WebSocket connected');
+        };
+
+        newWs.onmessage = (event) => {
+            console.log(event.data);
+        };
+
+        newWs.onclose = () => {
+            console.log('WebSocket closed');
+        };
+
+        setWs(newWs);
+
+        // Close the WebSocket when the component unmounts
+        return () => {
+            if (newWs) {
+                newWs.close();
+            }
+        };
+    }, []);
+
+    return null;
+}
+
 
 export default function HashUpdater({ known_hash, callback, api_call }) {
     const [updateBumper, setUpdateBumper] = useState(0);

@@ -13,3 +13,10 @@ websock plan
 This format should be future-compatible in case I want to add more websocket functionality later.
 3. The client will listen to this socket and will fire the associated update when requested.
 4. It only needs to handle updates, so hashes no longer are needed on the client - on load we'll be up to date anyway. Maybe I should send out initial update messages when the socket is opened to make sure.
+
+
+Plan for the frontend:
+
+1. Adapt HashUpdater to take a "type" and a "callback" - the callback fires on updates to "type"
+2. Each HashUpdater object registers itself to a variable in the HashUpdater module as a listener of "type"
+3. When an event is received on the Websocket, all listeners of that type are fired

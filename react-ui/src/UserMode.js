@@ -9,7 +9,7 @@ import FireButton from './FireButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
-import HashUpdater from './HashUpdater';
+import HashUpdater, { WebsocketParser } from './HashUpdater';
 import TickerView from './TickerView';
 
 import styles from './UserMode.module.css'
@@ -60,6 +60,7 @@ export default function UserMode() {
 
   const playingView = userState ? (
     <>
+      <WebsocketParser />
       <HashUpdater
         known_hash={userStateHash}
         callback={(d) => { setUserStateHash(d) }}
