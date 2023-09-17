@@ -325,7 +325,7 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
     }
 
 
-async def updates_generator():
+async def updates_generator(user_id):
     def make_sse_update_message(m):
         return f"data: {m}\n\n"
 
@@ -347,9 +347,11 @@ async def updates_generator():
 
 
 @router.get("/sse_updates")
-async def sse_endpoint():
+async def sse_endpoint(
+    user_id=Depends(get_user_id),
+):
     return StreamingResponse(
-        updates_generator(),
+        updates_generator(user_id),
         headers={
             "Content-type": "text/event-stream",
             "Cache-Control": "no-cache",
