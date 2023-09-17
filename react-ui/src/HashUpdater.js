@@ -32,7 +32,7 @@ export function WebsocketParser() {
 
     useEffect(() => {
         // Establish a WebSocket connection
-        const newWs = new WebSocket('wss://localhost:3000/api/ws_updates');
+        const newWs = new WebSocket(`wss://${document.location.host}/api/ws_updates`);
 
         newWs.onopen = () => {
             console.log('WebSocket connected');
