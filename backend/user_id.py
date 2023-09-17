@@ -4,26 +4,25 @@ from uuid import UUID
 from uuid import uuid4 as get_uuid
 
 from fastapi import Request
-from fastapi import Response
+from fastapi import WebSocket
+
 
 no_cookie_clients = {}
 no_cookie_lock = RLock()
 
 
-async def get_user_id(
-    *,
-    response: Response,
-    request: Request,
-):
-    temporary_id = request.client.host
+async def get_user_id(*, request: Request = None, websocket: WebSocket = None):
+    request_or_ws = request or websocket
+
+    temporary_id = request_or_ws.client.host
 
     try:
-        session_UUID = request.session["UUID"]
+        session_UUID = request_or_ws.session["UUID"]
     except KeyError:
         session_UUID = None
 
     if session_UUID is None:
-        parsed_uuid = assign_new_ID(request, temporary_id)
+        parsed_uuid = assign_new_ID(request_or_ws, temporary_id)
         logging.info(
             "Blank client, tempID %s, assigned UUID %s", temporary_id, parsed_uuid
         )
@@ -39,7 +38,7 @@ async def get_user_id(
         try:
             parsed_uuid = UUID(session_UUID)
         except ValueError:
-            parsed_uuid = assign_new_ID(request, temporary_id)
+            parsed_uuid = assign_new_ID(request_or_ws, temporary_id)
             logging.error(
                 "Error parsing UUID %s from tempID %s. Reassiging as %s",
                 session_UUID,

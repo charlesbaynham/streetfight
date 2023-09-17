@@ -326,13 +326,16 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
 
 # WebSocket route to handle WebSocket connections
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket):
+async def websocket_endpoint(
+    websocket: WebSocket,
+    user_id=Depends(get_user_id),
+):
     await websocket.accept()
     try:
         while True:
             data = await websocket.receive_text()
             logger.info("Received %s", data)
-            await websocket.send_text(f"Echo: {data}")
+            await websocket.send_text(f"Echo ({user_id}): {data}")
     except WebSocketDisconnect:
         logger.info("Websocket closed")
 
