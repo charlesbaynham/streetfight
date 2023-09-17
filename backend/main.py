@@ -326,7 +326,7 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
 
 
 # WebSocket route to handle WebSocket connections
-@router.websocket("/ws")
+@router.websocket("/ws_updates")
 async def websocket_endpoint(
     websocket: WebSocket,
     user_id=Depends(get_user_id),
