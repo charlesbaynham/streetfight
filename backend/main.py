@@ -331,6 +331,7 @@ async def websocket_endpoint(websocket: WebSocket):
     try:
         while True:
             data = await websocket.receive_text()
+            logger.info("Received %s", data)
             await websocket.send_text(f"Echo: {data}")
     except WebSocketDisconnect:
         logger.info("Websocket closed")
