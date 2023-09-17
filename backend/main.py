@@ -22,6 +22,7 @@ from fastapi import HTTPException
 from fastapi import WebSocket
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.websockets import WebSocketDisconnect
 
 from .admin_interface import AdminInterface
 from .ticker import Ticker

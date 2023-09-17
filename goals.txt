@@ -62,6 +62,8 @@ I have the dev server set up to serve HTTPS via self-signed certificates. Curren
 
 Best option I think is to export it all as a docker image that serves everything on e.g. port 8000 and use a cloud service that rewrites this to HTTPS.
 
+See also : Caddy
+
 
 Backburner:
 
