@@ -20,7 +20,7 @@ const ssl_credentials = {
 const options = {
   target: 'http://127.0.0.1:8000', // target host
   changeOrigin: false, // needed for virtual hosted sites
-  ws: true, // proxy websockets
+  ws: false, // proxy websockets
   ssl: ssl_credentials
 };
 

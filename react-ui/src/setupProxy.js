@@ -10,16 +10,10 @@ const apiProxy = createProxyMiddleware({
   ws: false,
 });
 
-const socketProxy = createProxyMiddleware({
-  target: 'ws://127.0.0.1:8000',
-  changeOrigin: true,
-  ws: true,
-});
 
 module.exports = app => {
   // mount `apiProxy` in web server
   app.use('/api', apiProxy);
   app.use('/docs', apiProxy);
   app.use('/openapi.json', apiProxy);
-  app.use('/api/ws', socketProxy);
 }
