@@ -51,7 +51,16 @@ Goals
   - [x] Add sounds!
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
-Bugs:
+Essential:
+  - [ ] Sort out HTTPS / production server
+
+Notes:
+
+## Production
+
+I have the dev server set up to serve HTTPS via self-signed certificates. Currently, the "prod" server also uses those same ssl certificates and serves over HTTPS. This is fine and will work, but will require me to handle my own HTTPS certificates in the real world. If I want to ignore this, I should set the prod server to serve over HTTPS instead and then set up some sort of reverse proxy that handle the HTTPS, probably using nginx + LetsEncrypt. Alternatively, I might be able to find a platform which can just handle this for me. Apparantly AWS does this, but I haven't explored it yet.
+
+Best option I think is to export it all as a docker image that serves everything on e.g. port 8000 and use a cloud service that rewrites this to HTTPS.
 
 
 Backburner:
