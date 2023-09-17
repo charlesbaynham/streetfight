@@ -19,7 +19,6 @@
             fastapi
             wsproto
             uvicorn
-            websockets
 
             # Development
             pytest

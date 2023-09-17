@@ -13,18 +13,15 @@ from urllib.parse import urlunparse
 from uuid import UUID
 
 import pydantic
-import websockets.exceptions as ws_exceptions
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
-from fastapi import WebSocket
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
-from starlette.websockets import WebSocketDisconnect
 
 from .admin_interface import AdminInterface
 from .ticker import Ticker
