@@ -5,6 +5,7 @@ import os
 import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
+from typing import AsyncGenerator
 from typing import Dict
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
@@ -339,29 +340,45 @@ async def updates_generator(user_id):
     yield update_user
     yield update_ticker
 
+    async def queue_producer(
+        queue: asyncio.Queue[None], generator: AsyncGenerator, output: str
+    ) -> None:
+        async for _ in generator:
+            await queue.put(output)
+
+    async def queue_consumer(queue: asyncio.Queue[str]) -> AsyncGenerator:
+        while True:
+            yield await asyncio.wait_for(queue.get(), timeout=None)
+
+    # Get a user event generator that will be passed to the queue_producer
     user_event_generator = UserInterface(user_id).generate_updates()
-    ticker_event_generator = UserInterface(user_id).get_ticker().generate_updates()
 
-    raise NotImplementedError
-    # See https://stackoverflow.com/questions/74130544/asyncio-yielding-results-from-multiple-futures-as-they-arrive
+    # Make an asyncio queue to pass to the generators
+    queue = asyncio.Queue()
 
-    while True:
-        done, pending = await asyncio.wait(
-            [anext(user_event_generator), anext(ticker_event_generator)],
-            return_when=asyncio.FIRST_COMPLETED,
+    # Launch the producer tasks:
+    producers = [
+        asyncio.create_task(queue_producer(queue, user_event_generator, "user")),
+    ]
+
+    ticker = UserInterface(user_id).get_ticker()
+    if ticker:
+        ticker_event_generator = ticker.generate_updates()
+
+        producers.append(
+            asyncio.create_task(queue_producer(queue, ticker_event_generator, "ticker"))
         )
-        for task in done:
-            try:
-                item = await task
-                yield item
-            except asyncio.CancelledError:
-                pass  # Ignore CancelledError
-        if not pending:
-            break
 
-    while True:
-        await anext(user_event_generator)
-        yield update_user
+    # Iterate through the consumer:
+    try:
+        async for target in queue_consumer(queue):
+            if target == "user":
+                yield update_user
+            elif target == "ticker":
+                yield update_ticker
+    except asyncio.CancelledError:
+        for task in producers:
+            task.cancel()
 
 
 @router.get("/sse_updates")
