@@ -339,11 +339,11 @@ async def updates_generator(user_id):
     yield update_user
     yield update_ticker
 
+    user_event_generator = UserInterface(user_id).generate_updates()
+
     while True:
+        await anext(user_event_generator)
         yield update_user
-        await asyncio.sleep(3)
-        yield update_ticker
-        await asyncio.sleep(3)
 
 
 @router.get("/sse_updates")

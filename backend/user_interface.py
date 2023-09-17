@@ -279,6 +279,24 @@ class UserInterface:
             logger.info(f"Event timeout for user {self.user_id}")
             return current_hash
 
+    async def generate_updates(self, timeout=GET_HASH_TIMEOUT):
+        """
+        A generator that yields None every time an update is available for this
+        user, or at most after timeout seconds
+        """
+        while True:
+            # Lookup / make an event for this user and subscribe to it
+            event = get_trigger_event("user", self.user_id)
+
+            try:
+                logger.info("Subscribing to event %s for user %s", event, self.user_id)
+                await asyncio.wait_for(event.wait(), timeout=timeout)
+                logger.info(f"Event received for user {self.user_id}")
+                yield
+            except asyncio.TimeoutError:
+                logger.info(f"Event timeout for user {self.user_id}")
+                yield
+
     @db_scoped
     def get_ticker(self) -> Optional[Ticker]:
         team = self.get_user().team
