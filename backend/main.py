@@ -344,9 +344,9 @@ async def updates_generator():
 
     while True:
         yield update_user
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
         yield update_ticker
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
 
 
 @router.get("/sse_updates")
