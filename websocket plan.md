@@ -1,0 +1,15 @@
+websock plan
+=====
+
+1. Server will have an API endpoint e.g. "ws_updates"
+2. This will send out prompts to update components, in the format e.g.:
+```
+{
+    target: "user",
+    message: "update"
+}
+```
+
+This format should be future-compatible in case I want to add more websocket functionality later.
+3. The client will listen to this socket and will fire the associated update when requested.
+4. It only needs to handle updates, so hashes no longer are needed on the client - on load we'll be up to date anyway. Maybe I should send out initial update messages when the socket is opened to make sure.

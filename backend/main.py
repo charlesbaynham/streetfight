@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import re
@@ -11,6 +12,7 @@ from urllib.parse import urlunparse
 from uuid import UUID
 
 import pydantic
+import websockets.exceptions as ws_exceptions
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 from fastapi import APIRouter
@@ -20,7 +22,6 @@ from fastapi import HTTPException
 from fastapi import WebSocket
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
-from starlette.websockets import WebSocketDisconnect
 
 from .admin_interface import AdminInterface
 from .ticker import Ticker
@@ -330,14 +331,24 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id=Depends(get_user_id),
 ):
+    update_user = {"target": "user", "message": "update"}
+    update_ticker = {"target": "ticker", "message": "update"}
+
     await websocket.accept()
+
+    # FIXME: basic testing before I make the backend
     try:
+        await websocket.send_json(update_user)
+        await websocket.send_json(update_ticker)
+
         while True:
-            data = await websocket.receive_text()
-            logger.info("Received %s", data)
-            await websocket.send_text(f"Echo ({user_id}): {data}")
-    except WebSocketDisconnect:
-        logger.info("Websocket closed")
+            # r = await websocket.receive_text()
+            # logger.warning("received %s", r)
+            await asyncio.sleep(1)
+            await websocket.send_json(update_user)
+
+    except ws_exceptions.ConnectionClosed:
+        logger.info("Websocket closed for user %s", user_id)
 
 
 app.include_router(router, prefix="/api")
