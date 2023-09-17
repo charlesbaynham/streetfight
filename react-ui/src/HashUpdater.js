@@ -27,9 +27,23 @@ function deregisterListener(type, handle) {
     listeners.get(type).delete(handle);
 }
 
-export function WebsocketParser() {
-    const [ws, setWs] = useState(null);
+function processMessage(message) {
+    if (message.handler != "update_prompt")
+        return
 
+    const update_target = message.data
+
+    if (listeners.has(update_target)) {
+        const targetted_listeners = listeners.get(update_target);
+
+        targetted_listeners.forEach((handle, callback) => {
+            console.log(`Executing callback ${handle} for handler ${update_target}`);
+            callback();
+        })
+    }
+}
+
+export function WebsocketParser() {
     useEffect(() => {
         // Establish a WebSocket connection
         const newWs = new WebSocket(`wss://${document.location.host}/api/ws_updates`);
@@ -40,13 +54,12 @@ export function WebsocketParser() {
 
         newWs.onmessage = (event) => {
             console.log(event.data);
+            processMessage(event.data);
         };
 
         newWs.onclose = () => {
             console.log('WebSocket closed');
         };
-
-        setWs(newWs);
 
         // Close the WebSocket when the component unmounts
         return () => {

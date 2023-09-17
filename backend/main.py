@@ -331,8 +331,8 @@ async def websocket_endpoint(
     websocket: WebSocket,
     user_id=Depends(get_user_id),
 ):
-    update_user = {"target": "user", "message": "update"}
-    update_ticker = {"target": "ticker", "message": "update"}
+    update_user = {"handler": "update_prompt", "data": "user"}
+    update_ticker = {"handler": "update_prompt", "data": "ticker"}
 
     await websocket.accept()
 

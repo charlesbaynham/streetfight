@@ -5,8 +5,8 @@ websock plan
 2. This will send out prompts to update components, in the format e.g.:
 ```
 {
-    target: "user",
-    message: "update"
+    handler: "update_prompt",
+    data: "user"
 }
 ```
 
