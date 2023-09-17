@@ -12,6 +12,7 @@ import WebcamView from './WebcamView';
 import HashUpdater from './HashUpdater';
 import TickerView from './TickerView';
 
+import styles from './UserMode.module.css'
 
 export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
@@ -65,13 +66,15 @@ export default function UserMode() {
         api_call="get_hash"
       />
 
-      <button onClick={handle.enter}>
-        Fullscreen
-      </button>
-
       <FullScreen handle={handle} onChange={reportChange}>
-        <BulletCount user={userState} />
-        <TickerView />
+        <div className={styles.monitorsContainer}>
+          <BulletCount user={userState} />
+          <TickerView />
+        </div>
+
+        <button onClick={handle.enter}>
+          Fullscreen
+        </button>
 
         <WebcamView trigger={triggerShot} />
 

@@ -11,6 +11,7 @@ import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
 
+import './index.css'
 
 const router = createBrowserRouter([
   {

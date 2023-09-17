@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import HashUpdater from './HashUpdater';
 import { sendAPIRequest } from './utils';
 
+import styles from './TickerView.module.css'
 
 export default function TickerView() {
 
@@ -26,8 +27,10 @@ export default function TickerView() {
             }}
             api_call="ticker_hash"
         />
-        <ul>
-            {messages.map((m) => <li>{m}</li>)}
-        </ul>
+        <div className={styles.tickerview}>
+            <ul>
+                {messages.map((m) => <li>{m}</li>)}
+            </ul>
+        </div>
     </>
 }

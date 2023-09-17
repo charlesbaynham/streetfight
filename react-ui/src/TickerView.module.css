@@ -1,0 +1,15 @@
+.tickerview {
+    /* background: rgba(0, 0, 0, 0.5); */
+    /* width: 50%; */
+    color: rgb(255, 255, 255);
+    text-shadow: 2px 2px #000;
+    font-weight: bold;
+    padding: 0.1em 1em;
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    line-height: 1em;
+    /* border-radius: 10px; */
+}
+
+.tickerview li {
+    padding: 0.25em 0;
+}
