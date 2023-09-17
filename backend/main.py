@@ -328,34 +328,6 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
     }
 
 
-# WebSocket route to handle WebSocket connections
-@router.websocket("/ws_updates")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    user_id=Depends(get_user_id),
-):
-    update_user = {"handler": "update_prompt", "data": "user"}
-    update_ticker = {"handler": "update_prompt", "data": "ticker"}
-
-    await websocket.accept()
-
-    # FIXME: basic testing before I make the backend
-    try:
-        await websocket.send_json(update_user)
-        await websocket.send_json(update_ticker)
-
-        while True:
-            # r = await websocket.receive_text()
-            # logger.warning("received %s", r)
-            await asyncio.sleep(5)
-            await websocket.send_json(update_user)
-            await asyncio.sleep(5)
-            await websocket.send_json(update_ticker)
-
-    except ws_exceptions.ConnectionClosed:
-        logger.info("Websocket closed for user %s", user_id)
-
-
 async def updates_generator():
     def make_sse_update_message(m):
         return f"data: {m}\n\n"
@@ -387,34 +359,6 @@ async def sse_endpoint():
             "Connection": "keep-alive",
         },
     )
-
-
-# WebSocket route to handle WebSocket connections
-@router.websocket("/ws_updates")
-async def websocket_endpoint(
-    websocket: WebSocket,
-    user_id=Depends(get_user_id),
-):
-    update_user = {"handler": "update_prompt", "data": "user"}
-    update_ticker = {"handler": "update_prompt", "data": "ticker"}
-
-    await websocket.accept()
-
-    # FIXME: basic testing before I make the backend
-    try:
-        await websocket.send_json(update_user)
-        await websocket.send_json(update_ticker)
-
-        while True:
-            # r = await websocket.receive_text()
-            # logger.warning("received %s", r)
-            await asyncio.sleep(5)
-            await websocket.send_json(update_user)
-            await asyncio.sleep(5)
-            await websocket.send_json(update_ticker)
-
-    except ws_exceptions.ConnectionClosed:
-        logger.info("Websocket closed for user %s", user_id)
 
 
 app.include_router(router, prefix="/api")
