@@ -340,6 +340,24 @@ async def updates_generator(user_id):
     yield update_ticker
 
     user_event_generator = UserInterface(user_id).generate_updates()
+    ticker_event_generator = UserInterface(user_id).get_ticker().generate_updates()
+
+    raise NotImplementedError
+    # See https://stackoverflow.com/questions/74130544/asyncio-yielding-results-from-multiple-futures-as-they-arrive
+
+    while True:
+        done, pending = await asyncio.wait(
+            [anext(user_event_generator), anext(ticker_event_generator)],
+            return_when=asyncio.FIRST_COMPLETED,
+        )
+        for task in done:
+            try:
+                item = await task
+                yield item
+            except asyncio.CancelledError:
+                pass  # Ignore CancelledError
+        if not pending:
+            break
 
     while True:
         await anext(user_event_generator)

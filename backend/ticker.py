@@ -105,3 +105,23 @@ class Ticker:
         except asyncio.TimeoutError:
             logger.info(f"Event timeout for game ticker {self.game_id}")
             return current_hash
+
+    async def generate_updates(self, timeout=GET_HASH_TIMEOUT):
+        """
+        A generator that yields None every time an update is available for this
+        ticker, or at most after timeout seconds
+        """
+        while True:
+            # Lookup / make an event for this user and subscribe to it
+            event = get_trigger_event("ticker", self.game_id)
+
+            try:
+                logger.info(
+                    "Subscribing to event %s for game ticker %s", event, self.game_id
+                )
+                await asyncio.wait_for(event.wait(), timeout=timeout)
+                logger.info(f"Event received for game ticker {self.game_id}")
+                yield
+            except asyncio.TimeoutError:
+                logger.info(f"Event timeout for game ticker {self.game_id}")
+                yield
