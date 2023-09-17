@@ -7,6 +7,12 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const apiProxy = createProxyMiddleware({
   target: 'http://127.0.0.1:8000', // target host
   changeOrigin: false,
+  ws: false,
+});
+
+const socketProxy = createProxyMiddleware({
+  target: 'http://127.0.0.1:8000',
+  changeOrigin: true,
   ws: true,
 });
 
@@ -15,4 +21,5 @@ module.exports = app => {
   app.use('/api', apiProxy);
   app.use('/docs', apiProxy);
   app.use('/openapi.json', apiProxy);
+  app.use('/api/ws', socketProxy);
 }
