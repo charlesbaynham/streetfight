@@ -1,4 +1,4 @@
-tags
+*.pem
 .direnv
 .DS_Store
 *.db

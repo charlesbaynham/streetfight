@@ -3,20 +3,25 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 const path = require('path');
 const cluster = require('cluster');
 const numCPUs = require('os').cpus().length;
+const fs = require("fs");
+const https = require("https");
+
 
 const isDev = process.env.NODE_ENV !== 'production';
 const PORT = process.env.PORT || 3000;
+
+// SSL certificates, used by both the server and the proxy server
+const ssl_credentials = {
+  key: fs.readFileSync("key.pem"),
+  cert: fs.readFileSync("cert.pem"),
+};
 
 // proxy middleware options
 const options = {
   target: 'http://127.0.0.1:8000', // target host
   changeOrigin: false, // needed for virtual hosted sites
   ws: true, // proxy websockets
-  // router: {
-  //   // when request.headers.host == 'dev.localhost:3000',
-  //   // override target 'http://www.example.org' to 'http://localhost:8000'
-  //   'dev.localhost:3000': 'http://localhost:8000',
-  // },
+  ssl: ssl_credentials
 };
 
 // static serving middleware options
@@ -71,7 +76,11 @@ if (!isDev && cluster.isMaster) {
     response.sendFile(path.resolve(__dirname, '../react-ui/build', 'index.html'));
   });
 
-  app.listen(PORT, function () {
-    console.error(`Node ${isDev ? 'dev server' : 'cluster worker ' + process.pid}: listening on port ${PORT}`);
-  });
+  https
+    .createServer(
+      ssl_credentials, app
+    )
+    .listen(PORT, () => {
+      console.error(`Node ${isDev ? 'dev server' : 'cluster worker ' + process.pid}: listening on port ${PORT}`);
+    });
 }
