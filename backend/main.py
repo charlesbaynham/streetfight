@@ -344,8 +344,10 @@ async def websocket_endpoint(
         while True:
             # r = await websocket.receive_text()
             # logger.warning("received %s", r)
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
             await websocket.send_json(update_user)
+            await asyncio.sleep(5)
+            await websocket.send_json(update_ticker)
 
     except ws_exceptions.ConnectionClosed:
         logger.info("Websocket closed for user %s", user_id)

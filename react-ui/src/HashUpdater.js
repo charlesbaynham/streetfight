@@ -31,6 +31,8 @@ export function deregisterListener(type, handle) {
 }
 
 function processMessage(message) {
+    console.log("Potential update received:")
+    console.dir(message)
     if (message.handler !== "update_prompt")
         return
 
@@ -41,7 +43,7 @@ function processMessage(message) {
     if (listeners.has(update_target)) {
         const targetted_listeners = listeners.get(update_target);
 
-        targetted_listeners.forEach((handle, callback) => {
+        targetted_listeners.forEach((callback, handle) => {
             console.log(`Executing callback ${handle} for handler ${update_target}`);
             callback();
         })
@@ -59,7 +61,7 @@ export function WebsocketParser() {
 
         newWs.onmessage = (event) => {
             console.log(event.data);
-            processMessage(event.data);
+            processMessage(JSON.parse(event.data));
         };
 
         newWs.onclose = () => {
