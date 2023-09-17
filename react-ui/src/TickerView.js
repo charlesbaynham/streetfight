@@ -20,12 +20,11 @@ export default function TickerView() {
 
     return <>
         <HashUpdater
-            known_hash={knownTickerHash}
-            callback={(d) => {
-                console.log(`Old hash = ${knownTickerHash}, new_hash=${d}`)
-                setKnownTickerHash(d)
+            update_type="ticker"
+            callback={() => {
+                console.log(`Updating knownTickerHash to ${knownTickerHash + 1}`)
+                setKnownTickerHash(knownTickerHash + 1)
             }}
-            api_call="ticker_hash"
         />
         <div className={styles.tickerview}>
             <ul>

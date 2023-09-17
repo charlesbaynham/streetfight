@@ -62,9 +62,8 @@ export default function UserMode() {
     <>
       <WebsocketParser />
       <HashUpdater
-        known_hash={userStateHash}
-        callback={(d) => { setUserStateHash(d) }}
-        api_call="get_hash"
+        update_type="user"
+        callback={() => { setUserStateHash(userStateHash + 1) }}
       />
 
       <FullScreen handle={handle} onChange={reportChange}>
