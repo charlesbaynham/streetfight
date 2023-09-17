@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -22,6 +23,7 @@ from fastapi import HTTPException
 from fastapi import WebSocket
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import StreamingResponse
 from starlette.websockets import WebSocketDisconnect
 
 from .admin_interface import AdminInterface
@@ -324,6 +326,67 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
             os.environ["WEBSITE_URL"], {"d": encoded_item}
         ),
     }
+
+
+# WebSocket route to handle WebSocket connections
+@router.websocket("/ws_updates")
+async def websocket_endpoint(
+    websocket: WebSocket,
+    user_id=Depends(get_user_id),
+):
+    update_user = {"handler": "update_prompt", "data": "user"}
+    update_ticker = {"handler": "update_prompt", "data": "ticker"}
+
+    await websocket.accept()
+
+    # FIXME: basic testing before I make the backend
+    try:
+        await websocket.send_json(update_user)
+        await websocket.send_json(update_ticker)
+
+        while True:
+            # r = await websocket.receive_text()
+            # logger.warning("received %s", r)
+            await asyncio.sleep(5)
+            await websocket.send_json(update_user)
+            await asyncio.sleep(5)
+            await websocket.send_json(update_ticker)
+
+    except ws_exceptions.ConnectionClosed:
+        logger.info("Websocket closed for user %s", user_id)
+
+
+async def updates_generator():
+    def make_sse_update_message(m):
+        return f"data: {m}\n\n"
+
+    update_user = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "user"})
+    )
+    update_ticker = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "ticker"})
+    )
+
+    yield update_user
+    yield update_ticker
+
+    while True:
+        yield update_user
+        await asyncio.sleep(1)
+        yield update_ticker
+        await asyncio.sleep(1)
+
+
+@router.get("/sse_updates")
+async def sse_endpoint():
+    return StreamingResponse(
+        updates_generator(),
+        headers={
+            "Content-type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
 
 
 # WebSocket route to handle WebSocket connections

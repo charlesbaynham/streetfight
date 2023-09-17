@@ -1,8 +1,9 @@
-import WebsocketTest from "./WebsocketTest";
+import SSETest from "./SSETest";
+
 
 const TestPage = () => {
     return <>
-        <WebsocketTest />
+        <SSETest />
     </>
 };
 
