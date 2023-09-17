@@ -7,6 +7,7 @@
  */
 
 import { useEffect } from 'react'
+import { makeAPIURL } from './utils';
 
 
 var listeners = new Map();
@@ -45,26 +46,20 @@ function processMessage(message) {
 
 export function WebsocketParser() {
     useEffect(() => {
-        // Establish a WebSocket connection
-        const newWs = new WebSocket(`wss://${document.location.host}/api/ws_updates`);
+        const eventSource = new EventSource(makeAPIURL("sse_updates"));
 
-        newWs.onopen = () => {
-            console.debug('WebSocket connected');
-        };
-
-        newWs.onmessage = (event) => {
+        eventSource.onmessage = (event) => {
+            console.log("Received SSE:", event.data);
             processMessage(JSON.parse(event.data));
         };
 
-        newWs.onclose = () => {
-            console.debug('WebSocket closed');
+        eventSource.onerror = (error) => {
+            console.log("SSE stream closed:", error);
         };
 
-        // Close the WebSocket when the component unmounts
         return () => {
-            if (newWs) {
-                newWs.close();
-            }
+            // Cleanup: close the SSE connection when the component unmounts
+            eventSource.close();
         };
     }, []);
 
