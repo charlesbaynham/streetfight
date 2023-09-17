@@ -13,9 +13,7 @@ var listeners = new Map();
 
 
 export function registerListener(type, callback) {
-    console.log(`Registering listener for ${type}`)
     if (!listeners.has(type)) {
-        console.log(`Creating new map for listener ${type}`)
         listeners.set(type, new Map())
     }
 
@@ -26,25 +24,20 @@ export function registerListener(type, callback) {
 }
 
 export function deregisterListener(type, handle) {
-    console.log(`Deregistering listener for ${type}`)
     listeners.get(type).delete(handle);
 }
 
 function processMessage(message) {
-    console.log("Potential update received:")
-    console.dir(message)
     if (message.handler !== "update_prompt")
         return
 
     const update_target = message.data
 
-    console.log(`Processing update for ${update_target}`)
-
     if (listeners.has(update_target)) {
         const targetted_listeners = listeners.get(update_target);
 
         targetted_listeners.forEach((callback, handle) => {
-            console.log(`Executing callback ${handle} for handler ${update_target}`);
+            console.debug(`Executing callback ${handle} for handler ${update_target}`);
             callback();
         })
     }
@@ -56,16 +49,15 @@ export function WebsocketParser() {
         const newWs = new WebSocket(`wss://${document.location.host}/api/ws_updates`);
 
         newWs.onopen = () => {
-            console.log('WebSocket connected');
+            console.debug('WebSocket connected');
         };
 
         newWs.onmessage = (event) => {
-            console.log(event.data);
             processMessage(JSON.parse(event.data));
         };
 
         newWs.onclose = () => {
-            console.log('WebSocket closed');
+            console.debug('WebSocket closed');
         };
 
         // Close the WebSocket when the component unmounts

@@ -63,7 +63,10 @@ export default function UserMode() {
       <WebsocketParser />
       <HashUpdater
         update_type="user"
-        callback={() => { setUserStateHash(userStateHash + 1) }}
+        callback={() => {
+          console.log(`Updating userStateHash to ${userStateHash + 1}`)
+          setUserStateHash(userStateHash + 1)
+        }}
       />
 
       <FullScreen handle={handle} onChange={reportChange}>
