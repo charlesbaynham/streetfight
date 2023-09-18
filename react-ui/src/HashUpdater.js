@@ -6,9 +6,10 @@
  * via the passed callback.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { makeAPIURL } from './utils';
 
+const TIMEOUT_ON_ERROR = 3000
 
 var listeners = new Map();
 
@@ -38,30 +39,35 @@ function processMessage(message) {
         const targetted_listeners = listeners.get(update_target);
 
         targetted_listeners.forEach((callback, handle) => {
-            console.debug(`Executing callback ${handle} for handler ${update_target}`);
             callback();
         })
     }
 }
 
 export function WebsocketParser() {
+    const [bumpCounter, setBumpCounter] = useState(0);
+
     useEffect(() => {
         const eventSource = new EventSource(makeAPIURL("sse_updates"));
+        var retry_timeout = 0;
 
         eventSource.onmessage = (event) => {
-            console.log("Received SSE:", event.data);
             processMessage(JSON.parse(event.data));
         };
 
-        eventSource.onerror = (error) => {
-            console.log("SSE stream closed:", error);
+        eventSource.onerror = (_) => {
+            console.log("SSE stream closed - retrying");
+            retry_timeout = setTimeout(() => { setBumpCounter(bumpCounter + 1) }, TIMEOUT_ON_ERROR)
         };
 
         return () => {
             // Cleanup: close the SSE connection when the component unmounts
             eventSource.close();
+            if (retry_timeout !== 0) {
+                clearTimeout(retry_timeout);
+            }
         };
-    }, []);
+    }, [bumpCounter, setBumpCounter]);
 
     return null;
 }
