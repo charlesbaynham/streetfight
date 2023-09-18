@@ -302,9 +302,11 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
     }
 
 
+def make_sse_update_message(m):
+    return f"data: {m}\n\n"
+
+
 async def updates_generator(user_id):
-    def make_sse_update_message(m):
-        return f"data: {m}\n\n"
 
     update_user = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "user"})
@@ -416,6 +418,27 @@ async def sse_endpoint(
 ):
     return StreamingResponse(
         updates_generator(user_id),
+        headers={
+            "Content-type": "text/event-stream",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+
+async def admin_updates_generator():
+    update_admin = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "admin"})
+    )
+    yield update_admin
+    async for _ in AdminInterface().generate_any_ticker_updates():
+        yield update_admin
+
+
+@router.get("/sse_admin_updates")
+async def sse_endpoint():
+    return StreamingResponse(
+        admin_updates_generator(),
         headers={
             "Content-type": "text/event-stream",
             "Cache-Control": "no-cache",

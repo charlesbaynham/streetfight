@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import { sendAPIRequest } from './utils';
 import NewItems from './NewItems';
+import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 
 function GameView({ game }) {
     return <>
@@ -137,6 +138,7 @@ function AllGamesView({ games }) {
 export default function AdminMode() {
 
     const [games, setGames] = useState([]);
+    const [knownTickerHash, setKnownTickerHash] = useState(0);
 
     const updatePanel = useCallback(
         () => {
@@ -148,6 +150,15 @@ export default function AdminMode() {
 
     return (
         <>
+            <UpdateSSEConnection endpoint="sse_admin_updates" />
+            <UpdateListener
+                update_type="admin"
+                callback={() => {
+                    console.log(`Updating knownTickerHash to ${knownTickerHash + 1}`)
+                    setKnownTickerHash(knownTickerHash + 1)
+                }}
+            />
+
             <h1>Admin mode</h1>
 
             <p>Welcome to admin mode. I hope you're not a cheater...</p>

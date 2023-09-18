@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import List
 from typing import Tuple
@@ -7,6 +8,7 @@ from uuid import uuid4 as get_uuid
 from fastapi import HTTPException
 
 from . import database
+from .asyncio_triggers import get_trigger_event
 from .items import DecodedItem
 from .model import Game
 from .model import GameModel
@@ -154,3 +156,29 @@ class AdminInterface:
         logger.info("Made new item: %s => %s", item, encoded_item)
 
         return encoded_item
+
+    async def generate_any_ticker_updates(self, timeout=None):
+        """
+        A generator that yields None every time any ticker is updated in any
+        game, or at most after timeout seconds
+        """
+        while True:
+            game_ids = self.session.query(Game.id).all()
+
+            # Lookup / make an event for each game's ticker
+            events = [get_trigger_event("ticker", game_id) for game_id in game_ids]
+
+            # make futures for waiting for all these events
+            futures = [
+                asyncio.wait_for(event.wait(), timeout=timeout) for event in events
+            ]
+
+            try:
+                logger.info("(Admin Updater %s) Subscribing to events %s", events)
+                await anext(asyncio.as_completed(futures))
+
+                logger.info("(Admin Updater %s) Event received")
+                yield
+            except asyncio.TimeoutError:
+                logger.info("(Admin Updater %s) Event timeout")
+                yield

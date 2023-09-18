@@ -44,11 +44,11 @@ function processMessage(message) {
     }
 }
 
-export function UpdateSSEConnection() {
+export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     const [bumpCounter, setBumpCounter] = useState(0);
 
     useEffect(() => {
-        const eventSource = new EventSource(makeAPIURL("sse_updates"));
+        const eventSource = new EventSource(makeAPIURL(endpoint));
         var retry_timeout = 0;
 
         eventSource.onmessage = (event) => {
