@@ -146,7 +146,7 @@ export default function AdminMode() {
         }, []
     );
 
-    useEffect(updatePanel, [updatePanel])
+    useEffect(updatePanel, [updatePanel, knownTickerHash])
 
     return (
         <>

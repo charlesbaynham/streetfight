@@ -159,7 +159,7 @@ class AdminInterface:
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
-        A generator that yields None every time any ticker is updated in any
+        An async iterator that yields None every time any ticker is updated in any
         game, or at most after timeout seconds
         """
         while True:
@@ -175,7 +175,7 @@ class AdminInterface:
 
             try:
                 logger.info("(Admin Updater %s) Subscribing to events %s", events)
-                await anext(asyncio.as_completed(futures))
+                await next(asyncio.as_completed(futures))
 
                 logger.info("(Admin Updater %s) Event received")
                 yield

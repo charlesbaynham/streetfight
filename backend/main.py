@@ -432,6 +432,7 @@ async def admin_updates_generator():
     )
     yield update_admin
     async for _ in AdminInterface().generate_any_ticker_updates():
+        logger.debug("(admin_updates_generator) Update received - sending")
         yield update_admin
 
 
