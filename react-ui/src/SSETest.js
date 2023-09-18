@@ -5,7 +5,7 @@ function SSEComponent() {
 
 
     useEffect(() => {
-        const eventSource = new EventSource("https://localhost:3000/api/sse_updates");
+        const eventSource = new EventSource(document.origin + "/api/sse_updates");
 
         eventSource.onmessage = (event) => {
             console.log("Received SSE:", event);

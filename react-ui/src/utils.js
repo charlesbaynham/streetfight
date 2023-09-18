@@ -1,6 +1,6 @@
 
 export function makeAPIURL(endpoint, query_params = null) {
-    const url = new URL(`/api/${endpoint}`, document.baseURI);
+    const url = new URL(`/api/${endpoint}`, window.location.origin);
 
     if (query_params) {
         Object.keys(query_params).forEach(key => url.searchParams.append(key, query_params[key]))
