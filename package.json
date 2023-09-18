@@ -5,7 +5,8 @@
   "description": "Hacky streetfight app, will probably go nowhere",
   "scripts": {
     "start": "concurrently \"npm run frontend\" \"npm run resetdb && uvicorn backend.main:app --host 0.0.0.0\"",
-    "dev": "concurrently \"cd react-ui && npm start\" \"npm run backend\"",
+    "dev_both": "concurrently \"cd react-ui && npm start\" \"npm run backend\"",
+    "dev": "cd react-ui && npm start",
     "frontend": "node server",
     "backend": "(npm run resetdb || true) && uvicorn backend.main:app --reload --reload-dir backend",
     "build": "cd react-ui && npm run build",
