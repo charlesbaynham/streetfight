@@ -366,6 +366,10 @@ async def updates_generator(user_id):
             "updates_generator - User is in game, mounting to game ticker for user %s",
             user_id,
         )
+        # Yield one update immediately to refresh the ticker
+        yield None
+
+        # Then yield from the ticker
         async for x in ticker.generate_updates():
             logger.debug(
                 "updates_generator - Forwarding ticker event for user %s", user_id
