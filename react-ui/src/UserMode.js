@@ -9,7 +9,7 @@ import FireButton from './FireButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
 import WebcamView from './WebcamView';
-import HashUpdater, { WebsocketParser } from './HashUpdater';
+import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 import TickerView from './TickerView';
 
 import styles from './UserMode.module.css'
@@ -19,7 +19,7 @@ export default function UserMode() {
 
   const handle = useFullScreenHandle();
 
-  // eslint-disable-next-line
+
   const [isFullscreen, setIsFullscreen] = useState(false);
 
   const [userState, setUserState] = useState(null);
@@ -56,12 +56,10 @@ export default function UserMode() {
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
 
 
-
-
   const playingView = userState ? (
     <>
-      <WebsocketParser />
-      <HashUpdater
+      <UpdateSSEConnection />
+      <UpdateListener
         update_type="user"
         callback={() => {
           console.log(`Updating userStateHash to ${userStateHash + 1}`)
@@ -75,9 +73,11 @@ export default function UserMode() {
           <TickerView />
         </div>
 
-        <button onClick={handle.enter}>
-          Fullscreen
-        </button>
+        {isFullscreen ? null :
+          <button onClick={handle.enter}>
+            Fullscreen
+          </button>
+        }
 
         <WebcamView trigger={triggerShot} />
 

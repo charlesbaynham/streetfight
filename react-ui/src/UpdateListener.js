@@ -44,7 +44,7 @@ function processMessage(message) {
     }
 }
 
-export function WebsocketParser() {
+export function UpdateSSEConnection() {
     const [bumpCounter, setBumpCounter] = useState(0);
 
     useEffect(() => {
@@ -73,7 +73,7 @@ export function WebsocketParser() {
 }
 
 
-export default function HashUpdater({ update_type, callback }) {
+export default function UpdateListener({ update_type, callback }) {
 
     useEffect(() => {
         const handle = registerListener(update_type, callback);

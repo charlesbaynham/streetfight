@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-import HashUpdater from './HashUpdater';
+import UpdateListener from './UpdateListener';
 import { sendAPIRequest } from './utils';
 
 import styles from './TickerView.module.css'
@@ -19,7 +19,7 @@ export default function TickerView() {
     useEffect(updateMessages, [updateMessages, knownTickerHash]);
 
     return <>
-        <HashUpdater
+        <UpdateListener
             update_type="ticker"
             callback={() => {
                 console.log(`Updating knownTickerHash to ${knownTickerHash + 1}`)
