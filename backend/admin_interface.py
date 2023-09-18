@@ -166,7 +166,10 @@ class AdminInterface:
             game_ids = self.session.query(Game.id).all()
 
             # Lookup / make an event for each game's ticker
-            events = [get_trigger_event("ticker", game_id) for game_id in game_ids]
+            events = []
+            for game_id in game_ids:
+                logger.debug("(AdminInterface) Getting event for game %s", game_id[0])
+                events.append(get_trigger_event("ticker", game_id[0]))
 
             # make futures for waiting for all these events
             futures = [
@@ -174,11 +177,11 @@ class AdminInterface:
             ]
 
             try:
-                logger.info("(Admin Updater %s) Subscribing to events %s", events)
+                logger.debug("(Admin Updater) Subscribing to events %s", events)
                 await next(asyncio.as_completed(futures))
 
-                logger.info("(Admin Updater %s) Event received")
+                logger.debug("(Admin Updater) Event received")
                 yield
             except asyncio.TimeoutError:
-                logger.info("(Admin Updater %s) Event timeout")
+                logger.debug("(Admin Updater) Event timeout")
                 yield

@@ -67,7 +67,7 @@ See also : Caddy
 
 Backburner:
 
-- [ ] Admin interface UI should also auto-update
+- [x] Admin interface UI should also auto-update
 - [ ]: The admin interface should have a password
 - [ ]: Users should be able to send items to other users (on their team? only bullets?)
 - [ ] Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
