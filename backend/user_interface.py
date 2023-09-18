@@ -21,7 +21,6 @@ from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
-GET_HASH_TIMEOUT = 20
 
 make_user_lock = RLock()
 
@@ -181,18 +180,6 @@ class UserInterface:
         f.close()
 
     @db_scoped
-    def get_hash_now(self):
-        user = self.get_user()
-
-        update_tag = user.update_tag
-
-        ret = update_tag if update_tag else 0
-        logger.debug(
-            f"UserInterface get_hash_now - Current hash {ret}, user {self.user_id}"
-        )
-        return ret
-
-    @db_scoped
     def collect_item(self, encoded_item: str) -> None:
         """Add the scanned item into a user's inventory"""
 
@@ -249,35 +236,6 @@ class UserInterface:
             self.get_ticker().post_message(
                 f'{user.name} collected {item.data["num"]}x {item.itype}'
             )
-
-    async def get_hash(self, known_hash=None, timeout=GET_HASH_TIMEOUT) -> int:
-        """
-        Gets the latest hash of this user
-
-        If known_hash is provided and is the same as the current hash,
-        do not return immediately: wait for up to timeout seconds.
-
-        Note that this function is not @db_scoped, but it calls one that is:
-        this is to prevent the database being locked while it waits
-        """
-        current_hash = self.get_hash_now()
-
-        # Return immediately if the hash has changed or if there's no known hash
-        if known_hash is None or known_hash != current_hash:
-            logger.debug("Out of date hash - returning immediately")
-            return current_hash
-
-        # Otherwise, lookup / make an event and subscribe to it
-        event = get_trigger_event("user", self.user_id)
-
-        try:
-            logger.info("Subscribing to event %s for user %s", event, self.user_id)
-            await asyncio.wait_for(event.wait(), timeout=timeout)
-            logger.info(f"Event received for user {self.user_id}")
-            return self.get_hash_now()
-        except asyncio.TimeoutError:
-            logger.info(f"Event timeout for user {self.user_id}")
-            return current_hash
 
     async def generate_updates(self, timeout=GET_HASH_TIMEOUT):
         """

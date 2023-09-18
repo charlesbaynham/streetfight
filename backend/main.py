@@ -175,45 +175,6 @@ async def get_ticker_messages(
     return ticker.get_messages(num_messages)
 
 
-@router.get("/ticker_hash")
-async def get_ticker_hash(
-    known_hash: int = 0,
-    user_id=Depends(get_user_id),
-):
-    logger.info(
-        "User %s called get_ticker_hash with known_ticker_hash=%s",
-        user_id,
-        known_hash,
-    )
-    ticker: Ticker = UserInterface(user_id).get_ticker()
-    if ticker is None:
-        return 0
-
-    return await ticker.get_hash(known_hash=known_hash)
-
-
-@router.get("/get_hash")
-async def get_hash(
-    known_hash: int = 0,
-    timeout: int = 30,
-    user_id=Depends(get_user_id),
-) -> int:
-    """
-    Get a hash that will change if this user's state changes
-
-    This method may take up to `timeout` seconds to return
-    if the state is currently the same as `known_state`.
-
-    Args:
-        known_hash (int, optional): _description_. Defaults to 0.
-        timeout (int, optional): _description_. Defaults to 30.
-
-    Returns:
-        int: Hash of the user's current state
-    """
-    return await UserInterface(user_id).get_hash(known_hash=known_hash, timeout=timeout)
-
-
 @router.get("/get_users")
 async def get_users(game_id: str = None, team_id: str = None):
     if game_id is not None:
