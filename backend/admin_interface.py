@@ -84,7 +84,11 @@ class AdminInterface:
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
-        UserInterface(user_id).join_team(team_id)
+        ui = UserInterface(user_id)
+        ui.join_team(team_id)
+        user_name = ui.get_user_model().name
+        team_name = ui.get_team_model().name
+        ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
         query = (

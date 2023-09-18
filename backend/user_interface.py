@@ -15,6 +15,7 @@ from .model import Game
 from .model import Item
 from .model import Shot
 from .model import Team
+from .model import TeamModel
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
@@ -107,6 +108,11 @@ class UserInterface:
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None
+
+    @db_scoped
+    def get_team_model(self) -> UserModel:
+        team = self.get_user().team
+        return TeamModel.from_orm(team) if team else None
 
     @db_scoped
     def _get_item_from_database(self, item_id: int) -> Item:
