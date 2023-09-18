@@ -1,6 +1,8 @@
 import { useCallback, useRef } from "react";
 import { sendAPIRequest } from "./utils";
 
+import styles from './NoNameView.module.css';
+
 function NoNameView({ callback = null }) {
 
     const setUserName = useCallback((username) => {
@@ -8,11 +10,15 @@ function NoNameView({ callback = null }) {
     }, [callback]);
 
     const setNameInput = useRef();
-    return <>
-        <span>Enter your name:</span>
-        <input ref={setNameInput} />
-        <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
-    </>;
+    return <div className={styles.container}>
+        <input
+            className={styles.nameInput} ref={setNameInput}
+            placeholder="Enter your name..."
+        />
+        <button
+            className={styles.nameButton}
+            onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
+    </div>;
 
 }
 
