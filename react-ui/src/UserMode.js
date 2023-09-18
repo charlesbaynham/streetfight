@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 
 
@@ -15,11 +15,61 @@ import TickerView from './TickerView';
 import styles from './UserMode.module.css'
 import NoNameView from './NoNameView';
 
+
+
+function GetView({ userState }) {
+  const [triggerShot, setTriggerShot] = useState(0);
+
+  if (userState === null) {
+    return <p>Loading...</p>;
+    ;
+  }
+
+  if (userState.name === null) {
+    return <NoNameView />;
+  }
+
+  // if (userState.team === null) {
+  //   return <NoTeamView />;
+  // }
+
+  const isAlive = userState ? (userState.hit_points > 0) : false;
+  const isInTeam = userState ? ("team_id" in userState) : false;
+  const hasBullets = userState ? (userState.num_bullets > 0) : false;
+
+  return <>
+
+    <div className={styles.monitorsContainer}>
+      <BulletCount user={userState} />
+      <TickerView />
+    </div>
+
+
+
+    <WebcamView trigger={triggerShot} />
+
+    {isAlive ?
+      <CrosshairImage />
+      :
+      <DeadImage />
+    }
+
+    <FireButton buttonActive={isInTeam && isAlive && hasBullets} onClick={
+      () => {
+        setTriggerShot(triggerShot + 1)
+      }
+    } />
+
+  </ >;
+}
+
+
+
+
 export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
 
   const handle = useFullScreenHandle();
-
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
@@ -33,67 +83,28 @@ export default function UserMode() {
 
   useEffect(updateUserState, [updateUserState, userStateHash]);
 
-  const reportChange = useCallback((state, _) => {
+  const reportFullscreenChange = useCallback((state, _) => {
     setIsFullscreen(state);
   }, []);
 
-  const [triggerShot, setTriggerShot] = useState(0);
 
-  const loadingView = <p>Loading...</p>;
+  return <>
+    <UpdateSSEConnection />
+    <UpdateListener
+      update_type="user"
+      callback={() => {
+        console.log(`Updating userStateHash to ${userStateHash + 1}`)
+        setUserStateHash(userStateHash + 1)
+      }}
+    />
 
-  const isAlive = userState ? (userState.hit_points > 0) : false;
-  const isInTeam = userState ? ("team_id" in userState) : false;
-  const hasBullets = userState ? (userState.num_bullets > 0) : false;
-
-
-  const playingView = userState ? (
-    <>
-      <UpdateSSEConnection />
-      <UpdateListener
-        update_type="user"
-        callback={() => {
-          console.log(`Updating userStateHash to ${userStateHash + 1}`)
-          setUserStateHash(userStateHash + 1)
-        }}
-      />
-
-      <FullScreen handle={handle} onChange={reportChange}>
-        <div className={styles.monitorsContainer}>
-          <BulletCount user={userState} />
-          <TickerView />
-        </div>
-
-        {isFullscreen ? null :
-          <button onClick={handle.enter}>
-            Fullscreen
-          </button>
-        }
-
-        <WebcamView trigger={triggerShot} />
-
-        {isAlive ?
-          <CrosshairImage />
-          :
-          <DeadImage />
-        }
-
-        <FireButton buttonActive={isInTeam && isAlive && hasBullets} onClick={
-          () => {
-            setTriggerShot(triggerShot + 1)
-          }
-        } />
-
-      </FullScreen>
-    </ >
-  ) : null;
-
-  if (userState === null) {
-    return loadingView;
-  }
-
-  if (userState.name === null) {
-    return <NoNameView callback={updateUserState} />;
-  }
-
-  return playingView;
+    {isFullscreen ? null :
+      <button onClick={handle.enter}>
+        Fullscreen
+      </button>
+    }
+    <FullScreen handle={handle} onChange={reportFullscreenChange}>
+      <GetView userState={userState} isFullscreen={isFullscreen} />
+    </FullScreen>
+  </>
 }

@@ -67,7 +67,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
                 clearTimeout(retry_timeout);
             }
         };
-    }, [bumpCounter, setBumpCounter]);
+    }, [bumpCounter, setBumpCounter, endpoint]);
 
     return null;
 }
