@@ -264,6 +264,7 @@ class UserInterface:
     @db_scoped
     def get_ticker(self) -> Optional[Ticker]:
         team = self.get_user().team
+        logger.debug("(UserInterface %s) User team = %s", self.user_id, team)
         if team is None:
             return None
         return Ticker(team.game_id, session=self._session)

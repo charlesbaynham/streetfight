@@ -46,7 +46,9 @@ class Ticker:
         )
 
         logger.debug(
-            "Looked up %d ticker entries for game %s", len(ticker_entries), self.game_id
+            "(Game Ticker %s) Looked up %d ticker entries",
+            self.game_id,
+            len(ticker_entries),
         )
 
         return [t.message for t in ticker_entries]
@@ -57,11 +59,16 @@ class Ticker:
 
     @db_scoped
     def touch_game_ticker_tag(self):
+        logger.debug("(Game Ticker %s) Touching ticker", self.game_id)
         self._get_game().touch()
 
     @db_scoped
     def post_message(self, message: str):
-        logger.info('Adding ticker entry "%s" to game %s', message, self.game_id)
+        logger.debug(
+            '(Game Ticker %s) Adding ticker entry "%s"',
+            self.game_id,
+            message,
+        )
         self._session.add(TickerEntry(game_id=self.game_id, message=message))
 
     async def generate_updates(self, timeout=None):
@@ -75,11 +82,13 @@ class Ticker:
 
             try:
                 logger.info(
-                    "Subscribing to event %s for game ticker %s", event, self.game_id
+                    "(Game Ticker %s) Subscribing to event %s",
+                    self.game_id,
+                    event,
                 )
                 await asyncio.wait_for(event.wait(), timeout=timeout)
-                logger.info(f"Event received for game ticker {self.game_id}")
+                logger.info("(Game Ticker %s) Event received", self.game_id)
                 yield
             except asyncio.TimeoutError:
-                logger.info(f"Event timeout for game ticker {self.game_id}")
+                logger.info("(Game Ticker %s) Event timeout", self.game_id)
                 yield

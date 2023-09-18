@@ -50,7 +50,8 @@ class DatabaseScopeProvider:
 
     @staticmethod
     def session_is_dirty(session: Session):
-        return bool(session.dirty or session.new or session.deleted)
+        o = bool(session.dirty or session.new or session.deleted)
+        return o
 
     def db_scoped(self_outer, func: Callable):
 
@@ -78,9 +79,9 @@ class DatabaseScopeProvider:
                 wrapper_data["session_users"] += 1
                 out = func(self, *args, **kwargs)
                 # If this commit will alter the database, set the modified flag
-                wrapper_data["session_modified"] = self_outer.session_is_dirty(
-                    self._session
-                )
+                dirty = self_outer.session_is_dirty(self._session)
+                logger.debug("(DSP %s) session_is_dirty=%s", self_outer.name, dirty)
+                wrapper_data["session_modified"] = dirty
 
                 return out
             except Exception as e:
@@ -88,22 +89,25 @@ class DatabaseScopeProvider:
                 self._session.rollback()
                 raise e
             finally:
+                if wrapper_data["session_users"] == 1:
+                    logger.debug("(DSP %s) Last user of scoped call", self_outer.name)
+
                 if (
                     wrapper_data["session_users"] == 1
                     and wrapper_data["session_modified"]
                 ):
-                    logger.debug("Calling precommit_method for %s", self_outer.name)
+                    logger.debug("(DSP %s) Calling precommit_method", self_outer.name)
                     self_outer.precommit_method(self)
 
                 wrapper_data["session_users"] -= 1
 
                 if wrapper_data["session_users"] == 0:
-                    logger.debug("Committing session")
+                    logger.debug("(DSP %s) Committing session", self_outer.name)
                     self._session.commit()
 
                     if wrapper_data["session_modified"]:
                         logger.debug(
-                            "Calling postcommit_method for %s", self_outer.name
+                            "(DSP %s) Calling postcommit_method", self_outer.name
                         )
                         self_outer.postcommit_method(self)
 

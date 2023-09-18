@@ -13,7 +13,9 @@ _update_events: Dict[str, Dict[Hashable, asyncio.Event]] = {}
 def trigger_update_event(event_type: str, key: Hashable):
     global _update_events
 
-    logger.info(f"Triggering updates for type %s, key %s", event_type, key)
+    logger.info(
+        "(asyncio_triggers) Triggering updates for type %s, key %s", event_type, key
+    )
 
     if event_type not in _update_events:
         _update_events[event_type] = dict()
@@ -40,6 +42,8 @@ def get_trigger_event(event_type: str, key: Hashable) -> asyncio.Event:
     Returns:
         asyncio.Event: ASyncio event
     """
+
+    logger.debug("(asyncio_triggers) Get event for type %s, key %s", event_type, key)
 
     if event_type not in _update_events:
         _update_events[event_type] = dict()

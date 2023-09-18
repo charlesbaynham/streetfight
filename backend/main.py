@@ -87,7 +87,7 @@ def setup_logging():
 setup_logging()
 app = FastAPI()
 router = APIRouter()
-logger = logging.getLogger("main")
+logger = logging.getLogger(__name__)
 
 app.add_middleware(
     SessionMiddleware,
@@ -332,7 +332,7 @@ async def updates_generator(user_id):
     # Keep track of the asyncio tasks we start for producers
     producers = []
 
-    logger.debug("Updates - Updates for user %s starting", user_id)
+    logger.debug("updates_generator - User updates for user %s starting", user_id)
 
     # Start a producer for user events:
     user_event_generator = UserInterface(user_id).generate_updates()
@@ -349,7 +349,7 @@ async def updates_generator(user_id):
     #
     # TODO: Handle the user changing team while this connection is running
     async def ticker_generator_with_check_user_logic():
-        logger.debug("Ticker updates - User %s starting", user_id)
+        logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
         ui = UserInterface(user_id)
 
         ticker: Optional[Ticker] = None
@@ -362,8 +362,14 @@ async def updates_generator(user_id):
             else:
                 logger.debug("Ticker updates - User %s still not in game", user_id)
 
-        logger.debug("Ticker updates - Mounting to game ticker for user %s", user_id)
+        logger.debug(
+            "updates_generator - User is in game, mounting to game ticker for user %s",
+            user_id,
+        )
         async for x in ticker.generate_updates():
+            logger.debug(
+                "updates_generator - Forwarding ticker event for user %s", user_id
+            )
             yield x
 
     # Queue the ticker generator
