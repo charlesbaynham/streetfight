@@ -30,6 +30,8 @@ from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
+SSE_KEEPALIVE_TIMEOUT = 5
+
 load_dotenv(find_dotenv())
 
 
@@ -398,13 +400,29 @@ async def updates_generator(user_id):
         )
     )
 
+    # Also add a keepalive producer
+    async def keepalive_timer():
+        while True:
+            await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
+            logger.debug("Sending SSE keepalive")
+            yield
+
+    producers.append(
+        asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
+    )
+
     # Iterate through the consumer:
     try:
         async for target in yield_from_queue():
+            logger.debug("Update queue received message '%s'", target)
             if target == "user":
                 yield update_user
             elif target == "ticker":
                 yield update_ticker
+            elif target == "keepalive":
+                yield ":keepalive\n\n"
+            else:
+                logger.error('Unknown update targer "%s"', target)
     finally:
         for task in producers:
             task.cancel()
