@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import AsyncGenerator
 from typing import Dict
+from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from urllib.parse import urlparse
@@ -340,43 +341,71 @@ async def updates_generator(user_id):
     yield update_user
     yield update_ticker
 
-    async def queue_producer(
-        queue: asyncio.Queue[None], generator: AsyncGenerator, output: str
-    ) -> None:
-        async for _ in generator:
-            await queue.put(output)
+    # An asyncio queue to pass to the generators
+    queue = asyncio.Queue()
 
-    async def queue_consumer(queue: asyncio.Queue[str]) -> AsyncGenerator:
+    # A function that logs a message every time an async generator yields
+    async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
+        async for _ in generator:
+            await queue.put(message)
+
+    # A function that yields from the queue as soon as items arrive
+    async def yield_from_queue() -> AsyncGenerator:
         while True:
             yield await asyncio.wait_for(queue.get(), timeout=None)
 
-    # Get a user event generator that will be passed to the queue_producer
+    # Keep track of the asyncio tasks we start for producers
+    producers = []
+
+    logger.debug("Updates - Updates for user %s starting", user_id)
+
+    # Start a producer for user events:
     user_event_generator = UserInterface(user_id).generate_updates()
+    producers.append(
+        asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
+    )
 
-    # Make an asyncio queue to pass to the generators
-    queue = asyncio.Queue()
+    # Start a more complicated producer for the ticker. This:
+    #
+    # a) If the user is in a team, attaches to the ticker updates
+    #
+    # b) If the user is not in a team, attaches to the user_updates until the
+    # user is in a team, then attaches to the ticker updates
+    #
+    # TODO: Handle the user changing team while this connection is running
+    async def ticker_generator_with_check_user_logic():
+        logger.debug("Ticker updates - User %s starting", user_id)
+        ui = UserInterface(user_id)
 
-    # Launch the producer tasks:
-    producers = [
-        asyncio.create_task(queue_producer(queue, user_event_generator, "user")),
-    ]
+        ticker: Optional[Ticker] = None
+        while ticker is None:
+            logger.debug("Ticker updates - User %s is not in a game, waiting", user_id)
+            await anext(ui.generate_updates())
+            ticker = ui.get_ticker()
+            if ticker:
+                logger.debug("Ticker updates - User %s now in game", user_id)
+            else:
+                logger.debug("Ticker updates - User %s still not in game", user_id)
 
-    ticker = UserInterface(user_id).get_ticker()
-    if ticker:
-        ticker_event_generator = ticker.generate_updates()
+        logger.debug("Ticker updates - Mounting to game ticker for user %s", user_id)
+        async for x in ticker.generate_updates():
+            yield x
 
-        producers.append(
-            asyncio.create_task(queue_producer(queue, ticker_event_generator, "ticker"))
+    # Queue the ticker generator
+    producers.append(
+        asyncio.create_task(
+            feed_generator_to_queue(ticker_generator_with_check_user_logic(), "ticker")
         )
+    )
 
     # Iterate through the consumer:
     try:
-        async for target in queue_consumer(queue):
+        async for target in yield_from_queue():
             if target == "user":
                 yield update_user
             elif target == "ticker":
                 yield update_ticker
-    except asyncio.CancelledError:
+    finally:
         for task in producers:
             task.cancel()
 
