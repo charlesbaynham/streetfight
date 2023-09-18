@@ -72,16 +72,32 @@ class DatabaseScopeProvider:
 
             if not self._session:
                 self._session = database.Session()
+
+            # If we're the entrypoint to a db_scoped session, reset the
+            # session_modified flag. Note that we can't rely on the
+            # initialisation above because the user may well reuse object with
+            # db_scoped methods and call them more than once.
             if wrapper_data["session_users"] == 0:
                 wrapper_data["session_modified"] = False
 
+            wrapper_data["session_users"] += 1
+
             try:
-                wrapper_data["session_users"] += 1
                 out = func(self, *args, **kwargs)
                 # If this commit will alter the database, set the modified flag
                 dirty = self_outer.session_is_dirty(self._session)
-                logger.debug("(DSP %s) session_is_dirty=%s", self_outer.name, dirty)
-                wrapper_data["session_modified"] = dirty
+                logger.debug(
+                    "(DSP %s) session_is_dirty=%s, session_modified=%s",
+                    self_outer.name,
+                    dirty,
+                    wrapper_data["session_modified"],
+                )
+                if dirty:
+                    logger.debug(
+                        "(DSP %s) Setting session_modified flag",
+                        self_outer.name,
+                    )
+                    wrapper_data["session_modified"] = True
 
                 return out
             except Exception as e:
