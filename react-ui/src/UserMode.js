@@ -13,6 +13,7 @@ import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 import TickerView from './TickerView';
 
 import styles from './UserMode.module.css'
+import NoNameView from './NoNameView';
 
 export default function UserMode() {
   const [userStateHash, setUserStateHash] = useState(0);
@@ -39,17 +40,6 @@ export default function UserMode() {
   const [triggerShot, setTriggerShot] = useState(0);
 
   const loadingView = <p>Loading...</p>;
-
-  const setUserName = useCallback((username) => {
-    sendAPIRequest("set_name", { name: username }, 'POST', updateUserState);
-  }, [updateUserState]);
-
-  const setNameInput = useRef();
-  const noNameView = <>
-    <span>Enter your name:</span>
-    <input ref={setNameInput} />
-    <button onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
-  </>;
 
   const isAlive = userState ? (userState.hit_points > 0) : false;
   const isInTeam = userState ? ("team_id" in userState) : false;
@@ -102,7 +92,7 @@ export default function UserMode() {
   }
 
   if (userState.name === null) {
-    return noNameView;
+    return <NoNameView callback={updateUserState} />;
   }
 
   return playingView;
