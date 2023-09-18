@@ -352,7 +352,7 @@ async def updates_generator(user_id):
         logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
         ui = UserInterface(user_id)
 
-        ticker: Optional[Ticker] = None
+        ticker: Optional[Ticker] = ui.get_ticker()
         while ticker is None:
             logger.debug("Ticker updates - User %s is not in a game, waiting", user_id)
             await anext(ui.generate_updates())
