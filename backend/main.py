@@ -71,6 +71,18 @@ def setup_logging():
         logging.getLogger().setLevel(logging.INFO)
         root_logger.warning("Setting log level to INFO by default")
 
+    if "LOG_OVERRIDES" in os.environ:
+        overrides = os.environ["LOG_OVERRIDES"]
+
+        for override in overrides.split(","):
+            target_logger, level = override.split(":")
+
+            target_logger = target_logger.strip()
+            level = level.strip()
+
+            logging.warning('Setting logger "%s" to level "%s"[]', target_logger, level)
+            logging.getLogger(target_logger).setLevel(level)
+
 
 setup_logging()
 app = FastAPI()
