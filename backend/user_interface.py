@@ -237,7 +237,7 @@ class UserInterface:
                 f'{user.name} collected {item.data["num"]}x {item.itype}'
             )
 
-    async def generate_updates(self, timeout=GET_HASH_TIMEOUT):
+    async def generate_updates(self, timeout=None):
         """
         A generator that yields None every time an update is available for this
         user, or at most after timeout seconds

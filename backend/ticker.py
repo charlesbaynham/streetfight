@@ -64,7 +64,7 @@ class Ticker:
         logger.info('Adding ticker entry "%s" to game %s', message, self.game_id)
         self._session.add(TickerEntry(game_id=self.game_id, message=message))
 
-    async def generate_updates(self, timeout=GET_HASH_TIMEOUT):
+    async def generate_updates(self, timeout=None):
         """
         A generator that yields None every time an update is available for this
         ticker, or at most after timeout seconds
