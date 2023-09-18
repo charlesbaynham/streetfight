@@ -404,7 +404,6 @@ async def updates_generator(user_id):
     async def keepalive_timer():
         while True:
             await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
-            logger.debug("Sending SSE keepalive")
             yield
 
     producers.append(
@@ -414,7 +413,7 @@ async def updates_generator(user_id):
     # Iterate through the consumer:
     try:
         async for target in yield_from_queue():
-            logger.debug("Update queue received message '%s'", target)
+
             if target == "user":
                 yield update_user
             elif target == "ticker":
