@@ -7,16 +7,20 @@ import actionDone from './check-solid.svg';
 import styles from './OnboardingView.module.css';
 
 
-const ActionItem = ({ text, done }) => <a href="#">
+const ActionItem = ({ text, done, onClick = null, doable = true }) => <a href="#">
     <div className={styles.stackedItem +
         (done ? (" " + styles.done) : '')
     }>
         <p>{text}</p>
-        <button
-            className={styles.actionButton}
-        >
-            <img src={done ? actionDone : actionNotDone} alt="" />
-        </button>
+        {doable ?
+            <button
+                className={styles.actionButton}
+                onClick={onClick}
+            >
+                <img src={done ? actionDone : actionNotDone} alt="" />
+            </button>
+            : null
+        }
     </div>
 </a>
 
@@ -54,21 +58,40 @@ function NameEntry({ userState }) {
     </div>
 }
 
+function requestWebcamAccess(callbackCompleted) {
+    console.log("Requesting webcam access...")
+    navigator.mediaDevices
+        .getUserMedia({ video: true })
+        .then((stream) => {
+            stream.getTracks().forEach(function (track) {
+                track.stop();
+            });
+        })
+        .then(() => { callbackCompleted() })
+}
 
 function OnboardingView({ userState }) {
+    const [webcamAvailable, setWebcamAvailable] = useState(false);
+
     return (
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
                 <NameEntry userState={userState} />
                 {
                     userState.name ? <>
-                        < ActionItem
-                            text="Do something"
-                            done={true}
+                        <ActionItem
+                            text="Grant webcam permission:"
+                            done={webcamAvailable}
+                            onClick={
+                                () => {
+                                    requestWebcamAccess(() => { setWebcamAvailable(true) })
+                                }
+                            }
                         />
                         <ActionItem
-                            text="Do something really important"
+                            text="Wait for game to start..."
                             done={false}
+                            doable={false}
                         />
                     </>
                         : null
