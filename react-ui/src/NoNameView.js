@@ -1,25 +1,34 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import styles from './NoNameView.module.css';
 
 function NoNameView({ callback = null }) {
+    const [nameBoxValue, setNameBoxValue] = useState("");
 
-    const setUserName = useCallback((username) => {
-        sendAPIRequest("set_name", { name: username }, 'POST', callback);
-    }, [callback]);
+    const setUserName = useCallback(() => {
+        sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', callback);
+    }, [callback, nameBoxValue]);
 
-    const setNameInput = useRef();
+    const handleKeyDown = (event) => {
+        if (event.key === 'Enter') {
+            setUserName();
+        }
+    }
+
     return (
         <div className={styles.outerContainer}>
             <div className={styles.inputHolder}>
                 <input
-                    className={styles.nameInput} ref={setNameInput}
+                    className={styles.nameInput}
+                    value={nameBoxValue}
+                    onChange={(e) => { setNameBoxValue(e.target.value) }}
+                    onKeyDown={handleKeyDown}
                     placeholder="Enter your name..."
                 />
                 <button
                     className={styles.nameButton}
-                    onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
+                    onClick={setUserName}>↓</button>
             </div>
         </div>
     );

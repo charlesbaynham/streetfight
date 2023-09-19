@@ -44,7 +44,7 @@
     height: 18mm;
     border: 1px solid white;
     border-radius: 50%;
-    /* Makes it circular */
     background: white;
     cursor: pointer;
+    font-size: 16mm;
 }
