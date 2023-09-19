@@ -56,14 +56,20 @@ function OnboardingView({ userState }) {
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
                 <NameEntry />
-                <ActionItem
-                    text="Do something"
-                    done={true}
-                />
-                <ActionItem
-                    text="Do something really important"
-                    done={false}
-                />
+                {
+                    userState.name ? <>
+                        < ActionItem
+                            text="Do something"
+                            done={true}
+                        />
+                        <ActionItem
+                            text="Do something really important"
+                            done={false}
+                        />
+                    </>
+                        : null
+                }
+
             </div>
         </div>
     );
