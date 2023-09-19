@@ -1,6 +1,10 @@
 import { useCallback, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
+
+import { motion, AnimatePresence } from "framer-motion"
+
+
 import returnIcon from './return.svg';
 import actionNotDone from './hand-pointer-solid.svg';
 import actionDone from './check-solid.svg';
@@ -8,7 +12,7 @@ import styles from './OnboardingView.module.css';
 
 
 const ActionItem = ({ text, done, onClick = null, doable = true }) => <a href="#">
-    <div className={styles.stackedItem +
+    <motion.div layout className={styles.stackedItem +
         (done ? (" " + styles.done) : '')
     }>
         <p>{text}</p>
@@ -21,7 +25,7 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => <a href="#
             </button>
             : null
         }
-    </div>
+    </motion.div>
 </a>
 
 function NameEntry({ userState }) {
@@ -39,7 +43,7 @@ function NameEntry({ userState }) {
 
     const done = userState.name !== null;
 
-    return <div className={styles.stackedItem + (
+    return <motion.div layout className={styles.stackedItem + (
         done ? " " + styles.done : ""
     )}>
         <input
@@ -55,7 +59,7 @@ function NameEntry({ userState }) {
         >
             <img src={returnIcon} alt="" />
         </button>
-    </div>
+    </motion.div>
 }
 
 function requestWebcamAccess(callbackCompleted) {
@@ -74,32 +78,34 @@ function OnboardingView({ userState }) {
 
     return (
         <div className={styles.outerContainer}>
-            <div className={styles.innerContainer}>
-                <NameEntry userState={userState} />
-                {
-                    userState.name ? <>
-                        <ActionItem
-                            text="Grant webcam permission:"
-                            done={webcamAvailable}
-                            onClick={
-                                () => {
-                                    requestWebcamAccess(() => { setWebcamAvailable(true) })
-                                }
-                            }
-                        />
-                        {webcamAvailable ?
+            <AnimatePresence>
+                <div className={styles.innerContainer}>
+                    <NameEntry userState={userState} />
+                    {
+                        userState.name ? <>
                             <ActionItem
-                                text="Wait for game to start..."
-                                done={false}
-                                doable={false}
+                                text="Grant webcam permission:"
+                                done={webcamAvailable}
+                                onClick={
+                                    () => {
+                                        requestWebcamAccess(() => { setWebcamAvailable(true) })
+                                    }
+                                }
                             />
+                            {webcamAvailable ?
+                                <ActionItem
+                                    text="Wait for game to start..."
+                                    done={false}
+                                    doable={false}
+                                />
+                                : null
+                            }
+                        </>
                             : null
-                        }
-                    </>
-                        : null
-                }
+                    }
 
-            </div>
+                </div>
+            </AnimatePresence>
         </div>
     );
 
