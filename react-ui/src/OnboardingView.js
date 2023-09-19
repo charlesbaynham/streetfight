@@ -59,7 +59,6 @@ function NameEntry({ userState }) {
 }
 
 function requestWebcamAccess(callbackCompleted) {
-    console.log("Requesting webcam access...")
     navigator.mediaDevices
         .getUserMedia({ video: true })
         .then((stream) => {
@@ -88,11 +87,14 @@ function OnboardingView({ userState }) {
                                 }
                             }
                         />
-                        <ActionItem
-                            text="Wait for game to start..."
-                            done={false}
-                            doable={false}
-                        />
+                        {webcamAvailable ?
+                            <ActionItem
+                                text="Wait for game to start..."
+                                done={false}
+                                doable={false}
+                            />
+                            : null
+                        }
                     </>
                         : null
                 }
