@@ -7,13 +7,15 @@ import actionDone from './check-solid.svg';
 import styles from './NoNameView.module.css';
 
 
-const ActionItem = ({ text }) => <a href="#">
-    <div className={styles.stackedItem + " " + styles.active}>
+const ActionItem = ({ text, done }) => <a href="#">
+    <div className={styles.stackedItem +
+        (done ? (" " + styles.active) : '')
+    }>
         <p>{text}</p>
         <button
             className={styles.actionButton}
         >
-            <img src={actionNotDone} alt="" />
+            <img src={done ? actionDone : actionNotDone} alt="" />
         </button>
     </div>
 </a>
@@ -55,7 +57,14 @@ function NoNameView({ callback = null }) {
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
                 <NameEntry callback={callback} />
-                <ActionItem text="Do something really important" />
+                <ActionItem
+                    text="Do something"
+                    done={true}
+                />
+                <ActionItem
+                    text="Do something really important"
+                    done={false}
+                />
             </div>
         </div>
     );
