@@ -4,7 +4,7 @@ import { sendAPIRequest } from "./utils";
 import returnIcon from './return.svg';
 import actionNotDone from './hand-pointer-solid.svg';
 import actionDone from './check-solid.svg';
-import styles from './NoNameView.module.css';
+import styles from './OnboardingView.module.css';
 
 
 const ActionItem = ({ text, done }) => <a href="#">
@@ -21,7 +21,6 @@ const ActionItem = ({ text, done }) => <a href="#">
 </a>
 
 function NameEntry({ callback }) {
-
     const [nameBoxValue, setNameBoxValue] = useState("");
 
     const setUserName = useCallback(() => {
@@ -52,7 +51,7 @@ function NameEntry({ callback }) {
 }
 
 
-function NoNameView({ callback = null }) {
+function OnboardingView({ callback = null }) {
     return (
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
@@ -71,4 +70,4 @@ function NoNameView({ callback = null }) {
 
 }
 
-export default NoNameView;
+export default OnboardingView;

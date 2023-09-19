@@ -13,7 +13,7 @@ import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 import TickerView from './TickerView';
 
 import styles from './UserMode.module.css'
-import NoNameView from './NoNameView';
+import OnboardingView from './OnboardingView';
 
 
 
@@ -26,7 +26,7 @@ function GetView({ userState }) {
   }
 
   if (userState.name === null) {
-    return <NoNameView />;
+    return <OnboardingView />;
   }
 
   // if (userState.team === null) {
