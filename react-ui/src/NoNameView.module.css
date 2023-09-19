@@ -48,3 +48,12 @@
     cursor: pointer;
     font-size: 16mm;
 }
+
+
+.nameButton img {
+    width: 12mm;
+    position: absolute;
+    left: 45%;
+    top: 50%;
+    transform: translateX(-50%) translateY(-50%);
+}

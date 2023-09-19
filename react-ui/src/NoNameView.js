@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
+import returnIcon from './return.svg';
 import styles from './NoNameView.module.css';
 
 function NoNameView({ callback = null }) {
@@ -28,7 +29,9 @@ function NoNameView({ callback = null }) {
                 />
                 <button
                     className={styles.nameButton}
-                    onClick={setUserName}>↓</button>
+                    onClick={setUserName}>
+                    <img src={returnIcon} alt="" />
+                </button>
             </div>
         </div>
     );
