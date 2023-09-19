@@ -5,18 +5,32 @@
     top: 0;
     width: 100vw;
     height: 100vh;
+    color: white;
+
 }
 
-
-/* Style for the container of the input and button */
-.inputHolder {
+.innerContainer {
     position: absolute;
     display: inline-block;
     left: 50%;
     top: 50%;
     transform: translateX(-50%) translateY(-50%);
+}
+
+/* Style for the container of the input and button */
+.stackedItem {
+    position: relative;
     width: 80vw;
     max-width: 150mm;
+    height: 24mm;
+}
+
+.stackedItem p {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    margin: 0;
+    font-size: larger;
 }
 
 /* Style for the text input */
@@ -27,14 +41,15 @@
     box-sizing: border-box;
     background: none;
     width: 100%;
-    height: 24mm;
+    height: 100%;
     font-size: larger;
     color: white;
     padding: 0 10mm;
 }
 
 /* Style for the circular button */
-.nameButton {
+.nameButton,
+.actionButton {
     position: absolute;
     top: 50%;
     right: 3mm;
@@ -51,7 +66,8 @@
 }
 
 
-.nameButton img {
+.nameButton img,
+.actionButton img {
     width: 60%;
     position: absolute;
     left: 50%;
