@@ -52,6 +52,11 @@
     padding: 0 10mm;
 }
 
+.done .nameInput {
+    border-color: green;
+    color: green;
+}
+
 /* Style for the circular button */
 
 .actionButton {
@@ -70,11 +75,11 @@
     font-size: 16mm;
 }
 
-.active {
+.done {
     color: green;
 }
 
-.active .actionButton {
+.done .actionButton {
     background-color: green;
 }
 

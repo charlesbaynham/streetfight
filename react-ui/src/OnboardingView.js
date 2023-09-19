@@ -9,7 +9,7 @@ import styles from './OnboardingView.module.css';
 
 const ActionItem = ({ text, done }) => <a href="#">
     <div className={styles.stackedItem +
-        (done ? (" " + styles.active) : '')
+        (done ? (" " + styles.done) : '')
     }>
         <p>{text}</p>
         <button
@@ -20,8 +20,8 @@ const ActionItem = ({ text, done }) => <a href="#">
     </div>
 </a>
 
-function NameEntry({ initialName }) {
-    const [nameBoxValue, setNameBoxValue] = useState(initialName);
+function NameEntry({ userState }) {
+    const [nameBoxValue, setNameBoxValue] = useState(userState.name ? userState.name : "");
 
     const setUserName = useCallback(() => {
         sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', null);
@@ -33,7 +33,11 @@ function NameEntry({ initialName }) {
         }
     }
 
-    return <div className={styles.stackedItem}>
+    const done = userState.name !== null;
+
+    return <div className={styles.stackedItem + (
+        done ? " " + styles.done : ""
+    )}>
         <input
             className={styles.nameInput}
             value={nameBoxValue}
@@ -55,7 +59,7 @@ function OnboardingView({ userState }) {
     return (
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
-                <NameEntry initialName={userState.name === null ? "" : userState.name} />
+                <NameEntry userState={userState} />
                 {
                     userState.name ? <>
                         < ActionItem
