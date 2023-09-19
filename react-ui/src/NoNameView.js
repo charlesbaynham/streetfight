@@ -12,7 +12,7 @@ function NoNameView({ callback = null }) {
     const setNameInput = useRef();
     return (
         <div className={styles.outerContainer}>
-            <div className={styles.container}>
+            <div className={styles.inputHolder}>
                 <input
                     className={styles.nameInput} ref={setNameInput}
                     placeholder="Enter your name..."

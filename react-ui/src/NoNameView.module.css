@@ -1,33 +1,5 @@
-/* .container {
-    display: flex;
-    width: 80%;
-    margin-left: 10%;
-    justify-content: space-between;
-    flex-direction: column;
-}
-
-
-.nameInput {
-    border: 0;
-    background-color: black;
-    border-color: white;
-    border-style: solid;
-    border-radius: 3em;
-    height: 6em;
-    color: white;
-    padding-left: 3em;
-    font-size: large;
-}
-
-.nameButton {
-    position: absolute;
-    right: 1em;
-    border-radius: 2em;
-} */
-
-
 .outerContainer {
-    background-color: grey;
+    background-color: black;
     position: absolute;
     left: 0;
     top: 0;
@@ -35,25 +7,29 @@
     height: 100vh;
 }
 
+
 /* Style for the container of the input and button */
-.container {
-    position: relative;
+.inputHolder {
+    position: absolute;
     display: inline-block;
+    left: 20%;
+    top: 50%;
+    transform: translateY(-50%);
 }
 
 /* Style for the text input */
 .nameInput {
     border: 1mm solid white;
     border-radius: 12mm;
-    /* Adjust the value for desired roundness */
     padding: 10px;
     box-sizing: border-box;
     background: none;
-    /* No background color */
     width: 80vw;
     max-width: 150mm;
     height: 24mm;
     font-size: larger;
+    color: white;
+    padding: 0 10mm;
 }
 
 /* Style for the circular button */
