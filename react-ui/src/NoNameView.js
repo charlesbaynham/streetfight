@@ -6,6 +6,19 @@ import actionNotDone from './hand-pointer-solid.svg';
 import actionDone from './check-solid.svg';
 import styles from './NoNameView.module.css';
 
+
+const ActionItem = ({ text }) => <a href="#">
+    <div className={styles.stackedItem + " " + styles.active}>
+        <p>Do something important</p>
+        <button
+            className={styles.actionButton}
+        >
+            <img src={actionNotDone} alt="" />
+        </button>
+    </div>
+</a>
+
+
 function NoNameView({ callback = null }) {
     const [nameBoxValue, setNameBoxValue] = useState("");
 
@@ -31,19 +44,13 @@ function NoNameView({ callback = null }) {
                         placeholder="Enter your name..."
                     />
                     <button
-                        className={styles.nameButton}
-                        onClick={setUserName}>
+                        className={styles.actionButton}
+                        onClick={setUserName}
+                    >
                         <img src={returnIcon} alt="" />
                     </button>
                 </div>
-                <div className={styles.stackedItem}>
-                    <p>Do something important</p>
-                    <button
-                        className={styles.actionButton}
-                    >
-                        <img src={actionNotDone} alt="" />
-                    </button>
-                </div>
+                <ActionItem text="Do something really important" />
             </div>
         </div>
     );

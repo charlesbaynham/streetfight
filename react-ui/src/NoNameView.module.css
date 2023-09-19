@@ -6,7 +6,11 @@
     width: 100vw;
     height: 100vh;
     color: white;
+}
 
+.outerContainer a {
+    color: white;
+    text-decoration: none;
 }
 
 .innerContainer {
@@ -31,6 +35,7 @@
     transform: translateY(-50%);
     margin: 0;
     font-size: larger;
+    padding: 0 10mm;
 }
 
 /* Style for the text input */
@@ -48,7 +53,7 @@
 }
 
 /* Style for the circular button */
-.nameButton,
+
 .actionButton {
     position: absolute;
     top: 50%;
@@ -58,15 +63,21 @@
     width: 18mm;
     /* Adjust the size of the button */
     height: 18mm;
-    border: 1px solid white;
+    border: none;
     border-radius: 50%;
     background: white;
     cursor: pointer;
     font-size: 16mm;
 }
 
+.active {
+    color: green;
+}
 
-.nameButton img,
+.active .actionButton {
+    background-color: green;
+}
+
 .actionButton img {
     width: 60%;
     position: absolute;
