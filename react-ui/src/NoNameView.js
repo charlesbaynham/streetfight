@@ -10,15 +10,19 @@ function NoNameView({ callback = null }) {
     }, [callback]);
 
     const setNameInput = useRef();
-    return <div className={styles.container}>
-        <input
-            className={styles.nameInput} ref={setNameInput}
-            placeholder="Enter your name..."
-        />
-        <button
-            className={styles.nameButton}
-            onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
-    </div>;
+    return (
+        <div className={styles.outerContainer}>
+            <div className={styles.container}>
+                <input
+                    className={styles.nameInput} ref={setNameInput}
+                    placeholder="Enter your name..."
+                />
+                <button
+                    className={styles.nameButton}
+                    onClick={() => { setUserName(setNameInput.current.value) }}>Submit</button>
+            </div>
+        </div>
+    );
 
 }
 
