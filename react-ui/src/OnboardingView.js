@@ -20,12 +20,12 @@ const ActionItem = ({ text, done }) => <a href="#">
     </div>
 </a>
 
-function NameEntry({ callback }) {
+function NameEntry({ }) {
     const [nameBoxValue, setNameBoxValue] = useState("");
 
     const setUserName = useCallback(() => {
-        sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', callback);
-    }, [callback, nameBoxValue]);
+        sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', null);
+    }, [nameBoxValue]);
 
     const handleKeyDown = (event) => {
         if (event.key === 'Enter') {
@@ -51,11 +51,11 @@ function NameEntry({ callback }) {
 }
 
 
-function OnboardingView({ callback = null }) {
+function OnboardingView({ userState }) {
     return (
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
-                <NameEntry callback={callback} />
+                <NameEntry />
                 <ActionItem
                     text="Do something"
                     done={true}

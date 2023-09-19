@@ -20,22 +20,20 @@ import OnboardingView from './OnboardingView';
 function GetView({ userState }) {
   const [triggerShot, setTriggerShot] = useState(0);
 
+
   if (userState === null) {
     return <p>Loading...</p>;
     ;
   }
 
-  if (userState.name === null) {
-    return <OnboardingView />;
-  }
-
-  // if (userState.team === null) {
-  //   return <NoTeamView />;
-  // }
-
   const isAlive = userState ? (userState.hit_points > 0) : false;
   const isInTeam = userState ? ("team_id" in userState) : false;
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
+
+
+  if (userState.name === null || !isInTeam) {
+    return <OnboardingView userState={userState} />;
+  }
 
   return <>
 
