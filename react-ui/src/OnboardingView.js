@@ -20,8 +20,8 @@ const ActionItem = ({ text, done }) => <a href="#">
     </div>
 </a>
 
-function NameEntry({ }) {
-    const [nameBoxValue, setNameBoxValue] = useState("");
+function NameEntry({ initialName }) {
+    const [nameBoxValue, setNameBoxValue] = useState(initialName);
 
     const setUserName = useCallback(() => {
         sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', null);
@@ -55,7 +55,7 @@ function OnboardingView({ userState }) {
     return (
         <div className={styles.outerContainer}>
             <div className={styles.innerContainer}>
-                <NameEntry />
+                <NameEntry initialName={userState.name === null ? "" : userState.name} />
                 {
                     userState.name ? <>
                         < ActionItem

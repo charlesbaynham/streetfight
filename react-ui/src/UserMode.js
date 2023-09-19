@@ -27,9 +27,8 @@ function GetView({ userState }) {
   }
 
   const isAlive = userState ? (userState.hit_points > 0) : false;
-  const isInTeam = userState ? ("team_id" in userState) : false;
+  const isInTeam = userState ? userState.team_id !== null : false;
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
-
 
   if (userState.name === null || !isInTeam) {
     return <OnboardingView userState={userState} />;
