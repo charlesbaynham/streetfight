@@ -1,9 +1,6 @@
 Goals
 -----
 
-- [ ]: The admin interface should help the admins decide if someone was shot or not
-    - [ ] Overlay crosshair on photos
-    - [ ] Add zoomed view of centre
 - [ ] Keep all photos as files
 - [ ] Polish:
   - [ ] Bulk generation of QR codes
