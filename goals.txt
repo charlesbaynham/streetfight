@@ -49,6 +49,7 @@ Goals
   - [x] Add ticker of events (x shot y, y missed)
   - [x] Black and white camera when dead
   - [x] Add sounds!
+  - [ ] Add white flash on QR scan and maybe remove vibration
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
 Essential:
