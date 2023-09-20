@@ -36,7 +36,9 @@ function GetView({ userState }) {
   return <>
 
     <div className={styles.monitorsContainer}>
-      <BulletCount user={userState} />
+      {isAlive ?
+        <BulletCount user={userState} />
+        : <div></div>}
       <TickerView />
     </div>
 
