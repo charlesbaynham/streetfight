@@ -30,6 +30,9 @@ const QRParser = ({ webcamRef }) => {
             setCanvas(document.createElement('canvas'));
         }
 
+        if (!webcamRef || !webcamRef.current)
+            return
+
         // Get an image from the webcam ref
         const imageSrc = webcamRef.current.getScreenshot();
 
