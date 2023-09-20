@@ -43,7 +43,7 @@ Goals
   - [x] Have a QR reader running in javascript so people don't need to switch to their cameras
   - [ ] Users need more feedback - animations and things to make them feel like something happened
   - [ ] Bulk generation of QR codes
-  - [ ] I should be able to pause / resume games from admin mode
+  - [x] I should be able to pause / resume games from admin mode
   - [x] Get fullscreen working again
   - [x] Dark souls "You died"
   - [x] Add ticker of events (x shot y, y missed)
