@@ -10,7 +10,7 @@ import fireButtonImg from './images/firebutton.svg';
 import fireButtonImgNoAmmo from './images/firebutton_no_ammo.svg';
 import fireButtonImgCooldown from './images/firebutton_cooldown.svg';
 
-const fireTimeout = 2;  // second
+const fireTimeout = 10;  // second
 
 
 export default function FireButton({ userHasAmmo, onClick }) {
@@ -60,20 +60,21 @@ export default function FireButton({ userHasAmmo, onClick }) {
             ? (onCooldown ? fireButtonImgCooldown : fireButtonImg)
             : fireButtonImgNoAmmo}
           alt="Fire button" />
+        <svg className={styles.fireButtonCircle} >
+          <motion.circle
+            cx="50%"
+            cy="50%"
+            r="49%"
+            stroke="white"
+            strokeWidth="4"
+            fill="transparent"
+            variants={circleVariants}
+            animate={animationState}
+          />
+        </svg>
+
       </button>
 
-      <svg width="200" height="200">
-        <motion.circle
-          cx="100"
-          cy="100"
-          r="80"
-          stroke="blue"
-          strokeWidth="4"
-          fill="transparent"
-          variants={circleVariants}
-          animate={animationState}
-        />
-      </svg>
     </>
 
   );
