@@ -16,11 +16,8 @@ import styles from './UserMode.module.css'
 import OnboardingView from './OnboardingView';
 import FullscreenButton from './FullscreenButton';
 
-function isGameRunning(userState) {
-  // TODO: Include admin "game started" control
-  return Boolean(userState && userState.active)
-}
-
+const isGameRunning = (userState) =>
+  Boolean(userState && userState.active)
 
 function GetView({ userState }) {
   const [triggerShot, setTriggerShot] = useState(0);
@@ -35,7 +32,7 @@ function GetView({ userState }) {
   const isInTeam = userState ? userState.team_id !== null : false;
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
 
-  if (userState.name === null || !isInTeam) {
+  if (userState.name === null || !isGameRunning(userState)) {
     return <OnboardingView userState={userState} />;
   }
 
