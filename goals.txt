@@ -1,7 +1,6 @@
 Goals
 -----
 
-- [ ] Keep all photos as files
 - [ ] Polish:
   - [ ] Bulk generation of QR codes
   - [ ] Add white flash on QR scan and maybe remove vibration
