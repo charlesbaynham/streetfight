@@ -11,22 +11,23 @@ import actionDone from './check-solid.svg';
 import styles from './OnboardingView.module.css';
 
 
-const ActionItem = ({ text, done, onClick = null, doable = true }) => <a href="#">
-    <motion.div layout className={styles.stackedItem +
-        (done ? (" " + styles.done) : '')
-    }>
-        <p>{text}</p>
-        {doable ?
-            <button
-                className={styles.actionButton}
-                onClick={onClick}
-            >
-                <img src={done ? actionDone : actionNotDone} alt="" />
-            </button>
-            : null
-        }
-    </motion.div>
-</a>
+const ActionItem = ({ text, done, onClick = null, doable = true }) => (
+    <button onClick={onClick}
+        className={styles.stackedItem +
+            (done ? (" " + styles.done) : '')}>
+        <motion.div layout>
+            <p>{text}</p>
+            {doable ?
+                <button
+                    className={styles.actionButton}
+                >
+                    <img src={done ? actionDone : actionNotDone} alt="" />
+                </button>
+                : null
+            }
+        </motion.div>
+    </button>
+)
 
 function NameEntry({ userState }) {
     const [nameBoxValue, setNameBoxValue] = useState(userState.name ? userState.name : "");

@@ -8,11 +8,6 @@
     color: white;
 }
 
-.outerContainer a {
-    color: white;
-    text-decoration: none;
-}
-
 .innerContainer {
     position: absolute;
     display: inline-block;
@@ -27,6 +22,7 @@
     width: 80vw;
     max-width: 150mm;
     height: 24mm;
+    color: white;
 }
 
 .stackedItem p {
@@ -48,13 +44,20 @@
     width: 100%;
     height: 100%;
     font-size: larger;
-    color: white;
     padding: 0 10mm;
 }
 
 .done .nameInput {
     border-color: green;
     color: green;
+}
+
+button.stackedItem {
+    background: none;
+    margin: 0;
+    padding: 0;
+    border: none;
+    cursor: pointer;
 }
 
 /* Style for the circular button */
