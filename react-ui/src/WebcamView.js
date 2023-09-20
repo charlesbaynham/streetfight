@@ -4,8 +4,7 @@ import Webcam from "react-webcam";
 
 import QRParser from './QRParser';
 
-import { SCREEN_FILL_STYLES } from './utils';
-
+import screenfillStyles from './ScreenFillStyles.module.css';
 
 const videoConstraints = {
     width: 1280,
@@ -56,7 +55,8 @@ function WebcamCapture({ trigger }) {
                 audio={false}
                 screenshotFormat="image/png"
                 videoConstraints={videoConstraints}
-                style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "cover" })}
+                className={screenfillStyles.screenFill}
+                style={{ objectFit: "cover" }}
             />
             <QRParser
                 webcamRef={webcamRef}

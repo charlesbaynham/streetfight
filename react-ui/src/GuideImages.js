@@ -1,6 +1,6 @@
 import React from 'react';
 
-import { SCREEN_FILL_STYLES } from './utils';
+import screenfillStyles from './ScreenFillStyles.module.css';
 
 
 const dead_image = '/images/you_are_dead.svg';
@@ -10,7 +10,8 @@ export const CrosshairImage = () => (
   <img
     alt=""
     src={crosshair_url}
-    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
+    className={screenfillStyles.screenFill}
+    style={{ objectFit: "contain" }}
   />
 );
 
@@ -19,6 +20,7 @@ export const DeadImage = () => (
   <img
     alt=""
     src={dead_image}
-    style={Object.assign({}, SCREEN_FILL_STYLES, { objectFit: "contain" })}
+    className={screenfillStyles.screenFill}
+    style={{ objectFit: "contain" }}
   />
 );
