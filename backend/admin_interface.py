@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from . import database
 from .asyncio_triggers import get_trigger_event
+from .asyncio_triggers import trigger_update_event
 from .items import DecodedItem
 from .model import Game
 from .model import GameModel
@@ -18,6 +19,7 @@ from .model import ShotModel
 from .model import Team
 from .model import User
 from .model import UserModel
+from .ticker import Ticker
 from .user_interface import UserInterface
 
 logger = logging.getLogger(__name__)
@@ -86,9 +88,27 @@ class AdminInterface:
 
     def set_game_active(self, game_id: UUID, active: bool) -> int:
         logger.info("AdminInterface - set_game_active %s/%s", game_id, active)
+
         game = self._get_game_orm(game_id)
         game.active = active
+
+        # Collect the user IDs for manual bumping after the session is committed
+        user_ids = []
+        for team in game.teams:
+            for user in team.users:
+                user_ids.append(user.id)
+
+        ticker = Ticker(game.id, session=self.session)
+        if active:
+            ticker.post_message(f"Game started")
+        else:
+            ticker.post_message(f"Game paused")
+
         self.session.commit()
+
+        # Manually bump all the users
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
