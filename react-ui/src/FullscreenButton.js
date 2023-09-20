@@ -3,8 +3,8 @@ import { motion } from "framer-motion"
 
 import styles from './FullscreenButton.module.css';
 
-import fullscreenImg from './fullscreen-icon.svg';
-import hintImg from './better-in-fullscreen.svg';
+import fullscreenImg from './images/fullscreen-icon.svg';
+import hintImg from './images/better-in-fullscreen.svg';
 import { useEffect, useState } from "react";
 
 function FullscreenButton({ handle }) {

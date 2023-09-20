@@ -3,9 +3,10 @@ import { sendAPIRequest } from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion"
 
-import returnIcon from './return.svg';
-import actionNotDone from './hand-pointer-solid.svg';
-import actionDone from './check-solid.svg';
+import returnIcon from './images/return.svg';
+import actionNotDone from './images/hand-pointer-solid.svg';
+import actionDone from './images/check-solid.svg';
+
 import styles from './OnboardingView.module.css';
 
 
