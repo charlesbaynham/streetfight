@@ -141,6 +141,13 @@ class User(Base):
 
         return self.team.game.active
 
+    @property
+    def team_name(self):
+        if not self.team:
+            return None
+
+        return self.team.name
+
     def touch(self):
         old = self.update_tag
         new = random_counter_value()
@@ -217,6 +224,9 @@ class UserModel(pydantic.BaseModel):
 
     # This is retrieved from the Game associated with the Team this user is in
     active: bool
+
+    # This is retrieved from the team too
+    team_name: str
 
     class Config:
         orm_mode = True

@@ -80,37 +80,65 @@ function requestWebcamAccess(callbackCompleted) {
 function OnboardingView({ userState }) {
     const [webcamAvailable, setWebcamAvailable] = useState(false);
 
+    function getActionItems() {
+        const hasName = userState.name;
+        const inTeam = userState.teamName !== null;
+        const teamName = userState.teamName;
+
+        const actionItems = [
+            <NameEntry
+                userState={userState}
+                key={"name"}
+            />
+        ];
+
+        if (hasName)
+            actionItems.push(
+                <ActionItem
+                    text="Grant webcam permission:"
+                    done={webcamAvailable}
+                    onClick={
+                        () => {
+                            requestWebcamAccess(() => { setWebcamAvailable(true) })
+                        }
+                    }
+                    key={"webcam"}
+                />
+            )
+        else return actionItems;
+
+        if (webcamAvailable)
+            actionItems.push(
+                <ActionItem
+                    text={teamName ? "Wait to be added to a team..." : `You are in team "${teamName}"`}
+                    done={inTeam}
+                    doable={false}
+                    key={"team"}
+                />
+            )
+        else return actionItems;
+
+        if (userState.team_id !== null)
+            actionItems.push(
+                <ActionItem
+                    text="Wait for game to start..."
+                    done={false}
+                    doable={false}
+                    key={"game"}
+                />
+            )
+
+        return actionItems;
+    }
+
     return (
         <div className={styles.outerContainer}>
             <AnimatePresence>
                 <div className={styles.innerContainer}>
-                    <NameEntry userState={userState} />
-                    {
-                        userState.name ? <>
-                            <ActionItem
-                                text="Grant webcam permission:"
-                                done={webcamAvailable}
-                                onClick={
-                                    () => {
-                                        requestWebcamAccess(() => { setWebcamAvailable(true) })
-                                    }
-                                }
-                            />
-                            {webcamAvailable ?
-                                <ActionItem
-                                    text="Wait for game to start..."
-                                    done={false}
-                                    doable={false}
-                                />
-                                : null
-                            }
-                        </>
-                            : null
-                    }
-
+                    {getActionItems()}
                 </div>
-            </AnimatePresence>
-        </div>
+            </AnimatePresence >
+        </div >
     );
 
 }
