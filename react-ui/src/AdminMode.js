@@ -7,15 +7,31 @@ import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 function GameView({ game }) {
     const [gameActive, setGameActive] = useState(game.active);
 
+    const handleChange = () => {
+        setGameActive(!gameActive);
+    };
+
+    useEffect(() => {
+        if (gameActive !== game.active) {
+            sendAPIRequest("admin_set_game_active",
+                {
+                    game_id: game.id,
+                    active: gameActive
+                },
+                "POST"
+            )
+        }
+    }, [gameActive, game])
+
     return <>
         <h2>Game {game.id}</h2>
 
-        <label class="switch">
-            <span>Game active:</span>
+        <label>
+            Game active:
             <input
                 type="checkbox"
-                value={gameActive}
-                onClick={(e) => setGameActive(e.target.value)}
+                checked={gameActive}
+                onChange={handleChange}
             />
         </label>
 

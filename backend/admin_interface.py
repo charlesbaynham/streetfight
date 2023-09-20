@@ -84,6 +84,12 @@ class AdminInterface:
 
         return team.id
 
+    def set_game_active(self, game_id: UUID, active: bool) -> int:
+        logger.info("AdminInterface - set_game_active %s/%s", game_id, active)
+        game = self._get_game_orm(game_id)
+        game.active = active
+        self.session.commit()
+
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
         ui = UserInterface(user_id)

@@ -302,6 +302,12 @@ async def admin_make_new_item(item_type: str, item_data: Dict):
     }
 
 
+@router.post("/admin_set_game_active")
+async def admin_set_game_active(game_id: UUID, active: bool):
+    logger.info("admin_set_game_active")
+    AdminInterface().set_game_active(game_id, active)
+
+
 def make_sse_update_message(m):
     return f"data: {m}\n\n"
 
