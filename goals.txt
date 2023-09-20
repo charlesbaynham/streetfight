@@ -10,8 +10,12 @@ Goals
   - [ ] Add white flash on QR scan and maybe remove vibration
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
+  - [ ] Improve admin kill interface
 Essential:
   - [ ] Sort out HTTPS / production server
+  - [ ] Add ticker messages for kills
+Bugs:
+  - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
 
 Notes:
 
