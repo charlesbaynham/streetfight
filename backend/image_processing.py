@@ -1,6 +1,8 @@
 import base64
 import logging
 from io import BytesIO
+from typing import List
+from typing import Tuple
 
 from PIL import Image
 from PIL import ImageDraw
@@ -8,9 +10,7 @@ from PIL import ImageDraw
 logger = logging.getLogger(__name__)
 
 
-def draw_cross_on_image(base64_image: str) -> str:
-    logger.debug("Image = %s", base64_image)
-
+def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
     # Split off the metadata
     split_img = base64_image.split(",")
     raw_image = split_img[1]
@@ -20,6 +20,12 @@ def draw_cross_on_image(base64_image: str) -> str:
 
     # Load the image using PIL (Python Imaging Library)
     image = Image.open(BytesIO(image_bytes))
+
+    return image, split_img
+
+
+def draw_cross_on_image(base64_image: str) -> str:
+    image, split_img = load_image(base64_image)
 
     # Get image dimensions
     width, height = image.size
@@ -42,6 +48,37 @@ def draw_cross_on_image(base64_image: str) -> str:
     draw.line(
         [(width // 2, 0), (width // 2, height)], fill=line_color, width=line_thickness
     )
+
+    # Calculate the coordinates for the middle 10% of the image
+    width, height = image.size
+    left = width * 0.45  # 45% from the left
+    top = height * 0.45  # 45% from the top
+    right = width * 0.55  # 55% from the left
+    bottom = height * 0.55  # 55% from the top
+
+    # Crop the middle 10%
+    cropped = image.crop((left, top, right, bottom))
+
+    # Create a new image with a white border
+    border_size = 3
+    cropped_with_border = Image.new(
+        "RGB", (cropped.width + border_size, cropped.height + border_size), "white"
+    )
+
+    # Paste the cropped middle portion onto the new image
+    cropped_with_border.paste(cropped, (border_size, border_size))
+
+    # Double this new image
+    expansion_factor = 3
+    cropped_with_border = cropped_with_border.resize(
+        (
+            cropped_with_border.width * expansion_factor,
+            cropped_with_border.height * expansion_factor,
+        )
+    )
+
+    # Paste the cropped image back into the original
+    image.paste(cropped_with_border, (0, 0))
 
     # Optionally, you can convert the image back to base64 if needed
     modified_image_bytes = BytesIO()
