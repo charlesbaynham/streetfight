@@ -11,7 +11,6 @@ export const CrosshairImage = () => (
     alt=""
     src={crosshair_url}
     className={screenfillStyles.screenFill}
-    style={{ objectFit: "contain" }}
   />
 );
 
@@ -21,6 +20,5 @@ export const DeadImage = () => (
     alt=""
     src={dead_image}
     className={screenfillStyles.screenFill}
-    style={{ objectFit: "contain" }}
   />
 );

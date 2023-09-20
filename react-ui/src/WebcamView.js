@@ -5,6 +5,7 @@ import Webcam from "react-webcam";
 import QRParser from './QRParser';
 
 import screenfillStyles from './ScreenFillStyles.module.css';
+import styles from './WebcamView.module.css';
 
 const videoConstraints = {
     width: 1280,
@@ -13,7 +14,7 @@ const videoConstraints = {
 };
 
 
-function WebcamCapture({ trigger }) {
+function WebcamCapture({ trigger, isDead }) {
 
     // Get a reference to the webcam element
     const webcamRef = useRef(null);
@@ -55,8 +56,11 @@ function WebcamCapture({ trigger }) {
                 audio={false}
                 screenshotFormat="image/png"
                 videoConstraints={videoConstraints}
-                className={screenfillStyles.screenFill}
-                style={{ objectFit: "cover" }}
+                className={
+                    screenfillStyles.screenFill
+                    + " " + styles.webcamVideo
+                    + (isDead ? " " + styles.dead : "")
+                }
             />
             <QRParser
                 webcamRef={webcamRef}
@@ -67,10 +71,11 @@ function WebcamCapture({ trigger }) {
 
 
 export default function WebcamView({
-    trigger
+    trigger,
+    isDead
 }) {
 
     return <>
-        <WebcamCapture trigger={trigger} />
+        <WebcamCapture trigger={trigger} isDead={isDead} />
     </>;
 }

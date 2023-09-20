@@ -40,7 +40,7 @@ function GetView({ userState }) {
       <TickerView />
     </div>
 
-    <WebcamView trigger={triggerShot} />
+    <WebcamView trigger={triggerShot} isDead={!isAlive} />
 
     {isAlive ?
       <CrosshairImage />
