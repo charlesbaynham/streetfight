@@ -3,8 +3,8 @@ import React from 'react';
 import screenfillStyles from './ScreenFillStyles.module.css';
 
 
-const dead_image = '/images/you_are_dead.svg';
-const crosshair_url = '/images/crosshair.svg';
+import dead_image from './images/you_are_dead.svg';
+import crosshair_url from './images/crosshair.svg';
 
 export const CrosshairImage = () => (
   <img

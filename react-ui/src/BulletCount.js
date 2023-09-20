@@ -6,10 +6,10 @@ import CollectItemFromQueryParam from './CollectItemsFromQueryParams';
 import styles from './BulletCount.module.css';
 
 
-const medkit = '/images/medkit.svg';
-const bullet = '/images/bullet.svg';
-const armour = '/images/helmet.svg';
-const cross = '/images/cross.svg';
+import medkit from './images/medkit.svg';
+import bullet from './images/bullet.svg';
+import armour from './images/helmet.svg';
+import cross from './images/cross.svg';
 
 
 const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
