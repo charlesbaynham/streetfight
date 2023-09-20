@@ -48,11 +48,13 @@ function GetView({ userState }) {
       <DeadImage />
     }
 
-    <FireButton userHasAmmo={isInTeam && isAlive && hasBullets} onClick={
-      () => {
-        setTriggerShot(triggerShot + 1)
-      }
-    } />
+    {isAlive ?
+      <FireButton userHasAmmo={isInTeam && hasBullets} onClick={
+        () => {
+          setTriggerShot(triggerShot + 1)
+        }
+      } />
+      : null}
 
   </ >;
 }
