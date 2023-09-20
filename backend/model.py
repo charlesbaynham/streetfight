@@ -226,7 +226,7 @@ class UserModel(pydantic.BaseModel):
     active: bool
 
     # This is retrieved from the team too
-    team_name: str
+    team_name: Optional[str]
 
     class Config:
         orm_mode = True
