@@ -1,9 +1,7 @@
 import { useCallback, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
-
 import { motion, AnimatePresence } from "framer-motion"
-
 
 import returnIcon from './return.svg';
 import actionNotDone from './hand-pointer-solid.svg';
