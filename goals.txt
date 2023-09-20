@@ -38,16 +38,16 @@ Goals
 - [ ] Polish:
   - [x] Fix that scanning a QR code doesn't animate
   - [x] The user interface looks awful - it shouldn't
-  - [ ] Users should not have access to the camera interface until they have been added to a team
+  - [x] Users should not have access to the camera interface until they have been added to a team
   - [x] Dump scan mode
   - [x] Have a QR reader running in javascript so people don't need to switch to their cameras
   - [ ] Users need more feedback - animations and things to make them feel like something happened
   - [ ] Bulk generation of QR codes
   - [ ] I should be able to pause / resume games from admin mode
   - [x] Get fullscreen working again
-  - [ ] Dark souls "You died"
+  - [x] Dark souls "You died"
   - [x] Add ticker of events (x shot y, y missed)
-  - [ ] Black and white camera when dead
+  - [x] Black and white camera when dead
   - [x] Add sounds!
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
