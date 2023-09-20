@@ -48,7 +48,7 @@ function GetView({ userState }) {
       <DeadImage />
     }
 
-    <FireButton buttonActive={isInTeam && isAlive && hasBullets} onClick={
+    <FireButton userHasAmmo={isInTeam && isAlive && hasBullets} onClick={
       () => {
         setTriggerShot(triggerShot + 1)
       }

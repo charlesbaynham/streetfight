@@ -3,14 +3,20 @@ import useSound from 'use-sound';
 
 import bang from './bang.mp3';
 import styles from './FireButton.module.css';
+import { useCallback, useState } from 'react';
 
 
-const fireButtonImg = '/images/firebutton.svg';
-const fireButtonImgNoAmmo = '/images/firebutton_no_ammo.svg';
+import fireButtonImg from './images/firebutton.svg';
+import fireButtonImgNoAmmo from './images/firebutton_no_ammo.svg';
+import fireButtonImgCooldown from './images/firebutton_cooldown.svg';
+
+const fireTimeout = 2;  // second
 
 
-export default function FireButton({ buttonActive, onClick }) {
+export default function FireButton({ userHasAmmo, onClick }) {
   const [playBang] = useSound(bang);
+  const [animationState, setAnimationState] = useState("hidden")
+  const [onCooldown, setOnCooldown] = useState(false);
 
   const circleVariants = {
     hidden: {
@@ -19,24 +25,41 @@ export default function FireButton({ buttonActive, onClick }) {
     visible: {
       strokeDasharray: "1000 1000",
       transition: {
-        duration: 2,
-        ease: "easeInOut",
+        duration: fireTimeout,
+        ease: "linear",
       },
     },
   };
+
+  const fire = useCallback((e) => {
+    console.log("Firing!")
+
+    playBang();
+    navigator.vibrate(200);
+    setAnimationState("visible")
+    setOnCooldown(true);
+
+    setTimeout(() => {
+      setAnimationState("hidden")
+      setOnCooldown(false)
+    }, 1000 * fireTimeout)
+
+    return onClick(e)
+  }, [setAnimationState, setOnCooldown, playBang, onClick]);
+
 
   return (
     <>
       <button
         className={styles.fireButton}
-        disabled={!buttonActive}
-        onClick={(e) => {
-          playBang();
-          navigator.vibrate(200);
-          return onClick(e)
-        }}
+        disabled={!userHasAmmo}
+        onClick={fire}
       >
-        <img src={buttonActive ? fireButtonImg : fireButtonImgNoAmmo} alt="Fire button" />
+        <img src={
+          userHasAmmo
+            ? (onCooldown ? fireButtonImgCooldown : fireButtonImg)
+            : fireButtonImgNoAmmo}
+          alt="Fire button" />
       </button>
 
       <svg width="200" height="200">
@@ -48,8 +71,7 @@ export default function FireButton({ buttonActive, onClick }) {
           strokeWidth="4"
           fill="transparent"
           variants={circleVariants}
-          initial="hidden"
-          animate="visible"
+          animate={animationState}
         />
       </svg>
     </>
