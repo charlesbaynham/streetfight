@@ -87,14 +87,11 @@ export default function UserMode() {
   }, []);
 
 
-
-
   return <>
     <UpdateSSEConnection />
     <UpdateListener
       update_type="user"
       callback={() => {
-        console.log(`Updating userStateHash to ${userStateHash + 1}`)
         setUserStateHash(userStateHash + 1)
       }}
     />
