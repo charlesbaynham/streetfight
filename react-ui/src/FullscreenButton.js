@@ -1,16 +1,19 @@
 
 import styles from './FullscreenButton.module.css';
-import icon from './fullscreen-icon.svg';
+
+import fullscreenImg from './fullscreen-icon.svg';
+import hintImg from './better-in-fullscreen.svg';
 
 const FullscreenButton = ({ handle }) => (
-    <>
-        <button className={styles.button} onClick={handle.enter}>
-            <img src={icon} alt="Fullscreen" />
+    <div className={styles.buttonContainer}>
+        <button onClick={handle.enter}>
+            <img src={fullscreenImg} alt="Fullscreen" />
         </button>
-        <div className={styles.fullscreenHint}>
-            Go fullscreen!
-        </div>
-    </>
+        <img
+            className={styles.fullscreenHint}
+            src={hintImg} alt="This app is better in fullscreen"
+        />
+    </div>
 )
 
 export default FullscreenButton;

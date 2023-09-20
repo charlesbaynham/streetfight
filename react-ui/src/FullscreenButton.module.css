@@ -1,14 +1,27 @@
-.button {
+.buttonContainer {
     position: absolute;
     bottom: 0;
     left: 0;
     margin: 10mm;
+}
+
+.buttonContainer button {
     cursor: pointer;
     background: none;
     border: none;
 }
 
-.button img {
+
+.buttonContainer button img {
     height: 10mm;
     width: 10mm;
+}
+
+
+.buttonContainer>img {
+    position: absolute;
+    height: 30mm;
+    right: -20%;
+    bottom: 50%;
+    transform: translateX(100%);
 }
