@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 
 import Webcam from "react-webcam";
 
@@ -6,10 +6,11 @@ import QRParser from './QRParser';
 
 import screenfillStyles from './ScreenFillStyles.module.css';
 import styles from './WebcamView.module.css';
+import useScreenOrientation from './useScreenOrientation';
 
 const videoConstraints = {
-    width: 1280,
-    height: 720,
+    // width: 1280,
+    // height: 720,
     facingMode: "environment"
 };
 
@@ -19,10 +20,15 @@ function WebcamCapture({ trigger, isDead }) {
     // Get a reference to the webcam element
     const webcamRef = useRef(null);
 
+    const [hackyHideWebcam, setHackyHideWebcam] = useState(false);
+
     // Define a function that will take a shot (useCallback just avoids
     // redefining the function when renders happen)
     const capture = useCallback(
         () => {
+            if (!webcamRef)
+                return
+
             const imageSrc = webcamRef.current.getScreenshot();
 
             const query = JSON.stringify({
@@ -36,12 +42,17 @@ function WebcamCapture({ trigger, isDead }) {
             };
             fetch('/api/submit_shot', requestOptions)
                 .then(response => response.json())
-                .then(data => console.log(`Response: ${data}`));
-
-
+                .then(data => console.log(`Response: ${data}`))
         },
-        [webcamRef]
+        [webcamRef, setHackyHideWebcam]
     );
+
+    const orientation = useScreenOrientation();
+
+    useEffect(() => {
+        setHackyHideWebcam(true)
+        setTimeout(() => { setHackyHideWebcam(false) }, 500)
+    }, [setHackyHideWebcam, orientation])
 
     // Call the capture callback when the 'trigger' prop changes
     useEffect(() => {
@@ -51,17 +62,19 @@ function WebcamCapture({ trigger, isDead }) {
 
     return (
         <>
-            <Webcam
-                ref={webcamRef}
-                audio={false}
-                screenshotFormat="image/png"
-                videoConstraints={videoConstraints}
-                className={
-                    screenfillStyles.screenFill
-                    + " " + styles.webcamVideo
-                    + (isDead ? " " + styles.dead : "")
-                }
-            />
+            {!hackyHideWebcam ?
+                <Webcam
+                    ref={webcamRef}
+                    audio={false}
+                    screenshotFormat="image/png"
+                    videoConstraints={videoConstraints}
+                    className={
+                        screenfillStyles.screenFill
+                        + " " + styles.webcamVideo
+                        + (isDead ? " " + styles.dead : "")
+                    }
+                />
+                : null}
             <QRParser
                 webcamRef={webcamRef}
             />
