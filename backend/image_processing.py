@@ -60,13 +60,15 @@ def draw_cross_on_image(base64_image: str) -> str:
     cropped = image.crop((left, top, right, bottom))
 
     # Create a new image with a white border
-    border_size = 3
+    border_size = 1
     cropped_with_border = Image.new(
-        "RGB", (cropped.width + border_size, cropped.height + border_size), "white"
+        "RGB",
+        (cropped.width + border_size, cropped.height + border_size),
+        "white",
     )
 
     # Paste the cropped middle portion onto the new image
-    cropped_with_border.paste(cropped, (border_size, border_size))
+    cropped_with_border.paste(cropped)
 
     # Double this new image
     expansion_factor = 3
