@@ -82,8 +82,8 @@ function OnboardingView({ userState }) {
 
     function getActionItems() {
         const hasName = userState.name;
-        const inTeam = userState.teamName !== null;
-        const teamName = userState.teamName;
+        const inTeam = userState.team_name !== null;
+        const teamName = userState.team_name;
 
         const actionItems = [
             <NameEntry
@@ -110,7 +110,7 @@ function OnboardingView({ userState }) {
         if (webcamAvailable)
             actionItems.push(
                 <ActionItem
-                    text={teamName ? "Wait to be added to a team..." : `You are in team "${teamName}"`}
+                    text={!teamName ? "Wait to be added to a team..." : `You are in team "${teamName}"`}
                     done={inTeam}
                     doable={false}
                     key={"team"}
