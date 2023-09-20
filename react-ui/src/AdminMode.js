@@ -5,8 +5,19 @@ import NewItems from './NewItems';
 import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 
 function GameView({ game }) {
+    const [gameActive, setGameActive] = useState(game.active);
+
     return <>
         <h2>Game {game.id}</h2>
+
+        <label class="switch">
+            <span>Game active:</span>
+            <input
+                type="checkbox"
+                value={gameActive}
+                onClick={(e) => setGameActive(e.target.value)}
+            />
+        </label>
 
         <h3>Teams</h3>
 
