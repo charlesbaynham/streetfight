@@ -18,7 +18,7 @@ import FullscreenButton from './FullscreenButton';
 
 function isGameRunning(userState) {
   // TODO: Include admin "game started" control
-  return Boolean(userState && userState.team_id)
+  return Boolean(userState && userState.active)
 }
 
 
