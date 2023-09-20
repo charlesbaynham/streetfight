@@ -65,6 +65,7 @@ button.stackedItem {
 
 .actionButton {
     position: absolute;
+    display: block;
     top: 50%;
     right: 3mm;
     /* Adjust the distance from the input's right edge */

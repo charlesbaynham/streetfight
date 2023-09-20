@@ -17,11 +17,15 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
         <motion.div layout>
             <p>{text}</p>
             {doable ?
-                <button
+                <div
                     className={styles.actionButton}
                 >
-                    <img src={done ? actionDone : actionNotDone} alt="" />
-                </button>
+                    <img
+                        className={styles.actionButton}
+                        src={done ? actionDone : actionNotDone}
+                        alt=""
+                    />
+                </div>
                 : null
             }
         </motion.div>
