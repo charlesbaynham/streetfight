@@ -16,6 +16,12 @@ import styles from './UserMode.module.css'
 import OnboardingView from './OnboardingView';
 import FullscreenButton from './FullscreenButton';
 
+function isGameRunning(userState) {
+  // TODO: Include admin "game started" control
+  return Boolean(userState && userState.team_id)
+}
+
+
 function GetView({ userState }) {
   const [triggerShot, setTriggerShot] = useState(0);
 
@@ -84,6 +90,8 @@ export default function UserMode() {
   }, []);
 
 
+
+
   return <>
     <UpdateSSEConnection />
     <UpdateListener
@@ -98,7 +106,7 @@ export default function UserMode() {
       <GetView userState={userState} isFullscreen={isFullscreen} />
     </FullScreen>
     {isFullscreen ? null :
-      <FullscreenButton handle={handle} />
+      <FullscreenButton handle={handle} keepHintVisible={!isGameRunning(userState)} />
     }
   </>
 }

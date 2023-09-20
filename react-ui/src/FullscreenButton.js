@@ -7,14 +7,17 @@ import fullscreenImg from './images/fullscreen-icon.svg';
 import hintImg from './images/better-in-fullscreen.svg';
 import { useEffect, useState } from "react";
 
-function FullscreenButton({ handle }) {
+function FullscreenButton({ handle, keepHintVisible = false }) {
     const [hintHidden, setHintHidden] = useState(false);
 
     useEffect(() => {
+        if (keepHintVisible)
+            return
+
         const handle = setTimeout(() => { setHintHidden(true) }, 5000);
 
         return () => { clearTimeout(handle) }
-    }, [])
+    }, [keepHintVisible, setHintHidden])
 
     return (
         <motion.div className={styles.buttonContainer}>
