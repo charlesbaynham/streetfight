@@ -1,6 +1,7 @@
 import React from 'react';
 
 import screenfillStyles from './ScreenFillStyles.module.css';
+import styles from './GuideImages.module.css';
 
 
 import dead_image from './images/you_are_dead.svg';
@@ -17,8 +18,12 @@ export const CrosshairImage = () => (
 
 export const DeadImage = () => (
   <img
-    alt=""
+    alt="You Died"
     src={dead_image}
-    className={screenfillStyles.screenFill}
+    className={
+      screenfillStyles.screenFill
+      + " " +
+      styles.deadImage
+    }
   />
 );
