@@ -37,6 +37,7 @@ class Game(Base):
 
     id = Column(UUIDType, primary_key=True, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
+    active = Column(Boolean, nullable=False, default=False)
 
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
@@ -133,6 +134,13 @@ class User(Base):
 
     update_tag = Column(Integer(), default=random_counter_value)
 
+    @property
+    def active(self):
+        if not self.team:
+            return False
+
+        return self.team.game.active
+
     def touch(self):
         old = self.update_tag
         new = random_counter_value()
@@ -191,6 +199,7 @@ class GameModel(pydantic.BaseModel):
 
     teams: List["TeamModel"]
     ticker_update_tag: int
+    active: bool
 
     class Config:
         orm_mode = True
@@ -205,6 +214,9 @@ class UserModel(pydantic.BaseModel):
 
     num_bullets: int
     hit_points: int
+
+    # This is retrieved from the Game associated with the Team this user is in
+    active: bool
 
     class Config:
         orm_mode = True
