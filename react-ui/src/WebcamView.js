@@ -44,7 +44,7 @@ function WebcamCapture({ trigger, isDead }) {
                 .then(response => response.json())
                 .then(data => console.log(`Response: ${data}`))
         },
-        [webcamRef, setHackyHideWebcam]
+        [webcamRef]
     );
 
     const orientation = useScreenOrientation();
