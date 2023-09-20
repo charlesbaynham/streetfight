@@ -11,8 +11,12 @@ logger = logging.getLogger(__name__)
 def draw_cross_on_image(base64_image: str) -> str:
     logger.debug("Image = %s", base64_image)
 
+    # Split off the metadata
+    split_img = base64_image.split(",")
+    raw_image = split_img[1]
+
     # Decode base64 string to bytes
-    image_bytes = base64.b64decode(base64_image)
+    image_bytes = base64.b64decode(raw_image)
 
     # Load the image using PIL (Python Imaging Library)
     image = Image.open(BytesIO(image_bytes))
@@ -47,4 +51,7 @@ def draw_cross_on_image(base64_image: str) -> str:
     # Close the image file
     image.close()
 
-    return modified_base64_image
+    # Put the metadata back
+    split_img[1] = modified_base64_image
+
+    return ",".join(split_img)
