@@ -14,8 +14,7 @@ import TickerView from './TickerView';
 
 import styles from './UserMode.module.css'
 import OnboardingView from './OnboardingView';
-
-
+import FullscreenButton from './FullscreenButton';
 
 function GetView({ userState }) {
   const [triggerShot, setTriggerShot] = useState(0);
@@ -41,8 +40,6 @@ function GetView({ userState }) {
       <TickerView />
     </div>
 
-
-
     <WebcamView trigger={triggerShot} />
 
     {isAlive ?
@@ -59,8 +56,6 @@ function GetView({ userState }) {
 
   </ >;
 }
-
-
 
 
 export default function UserMode() {
@@ -95,13 +90,11 @@ export default function UserMode() {
       }}
     />
 
-    {isFullscreen ? null :
-      <button onClick={handle.enter}>
-        Fullscreen
-      </button>
-    }
     <FullScreen handle={handle} onChange={reportFullscreenChange}>
       <GetView userState={userState} isFullscreen={isFullscreen} />
     </FullScreen>
+    {isFullscreen ? null :
+      <FullscreenButton handle={handle} />
+    }
   </>
 }

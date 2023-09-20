@@ -1,0 +1,14 @@
+.button {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    margin: 10mm;
+    cursor: pointer;
+    background: none;
+    border: none;
+}
+
+.button img {
+    height: 10mm;
+    width: 10mm;
+}
