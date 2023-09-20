@@ -1,6 +1,8 @@
 import base64
 import logging
+import time
 from io import BytesIO
+from pathlib import Path
 from typing import List
 from typing import Tuple
 
@@ -8,6 +10,19 @@ from PIL import Image
 from PIL import ImageDraw
 
 logger = logging.getLogger(__name__)
+
+IMAGE_OUTPUT_DIR = Path(__file__, "../../logs/images").resolve()
+
+
+def save_image(base64_image: str, name: str):
+    """Save this image to the folder, tagged with the time
+
+    Args:
+        base64_image (str): base 64 image
+    """
+    image, _ = load_image(base64_image)
+    filename = f"{name}_{time.time()}.png"
+    image.save(IMAGE_OUTPUT_DIR / filename)
 
 
 def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:

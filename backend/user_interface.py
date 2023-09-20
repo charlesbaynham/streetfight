@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
+from .image_processing import save_image
 from .items import DecodedItem
 from .model import Game
 from .model import Item
@@ -181,9 +182,7 @@ class UserInterface:
         user.num_bullets -= 1
 
         # Save to folder
-        f = open("logs/out.txt", "w")
-        f.write(image_base64)
-        f.close()
+        save_image(base64_image=image_base64, name=user.name)
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
