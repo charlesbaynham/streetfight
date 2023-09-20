@@ -10,6 +10,7 @@ from fastapi import HTTPException
 from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
+from .image_processing import draw_cross_on_image
 from .items import DecodedItem
 from .model import Game
 from .model import GameModel
@@ -128,7 +129,12 @@ class AdminInterface:
         num_shots = query.count()
         filtered_shots = query.limit(limit).all()
 
-        return num_shots, [ShotModel.from_orm(s) for s in filtered_shots]
+        shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
+
+        for shot_model in shot_models:
+            shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
+
+        return num_shots, shot_models
 
     def kill_user(self, user_id):
         UserInterface(user_id).kill()
