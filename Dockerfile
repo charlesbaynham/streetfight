@@ -8,6 +8,4 @@ RUN . /home/root/.nix-profile/etc/profile.d/nix.sh \
 
 # Copy app files
 RUN mkdir /app
-COPY * /app/
-
-RUN nix develop -c npm install
+COPY backend /app/
