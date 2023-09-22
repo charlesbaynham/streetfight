@@ -32,6 +32,19 @@
           pkgs.black
         ];
 
+        frontendBuild = pkgs.buildNpmPackage rec {
+          pname = "streetfight";
+          version = "0.0.0";
+          src = ./react-ui;
+          npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
+          installPhase = ''
+            mkdir $out
+            mkdir $out/build
+            cp "${./Caddyfile}" $out/Caddyfile
+            cp -a build/. $out/build
+          '';
+        };
+
       in
       {
         devShell =
@@ -40,21 +53,32 @@
             buildInputs = reqs;
           };
 
-        packages =
-          {
-            frontend = pkgs.buildNpmPackage rec {
-              pname = "streetfight";
-              version = "0.0.0";
-              src = "${self}/react-ui";
-              npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
-              installPhase = ''
-                mkdir $out
-                cp -a build/. $out
-              '';
-            };
-          };
+        packages = rec
+        {
+          default = frontendBuild;
+        };
 
         apps = rec {
+          frontend =
+            let
+              inputs = [
+                pkgs.caddy
+              ];
+            in
+            (
+              flake-utils.lib.mkApp
+                {
+                  drv = (pkgs.writeShellScriptBin "script" ''
+                    export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
+                    cd ${frontendBuild}
+
+                    ls -la
+                    ls -la build
+
+                    exec caddy run
+                  '');
+                }
+            );
           backend = flake-utils.lib.mkApp
             {
               drv = (pkgs.writeShellScriptBin "script" ''
