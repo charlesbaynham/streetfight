@@ -13,4 +13,5 @@ try_files {path}.html {path}
 reverse_proxy /api/* localhost:8000
 
 # Serve everything else from the file system
+root * result
 file_server
