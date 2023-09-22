@@ -40,9 +40,15 @@
             buildInputs = reqs;
           };
 
-        packages = {
-          backend = pkgs.callPackage ./backend.nix { };
-        };
+        packages =
+          {
+            frontend = pkgs.buildNpmPackage rec {
+              pname = "streetfight";
+              version = "0.0.0";
+              src = "${self}/react-ui";
+              npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
+            };
+          };
 
         apps = rec {
           backend = flake-utils.lib.mkApp
