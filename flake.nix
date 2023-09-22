@@ -40,6 +40,10 @@
             buildInputs = reqs;
           };
 
+        packages = {
+          backend = pkgs.callPackage ./backend.nix { };
+        };
+
         apps = rec {
           start = flake-utils.lib.mkApp {
             drv = (pkgs.writeShellScriptBin "script" ''
