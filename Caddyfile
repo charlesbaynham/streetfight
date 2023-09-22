@@ -1,19 +1,25 @@
-localhost
+{
+    http_port 8080
+    https_port 4443
+}
 
-# Templates give static sites some dynamic features
-# templates
+https://localhost:4443 {
 
-# Compress responses according to Accept-Encoding headers
-# encode gzip zstd
+    # Templates give static sites some dynamic features
+    # templates
 
-# Make HTML file extension optional
-# try_files {path}.html {path}
+    # Compress responses according to Accept-Encoding headers
+    # encode gzip zstd
 
-# Send API requests to backend
-reverse_proxy /api/* localhost:8000
+    # Make HTML file extension optional
+    # try_files {path}.html {path}
 
-# Serve everything else from the file system
-root * build
-# Redirect all paths to index.html
-try_files {path} /index.html
-file_server
+    # Send API requests to backend
+    reverse_proxy /api/* localhost:8000
+
+    # Serve everything else from the file system
+    root * result
+    # Redirect all paths to index.html
+    try_files {path} /index.html
+    file_server
+}

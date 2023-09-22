@@ -30,6 +30,7 @@
           ]))
           pkgs.pre-commit
           pkgs.black
+          pkgs.caddy
         ];
 
         frontendBuild = pkgs.buildNpmPackage rec {
@@ -39,9 +40,9 @@
           npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
           installPhase = ''
             mkdir $out
-            mkdir $out/build
+            mkdir $out/result
             cp "${./Caddyfile}" $out/Caddyfile
-            cp -a build/. $out/build
+            cp -a build/. $out/result
           '';
         };
 
@@ -73,7 +74,7 @@
                     cd ${frontendBuild}
 
                     ls -la
-                    ls -la build
+                    ls -la result
 
                     exec caddy run
                   '');
