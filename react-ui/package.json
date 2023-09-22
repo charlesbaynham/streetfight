@@ -24,8 +24,7 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "predeploy": "npm run build"
   },
   "eslintConfig": {
     "extends": [
@@ -46,7 +45,6 @@
     ]
   },
   "devDependencies": {
-    "gh-pages": "^6.0.0",
     "webpack-cli": "^5.1.4"
   }
 }

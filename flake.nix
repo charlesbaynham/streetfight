@@ -45,21 +45,14 @@
         };
 
         apps = rec {
-          start = flake-utils.lib.mkApp {
-            drv = (pkgs.writeShellScriptBin "script" ''
-              export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
+          backend = flake-utils.lib.mkApp
+            {
+              drv = (pkgs.writeShellScriptBin "script" ''
+                export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
 
-              exec npm run start
-            '');
-          };
-          deploy = flake-utils.lib.mkApp {
-            drv = (pkgs.writeShellScriptBin "script" ''
-              export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
-
-              exec npm run deploy
-            '');
-          };
-          default = start;
+                exec uvicorn backend.main:app --host 0.0.0.0
+              '');
+            };
         };
       }
     );
