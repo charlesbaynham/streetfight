@@ -1,0 +1,15 @@
+name: Build images
+
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Nix
+      uses: cachix/install-nix-action@v22
+    - name: Build frontend docker image
+      run: nix build .#dockerFrontend
+    - name: Build backend docker image
+      run: nix build .#dockerBackend
