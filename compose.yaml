@@ -3,6 +3,7 @@ services:
     image: streetfight-frontend
     environment:
     - API_URL
+    - WEBSITE_URL
     ports:
     - 80:80
     - 443:443
