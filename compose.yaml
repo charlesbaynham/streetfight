@@ -4,6 +4,8 @@ services:
     environment:
     - API_URL
     - WEBSITE_URL
+    - XDG_CONFIG_HOME=/config
+    - XDG_DATA_HOME=/data
     ports:
     - 80:80
     - 443:443
