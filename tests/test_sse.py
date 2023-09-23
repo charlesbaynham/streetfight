@@ -5,7 +5,6 @@ from fastapi.testclient import TestClient
 @pytest.mark.skip(reason="Broken. See https://github.com/encode/starlette/issues/1102")
 @pytest.mark.asyncio
 async def test_sse_endpoint(api_client: TestClient):
-
     # with api_client.get("/api/sse_updates", stream=True) as response:
     #     assert response.status_code == 200
     #     assert response.headers["content-type"] == "text/event-stream"

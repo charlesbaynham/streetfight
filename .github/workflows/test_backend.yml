@@ -1,38 +1,19 @@
-# This workflow will install Python dependencies, run tests and lint.
-# https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Test backend
 
 on: [push, pull_request]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     python-version: [3.9]
-
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v22
-    # Cache pre-commit
-    - uses: actions/cache@v2
-      with:
-        path: cache-pre-commit
-        key: ${{ runner.os }}-precommit
-    # Cache node
     - uses: actions/setup-node@v3
       with:
         cache: npm
     - name: Install dependencies
       run: nix develop -c npm install
-    - name: Lint with pre-commit
-      run: |
-        nix develop -c pre-commit run --all
-      env:
-        PRE_COMMIT_HOME: cache-pre-commit
     - name: Test with pytest
       run: |
         cp .env.example .env

@@ -313,7 +313,6 @@ def make_sse_update_message(m):
 
 
 async def updates_generator(user_id):
-
     update_user = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "user"})
     )
@@ -404,7 +403,6 @@ async def updates_generator(user_id):
     # Iterate through the consumer:
     try:
         async for target in yield_from_queue():
-
             if target == "user":
                 yield update_user
             elif target == "ticker":

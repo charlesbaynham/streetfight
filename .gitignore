@@ -4,6 +4,7 @@
 *.db
 .vscode
 node_modules
+result
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/python

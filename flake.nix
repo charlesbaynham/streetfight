@@ -30,7 +30,57 @@
           ]))
           pkgs.pre-commit
           pkgs.black
+          pkgs.caddy
         ];
+
+        frontendBuild = pkgs.buildNpmPackage rec {
+          pname = "streetfight";
+          version = "0.0.0";
+          src = ./react-ui;
+          npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
+          installPhase = ''
+            mkdir $out
+            cp -a build/. $out
+          '';
+        };
+
+        frontendBuildWithCaddy = pkgs.stdenv.mkDerivation {
+          name = "streetfight-with-caddy";
+          src = frontendBuild;
+          installPhase = ''
+            mkdir $out
+            mkdir $out/result
+            cp "${./Caddyfile}" $out/Caddyfile
+            cp -a $src/. $out/result
+          '';
+        };
+
+        frontendApp = let
+              inputs = [
+                pkgs.caddy
+              ];
+            in
+            (
+              flake-utils.lib.mkApp
+                {
+                  drv = (pkgs.writeShellScriptBin "script" ''
+                    export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
+                    cd ${frontendBuildWithCaddy}
+
+                    exec caddy run
+                  '');
+                }
+            );
+
+        backendApp = flake-utils.lib.mkApp
+            {
+              drv = (pkgs.writeShellScriptBin "script" ''
+                export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
+
+                python -m backend.reset_db && true
+                exec uvicorn backend.main:app --host 0.0.0.0
+              '');
+            };
 
       in
       {
@@ -40,22 +90,30 @@
             buildInputs = reqs;
           };
 
-        apps = rec {
-          start = flake-utils.lib.mkApp {
-            drv = (pkgs.writeShellScriptBin "script" ''
-              export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
+        apps = {
+          frontend =frontendApp;
+          backend = backendApp;
+        };
 
-              exec npm run start
-            '');
+        packages = {
+          inherit frontendBuild frontendBuildWithCaddy;
+          default = frontendBuild;
+          dockerFrontend = pkgs.dockerTools.buildImage {
+            name = "streetfight-frontend";
+            config = {
+              Cmd = [ frontendApp.program ];
+              ExposedPorts = {
+                  "80/tcp" = {};
+                  "443/tcp" = {};
+              };
+            };
           };
-          deploy = flake-utils.lib.mkApp {
-            drv = (pkgs.writeShellScriptBin "script" ''
-              export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
-
-              exec npm run deploy
-            '');
+          dockerBackend = pkgs.dockerTools.buildImage {
+            name = "streetfight-backend";
+            config = {
+              Cmd = [ backendApp.program ];
+            };
           };
-          default = start;
         };
       }
     );
