@@ -4,24 +4,16 @@ Goals
 - [ ] Polish:
   - [ ] Bulk generation of QR codes
   - [ ] Add white flash on QR scan and maybe remove vibration
+  - [ ] Add rejection noise for taken QR codes (with a timeout (?) to prevent immediate rejection after scanning. or stop resending the same QR code repeatedly)
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
   - [ ] Improve admin kill interface
 Essential:
-  - [ ] Sort out HTTPS / production server
+  - [x] Sort out HTTPS / production server
   - [ ] Add ticker messages for kills
 Bugs:
   - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
 
-Notes:
-
-## Production
-
-I have the dev server set up to serve HTTPS via self-signed certificates. Currently, the "prod" server also uses those same ssl certificates and serves over HTTPS. This is fine and will work, but will require me to handle my own HTTPS certificates in the real world. If I want to ignore this, I should set the prod server to serve over HTTPS instead and then set up some sort of reverse proxy that handle the HTTPS, probably using nginx + LetsEncrypt. Alternatively, I might be able to find a platform which can just handle this for me. Apparantly AWS does this, but I haven't explored it yet.
-
-Best option I think is to export it all as a docker image that serves everything on e.g. port 8000 and use a cloud service that rewrites this to HTTPS.
-
-See also : Caddy
 
 
 Backburner:
