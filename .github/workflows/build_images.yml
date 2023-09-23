@@ -5,9 +5,17 @@ on:
     # branches:
     # - master
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME_PREFIX: ${{ github.repository }}
+
+
 jobs:
   build_frontend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
@@ -16,20 +24,21 @@ jobs:
       run: |
         nix build .#dockerFrontend
         export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-        docker tag $IMG_ID ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:$GITHUB_SHA
-        docker tag $IMG_ID ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:latest
+        docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:$GITHUB_SHA
+        docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:latest
 
+    - name: Log in to the Container registry
+      uses: docker/login-action@65b78e6e13532edd9afa3aa52ac7964289d1a9c1
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
     - name: Push to registry
-      env:
-        DOCKER_USERNAME: ${{ secrets.GITHUB_ACTOR }}
-        DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        echo "Logging into GitHub Container Registry"
-        echo $DOCKER_PASSWORD | docker login ghcr.io -u $DOCKER_USERNAME --password-stdin
-
         echo "Pushing Docker image to GitHub Container Registry"
-        docker push ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:$GITHUB_SHA
-        docker push ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:latest
+        docker push $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:$GITHUB_SHA
+        docker push $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:latest
+
 
   # build_backend:
   #   runs-on: ubuntu-latest
