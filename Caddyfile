@@ -4,10 +4,10 @@
 # }
 
 localhost {
-	encode gzip
+	# encode gzip
 
 	handle /api/* {
-		reverse_proxy {$API_URL}
+		reverse_proxy {$API_URL:http://localhost:8000}
 	}
 
 	handle {
