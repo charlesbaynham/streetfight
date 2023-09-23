@@ -54,7 +54,6 @@ class DatabaseScopeProvider:
         return o
 
     def db_scoped(self_outer, func: Callable):
-
         from . import database
 
         @wraps(func)
