@@ -1,23 +1,14 @@
-# This workflow will install Python dependencies, run tests and lint.
-# https://help.github.com/actions/language-and-framework-guides/using-python-with-github-actions
-
 name: Test backend
 
 on: [push, pull_request]
 
 jobs:
-  build:
-
+  test:
     runs-on: ubuntu-latest
-    # strategy:
-    #   matrix:
-    #     python-version: [3.9]
-
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v22
-    # Cache node
     - uses: actions/setup-node@v3
       with:
         cache: npm
