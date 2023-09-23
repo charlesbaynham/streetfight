@@ -23,10 +23,15 @@ jobs:
       uses: pguyot/arm-runner-action@v2
       with:
         commands: |
+          curl https://releases.nixos.org/nix/nix-2.9.1/install | sh
+          echo 'experimental-features = nix-command flakes' >> /home/gitpod/.config/nix/nix.conf
+          source ~/.nix-profile/etc/profile.d/nix.sh
           nix build .#dockerFrontend
-          export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-          docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:$GITHUB_SHA
-          docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:latest
+    - name: Load and tag
+      run: |
+        export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+        docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:$GITHUB_SHA
+        docker tag $IMG_ID $REGISTRY/${IMAGE_NAME_PREFIX}-frontend:latest
     - name: Log in to the Container registry
       uses: docker/login-action@v3
       with:
