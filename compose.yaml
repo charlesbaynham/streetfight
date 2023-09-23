@@ -11,5 +11,7 @@ services:
     environment:
     - DATABASE_URL=sqlite:///data.db
     - MAKE_DEBUG_ENTRIES=true
+    - SECRET_KEY=123321
+    - WEBSITE_URL=http://houseabsolute.duckdns.org
     volumes:
     - ~/streetfight:/app/logs
