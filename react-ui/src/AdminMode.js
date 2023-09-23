@@ -5,34 +5,24 @@ import NewItems from './NewItems';
 import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
 
 function GameView({ game }) {
-    const [gameActive, setGameActive] = useState(game.active);
-
-    const handleChange = () => {
-        setGameActive(!gameActive);
-    };
-
-    useEffect(() => {
-        if (gameActive !== game.active) {
-            sendAPIRequest("admin_set_game_active",
-                {
-                    game_id: game.id,
-                    active: gameActive
-                },
-                "POST"
-            )
-        }
-    }, [gameActive, game])
+    const setGameActive = useCallback((state) => {
+        sendAPIRequest("admin_set_game_active",
+            {
+                game_id: game.id,
+                active: state
+            },
+            "POST"
+        );
+    }, [game]);
 
     return <>
         <h2>Game {game.id}</h2>
 
         <label>
-            Game active:
-            <input
-                type="checkbox"
-                checked={gameActive}
-                onChange={handleChange}
-            />
+            Game active: {game.active ? "true" : "false"}
+            <br />
+            <button onClick={() => { setGameActive(true) }}>Start</button>
+            <button onClick={() => { setGameActive(false) }}>Pause</button>
         </label>
 
         <h3>Teams</h3>
