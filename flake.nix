@@ -44,13 +44,14 @@
           '';
         };
 
-        frontendBuildWithCaddy = pkgs.mkDerivation {
+        frontendBuildWithCaddy = pkgs.stdenv.mkDerivation {
           name = "streetfight-with-caddy";
+          src = frontendBuild;
           installPhase = ''
             mkdir $out
             mkdir $out/result
             cp "${./Caddyfile}" $out/Caddyfile
-            cp -a ${frontendBuild}/. $out/result
+            cp -a $src/. $out/result
           '';
         };
 
@@ -94,9 +95,9 @@
           backend = backendApp;
         };
 
-        packages = rec {
+        packages = {
+          inherit frontendBuild frontendBuildWithCaddy;
           default = frontendBuild;
-          frontend = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildImage {
             name = "streetfight-frontend";
             config = {
