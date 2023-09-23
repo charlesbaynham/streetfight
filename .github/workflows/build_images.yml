@@ -3,13 +3,32 @@ name: Build images
 on: [push, pull_request]
 
 jobs:
-  build:
+  build_frontend:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v22
     - name: Build frontend docker image
-      run: nix build .#dockerFrontend
+      run: |
+        nix build .#dockerFrontend
+        export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+        docker tag $IMG_ID charlesbaynham/streetfight-frontend:$GITHUB_SHA
+        docker tag $IMG_ID charlesbaynham/streetfight-frontend:latest
+        docker push ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
+        docker push ghcr.io/charlesbaynham/streetfight-frontend:latest
+
+  build_backend:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Nix
+      uses: cachix/install-nix-action@v22
     - name: Build backend docker image
-      run: nix build .#dockerBackend
+      run: |
+        nix build .#dockerBackend
+        export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+        docker tag $IMG_ID charlesbaynham/streetfight-frontend:$GITHUB_SHA
+        docker tag $IMG_ID charlesbaynham/streetfight-frontend:latest
+        docker push ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
+        docker push ghcr.io/charlesbaynham/streetfight-frontend:latest
