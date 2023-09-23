@@ -1,19 +1,20 @@
-{ pkgs, ... }:
+{ pkgs, frontendBuildWithCaddy }:
 {
-  project.name = "webapp";
+  project.name = "streetfight";
   services = {
 
     webserver = {
       image.enableRecommendedContents = true;
       service.useHostStore = true;
-      service.command = [ "sh" "-c" ''
-                  cd "$$WEB_ROOT"
-                  ${pkgs.python3}/bin/python -m http.server
-                '' ];
+      # service.command = [ "sh" "-c" ''
+      #             cd "$$CADDY_ROOT"
+      #             ${pkgs.python3}/bin/python -m http.server
+      #           '' ];
       service.ports = [
-        "8000:8000" # host:container
+        "80:80"
+        "443:443"
       ];
-      service.environment.WEB_ROOT = "${pkgs.nix.doc}/share/doc/nix/manual";
+      service.environment.CADDY_ROOT = frontendBuildWithCaddy;
       service.stop_signal = "SIGINT";
     };
   };

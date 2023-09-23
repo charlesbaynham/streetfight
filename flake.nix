@@ -98,7 +98,7 @@
         packages = {
           inherit frontendBuild frontendBuildWithCaddy;
           default = frontendBuild;
-          dockerFrontend = pkgs.dockerTools.buildImage {
+          dockerFrontend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-frontend";
             config = {
               Cmd = [ frontendApp.program ];
@@ -108,10 +108,13 @@
               };
             };
           };
-          dockerBackend = pkgs.dockerTools.buildImage {
+          dockerBackend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-backend";
             config = {
               Cmd = [ backendApp.program ];
+              ExposedPorts = {
+                  "8080/tcp" = {};
+              };
             };
           };
         };
