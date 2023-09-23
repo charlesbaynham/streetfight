@@ -8,25 +8,25 @@
         pkgs = nixpkgs.legacyPackages.${system};
 
         pythonReqs = with pkgs.python3Packages; [
-            pip
+          pip
 
-            # Runtime
-            python-dotenv
-            sqlalchemy
-            pillow
-            psycopg2
-            sqlalchemy-utils
-            fastapi
-            wsproto
-            uvicorn
+          # Runtime
+          python-dotenv
+          sqlalchemy
+          pillow
+          psycopg2
+          sqlalchemy-utils
+          fastapi
+          wsproto
+          uvicorn
 
-            # Development
-            pytest
-            pytest-asyncio
-            # selenium
-            # geckodriver-autoinstaller
-            requests
-          ];
+          # Development
+          pytest
+          pytest-asyncio
+          # selenium
+          # geckodriver-autoinstaller
+          requests
+        ];
 
         reqs = with pkgs; [
           pkgs.nodejs
@@ -64,26 +64,29 @@
           '';
         };
 
-        frontendApp = let
-              inputs = [
-                pkgs.caddy
-              ];
-            in
-            (
-              flake-utils.lib.mkApp
-                {
-                  drv = (pkgs.writeShellScriptBin "script" ''
-                    export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
-                    cd ${frontendBuildWithCaddy}
+        frontendApp =
+          let
+            inputs = [
+              pkgs.caddy
+            ];
+          in
+          (
+            flake-utils.lib.mkApp
+              {
+                drv = (pkgs.writeShellScriptBin "script" ''
+                  export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
+                  cd ${frontendBuildWithCaddy}
 
-                    exec caddy run
-                  '');
-                }
-            );
+                  exec caddy run
+                '');
+              }
+          );
 
-        backendApp = let
-          python = pkgs.python3.withPackages (ps: pythonReqs ++ [backendPackage]);
-        in flake-utils.lib.mkApp
+        backendApp =
+          let
+            python = pkgs.python3.withPackages (ps: pythonReqs ++ [ backendPackage ]);
+          in
+          flake-utils.lib.mkApp
             {
               drv = (pkgs.writeShellScriptBin "script" ''
                 export PATH=${pkgs.lib.makeBinPath [ python ]}:$PATH
@@ -94,17 +97,17 @@
             };
 
         loadDocker = flake-utils.lib.mkApp
-            {
-              drv = (pkgs.writeShellScriptBin "script" ''
-                nix build .#dockerFrontend
-                export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-                docker tag $IMG_ID streetfight-frontend:latest
+          {
+            drv = (pkgs.writeShellScriptBin "script" ''
+              nix build .#dockerFrontend
+              export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+              docker tag $IMG_ID streetfight-frontend:latest
 
-                nix build .#dockerBackend
-                export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-                docker tag $IMG_ID streetfight-backend:latest
-              '');
-            };
+              nix build .#dockerBackend
+              export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+              docker tag $IMG_ID streetfight-backend:latest
+            '');
+          };
 
 
       in
@@ -131,8 +134,8 @@
             config = {
               Cmd = [ frontendApp.program ];
               ExposedPorts = {
-                  "80/tcp" = {};
-                  "443/tcp" = {};
+                "80/tcp" = { };
+                "443/tcp" = { };
               };
             };
           };

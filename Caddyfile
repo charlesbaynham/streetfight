@@ -3,7 +3,7 @@
 # 	https_port 443
 # }
 
-https://houseabsolute.duckdns.org {
+http://houseabsolute.duckdns.org {
 	# encode gzip
 
 	handle /api/* {

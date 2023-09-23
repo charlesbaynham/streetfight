@@ -10,5 +10,6 @@ services:
     image: streetfight-backend
     environment:
     - DATABASE_URL=sqlite:///data.db
+    - MAKE_DEBUG_ENTRIES=true
     volumes:
     - ~/streetfight:/app/logs
