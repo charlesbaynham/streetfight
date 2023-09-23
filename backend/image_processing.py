@@ -22,6 +22,7 @@ def save_image(base64_image: str, name: str):
     """
     image, _ = load_image(base64_image)
     filename = f"{name}_{time.time()}.png"
+    IMAGE_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
     image.save(IMAGE_OUTPUT_DIR / filename)
 
 
