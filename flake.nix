@@ -137,6 +137,7 @@
                 "80/tcp" = { };
                 "443/tcp" = { };
               };
+              Env = [ "SSL_CERT_FILE=${pkgs.cacert}/etc/ssl/certs/ca-bundle.crt" ];
             };
           };
           dockerBackend = pkgs.dockerTools.buildLayeredImage {

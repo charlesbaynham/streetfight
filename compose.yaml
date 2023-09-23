@@ -2,16 +2,27 @@ services:
   frontend:
     image: streetfight-frontend
     environment:
-    - API_URL=http://backend:8000
+    - API_URL
     ports:
     - 80:80
     - 443:443
+    volumes:
+    - caddy_data:/data
+    - caddy_config:/config
   backend:
     image: streetfight-backend
     environment:
-    - DATABASE_URL=sqlite:///data.db
-    - MAKE_DEBUG_ENTRIES=true
-    - SECRET_KEY=123321
-    - WEBSITE_URL=http://houseabsolute.duckdns.org
+    - DATABASE_URL
+    - MAKE_DEBUG_ENTRIES
+    - SECRET_KEY
+    - WEBSITE_URL
+    - LOG_LEVEL
+    - LOG_OVERRIDES
+    - GUNICORN_WORKERS
+    - DEBUG
     volumes:
     - ~/streetfight:/app/logs
+
+volumes:
+  caddy_data:
+  caddy_config:
