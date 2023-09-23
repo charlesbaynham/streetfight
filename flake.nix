@@ -81,6 +81,20 @@
                 exec uvicorn backend.main:app --host 0.0.0.0
               '');
             };
+        
+        loadDocker = flake-utils.lib.mkApp
+            {
+              drv = (pkgs.writeShellScriptBin "script" ''
+                nix build .#dockerFrontend
+                export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+                docker tag $IMG_ID streetfight-frontend:latest
+
+                nix build .#dockerBackend
+                export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+                docker tag $IMG_ID streetfight-backend:latest
+              '');
+            };
+        
 
       in
       {
@@ -91,7 +105,8 @@
           };
 
         apps = {
-          frontend =frontendApp;
+          inherit loadDocker;
+          frontend = frontendApp;
           backend = backendApp;
         };
 

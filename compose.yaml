@@ -1,0 +1,11 @@
+services:
+  frontend:
+    container_name: streetfight-frontend
+    ports:
+      - "80:80"
+      - "443:443"
+  backend:
+    container_name: streetfight-backend
+      ports:
+        - "80:80"
+        - "443:443"
