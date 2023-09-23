@@ -50,6 +50,7 @@ def setup_logging():
     uvicorn_logger.propagate = True
 
     # Add a file handler
+    Path("./logs/").makedirs(exist_ok=True)
     rotating_handler = RotatingFileHandler(
         "./logs/backend.log", backupCount=10
     )
