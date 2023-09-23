@@ -16,22 +16,32 @@ jobs:
       run: |
         nix build .#dockerFrontend
         export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-        docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
-        docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:latest
-        docker push ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
-        docker push ghcr.io/charlesbaynham/streetfight-frontend:latest
+        docker tag $IMG_ID ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:$GITHUB_SHA
+        docker tag $IMG_ID ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:latest
 
-  build_backend:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v2
-    - name: Install Nix
-      uses: cachix/install-nix-action@v22
-    - name: Build backend docker image
+    - name: Push to registry
+      env:
+        DOCKER_USERNAME: ${{ secrets.GITHUB_ACTOR }}
+        DOCKER_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        nix build .#dockerBackend
-        export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
-        docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
-        docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:latest
-        docker push ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
-        docker push ghcr.io/charlesbaynham/streetfight-frontend:latest
+        echo "Logging into GitHub Container Registry"
+        echo $DOCKER_PASSWORD | docker login ghcr.io -u $DOCKER_USERNAME --password-stdin
+
+        echo "Pushing Docker image to GitHub Container Registry"
+        docker push ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:$GITHUB_SHA
+        docker push ghcr.io/$GITHUB_REPOSITORY/streetfight-frontend:latest
+
+  # build_backend:
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #   - uses: actions/checkout@v2
+  #   - name: Install Nix
+  #     uses: cachix/install-nix-action@v22
+  #   - name: Build backend docker image
+  #     run: |
+  #       nix build .#dockerBackend
+  #       export IMG_ID=$(docker load -i result | sed -nr 's/^Loaded image: (.*)$/\1/p' | xargs -I{} docker image ls "{}" --format="{{.ID}}")
+  #       docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
+  #       docker tag $IMG_ID ghcr.io/charlesbaynham/streetfight-frontend:latest
+  #       docker push ghcr.io/charlesbaynham/streetfight-frontend:$GITHUB_SHA
+  #       docker push ghcr.io/charlesbaynham/streetfight-frontend:latest
