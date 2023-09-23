@@ -11,7 +11,7 @@ from PIL import ImageDraw
 
 logger = logging.getLogger(__name__)
 
-IMAGE_OUTPUT_DIR = Path(__file__, "../../logs/images").resolve()
+IMAGE_OUTPUT_DIR = Path("./logs/images").resolve()
 
 
 def save_image(base64_image: str, name: str):

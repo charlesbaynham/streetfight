@@ -140,6 +140,8 @@
             created = "now";
             config = {
               Cmd = [ backendApp.program ];
+              WorkingDir = "/data";
+              Volumes = { "/data" = { }; };
             };
           };
         };

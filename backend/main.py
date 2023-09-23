@@ -51,7 +51,7 @@ def setup_logging():
 
     # Add a file handler
     rotating_handler = RotatingFileHandler(
-        Path(__file__) / "../../logs/backend.log", backupCount=10
+        "./logs/backend.log", backupCount=10
     )
 
     # Configure the format for log messages
