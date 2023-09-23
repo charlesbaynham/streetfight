@@ -3,22 +3,24 @@
 # 	https_port 443
 # }
 
-http://rpi1.lan {
-	# Templates give static sites some dynamic features
-	# templates
+localhost {
+	encode gzip
 
-	# Compress responses according to Accept-Encoding headers
-	# encode gzip zstd
+	handle /api/* {
+		reverse_proxy {$API_URL}
+	}
 
-	# Make HTML file extension optional
-	# try_files {path}.html {path}
+	handle {
+		root * result
 
-	# Send API requests to backend
-	reverse_proxy /api/* {$API_URL}
+		# Templates give static sites some dynamic features
+		# templates
 
-	# Serve everything else from the file system
-	root * result
-	# Redirect all paths to index.html
-	try_files {path} /index.html
-	file_server
+		# Compress responses according to Accept-Encoding headers
+		# encode gzip zstd
+
+		# Make HTML file extension optional
+		try_files {path} /index.html
+		file_server
+	}
 }

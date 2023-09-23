@@ -92,7 +92,7 @@
                 exec python -m uvicorn backend.main:app --host 0.0.0.0
               '');
             };
-        
+
         loadDocker = flake-utils.lib.mkApp
             {
               drv = (pkgs.writeShellScriptBin "script" ''
@@ -105,7 +105,7 @@
                 docker tag $IMG_ID streetfight-backend:latest
               '');
             };
-        
+
 
       in
       {
@@ -117,6 +117,7 @@
 
         apps = {
           inherit loadDocker;
+          default = loadDocker;
           frontend = frontendApp;
           backend = backendApp;
         };
