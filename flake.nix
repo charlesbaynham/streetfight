@@ -40,9 +40,17 @@
           npmDepsHash = "sha256-giQlRyvKQHlahSoBpJyLftuWZ+8k/REjYIPWR6riycw=";
           installPhase = ''
             mkdir $out
+            cp -a build/. $out
+          '';
+        };
+
+        frontendBuildWithCaddy = pkgs.mkDerivation {
+          name = "streetfight-with-caddy";
+          installPhase = ''
+            mkdir $out
             mkdir $out/result
             cp "${./Caddyfile}" $out/Caddyfile
-            cp -a build/. $out/result
+            cp -a ${frontendBuild}/. $out/result
           '';
         };
 
@@ -56,7 +64,7 @@
                 {
                   drv = (pkgs.writeShellScriptBin "script" ''
                     export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
-                    cd ${frontendBuild}
+                    cd ${frontendBuildWithCaddy}
 
                     exec caddy run
                   '');
@@ -88,10 +96,15 @@
 
         packages = rec {
           default = frontendBuild;
+          frontend = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildImage {
             name = "streetfight-frontend";
             config = {
               Cmd = [ frontendApp.program ];
+              ExposedPorts = {
+                  "8080/tcp" = {};
+                  "4443/tcp" = {};
+              };
             };
           };
           dockerBackend = pkgs.dockerTools.buildImage {
