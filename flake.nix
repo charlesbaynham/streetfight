@@ -6,9 +6,8 @@
     flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
-        reqs = with pkgs; [
-          pkgs.nodejs
-          (pkgs.python3.withPackages (ps: with ps; [
+
+        pythonReqs = with pkgs.python3Packages; [
             pip
 
             # Runtime
@@ -27,11 +26,21 @@
             # selenium
             # geckodriver-autoinstaller
             requests
-          ]))
+          ];
+
+        reqs = with pkgs; [
+          pkgs.nodejs
+          (pkgs.python3.withPackages (ps: pythonReqs))
           pkgs.pre-commit
           pkgs.black
           pkgs.caddy
         ];
+
+        backendPackage = pkgs.python3Packages.buildPythonPackage rec {
+          name = "backend";
+          src = ./backend;
+          propagatedBuildInputs = [ pythonReqs ];
+        };
 
         frontendBuild = pkgs.buildNpmPackage rec {
           pname = "streetfight";
@@ -67,7 +76,7 @@
                     export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
                     cd ${frontendBuildWithCaddy}
 
-                    exec caddy run
+                    exec caddy run --envfile .env
                   '');
                 }
             );
@@ -111,10 +120,11 @@
         };
 
         packages = {
-          inherit frontendBuild frontendBuildWithCaddy;
+          inherit backendPackage frontendBuild frontendBuildWithCaddy;
           default = frontendBuild;
-          dockerFrontend = pkgs.dockerTools.buildImage {
+          dockerFrontend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-frontend";
+            created = "now";
             config = {
               Cmd = [ frontendApp.program ];
               ExposedPorts = {
@@ -123,8 +133,14 @@
               };
             };
           };
-          dockerBackend = pkgs.dockerTools.buildImage {
+          dockerBackend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-backend";
+            created = "now";
+            copyToRoot = pkgs.buildEnv {
+              name = "backend";
+              paths = [ ./backend ];
+              pathsToLink = [ "/app/backend" ];
+            };
             config = {
               Cmd = [ backendApp.program ];
             };

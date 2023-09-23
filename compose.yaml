@@ -1,11 +1,12 @@
 services:
   frontend:
-    container_name: streetfight-frontend
+    image: streetfight-frontend
+    environment:
+      - API_URL=http://backend:8080
     ports:
       - "80:80"
       - "443:443"
   backend:
-    container_name: streetfight-backend
-      ports:
-        - "80:80"
-        - "443:443"
+    image: streetfight-backend
+    volumes:
+     - "~/streetfight:/app/logs"

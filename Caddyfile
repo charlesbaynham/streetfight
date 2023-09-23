@@ -14,7 +14,7 @@ http://rpi1.lan {
 	# try_files {path}.html {path}
 
 	# Send API requests to backend
-	reverse_proxy /api/* localhost:8000
+	reverse_proxy /api/* {$API_URL}
 
 	# Serve everything else from the file system
 	root * result
