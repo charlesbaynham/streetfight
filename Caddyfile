@@ -1,9 +1,9 @@
-{
-	http_port 8080
-	# https_port 4443
-}
+# {
+# 	http_port 80
+# 	https_port 443
+# }
 
-http://rpi1.lan:8080 {
+http://rpi1.lan {
 	# Templates give static sites some dynamic features
 	# templates
 

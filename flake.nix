@@ -103,8 +103,8 @@
             config = {
               Cmd = [ frontendApp.program ];
               ExposedPorts = {
-                  "8080/tcp" = {};
-                  "4443/tcp" = {};
+                  "80/tcp" = {};
+                  "443/tcp" = {};
               };
             };
           };
