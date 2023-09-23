@@ -2,8 +2,8 @@ name: Build images
 
 on:
   push:
-    # branches:
-    # - master
+    branches:
+    - master
 
 env:
   REGISTRY: ghcr.io
