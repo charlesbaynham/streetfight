@@ -24,7 +24,7 @@ services:
     - GUNICORN_WORKERS
     - DEBUG
     volumes:
-    - ./logs:/app/logs
+    - ./logs:/data/logs
 
 volumes:
   caddy_data:
