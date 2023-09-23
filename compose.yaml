@@ -21,7 +21,7 @@ services:
     - GUNICORN_WORKERS
     - DEBUG
     volumes:
-    - ~/streetfight:/app/logs
+    - ./logs:/app/logs
 
 volumes:
   caddy_data:
