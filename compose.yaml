@@ -2,13 +2,13 @@ services:
   frontend:
     image: streetfight-frontend
     environment:
-      - API_URL=http://backend:8080
+    - API_URL=http://backend:8000
     ports:
-      - "80:80"
-      - "443:443"
+    - 80:80
+    - 443:443
   backend:
     image: streetfight-backend
     environment:
-      - DATABASE_URL=sqlite:///data.db
+    - DATABASE_URL=sqlite:///data.db
     volumes:
-     - "~/streetfight:/app/logs"
+    - ~/streetfight:/app/logs
