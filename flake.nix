@@ -81,13 +81,15 @@
                 }
             );
 
-        backendApp = flake-utils.lib.mkApp
+        backendApp = let
+          python = pkgs.python3.withPackages (ps: pythonReqs ++ [backendPackage]);
+        in flake-utils.lib.mkApp
             {
               drv = (pkgs.writeShellScriptBin "script" ''
-                export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
+                export PATH=${pkgs.lib.makeBinPath [ python ]}:$PATH
 
                 python -m backend.reset_db && true
-                exec uvicorn backend.main:app --host 0.0.0.0
+                exec python -m uvicorn backend.main:app --host 0.0.0.0
               '');
             };
         
@@ -136,11 +138,6 @@
           dockerBackend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-backend";
             created = "now";
-            copyToRoot = pkgs.buildEnv {
-              name = "backend";
-              paths = [ ./backend ];
-              pathsToLink = [ "/app/backend" ];
-            };
             config = {
               Cmd = [ backendApp.program ];
             };
