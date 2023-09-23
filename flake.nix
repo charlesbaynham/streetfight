@@ -76,7 +76,7 @@
                     export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
                     cd ${frontendBuildWithCaddy}
 
-                    exec caddy run --envfile .env
+                    exec caddy run
                   '');
                 }
             );
