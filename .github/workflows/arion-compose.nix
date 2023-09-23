@@ -6,10 +6,10 @@
     webserver = {
       image.enableRecommendedContents = true;
       service.useHostStore = true;
-      # service.command = [ "sh" "-c" ''
-      #             cd "$$CADDY_ROOT"
-      #             ${pkgs.python3}/bin/python -m http.server
-      #           '' ];
+      service.command = [ "sh" "-c" ''
+                  cd "$$CADDY_ROOT"
+                  ${pkgs.caddy} run
+                '' ];
       service.ports = [
         "80:80"
         "443:443"
