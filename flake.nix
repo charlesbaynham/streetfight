@@ -46,28 +46,7 @@
           '';
         };
 
-      in
-      {
-        devShell =
-          pkgs.mkShell {
-            name = "devShell";
-            buildInputs = reqs;
-          };
-
-        packages = rec
-        {
-          default = frontendBuild;
-          dockerTest = pkgs.dockerTools.buildImage {
-            name = "hello-docker";
-            config = {
-              Cmd = [ "${pkgsLinux.hello}/bin/hello" ];
-            };
-          };
-        };
-
-        apps = rec {
-          frontend =
-            let
+        frontendApp = let
               inputs = [
                 pkgs.caddy
               ];
@@ -79,14 +58,12 @@
                     export PATH=${pkgs.lib.makeBinPath inputs}:$PATH
                     cd ${frontendBuild}
 
-                    ls -la
-                    ls -la result
-
                     exec caddy run
                   '');
                 }
             );
-          backend = flake-utils.lib.mkApp
+        
+        backendApp = flake-utils.lib.mkApp
             {
               drv = (pkgs.writeShellScriptBin "script" ''
                 export PATH=${pkgs.lib.makeBinPath reqs}:$PATH
@@ -95,6 +72,34 @@
                 exec uvicorn backend.main:app --host 0.0.0.0
               '');
             };
+
+      in
+      {
+        devShell =
+          pkgs.mkShell {
+            name = "devShell";
+            buildInputs = reqs;
+          };
+
+        apps = {
+          frontend =frontendApp;
+          backend = backendApp;
+        };
+
+        packages = rec {
+          default = frontendBuild;
+          dockerFrontend = pkgs.dockerTools.buildImage {
+            name = "streetfight-frontend";
+            config = {
+              Cmd = [ frontendApp.program ];
+            };
+          };
+          dockerBackend = pkgs.dockerTools.buildImage {
+            name = "streetfight-backend";
+            config = {
+              Cmd = [ backendApp.program ];
+            };
+          };
         };
       }
     );
