@@ -84,6 +84,8 @@
 
       in
       {
+        inherit pkgs;
+
         devShell =
           pkgs.mkShell {
             name = "devShell";
