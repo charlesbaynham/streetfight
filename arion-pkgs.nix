@@ -1,1 +1,4 @@
-import <nixpkgs> { system = "x86_64-linux"; }
+let
+  flake = (builtins.getFlake (toString ./.)).pkgs;
+in
+  flake.pkgs
