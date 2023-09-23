@@ -57,6 +57,12 @@
         packages = rec
         {
           default = frontendBuild;
+          dockerTest = pkgs.dockerTools.buildImage {
+            name = "hello-docker";
+            config = {
+              Cmd = [ "${pkgsLinux.hello}/bin/hello" ];
+            };
+          };
         };
 
         apps = rec {
