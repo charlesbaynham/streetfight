@@ -61,7 +61,7 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
 @click.option("--x", default=4, help="Grid size - width")
 @click.option("--y", default=2, help="Grid size - height")
 @click.option(
-    "--num",
+    "-n/--num",
     default=1,
     help="If relevant for this item, the number that should be awarded per QR scan",
 )
