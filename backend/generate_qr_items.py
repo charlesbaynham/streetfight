@@ -5,6 +5,8 @@ import qrcode
 from PIL import Image
 from PIL import ImageDraw
 
+from .admin_interface import AdminInterface
+
 
 OUTPUT_PATH = Path(__file__, "../../logs/test.png").resolve()
 
@@ -50,7 +52,8 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
 
 
 if __name__ == "__main__":
-    import random
+    x = 4
+    y = 2
 
-    qr_data = (random.randbytes(400) for _ in range(6 * 3))
-    make_qr_grid(qr_data, 6, 3)
+    qr_data = (AdminInterface().make_new_item("ammo", {"num": 1}) for _ in range(x * y))
+    make_qr_grid(qr_data, x, y)
