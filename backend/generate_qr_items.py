@@ -1,5 +1,5 @@
-import random
 from pathlib import Path
+from typing import Iterable
 
 import qrcode
 from PIL import Image
@@ -13,7 +13,7 @@ A4_HEIGHT = 2480
 A4_WIDTH = 3508
 
 
-def make_qr_grid(num_x=4, num_y=2):
+def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
     # Create an eighth-sized image
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
@@ -32,7 +32,7 @@ def make_qr_grid(num_x=4, num_y=2):
 
         for i in range(num_x * num_y):
             # Generate a random QR code
-            qr = qrcode.make(random.randbytes(400))
+            qr = qrcode.make(next(qr_data))
             qr_size = int(0.75 * min(box_width, box_height))
             qr = qr.resize((qr_size, qr_size))
 
@@ -50,4 +50,7 @@ def make_qr_grid(num_x=4, num_y=2):
 
 
 if __name__ == "__main__":
-    make_qr_grid(6, 3)
+    import random
+
+    qr_data = (random.randbytes(400) for _ in range(6 * 3))
+    make_qr_grid(qr_data, 6, 3)
