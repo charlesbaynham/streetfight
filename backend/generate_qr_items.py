@@ -55,11 +55,12 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
 @click.command()
 @click.option(
     "--type",
-    prompt="Item type:",
+    "-t",
+    prompt="Item type",
     help='Item type to generate. Should be "ammo","medpack" or "armour".',
 )
-@click.option("--x", default=4, help="Grid size - width")
-@click.option("--y", default=2, help="Grid size - height")
+@click.option("-x", default=4, help="Grid size - width")
+@click.option("-y", default=2, help="Grid size - height")
 @click.option(
     "--num",
     "-n",
