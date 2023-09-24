@@ -1,4 +1,5 @@
 services:
+
   frontend:
     image: streetfight-frontend
     environment:
@@ -12,6 +13,7 @@ services:
     volumes:
     - caddy_data:/data
     - caddy_config:/config
+
   backend:
     image: streetfight-backend
     environment:
@@ -25,6 +27,14 @@ services:
     - DEBUG
     volumes:
     - ./logs:/data/logs
+
+  duckdns:
+    image: lscr.io/linuxserver/duckdns
+    environment:
+    - TZ=Europe/London
+    - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}
+    - TOKEN=${DUCKDNS_KEY}
+
 
 volumes:
   caddy_data:
