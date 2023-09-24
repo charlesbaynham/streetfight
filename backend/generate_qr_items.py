@@ -1,5 +1,7 @@
+import logging
 from pathlib import Path
 from typing import Iterable
+from typing import Optional
 
 import click
 import qrcode
@@ -8,15 +10,14 @@ from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
 
-
-OUTPUT_PATH = Path(__file__, "../../logs/test.png").resolve()
+logger = logging.getLogger(__name__)
 
 # A4 dimensions in pixels (approximately)
 A4_HEIGHT = 2480
 A4_WIDTH = 3508
 
 
-def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
+def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
     # Create an eighth-sized image
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
@@ -49,7 +50,7 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
             im.paste(qr, qr_offset)
 
         # show
-        im.save(OUTPUT_PATH, "PNG")
+        im.save(output_file_path, "PNG")
 
 
 @click.command()
@@ -68,18 +69,46 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
     default=1,
     help="If relevant for this item, the number that should be awarded per QR scan",
 )
-def generate(
-    type: str,
-    x: int,
-    y: int,
-    num: int,
-):
+@click.option(
+    "--outdir",
+    "-o",
+    type=click.Path(
+        exists=True, file_okay=False, dir_okay=True, writable=True, resolve_path=True
+    ),
+    default=".",
+    help="Output path",
+)
+@click.option(
+    "--outfile",
+    type=click.Path(file_okay=True, dir_okay=False, writable=True, resolve_path=True),
+    default=None,
+    help=(
+        "Normally output files will have random variations in their name. "
+        "Pass this parameter to choose the name. "
+        "Existing files will be overwritten."
+    ),
+)
+def generate(type: str, x: int, y: int, num: int, outdir: str, outfile: Optional[str]):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
     """
 
+    def generate_random_string(length):
+        import string
+        import random
+
+        characters = string.ascii_letters + string.digits
+        return "".join(random.choice(characters) for _ in range(length))
+
+    if not outfile:
+        rand_chars = generate_random_string(6)
+        filename = f"qrcodes_{rand_chars}_{type}_{num}.png"
+        outfile = Path(outdir, filename)
+
+    logger.debug("Outputting to %s", outfile)
+
     qr_data = (AdminInterface().make_new_item(type, {"num": num}) for _ in range(x * y))
-    make_qr_grid(qr_data, x, y)
+    make_qr_grid(qr_data, outfile, x, y)
 
 
 if __name__ == "__main__":
