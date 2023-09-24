@@ -51,9 +51,7 @@ def setup_logging():
 
     # Add a file handler
     Path("./logs/").mkdir(exist_ok=True)
-    rotating_handler = RotatingFileHandler(
-        "./logs/backend.log", backupCount=10
-    )
+    rotating_handler = RotatingFileHandler("./logs/backend.log", backupCount=10)
 
     # Configure the format for log messages
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
