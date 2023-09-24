@@ -16,5 +16,5 @@ jobs:
       run: nix develop -c npm install
     - name: Test with pytest
       run: |
-        cp .env.example .env
+        cp .env.dev .env
         nix develop -c pytest

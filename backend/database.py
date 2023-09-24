@@ -46,7 +46,7 @@ def load():
     if not db_url:
         raise ValueError(
             "Env var DATABASE_URL not set. If you are running for "
-            "development, copy the .env.example file to .env"
+            "development, copy the .env.dev file to .env"
         )
 
     global engine
