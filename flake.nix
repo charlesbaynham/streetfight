@@ -13,6 +13,7 @@
           # Runtime
           python-dotenv
           qrcode
+          click
           sqlalchemy
           pillow
           psycopg2

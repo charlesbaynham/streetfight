@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Iterable
 
+import click
 import qrcode
 from PIL import Image
 from PIL import ImageDraw
@@ -51,9 +52,27 @@ def make_qr_grid(qr_data: Iterable, num_x=4, num_y=2):
         im.save(OUTPUT_PATH, "PNG")
 
 
-if __name__ == "__main__":
-    x = 4
-    y = 2
+@click.command()
+@click.option(
+    "--type",
+    prompt="Item type:",
+    help='Item type to generate. Should be "ammo","medpack" or "armour".',
+)
+@click.option("--x", default=4, help="Grid size - width")
+@click.option("--y", default=2, help="Grid size - height")
+@click.option(
+    "--num",
+    default=1,
+    help="If relevant for this item, the number that should be awarded per QR scan",
+)
+def generate(type: str, x: int, y: int, num: int):
+    """
+    Generates an A4 grid of QR codes that can be scanned to collect an item
+    """
 
-    qr_data = (AdminInterface().make_new_item("ammo", {"num": 1}) for _ in range(x * y))
+    qr_data = (AdminInterface().make_new_item(type, {"num": num}) for _ in range(x * y))
     make_qr_grid(qr_data, x, y)
+
+
+if __name__ == "__main__":
+    generate()
