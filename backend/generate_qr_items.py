@@ -1,26 +1,53 @@
-import sys
+import random
+from pathlib import Path
 
 import qrcode
 from PIL import Image
 from PIL import ImageDraw
 
 
+OUTPUT_PATH = Path(__file__, "../../logs/test.png").resolve()
+
 # A4 dimensions in pixels (approximately)
-a4_width = 2480
-a4_height = 3508
-
-# Create an eighth-sized image
-image_width = a4_width // 4
-image_height = a4_height // 2
-img = Image.new("RGB", (image_width, image_height), "white")
-draw = ImageDraw.Draw(img)
+A4_HEIGHT = 2480
+A4_WIDTH = 3508
 
 
-with Image.open("qr_grid.png") as im:
+def make_qr_grid(num_x=4, num_y=2):
+    # Create an eighth-sized image
+    box_width = A4_WIDTH // num_x
+    box_height = A4_HEIGHT // num_y
 
-    draw = ImageDraw.Draw(im)
-    draw.line((0, 0) + im.size, fill=128)
-    draw.line((0, im.size[1], im.size[0], 0), fill=128)
+    with Image.new("RGB", (A4_WIDTH, A4_HEIGHT), "white") as im:
 
-    # write to stdout
-    im.save(sys.stdout, "PNG")
+        draw = ImageDraw.Draw(im)
+
+        for i in range(1, num_y):
+            draw.line(
+                (0, i * A4_HEIGHT // num_y) + (A4_WIDTH, i * A4_HEIGHT // num_y),
+                fill=128,
+            )
+        for i in range(1, num_x):
+            draw.line((box_width * i, 0, box_width * i, A4_HEIGHT), fill=128)
+
+        for i in range(num_x * num_y):
+            # Generate a random QR code
+            qr = qrcode.make(random.randbytes(400))
+            qr_size = int(0.75 * min(box_width, box_height))
+            qr = qr.resize((qr_size, qr_size))
+
+            box_offset = ((i % num_x) * box_width, (i // num_x) * box_height)
+
+            x_offset = box_width // 2 - qr_size // 2
+            y_offset = box_height // 2 - qr_size // 2
+            qr_offset_sz = min(x_offset, y_offset)
+            qr_offset = (box_offset[0] + qr_offset_sz, box_offset[1] + qr_offset_sz)
+
+            im.paste(qr, qr_offset)
+
+        # show
+        im.save(OUTPUT_PATH, "PNG")
+
+
+if __name__ == "__main__":
+    make_qr_grid(6, 3)
