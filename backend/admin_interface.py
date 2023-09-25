@@ -136,8 +136,18 @@ class AdminInterface:
 
         return num_shots, shot_models
 
-    def kill_user(self, user_id):
-        UserInterface(user_id).kill()
+    def kill_user(self, from_user_id, to_user_id):
+        ui = UserInterface(to_user_id)
+
+        u_from = self._get_user_orm(from_user_id)
+        u_to = self._get_user_orm(to_user_id)
+
+        ui.kill()
+
+        if u_to.hit_points > 0:
+            ui.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
+        else:
+            ui.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
 
     def award_user_HP(self, user_id, num=1):
         ui = UserInterface(user_id)

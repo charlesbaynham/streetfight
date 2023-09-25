@@ -29,7 +29,7 @@ export default function ShotQueue() {
 
     const killUser = useCallback(
         (user_id) => {
-            sendAPIRequest("admin_kill_user", { user_id: user_id }, "POST")
+            sendAPIRequest("admin_shot_hit_user", { user_id: user_id }, "POST")
                 .then(_ => {
                     console.log(`Killed user ${user_id}`)
                 });

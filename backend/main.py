@@ -234,9 +234,9 @@ async def admin_get_shots(limit=5):
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
-@router.post("/admin_kill_user")
-async def admin_kill_user(user_id):
-    AdminInterface().kill_user(user_id)
+@router.post("/admin_shot_hit_user")
+async def admin_shot_hit_user(from_user_id, to_user_id):
+    AdminInterface().kill_user(from_user_id, to_user_id)
 
 
 @router.post("/admin_give_hp")
