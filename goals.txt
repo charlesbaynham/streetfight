@@ -2,17 +2,45 @@ Goals
 -----
 
 - [ ] Polish:
-  - [ ] Bulk generation of QR codes
   - [ ] Add white flash on QR scan and maybe remove vibration
   - [ ] Add rejection noise for taken QR codes (with a timeout (?) to prevent immediate rejection after scanning. or stop resending the same QR code repeatedly)
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
+    - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
   - [ ] Improve admin kill interface
+  - [ ] Flash the torch on shots
+  - [ ] LOADS more items. We need:
+    - [ ] A gun that hits for 2
+    - [ ] A gun that fires every second
+    - [ ] A gun that hits for 3!
+  - [ ] Armour should act like armour, i.e. doesn't stack
+  - [ ] Need write-up explaining the rules
+    - [ ] Ideally this should be the team sheet which includes the QR code to sign up (useful for testing the app)
+  - [ ] Collections:
+    - Level 3 armour and the best gun only come from crates.
+    - Level 1 armour is fairly common.
+    - Level 2 is rare but on lampposts
+    - Level 2 gun is mediumly rare on lampposts
+    - Quick-shoot gun is very rare and also in crates
+  - [ ] Pubs should give 2 bullets per team member when scanned by any team member
+  - [ ] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
+  - [ ] Location implementation:
+    - [ ] Map in corner with own Location
+    - [ ] Location reported to server regularly
+    - [ ] Locations displayed on admin page
+    - [ ] Hand-drawn map with pubs marked
+    - [ ] Circles displayed on map, triggered by admins
+    - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
+    - [ ] "Scanner" item which reveals other teams for x minutes
+
 Essential:
   - [x] Sort out HTTPS / production server
   - [ ] Add ticker messages for kills
 Bugs:
   - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
+
+Notes:
+  - We will have 4-6 people per team. We will decide the teams in advance
 
 
 
