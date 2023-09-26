@@ -1,10 +1,14 @@
+from typing import TYPE_CHECKING
+
 from .items import ItemModel
 from .model import ItemType
 from .model import UserModel
-from .user_interface import UserInterface
+
+if TYPE_CHECKING:
+    from .user_interface import UserInterface
 
 
-def _handle_ammo(user_interface: UserInterface, item: ItemModel):
+def _handle_ammo(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     if user_model.hit_points <= 0:
         raise RuntimeError("Cannot collect ammo, you are dead!")
@@ -14,7 +18,7 @@ def _handle_ammo(user_interface: UserInterface, item: ItemModel):
     )
 
 
-def _handle_armour(user_interface: UserInterface, item: ItemModel):
+def _handle_armour(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     current_HP = user_model.hit_points
 
@@ -27,7 +31,7 @@ def _handle_armour(user_interface: UserInterface, item: ItemModel):
     )
 
 
-def _handle_medpack(user_interface: UserInterface, item: ItemModel):
+def _handle_medpack(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     if user_model.hit_points > 0:
         raise RuntimeError("Medpacks can only be used on dead players")
@@ -42,5 +46,5 @@ _ACTIONS = {
 }
 
 
-def do_item_actions(user_interface: UserInterface, item: ItemModel):
+def do_item_actions(user_interface: "UserInterface", item: ItemModel):
     return _ACTIONS[item.itype](user_interface, item)
