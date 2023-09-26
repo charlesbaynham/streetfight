@@ -11,7 +11,8 @@ from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
-from .items import ItemModel
+from .item_actions import do_item_actions
+from .items import DecodedItem
 from .model import Game
 from .model import Item
 from .model import Shot
@@ -188,12 +189,12 @@ class UserInterface:
     def collect_item(self, encoded_item: str) -> None:
         """Add the scanned item into a user's inventory"""
 
-        item = ItemModel.from_base64(encoded_item)
+        item = DecodedItem.from_base64(encoded_item)
 
         item_validation_error = item.validate_signature()
         if item_validation_error:
             raise HTTPException(
-                402, f"The scanned item is invalid - error {item_validation_error}"
+                403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
         if self._get_item_from_database(item.id):
@@ -207,23 +208,10 @@ class UserInterface:
                 "Cannot collect item, you are not in a game. How did you even get here?",
             )
 
-        if item.itype == "armour":
-            if user.hit_points <= 0:
-                raise HTTPException(403, "Cannot collect armour, you are dead!")
-
-            self.award_HP(item.data["num"])
-        elif item.itype == "medpack":
-            if user.hit_points > 0:
-                raise HTTPException(403, "Medpacks can only be used on dead players")
-
-            self.award_HP(1 - user.hit_points)
-        elif item.itype == "ammo":
-            if user.hit_points <= 0:
-                raise HTTPException(403, "Cannot collect ammo, you are dead!")
-
-            self.award_ammo(item.data["num"])
-        else:
-            raise HTTPException(404, "Unknown item type")
+        try:
+            do_item_actions(self, item)
+        except RuntimeError as e:
+            raise HTTPException(403, str(e))
 
         self._session.add(
             Item(
@@ -234,13 +222,6 @@ class UserInterface:
                 game=user.team.game,
             )
         )
-
-        if item.itype == "medpack":
-            self.get_ticker().post_message(f"{user.name} was revived!")
-        else:
-            self.get_ticker().post_message(
-                f'{user.name} collected {item.data["num"]}x {item.itype}'
-            )
 
     async def generate_updates(self, timeout=None):
         """
