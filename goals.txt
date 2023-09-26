@@ -13,7 +13,6 @@ Goals
     - [ ] A gun that hits for 2
     - [ ] A gun that fires every second
     - [ ] A gun that hits for 3!
-  - [ ] Armour should act like armour, i.e. doesn't stack
   - [ ] Need write-up explaining the rules
     - [ ] Ideally this should be the team sheet which includes the QR code to sign up (useful for testing the app)
   - [ ] Collections:
@@ -23,7 +22,6 @@ Goals
     - Level 2 gun is mediumly rare on lampposts
     - Quick-shoot gun is very rare and also in crates
   - [ ] Pubs should give 2 bullets per team member when scanned by any team member
-  - [ ] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
   - [ ] Location implementation:
     - [ ] Map in corner with own Location
     - [ ] Location reported to server regularly
@@ -35,6 +33,8 @@ Goals
 
 Essential:
   - [x] Sort out HTTPS / production server
+  - [ ] Armour should act like armour, i.e. doesn't stack
+  - [ ] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
   - [ ] Add ticker messages for kills
 Bugs:
   - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
