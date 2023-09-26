@@ -35,6 +35,8 @@ Essential:
   - [x] Sort out HTTPS / production server
   - [ ] Armour should act like armour, i.e. doesn't stack
   - [ ] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
+
+Done but unchecked:
   - [ ] Add ticker messages for kills
 Bugs:
   - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
