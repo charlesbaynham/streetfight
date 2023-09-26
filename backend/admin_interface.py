@@ -136,7 +136,7 @@ class AdminInterface:
 
         return num_shots, shot_models
 
-    def kill_user(self, from_user_id, to_user_id):
+    def hit_user(self, from_user_id, to_user_id):
         ui = UserInterface(to_user_id)
 
         u_from = self._get_user_orm(from_user_id)
