@@ -29,8 +29,6 @@ function GetView({ userState }) {
   }
 
   const isAlive = userState ? (userState.hit_points > 0) : false;
-  const isInTeam = userState ? userState.team_id !== null : false;
-  const hasBullets = userState ? (userState.num_bullets > 0) : false;
 
   if (userState.name === null || !isGameRunning(userState)) {
     return <OnboardingView userState={userState} />;
@@ -54,7 +52,7 @@ function GetView({ userState }) {
     }
 
     {isAlive ?
-      <FireButton userHasAmmo={isInTeam && hasBullets} onClick={
+      <FireButton userState={userState} onClick={
         () => {
           setTriggerShot(triggerShot + 1)
         }

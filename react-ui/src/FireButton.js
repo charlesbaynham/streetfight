@@ -10,10 +10,16 @@ import fireButtonImg from './images/firebutton.svg';
 import fireButtonImgNoAmmo from './images/firebutton_no_ammo.svg';
 import fireButtonImgCooldown from './images/firebutton_cooldown.svg';
 
-const fireTimeout = 10;  // second
 
 
-export default function FireButton({ userHasAmmo, onClick }) {
+export default function FireButton({ userState, onClick }) {
+
+  const isInTeam = userState ? userState.team_id !== null : false;
+  const hasBullets = userState ? (userState.num_bullets > 0) : false;
+  const userHasAmmo = isInTeam && hasBullets;
+
+  const shotTimeout = user.shot_timeout;
+
   const [playBang] = useSound(bang);
   const [animationState, setAnimationState] = useState("hidden")
   const [onCooldown, setOnCooldown] = useState(false);
@@ -31,18 +37,22 @@ export default function FireButton({ userHasAmmo, onClick }) {
     },
   };
 
+  const fireTimeout = 10;  // second
+
   const fire = useCallback((e) => {
     console.log("Firing!")
 
-    playBang();
-    navigator.vibrate(200);
-    setAnimationState("visible")
-    setOnCooldown(true);
+    setTimeout(() => {
+      playBang();
+      navigator.vibrate(200);
+      setAnimationState("visible")
+      setOnCooldown(true);
+    }, 0);
 
     setTimeout(() => {
       setAnimationState("hidden")
       setOnCooldown(false)
-    }, 1000 * fireTimeout)
+    }, 1000 * shotTimeout)
 
     return onClick(e)
   }, [setAnimationState, setOnCooldown, playBang, onClick]);
