@@ -47,7 +47,7 @@ ITEM_TYPE_VALIDATORS = {
 }
 
 
-class ItemModel(pydantic.BaseModel):
+class DecodedItem(pydantic.BaseModel):
     id: UUID
     itype: ItemType
     data: Dict
@@ -141,9 +141,4 @@ class ItemModel(pydantic.BaseModel):
 
     @pydantic.validator("data")
     def parse_item_data(cls, v, values):
-        if "itype" not in values:
-            raise pydantic.ValidationError
-
-        item_type: ItemType = values["itype"]
-
-        return ITEM_TYPE_VALIDATORS[item_type](**v).dict()
+        return ITEM_TYPE_VALIDATORS[values["itype"]](**v).dict()
