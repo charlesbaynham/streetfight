@@ -27,11 +27,14 @@ export default function ShotQueue() {
         []
     );
 
-    const killUser = useCallback(
-        (user_id) => {
-            sendAPIRequest("admin_shot_hit_user", { user_id: user_id }, "POST")
+    const hitUser = useCallback(
+        (from_user_id, to_user_id) => {
+            sendAPIRequest("admin_shot_hit_user", {
+                from_user_id: from_user_id,
+                to_user_id: to_user_id
+            }, "POST")
                 .then(_ => {
-                    console.log(`Killed user ${user_id}`)
+                    console.log(`Hit user ${to_user_id} by ${from_user_id}`)
                 });
         },
         []
@@ -50,20 +53,6 @@ export default function ShotQueue() {
 
     useEffect(update, [update])
 
-    const list_of_user_lis = shot ? shot.game.teams.map((team, idx_team) => {
-        return team.users.map((user, idx_user) => (
-            <li key={idx_user ** 2 + idx_team ** 3}>
-                {user.name}
-                <button onClick={() => {
-                    killUser(user.id);
-                    dismissShot();
-                }}>Kill</button>
-            </li>
-        ));
-    }) : [];
-
-    console.log(list_of_user_lis);
-
     return (
         <>
             <h1>Next unchecked shot ({numShots} in queue):</h1>
@@ -77,13 +66,13 @@ export default function ShotQueue() {
                             <h3>{team.name}</h3>
                             <ul>
                                 {
-                                    team.users.map((user, idx_user) => (
-                                        <li key={idx_user ** 2 + idx_team ** 3}>
-                                            {user.name}
+                                    team.users.map((target_user, idx_target_user) => (
+                                        <li key={idx_target_user ** 2 + idx_team ** 3}>
+                                            {target_user.name}
                                             <button onClick={() => {
-                                                killUser(user.id);
+                                                hitUser(shot.user.id, target_user.id);
                                                 dismissShot();
-                                            }}>Kill</button>
+                                            }}>Hit</button>
                                         </li>
                                     ))
                                 }
