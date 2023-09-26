@@ -270,3 +270,11 @@ def test_user_collect_item_gives_message(api_user_id, api_client, team_factory):
     assert len(messages) == 1
 
     assert "ammo" in messages[0]
+
+
+def test_all_items_handled():
+    from backend.item_actions import _ACTIONS
+    from backend.model import ItemType
+
+    for itype in ItemType:
+        assert itype in _ACTIONS
