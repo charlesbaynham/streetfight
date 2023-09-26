@@ -47,7 +47,7 @@ ITEM_TYPE_VALIDATORS = {
 }
 
 
-class DecodedItem(pydantic.BaseModel):
+class ItemModel(pydantic.BaseModel):
     id: UUID
     itype: ItemType
     data: Dict
