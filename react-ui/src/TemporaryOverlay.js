@@ -27,13 +27,13 @@ function TemporaryOverlay({
     const [visible, setVisible] = useState(false);
 
     const [playBeep] = useSound(beep);
-    navigator.vibrate(200);
 
     useEffect(() => {
         async function f() {
             if (appear === true) {
                 console.log("Animating...")
                 playBeep();
+                navigator.vibrate(200);
                 setVisible(true);
                 await sleep(1000 * (time_to_appear + time_to_show));
                 setVisible(false);
