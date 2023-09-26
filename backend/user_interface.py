@@ -161,7 +161,7 @@ class UserInterface:
 
     @db_scoped
     def submit_shot(self, image_base64: str):
-        user = self.get_user()
+        user: User = self.get_user()
         team = user.team
 
         if not team:
@@ -177,7 +177,13 @@ class UserInterface:
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
-        shot_entry = Shot(user=user, team=team, game=game, image_base64=image_base64)
+        shot_entry = Shot(
+            user=user,
+            team=team,
+            game=game,
+            image_base64=image_base64,
+            shot_damage=user.shot_damage,
+        )
         self._session.add(shot_entry)
 
         user.num_bullets -= 1

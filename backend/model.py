@@ -84,6 +84,9 @@ class Shot(Base):
         "Team", lazy="joined", foreign_keys=team_id, back_populates="shots"
     )
 
+    # Required since users could pick up upgrades after taking this shot
+    shot_damage = Column(Integer, default=1)
+
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
 
@@ -258,6 +261,8 @@ class ShotModel(pydantic.BaseModel):
 
     user: UserModel
     game: GameModel
+
+    shot_damage: int
 
     class Config:
         orm_mode = True
