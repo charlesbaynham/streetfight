@@ -5,7 +5,7 @@ import pydantic
 import pytest
 from fastapi.exceptions import HTTPException
 
-from backend.items import DecodedItem
+from backend.items import ItemModel
 from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
@@ -42,17 +42,17 @@ SAMPLE_INVALID_DATA = {
 
 @pytest.fixture
 def valid_encoded_signed_armour():
-    return DecodedItem(**SAMPLE_SIGNED_ARMOUR_DATA).to_base64()
+    return ItemModel(**SAMPLE_SIGNED_ARMOUR_DATA).to_base64()
 
 
 @pytest.fixture
 def valid_encoded_ammo():
-    return DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+    return ItemModel(**SAMPLE_AMMO_DATA).sign().to_base64()
 
 
 @pytest.fixture
 def valid_encoded_medpack():
-    return DecodedItem(**SAMPLE_MEDPACK_DATA).sign().to_base64()
+    return ItemModel(**SAMPLE_MEDPACK_DATA).sign().to_base64()
 
 
 def test_valid_encoded_armour(valid_encoded_signed_armour):
@@ -60,7 +60,7 @@ def test_valid_encoded_armour(valid_encoded_signed_armour):
 
 
 def test_decoded_item_from_base64(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
 
     print(f"Encoded: {valid_encoded_signed_armour}")
     print(f"Decoded: {item.dict()}")
@@ -73,37 +73,37 @@ def test_decoded_item_from_base64(valid_encoded_signed_armour):
 
 
 def test_decoded_item_to_base64(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     reencoded_item = item.to_base64()
     assert reencoded_item == valid_encoded_signed_armour
 
 
 def test_valid_signature(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     assert item.validate_signature() is None
 
 
 def test_signature_changes(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     assert item.validate_signature() is None
     item.itype = "armour1"
     assert item.validate_signature() is not None
 
 
 def test_invalid_signature(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     item.sig = "invalid_signature"
     assert item.validate_signature() == "Signature mismatch"
 
 
 def test_no_signature(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     item.sig = None
     assert item.validate_signature() == "Item not signed"
 
 
 def test_can_sign(valid_encoded_signed_armour):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     item.sig = None
     item.salt = None
 
@@ -117,7 +117,7 @@ def test_collect_item_valid(valid_encoded_signed_armour, user_in_team):
 
 
 def test_collect_item_invalid_signature(valid_encoded_signed_armour, user_in_team):
-    item = DecodedItem.from_base64(valid_encoded_signed_armour)
+    item = ItemModel.from_base64(valid_encoded_signed_armour)
     item.sig = "invalid_signature"
     invalid_encoded_item = item.to_base64()
 
@@ -133,17 +133,17 @@ def test_collect_item_duplicate_item(valid_encoded_signed_armour, user_in_team):
 
 
 def test_can_generate_valid_item():
-    assert DecodedItem(**SAMPLE_AMMO_DATA).sign().validate_signature() is None
+    assert ItemModel(**SAMPLE_AMMO_DATA).sign().validate_signature() is None
 
 
 def test_can_encode_valid_item():
-    DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+    ItemModel(**SAMPLE_AMMO_DATA).sign().to_base64()
 
 
 def test_can_encode_and_decode_valid_item():
-    encoded = DecodedItem(**SAMPLE_AMMO_DATA).sign().to_base64()
+    encoded = ItemModel(**SAMPLE_AMMO_DATA).sign().to_base64()
 
-    decoded = DecodedItem.from_base64(encoded)
+    decoded = ItemModel.from_base64(encoded)
 
     assert isinstance(encoded, str)
 
@@ -152,7 +152,7 @@ def test_can_encode_and_decode_valid_item():
 
 def test_cannot_construct_invalid_item():
     with pytest.raises(pydantic.ValidationError):
-        DecodedItem(**SAMPLE_INVALID_DATA)
+        ItemModel(**SAMPLE_INVALID_DATA)
 
 
 def test_collecting_armour_when_alive(valid_encoded_signed_armour, user_in_team):
@@ -194,7 +194,7 @@ def test_user_collect_item(api_client, team_factory):
 
     UserInterface(user_id).join_team(team_factory())
 
-    item = DecodedItem(**SAMPLE_AMMO_DATA)
+    item = ItemModel(**SAMPLE_AMMO_DATA)
     item.data = {"num": 10}
     item.sign()
     valid_encoded_ammo = item.to_base64()
@@ -231,7 +231,7 @@ def test_user_collect_url(api_client, team_factory, url):
 
     UserInterface(user_id).join_team(team_factory())
 
-    item = DecodedItem(**SAMPLE_AMMO_DATA)
+    item = ItemModel(**SAMPLE_AMMO_DATA)
     item.data = {"num": 10}
     item.sign()
     valid_encoded_ammo = item.to_base64()
@@ -254,7 +254,7 @@ def test_user_collect_url(api_client, team_factory, url):
 def test_user_collect_item_gives_message(api_user_id, api_client, team_factory):
     UserInterface(api_user_id).join_team(team_factory())
 
-    item = DecodedItem(**SAMPLE_AMMO_DATA)
+    item = ItemModel(**SAMPLE_AMMO_DATA)
     item.data = {"num": 10}
     item.sign()
     valid_encoded_ammo = item.to_base64()

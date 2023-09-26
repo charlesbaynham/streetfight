@@ -11,7 +11,7 @@ from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
-from .items import DecodedItem
+from .items import ItemModel
 from .model import Game
 from .model import Item
 from .model import Shot
@@ -188,7 +188,7 @@ class UserInterface:
     def collect_item(self, encoded_item: str) -> None:
         """Add the scanned item into a user's inventory"""
 
-        item = DecodedItem.from_base64(encoded_item)
+        item = ItemModel.from_base64(encoded_item)
 
         item_validation_error = item.validate_signature()
         if item_validation_error:

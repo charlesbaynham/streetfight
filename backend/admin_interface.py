@@ -11,7 +11,7 @@ from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .image_processing import draw_cross_on_image
-from .items import DecodedItem
+from .items import ItemModel
 from .model import Game
 from .model import GameModel
 from .model import ItemType
@@ -191,7 +191,7 @@ class AdminInterface:
                 "Invalid item type. Valid choices are %s" % [t.value for t in ItemType],
             )
 
-        item = DecodedItem(id=get_uuid(), itype=item_type, data=item_data)
+        item = ItemModel(id=get_uuid(), itype=item_type, data=item_data)
         item.sign()
 
         encoded_item = item.to_base64()
