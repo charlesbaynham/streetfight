@@ -17,6 +17,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Float
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
@@ -128,6 +129,8 @@ class User(Base):
 
     num_bullets = Column(Integer, nullable=False, default=0)
     hit_points = Column(Integer, nullable=False, default=1)
+    shot_timeout = Column(Float, nullable=False, default=6)
+    shot_damage = Column(Integer, nullable=False, default=1)
 
     shots = relationship("Shot", lazy=True, back_populates="user")
     items = relationship("Item", lazy=True, back_populates="user")
@@ -221,6 +224,8 @@ class UserModel(pydantic.BaseModel):
 
     num_bullets: int
     hit_points: int
+    shot_timeout: float
+    shot_damage: int
 
     # This is retrieved from the Game associated with the Team this user is in
     active: bool
