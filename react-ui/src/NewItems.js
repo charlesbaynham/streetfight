@@ -4,6 +4,16 @@ import QRCode from "react-qr-code";
 
 import { sendAPIRequest } from './utils';
 
+
+const item_params = {
+    "ammo": ["num"],
+    "armour": ["num"],
+    "medpack": [],
+    "weapon": ["damage", "timeout"]
+}
+// FIXME: use the above to populate admin config interface automatically and
+// also to paramatarise API calls
+
 function ItemDisplay({ item }) {
     const item_type = item["itype"];
     const item_data = item["item_data"];
