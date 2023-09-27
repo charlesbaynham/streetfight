@@ -63,18 +63,16 @@ export default function NewItems() {
     useEffect(updateItemQR, [updateItemQR]);
 
     return <>
+        <span>Type:</span>
 
-        <>
-            <span>Type:</span>
+        <select
+            value={selectedItemType}
+            onChange={(e) => { setSelectedItemType(e.target.value) }}
+        >
+            {Object.entries(ITEM_PARAMS).map((entry) => (<option value={entry[0]}>{entry[0]}</option>))}
+        </select>
 
-            <select
-                value={selectedItemType}
-                onChange={(e) => { setSelectedItemType(e.target.value) }}
-            >
-                {Object.entries(ITEM_PARAMS).map((entry) => (<option value={entry[0]}>{entry[0]}</option>))}
-            </select>
-
-            {/* <span>Num:</span>
+        {/* <span>Num:</span>
             <input
                 type="number"
                 value={selectedItemNum}
@@ -82,9 +80,8 @@ export default function NewItems() {
                 onChange={(e) => { setSelectedItemNum(e.target.value) }}
             /> */}
 
-            <button onClick={updateItemQR}>Re-generate</button>
+        <button onClick={updateItemQR}>Re-generate</button>
 
-        </>
         <br />
 
         {
@@ -92,8 +89,5 @@ export default function NewItems() {
                 <ItemDisplay item={item} />
                 : null
         }
-
-
-
     </>
 }
