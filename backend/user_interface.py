@@ -125,6 +125,12 @@ class UserInterface:
         self.get_user().name = new_name
 
     @db_scoped
+    def set_weapon_data(self, damage: int, fire_delay: float):
+        u = self.get_user()
+        u.shot_timeout = fire_delay
+        u.shot_damage = damage
+
+    @db_scoped
     def join_team(self, team_id: UUID):
         from .admin_interface import AdminInterface
 
