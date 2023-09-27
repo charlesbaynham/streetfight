@@ -32,6 +32,11 @@ SAMPLE_AMMO_DATA = {
     "itype": "ammo",
     "data": {"num": 1},
 }
+SAMPLE_WEAPON_DATA = {
+    "id": UUID("00000000-0000-0000-0000-000000000002"),
+    "itype": "weapon",
+    "data": {"damage": 1, "fire_delay": 4.5},
+}
 
 SAMPLE_INVALID_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
@@ -57,6 +62,10 @@ def valid_encoded_medpack():
 
 def test_valid_encoded_armour(valid_encoded_signed_armour):
     print(valid_encoded_signed_armour)
+
+
+def test_encoded_weapon():
+    ItemModel(**SAMPLE_WEAPON_DATA)
 
 
 def test_decoded_item_from_base64(valid_encoded_signed_armour):

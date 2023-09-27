@@ -40,10 +40,16 @@ class _ItemDataMedpack(pydantic.BaseModel):
     pass
 
 
+class _ItemDataWeapon(pydantic.BaseModel):
+    damage: int
+    fire_delay: float
+
+
 ITEM_TYPE_VALIDATORS = {
     ItemType.AMMO: _ItemDataAmmo,
     ItemType.ARMOUR: _ItemDataArmour,
     ItemType.MEDPACK: _ItemDataMedpack,
+    ItemType.WEAPON: _ItemDataWeapon,
 }
 
 
