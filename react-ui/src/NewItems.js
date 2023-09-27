@@ -5,7 +5,7 @@ import QRCode from "react-qr-code";
 import { sendAPIRequest } from './utils';
 
 
-const item_params = {
+const ITEM_PARAMS = {
     "ammo": ["num"],
     "armour": ["num"],
     "medpack": [],
@@ -39,27 +39,26 @@ export default function NewItems() {
     const [item, setItem] = useState(null);
 
     const [selectedItemType, setSelectedItemType] = useState("ammo");
-    const [selectedItemNum, setSelectedItemNum] = useState(1);
+    const [selectedItemData, setSelectedItemData] = useState({});
 
-    const numDisabled = selectedItemType === "medpack";
 
     const updateItemQR = useCallback(() => {
-        const item_data = numDisabled ? {} : {
-            num: selectedItemNum
-        };
+        // const item_data = numDisabled ? {} : {
+        //     num: selectedItemNum
+        // };
 
-        const callback = (d) => {
-            setItem(d)
-        };
+        // const callback = (d) => {
+        //     setItem(d)
+        // };
 
-        sendAPIRequest(
-            "admin_make_new_item",
-            { "item_type": selectedItemType },
-            'POST',
-            callback,
-            item_data
-        );
-    }, [setItem, selectedItemNum, selectedItemType, numDisabled]);
+        // sendAPIRequest(
+        //     "admin_make_new_item",
+        //     { "item_type": selectedItemType },
+        //     'POST',
+        //     callback,
+        //     item_data
+        // );
+    }, [setItem, selectedItemType]);
 
     useEffect(updateItemQR, [updateItemQR]);
 
@@ -72,18 +71,16 @@ export default function NewItems() {
                 value={selectedItemType}
                 onChange={(e) => { setSelectedItemType(e.target.value) }}
             >
-                <option value="ammo">Ammo</option>
-                <option value="medpack">Medpack</option>
-                <option value="armour">Armour</option>
+                {Object.entries(ITEM_PARAMS).map((entry) => (<option value={entry[0]}>{entry[0]}</option>))}
             </select>
 
-            <span>Num:</span>
+            {/* <span>Num:</span>
             <input
                 type="number"
                 value={selectedItemNum}
                 disabled={numDisabled}
                 onChange={(e) => { setSelectedItemNum(e.target.value) }}
-            />
+            /> */}
 
             <button onClick={updateItemQR}>Re-generate</button>
 

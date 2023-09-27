@@ -18,7 +18,7 @@ export default function FireButton({ userState, onClick }) {
   const hasBullets = userState ? (userState.num_bullets > 0) : false;
   const userHasAmmo = isInTeam && hasBullets;
 
-  const shotTimeout = user.shot_timeout;
+  const shotTimeout = userState.shot_timeout;
 
   const [playBang] = useSound(bang);
   const [animationState, setAnimationState] = useState("hidden")
