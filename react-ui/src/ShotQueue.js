@@ -28,13 +28,13 @@ export default function ShotQueue() {
     );
 
     const hitUser = useCallback(
-        (from_user_id, to_user_id) => {
+        (shot_id, target_user_id) => {
             sendAPIRequest("admin_shot_hit_user", {
-                from_user_id: from_user_id,
-                to_user_id: to_user_id
+                shot_id: shot_id,
+                target_user_id: target_user_id
             }, "POST")
                 .then(_ => {
-                    console.log(`Hit user ${to_user_id} by ${from_user_id}`)
+                    console.log(`Hit user ${target_user_id} from shot ${shot_id}`)
                 });
         },
         []
@@ -70,7 +70,7 @@ export default function ShotQueue() {
                                         <li key={idx_target_user ** 2 + idx_team ** 3}>
                                             {target_user.name}
                                             <button onClick={() => {
-                                                hitUser(shot.user.id, target_user.id);
+                                                hitUser(shot.id, target_user.id);
                                                 dismissShot();
                                             }}>Hit</button>
                                         </li>
