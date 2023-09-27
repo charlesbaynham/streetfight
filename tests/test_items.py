@@ -278,3 +278,11 @@ def test_all_items_handled():
 
     for itype in ItemType:
         assert itype in _ACTIONS
+
+
+def test_all_items_validated():
+    from backend.model import ItemType
+    from backend.items import ITEM_TYPE_VALIDATORS
+
+    for itype in ItemType:
+        assert itype in ITEM_TYPE_VALIDATORS

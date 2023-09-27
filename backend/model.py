@@ -166,6 +166,7 @@ class ItemType(str, enum.Enum):
     AMMO = "ammo"
     MEDPACK = "medpack"
     ARMOUR = "armour"
+    WEAPON = "weapon"
 
 
 class TickerEntry(Base):
