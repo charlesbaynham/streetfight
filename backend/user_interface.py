@@ -92,9 +92,9 @@ class UserInterface:
         return user
 
     @db_scoped
-    def kill(self) -> User:
-        "Take a hitpoint from the user"
-        self.get_user().hit_points -= 1
+    def kill(self, num=1) -> User:
+        "Take num hitpoints from the user"
+        self.get_user().hit_points -= num
 
     @db_scoped
     def award_HP(self, num=1) -> User:

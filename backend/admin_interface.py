@@ -49,6 +49,12 @@ class AdminInterface:
             raise HTTPException(404, f"Team {team_id} not found")
         return t
 
+    def _get_shot_orm(self, shot_id) -> Shot:
+        s = self.session.query(Shot).get(shot_id)
+        if not s:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+        return s
+
     def get_games(self) -> List[GameModel]:
         logger.info("AdminInterface - get_games")
         return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
@@ -136,13 +142,15 @@ class AdminInterface:
 
         return num_shots, shot_models
 
-    def hit_user(self, from_user_id, to_user_id):
-        ui = UserInterface(to_user_id)
+    def hit_user(self, shot_id, target_user_id):
+        shot = self._get_shot_orm(shot_id)
 
-        u_from = self._get_user_orm(from_user_id)
-        u_to = self._get_user_orm(to_user_id)
+        u_from = shot.user
+        u_to = self._get_user_orm(target_user_id)
 
-        ui.kill()
+        ui = UserInterface(target_user_id)
+
+        ui.kill(shot.shot_damage)
 
         if u_to.hit_points > 0:
             ui.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
