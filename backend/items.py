@@ -28,28 +28,28 @@ class _UUIDEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-class _ItemDataAmmo(pydantic.BaseModel):
+class ItemDataAmmo(pydantic.BaseModel):
     num: int
 
 
-class _ItemDataArmour(pydantic.BaseModel):
+class ItemDataArmour(pydantic.BaseModel):
     num: int
 
 
-class _ItemDataMedpack(pydantic.BaseModel):
+class ItemDataMedpack(pydantic.BaseModel):
     pass
 
 
-class _ItemDataWeapon(pydantic.BaseModel):
+class ItemDataWeapon(pydantic.BaseModel):
     damage: int
     fire_delay: float
 
 
 ITEM_TYPE_VALIDATORS = {
-    ItemType.AMMO: _ItemDataAmmo,
-    ItemType.ARMOUR: _ItemDataArmour,
-    ItemType.MEDPACK: _ItemDataMedpack,
-    ItemType.WEAPON: _ItemDataWeapon,
+    ItemType.AMMO: ItemDataAmmo,
+    ItemType.ARMOUR: ItemDataArmour,
+    ItemType.MEDPACK: ItemDataMedpack,
+    ItemType.WEAPON: ItemDataWeapon,
 }
 
 
