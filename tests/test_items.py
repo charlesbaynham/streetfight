@@ -22,7 +22,7 @@ SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
     "data": {"num": 1},
     "collected_only_once": True,
     "collected_as_team": False,
-    "sig": "1ffe1639435c5cb1e5280d3b56a768ef",
+    "sig": "db6a08d4acd56b636e532d7b1560f658",
     "salt": "test_salt",
 }
 
