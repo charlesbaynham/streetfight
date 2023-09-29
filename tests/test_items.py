@@ -20,6 +20,8 @@ SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
     "sig": "1ffe1639435c5cb1e5280d3b56a768ef",
     "salt": "test_salt",
 }
@@ -29,29 +31,39 @@ SAMPLE_MEDPACK_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "medpack",
     "data": {},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_AMMO_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "ammo",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 SAMPLE_WEAPON_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "weapon",
     "data": {"shot_damage": 3, "shot_timeout": 6.0},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_INVALID_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "random",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 

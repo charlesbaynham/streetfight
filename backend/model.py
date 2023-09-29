@@ -210,6 +210,9 @@ class Item(Base):
     data = Column(String)
     "Arbitary data for objects of this type. Might be used for special, per-item code"
 
+    collected_only_once = Column(Boolean, default=True, nullable=False)
+    collected_as_team = Column(Boolean, default=False, nullable=False)
+
     game_id = Column(UUIDType, ForeignKey("games.id"))
     game = relationship(
         "Game", lazy="joined", foreign_keys=game_id, back_populates="items"

@@ -57,6 +57,9 @@ class ItemModel(pydantic.BaseModel):
     id: UUID
     itype: ItemType
     data: Dict
+    collected_only_once: bool
+    collected_as_team: bool
+
     sig: Optional[str]
     salt: Optional[str]
 
