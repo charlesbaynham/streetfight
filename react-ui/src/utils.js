@@ -46,3 +46,16 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
             }
         });
 }
+
+export function getGunFromUser(user) {
+    if (user.shot_damage === 1 && user.shot_timeout === 6)
+        return "damage1";
+    else if (user.shot_damage === 2 && user.shot_timeout === 6)
+        return "damage2"
+    else if (user.shot_damage === 3 && user.shot_timeout === 6)
+        return "damage3"
+    else if (user.shot_damage === 1 && user.shot_timeout === 1)
+        return "fast1"
+    else
+        return null
+}

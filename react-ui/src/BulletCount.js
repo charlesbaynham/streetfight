@@ -11,10 +11,18 @@ import bullet from './images/bullet.svg';
 import armour from './images/helmet.svg';
 import cross from './images/cross.svg';
 import gun_11 from './images/gun_11.svg';
+import gun_16 from './images/gun_default.svg';
 import gun_26 from './images/gun_26.svg';
 import gun_36 from './images/gun_36.svg';
-import gun_default from './images/gun_default.svg';
+import { getGunFromUser } from './utils';
 
+
+const GUN_IMGS = {
+    "damage1": gun_16,
+    "damage2": gun_26,
+    "damage3": gun_36,
+    "fast1": gun_11,
+};
 
 const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
     <img src={image} alt="" key={i} style={{ height: "1.5em", verticalAlign: "middle" }} />
@@ -22,17 +30,17 @@ const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
 
 
 export default function BulletCount({ user }) {
+    const gun_type = getGunFromUser(user);
+
     const [previousUser, setPreviousUser] = useState(null);
 
     const [showBulletAnim, setShowBulletAnim] = useState(false);
     const [showArmourAnim, setShowArmourAnim] = useState(false);
     const [showMedpackAnim, setShowMedpackAnim] = useState(false);
 
-    const [showGun11, setShowGun11] = useState(false);
-    const [showGun26, setShowGun26] = useState(false);
-    const [showGun36, setShowGun36] = useState(false);
+    const [showGunPickup, setShowGunPickup] = useState(false);
 
-    const anyActive = showBulletAnim | showArmourAnim | showMedpackAnim | showGun11 | showGun26 | showGun36;
+    const anyActive = showBulletAnim | showArmourAnim | showMedpackAnim | showGunPickup;
 
     useEffect(() => {
         var timeoutHandle = null;
@@ -43,17 +51,13 @@ export default function BulletCount({ user }) {
             setShowMedpackAnim(user.hit_points === 1 && previousUser.hit_points === 0);
 
             const collectedGun = (user.shot_damage != previousUser.shot_damage) | (user.shot_timeout != previousUser.shot_timeout);
-            setShowGun11(collectedGun && user.shot_damage === 1 && user.shot_timeout === 1)
-            setShowGun26(collectedGun && user.shot_damage === 2 && user.shot_timeout === 6)
-            setShowGun36(collectedGun && user.shot_damage === 3 && user.shot_timeout === 6)
+            setShowGunPickup(collectedGun);
 
             timeoutHandle = setTimeout(() => {
                 setShowBulletAnim(false)
                 setShowArmourAnim(false)
                 setShowMedpackAnim(false)
-                setShowGun11(false)
-                setShowGun26(false)
-                setShowGun36(false)
+                setShowGunPickup(false)
             }, 3000)
         }
 
@@ -84,10 +88,7 @@ export default function BulletCount({ user }) {
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
-
-            <TemporaryOverlay img={gun_11} appear={showGun11} />
-            <TemporaryOverlay img={gun_26} appear={showGun26} />
-            <TemporaryOverlay img={gun_36} appear={showGun36} />
+            <TemporaryOverlay img={GUN_IMGS[gun_type]} appear={showGunPickup} />
 
             <CollectItemFromQueryParam enabled={
                 !anyActive
