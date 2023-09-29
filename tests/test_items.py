@@ -8,6 +8,8 @@ from fastapi.exceptions import HTTPException
 
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
+from backend.model import Item
+from backend.model import User
 from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
@@ -257,17 +259,17 @@ def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
 
-def test_user_collect_item(api_client, team_factory):
+def test_user_collect_item(api_client, team_factory, db_session):
     user_id = api_client.get(
         "/api/my_id",
     ).json()
 
     UserInterface(user_id).join_team(team_factory())
 
-    item = ItemModel(**SAMPLE_AMMO_DATA)
-    item.data = {"num": 10}
-    item.sign()
-    valid_encoded_ammo = item.to_base64()
+    item_model = ItemModel(**SAMPLE_AMMO_DATA)
+    item_model.data = {"num": 10}
+    item_model.sign()
+    valid_encoded_ammo = item_model.to_base64()
 
     assert UserInterface(user_id).get_user_model().num_bullets == 0
 
@@ -280,6 +282,12 @@ def test_user_collect_item(api_client, team_factory):
     assert r.ok
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
+
+    user = db_session.query(User).get(user_id)
+    item = db_session.query(Item).get(item_model.id)
+
+    assert user in item.users
+    assert item in user.items
 
 
 @pytest.mark.parametrize(
