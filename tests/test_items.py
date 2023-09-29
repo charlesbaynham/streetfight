@@ -6,6 +6,7 @@ import pydantic
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.items import ItemDataArmour
 from backend.items import ItemModel
 from backend.user_interface import UserInterface
 
@@ -208,6 +209,32 @@ def test_collecting_armour_doesnt_stack(user_in_team):
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
+
+
+def test_collecting_better_armour_works_and_worse_armour_fails(user_in_team):
+    armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+    UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 2
+
+    armour_lv2 = armour_lv1.copy()
+    armour_lv2.id = get_uuid()
+    armour_lv2.data = ItemDataArmour(num=2).dict()
+    armour_lv2.sign()
+
+    UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 3
+
+    armour_lv1_dup = armour_lv1.copy()
+    armour_lv1_dup.id = get_uuid()
+    armour_lv1_dup.data = ItemDataArmour(num=1).dict()
+    armour_lv1_dup.sign()
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(armour_lv1_dup.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 3
 
 
 def test_collecting_ammo_when_alive(valid_encoded_ammo, user_in_team):

@@ -29,6 +29,9 @@ def _handle_armour(user_interface: "UserInterface", item: ItemModel):
 
     _check_alive(user_model)
 
+    if current_HP >= 1 + item.data["num"]:
+        raise RuntimeError("You already have armour as good as this")
+
     user_interface.award_HP(item.data["num"] - current_HP + 1)
     user_interface.get_ticker().post_message(
         f"{user_model.name} collected a level {item.data['num']} armour"
