@@ -72,6 +72,8 @@ export default function BulletCount({ user }) {
                     make_n_images(user.hit_points - 1, armour) :
                     make_n_images(1, cross)
             }</p>
+            <p><img className={styles.weaponImg} src={getGunImgFromUser(user)} alt="" /></p>
+
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
