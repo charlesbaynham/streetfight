@@ -238,6 +238,26 @@ class UserInterface:
             )
         )
 
+    @db_scoped
+    def clear_unchecked_shots(self):
+        """
+        Mark all unchecked shots for this user as checked and refund all bullets
+        """
+
+        u = self.get_user()
+        unchecked_shots = (
+            self._session.query(Shot)
+            .filter_by(user_id=self.user_id, team_id=u.team_id, checked=False)
+            .all()
+        )
+
+        bullet_refunds = 0
+        for shot in unchecked_shots:
+            shot.checked = True
+            bullet_refunds += 1
+
+        self.award_ammo(bullet_refunds)
+
     async def generate_updates(self, timeout=None):
         """
         A generator that yields None every time an update is available for this
