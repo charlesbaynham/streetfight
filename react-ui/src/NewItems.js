@@ -11,8 +11,6 @@ const ITEM_PARAMS = {
     "medpack": [],
     "weapon": ["damage", "timeout"]
 }
-// FIXME: use the above to populate admin config interface automatically and
-// also to paramatarise API calls
 
 function ItemDisplay({ item }) {
     const item_type = item["itype"];
@@ -41,24 +39,30 @@ export default function NewItems() {
     const [selectedItemType, setSelectedItemType] = useState("ammo");
     const [selectedItemData, setSelectedItemData] = useState({});
 
-
     const updateItemQR = useCallback(() => {
-        // const item_data = numDisabled ? {} : {
-        //     num: selectedItemNum
-        // };
+        const postData = {};
 
-        // const callback = (d) => {
-        //     setItem(d)
-        // };
+        for (const data_name of ITEM_PARAMS[selectedItemType]) {
+            const key = selectedItemType + data_name;
+            if (!(key in selectedItemData)) {
+                setItem(null)
+                return
+            }
+            postData[data_name] = selectedItemData[key];
+        }
 
-        // sendAPIRequest(
-        //     "admin_make_new_item",
-        //     { "item_type": selectedItemType },
-        //     'POST',
-        //     callback,
-        //     item_data
-        // );
-    }, [setItem, selectedItemType]);
+        const callback = (d) => {
+            setItem(d)
+        };
+
+        sendAPIRequest(
+            "admin_make_new_item",
+            { "item_type": selectedItemType },
+            'POST',
+            callback,
+            postData
+        );
+    }, [setItem, selectedItemType, selectedItemData]);
 
     useEffect(updateItemQR, [updateItemQR]);
 
