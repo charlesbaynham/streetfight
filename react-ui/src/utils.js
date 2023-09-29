@@ -1,3 +1,8 @@
+import gun_11 from './images/gun_11.svg';
+import gun_16 from './images/gun_default.svg';
+import gun_26 from './images/gun_26.svg';
+import gun_36 from './images/gun_36.svg';
+
 
 export function makeAPIURL(endpoint, query_params = null) {
     const url = new URL(`/api/${endpoint}`, window.location.origin);
@@ -47,15 +52,27 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
         });
 }
 
-export function getGunFromUser(user) {
+export function getGunImgFromUser(user) {
+    let gun_name = null;
+
     if (user.shot_damage === 1 && user.shot_timeout === 6)
-        return "damage1";
+        gun_name = "damage1";
     else if (user.shot_damage === 2 && user.shot_timeout === 6)
-        return "damage2"
+        gun_name = "damage2";
     else if (user.shot_damage === 3 && user.shot_timeout === 6)
-        return "damage3"
+        gun_name = "damage3";
     else if (user.shot_damage === 1 && user.shot_timeout === 1)
-        return "fast1"
+        gun_name = "fast1";
     else
         return null
+
+
+    const GUN_IMGS = {
+        "damage1": gun_16,
+        "damage2": gun_26,
+        "damage3": gun_36,
+        "fast1": gun_11,
+    };
+
+    return GUN_IMGS[gun_name];
 }

@@ -10,19 +10,8 @@ import medkit from './images/medkit.svg';
 import bullet from './images/bullet.svg';
 import armour from './images/helmet.svg';
 import cross from './images/cross.svg';
-import gun_11 from './images/gun_11.svg';
-import gun_16 from './images/gun_default.svg';
-import gun_26 from './images/gun_26.svg';
-import gun_36 from './images/gun_36.svg';
-import { getGunFromUser } from './utils';
+import { getGunImgFromUser } from './utils';
 
-
-const GUN_IMGS = {
-    "damage1": gun_16,
-    "damage2": gun_26,
-    "damage3": gun_36,
-    "fast1": gun_11,
-};
 
 const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
     <img src={image} alt="" key={i} style={{ height: "1.5em", verticalAlign: "middle" }} />
@@ -30,8 +19,6 @@ const make_n_images = (n, image) => Array(n).fill().map((_, i) =>
 
 
 export default function BulletCount({ user }) {
-    const gun_type = getGunFromUser(user);
-
     const [previousUser, setPreviousUser] = useState(null);
 
     const [showBulletAnim, setShowBulletAnim] = useState(false);
@@ -88,7 +75,7 @@ export default function BulletCount({ user }) {
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
-            <TemporaryOverlay img={GUN_IMGS[gun_type]} appear={showGunPickup} />
+            <TemporaryOverlay img={getGunImgFromUser(user)} appear={showGunPickup} />
 
             <CollectItemFromQueryParam enabled={
                 !anyActive
