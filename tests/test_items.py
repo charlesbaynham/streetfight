@@ -1,5 +1,6 @@
 import os
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 import pydantic
 import pytest
@@ -35,7 +36,7 @@ SAMPLE_AMMO_DATA = {
 SAMPLE_WEAPON_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "weapon",
-    "data": {"damage": 1, "fire_delay": 4.5},
+    "data": {"damage": 3, "fire_delay": 6.0},
 }
 
 SAMPLE_INVALID_DATA = {
@@ -162,6 +163,18 @@ def test_can_encode_and_decode_valid_item():
 def test_cannot_construct_invalid_item():
     with pytest.raises(pydantic.ValidationError):
         ItemModel(**SAMPLE_INVALID_DATA)
+
+
+def test_cannot_collect_same_weapon_twice(user_in_team):
+    valid_weapon = ItemModel(**SAMPLE_WEAPON_DATA).sign()
+
+    UserInterface(user_in_team).collect_item(valid_weapon.to_base64())
+
+    # Change ID
+    valid_weapon.id = get_uuid()
+    valid_weapon.sign()
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_weapon.to_base64())
 
 
 def test_collecting_armour_when_alive(valid_encoded_signed_armour, user_in_team):

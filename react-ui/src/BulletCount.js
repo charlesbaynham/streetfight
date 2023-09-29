@@ -50,7 +50,7 @@ export default function BulletCount({ user }) {
             setShowArmourAnim(user.hit_points > previousUser.hit_points && previousUser.hit_points > 0);
             setShowMedpackAnim(user.hit_points === 1 && previousUser.hit_points === 0);
 
-            const collectedGun = (user.shot_damage != previousUser.shot_damage) | (user.shot_timeout != previousUser.shot_timeout);
+            const collectedGun = (user.shot_damage !== previousUser.shot_damage) || (user.shot_timeout !== previousUser.shot_timeout);
             setShowGunPickup(collectedGun);
 
             timeoutHandle = setTimeout(() => {
