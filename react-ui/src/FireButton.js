@@ -46,10 +46,10 @@ export default function FireButton({ userState, onClick }) {
     console.log("Firing!")
 
     setTimeout(() => {
+      setOnCooldown(true);
       playBang();
       navigator.vibrate(200);
       setAnimationState("visible")
-      setOnCooldown(true);
     }, 0);
 
     setTimeout(() => {
@@ -65,7 +65,7 @@ export default function FireButton({ userState, onClick }) {
     <>
       <button
         className={styles.fireButton}
-        disabled={!userHasAmmo}
+        disabled={!userHasAmmo | onCooldown}
         onClick={fire}
       >
         <img src={
