@@ -23,9 +23,7 @@ function ItemDisplay({ item }) {
         <br />
         Type: {item_type}
         <br />
-        {"num" in item_data ?
-            <>Num: {item_data.num}</>
-            : null}
+        <>item_data: {JSON.stringify(item_data)}</>
         <br />
         Code: {encoded_item}
         <br />
