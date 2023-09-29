@@ -215,7 +215,7 @@ class UserInterface:
         if self._get_item_from_database(item.id):
             raise HTTPException(403, "Item has already been collected")
 
-        user = self.get_user()
+        user: User = self.get_user()
 
         if user.team is None:
             raise HTTPException(
@@ -228,12 +228,11 @@ class UserInterface:
         except RuntimeError as e:
             raise HTTPException(403, str(e))
 
-        self._session.add(
+        user.items.append(
             Item(
                 id=item.id,
                 item_type=item.itype,
                 data=item.data_as_json(),
-                user=user,
                 game=user.team.game,
             )
         )
