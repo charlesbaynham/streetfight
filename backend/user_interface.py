@@ -191,11 +191,14 @@ class UserInterface:
             shot_damage=user.shot_damage,
         )
         self._session.add(shot_entry)
+        self._session.commit()
 
         user.num_bullets -= 1
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
+
+        return shot_entry.id
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
