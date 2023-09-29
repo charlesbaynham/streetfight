@@ -24,6 +24,8 @@ export default function FireButton({ userState, onClick }) {
   const [animationState, setAnimationState] = useState("hidden")
   const [onCooldown, setOnCooldown] = useState(false);
 
+  const fireTimeout = 10;  // second
+
   const circleVariants = {
     hidden: {
       strokeDasharray: "0 1000",
@@ -36,8 +38,6 @@ export default function FireButton({ userState, onClick }) {
       },
     },
   };
-
-  const fireTimeout = 10;  // second
 
   const fire = useCallback((e) => {
     console.log("Firing!")
