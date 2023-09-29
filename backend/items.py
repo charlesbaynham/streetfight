@@ -118,7 +118,14 @@ class ItemModel(pydantic.BaseModel):
         secret_key = os.environ["SECRET_KEY"]
 
         # Input password to be hashed
-        payload = str(self.id) + self.itype + self.data_as_json() + secret_key
+        payload = (
+            str(self.id)
+            + self.itype
+            + self.data_as_json()
+            + str(self.collected_only_once)
+            + str(self.collected_as_team)
+            + secret_key
+        )
 
         # Generate a random salt
         if not self.salt:
