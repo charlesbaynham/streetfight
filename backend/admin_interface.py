@@ -190,7 +190,13 @@ class AdminInterface:
         shot.checked = True
         self.session.commit()
 
-    def make_new_item(self, item_type: str, item_data: dict) -> str:
+    def make_new_item(
+        self,
+        item_type: str,
+        item_data: dict,
+        collected_only_once=True,
+        collected_as_team=False,
+    ) -> str:
         logger.info("make_new_item item_type=%s, item_data=%s", item_type, item_data)
         try:
             item_type = ItemType(item_type)
@@ -200,7 +206,13 @@ class AdminInterface:
                 "Invalid item type. Valid choices are %s" % [t.value for t in ItemType],
             )
 
-        item = ItemModel(id=get_uuid(), itype=item_type, data=item_data)
+        item = ItemModel(
+            id=get_uuid(),
+            itype=item_type,
+            data=item_data,
+            collected_only_once=collected_only_once,
+            collected_as_team=collected_as_team,
+        )
         item.sign()
 
         encoded_item = item.to_base64()
