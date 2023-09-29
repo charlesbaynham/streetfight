@@ -34,7 +34,7 @@ Goals
 
 Essential:
   - [x] Sort out HTTPS / production server
-  - [ ] Armour should act like armour, i.e. doesn't stack
+  - [x] Armour should act like armour, i.e. doesn't stack
   - [x] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
 
 Done but unchecked:

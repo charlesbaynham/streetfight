@@ -13,7 +13,7 @@ from backend.user_interface import UserInterface
 
 os.environ["SECRET_KEY"] = "test_secret_key"
 
-SAMPLE_SIGNED_ARMOUR_DATA = {
+SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
@@ -26,6 +26,12 @@ SAMPLE_MEDPACK_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "medpack",
     "data": {},
+}
+
+SAMPLE_ARMOUR_DATA = {
+    "id": UUID("00000000-0000-0000-0000-000000000002"),
+    "itype": "armour",
+    "data": {"num": 1},
 }
 
 SAMPLE_AMMO_DATA = {
@@ -47,8 +53,8 @@ SAMPLE_INVALID_DATA = {
 
 
 @pytest.fixture
-def valid_encoded_signed_armour():
-    return ItemModel(**SAMPLE_SIGNED_ARMOUR_DATA).to_base64()
+def valid_encoded_signed_lv1_armour():
+    return ItemModel(**SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA).to_base64()
 
 
 @pytest.fixture
@@ -61,59 +67,59 @@ def valid_encoded_medpack():
     return ItemModel(**SAMPLE_MEDPACK_DATA).sign().to_base64()
 
 
-def test_valid_encoded_armour(valid_encoded_signed_armour):
-    print(valid_encoded_signed_armour)
+def test_valid_encoded_armour(valid_encoded_signed_lv1_armour):
+    print(valid_encoded_signed_lv1_armour)
 
 
 def test_encoded_weapon():
     ItemModel(**SAMPLE_WEAPON_DATA)
 
 
-def test_decoded_item_from_base64(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_decoded_item_from_base64(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
 
-    print(f"Encoded: {valid_encoded_signed_armour}")
+    print(f"Encoded: {valid_encoded_signed_lv1_armour}")
     print(f"Decoded: {item.dict()}")
 
-    assert item.id == SAMPLE_SIGNED_ARMOUR_DATA["id"]
-    assert item.itype == SAMPLE_SIGNED_ARMOUR_DATA["itype"]
-    assert item.data == SAMPLE_SIGNED_ARMOUR_DATA["data"]
-    assert item.sig == SAMPLE_SIGNED_ARMOUR_DATA["sig"]
-    assert item.salt == SAMPLE_SIGNED_ARMOUR_DATA["salt"]
+    assert item.id == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["id"]
+    assert item.itype == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["itype"]
+    assert item.data == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["data"]
+    assert item.sig == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["sig"]
+    assert item.salt == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["salt"]
 
 
-def test_decoded_item_to_base64(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_decoded_item_to_base64(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     reencoded_item = item.to_base64()
-    assert reencoded_item == valid_encoded_signed_armour
+    assert reencoded_item == valid_encoded_signed_lv1_armour
 
 
-def test_valid_signature(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_valid_signature(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     assert item.validate_signature() is None
 
 
-def test_signature_changes(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_signature_changes(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     assert item.validate_signature() is None
     item.itype = "armour1"
     assert item.validate_signature() is not None
 
 
-def test_invalid_signature(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_invalid_signature(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     item.sig = "invalid_signature"
     assert item.validate_signature() == "Signature mismatch"
 
 
-def test_no_signature(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_no_signature(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     item.sig = None
     assert item.validate_signature() == "Item not signed"
 
 
-def test_can_sign(valid_encoded_signed_armour):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_can_sign(valid_encoded_signed_lv1_armour):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     item.sig = None
     item.salt = None
 
@@ -122,12 +128,12 @@ def test_can_sign(valid_encoded_signed_armour):
     assert item.validate_signature() == None
 
 
-def test_collect_item_valid(valid_encoded_signed_armour, user_in_team):
-    UserInterface(user_in_team).collect_item(valid_encoded_signed_armour)
+def test_collect_item_valid(valid_encoded_signed_lv1_armour, user_in_team):
+    UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
 
-def test_collect_item_invalid_signature(valid_encoded_signed_armour, user_in_team):
-    item = ItemModel.from_base64(valid_encoded_signed_armour)
+def test_collect_item_invalid_signature(valid_encoded_signed_lv1_armour, user_in_team):
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
     item.sig = "invalid_signature"
     invalid_encoded_item = item.to_base64()
 
@@ -135,11 +141,11 @@ def test_collect_item_invalid_signature(valid_encoded_signed_armour, user_in_tea
         UserInterface(user_in_team).collect_item(invalid_encoded_item)
 
 
-def test_collect_item_duplicate_item(valid_encoded_signed_armour, user_in_team):
-    UserInterface(user_in_team).collect_item(valid_encoded_signed_armour)
+def test_collect_item_duplicate_item(valid_encoded_signed_lv1_armour, user_in_team):
+    UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
-        UserInterface(user_in_team).collect_item(valid_encoded_signed_armour)
+        UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
 
 def test_can_generate_valid_item():
@@ -177,16 +183,30 @@ def test_cannot_collect_same_weapon_twice(user_in_team):
         UserInterface(user_in_team).collect_item(valid_weapon.to_base64())
 
 
-def test_collecting_armour_when_alive(valid_encoded_signed_armour, user_in_team):
+def test_collecting_armour_when_alive(valid_encoded_signed_lv1_armour, user_in_team):
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
-    UserInterface(user_in_team).collect_item(valid_encoded_signed_armour)
+    UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
-def test_collecting_armour_when_dead(valid_encoded_signed_armour, user_in_team):
+def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_team):
     UserInterface(user_in_team).award_HP(-1)
     with pytest.raises(HTTPException):
-        UserInterface(user_in_team).collect_item(valid_encoded_signed_armour)
+        UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
+
+
+def test_collecting_armour_doesnt_stack(user_in_team):
+    armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+    UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 2
+
+    armour_lv1.id = get_uuid()
+    armour_lv1.sign()
+    UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
 def test_collecting_ammo_when_alive(valid_encoded_ammo, user_in_team):
