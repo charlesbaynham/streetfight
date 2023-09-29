@@ -25,9 +25,8 @@ def test_making_item_fail():
         AdminInterface().make_new_item("whatever", {"num": 123})
 
 
-def test_dead_users_cannot_kill_with_old_shots(
-    api_client, db_session, user_factory, team_factory
-):
+@pytest.fixture
+def old_shot_prep(api_client, db_session, user_factory, team_factory):
     team_a = team_factory()
     team_b = team_factory()
 
@@ -52,14 +51,35 @@ def test_dead_users_cannot_kill_with_old_shots(
     )
     assert response.ok
 
-    # Now, shot B should not be in the queue
+    return user_a, user_b, shot_a, shot_b
+
+
+# Now, shot B should not be in the queue
+def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
     shot_b_model: Shot = db_session.query(Shot).get(shot_b)
     assert shot_b_model.checked
-    # And user B should be dead
+
+
+# User b should be dead
+def test_dead_user_old_shots_user_b_dead(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_b).get_user_model().hit_points == 0
-    # And user A should be alive
+
+
+# And user A should be alive
+def test_dead_user_old_shots_user_a_alive(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_a).get_user_model().hit_points == 1
-    # And user B should have got a bullet refund
+
+
+# And user B should have got a bullet refund
+def test_dead_user_old_shots_user_b_refunded(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_b).get_user_model().num_bullets == 1000
-    # But user A shouldn't have
+
+
+# But user A shouldn't have
+def test_dead_user_old_shots_user_a_not_refunded(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_a).get_user_model().num_bullets == 999
