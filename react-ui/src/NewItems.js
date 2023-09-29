@@ -39,7 +39,7 @@ export default function NewItems() {
     const [item, setItem] = useState(null);
 
     const [selectedItemType, setSelectedItemType] = useState("ammo");
-    const [selectedItemData, setSelectedItemData] = useState({});
+    const [selectedItemData, setSelectedItemData] = useState([]);
 
 
     const updateItemQR = useCallback(() => {
@@ -62,23 +62,42 @@ export default function NewItems() {
 
     useEffect(updateItemQR, [updateItemQR]);
 
+
     return <>
-        <span>Type:</span>
+        <b>Type:</b>
+        <br />
 
         <select
             value={selectedItemType}
-            onChange={(e) => { setSelectedItemType(e.target.value) }}
+            onChange={(e) => { setSelectedItemData([]); setSelectedItemType(e.target.value) }}
         >
-            {Object.entries(ITEM_PARAMS).map((entry) => (<option value={entry[0]}>{entry[0]}</option>))}
+            {Object.entries(ITEM_PARAMS).map((entry, idx) => (<option key={idx} value={entry[0]}>{entry[0]}</option>))}
         </select>
 
-        {/* <span>Num:</span>
-            <input
-                type="number"
-                value={selectedItemNum}
-                disabled={numDisabled}
-                onChange={(e) => { setSelectedItemNum(e.target.value) }}
-            /> */}
+        <br />
+        <b>Properties:</b>
+        <br />
+
+        {
+            ITEM_PARAMS[selectedItemType].map((data_name, idx) => (
+                <>
+                    <span>{data_name}:</span>
+                    <input
+                        type="number"
+                        value={selectedItemData[idx]}
+                        key={idx}
+                        onChange={(e) => {
+                            const new_data = selectedItemData;
+                            new_data[idx] = e.target.value;
+                            setSelectedItemData(new_data)
+                            console.log(new_data)
+                        }}
+                    />
+                </>
+            ))
+        }
+
+        <br />
 
         <button onClick={updateItemQR}>Re-generate</button>
 
