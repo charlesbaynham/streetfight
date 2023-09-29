@@ -150,7 +150,7 @@ class AdminInterface:
 
         ui = UserInterface(target_user_id)
 
-        ui.kill(shot.shot_damage)
+        ui.hit(shot.shot_damage)
 
         if u_to.hit_points > 0:
             ui.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
