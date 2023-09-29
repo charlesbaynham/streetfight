@@ -92,7 +92,7 @@ class UserInterface:
         return user
 
     @db_scoped
-    def kill(self, num=1) -> User:
+    def hit(self, num=1) -> User:
         "Take num hitpoints from the user"
         self.get_user().hit_points -= num
 
@@ -191,11 +191,14 @@ class UserInterface:
             shot_damage=user.shot_damage,
         )
         self._session.add(shot_entry)
+        self._session.commit()
 
         user.num_bullets -= 1
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
+
+        return shot_entry.id
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
@@ -234,6 +237,26 @@ class UserInterface:
                 game=user.team.game,
             )
         )
+
+    @db_scoped
+    def clear_unchecked_shots(self):
+        """
+        Mark all unchecked shots for this user as checked and refund all bullets
+        """
+
+        u = self.get_user()
+        unchecked_shots = (
+            self._session.query(Shot)
+            .filter_by(user_id=self.user_id, team_id=u.team_id, checked=False)
+            .all()
+        )
+
+        bullet_refunds = 0
+        for shot in unchecked_shots:
+            shot.checked = True
+            bullet_refunds += 1
+
+        self.award_ammo(bullet_refunds)
 
     async def generate_updates(self, timeout=None):
         """

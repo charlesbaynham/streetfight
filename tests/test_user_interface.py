@@ -68,7 +68,7 @@ def test_user_cannot_shoot_when_dead(
     UserInterface(user_id).submit_shot(test_image)
 
     # Kill them
-    UserInterface(user_id).kill()
+    UserInterface(user_id).hit()
 
     with pytest.raises(HTTPException):
         UserInterface(user_id).submit_shot(test_image)

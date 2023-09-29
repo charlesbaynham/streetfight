@@ -125,7 +125,7 @@ async def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
-    UserInterface(user_id).submit_shot(shot.photo)
+    return UserInterface(user_id).submit_shot(shot.photo)
 
 
 @router.post("/set_name")

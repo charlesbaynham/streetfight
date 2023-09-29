@@ -146,16 +146,17 @@ class AdminInterface:
         shot = self._get_shot_orm(shot_id)
 
         u_from = shot.user
-        u_to = self._get_user_orm(target_user_id)
-
         ui = UserInterface(target_user_id)
 
-        ui.kill(shot.shot_damage)
+        ui.hit(shot.shot_damage)
+
+        u_to = self._get_user_orm(target_user_id)
 
         if u_to.hit_points > 0:
             ui.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
         else:
             ui.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
+            ui.clear_unchecked_shots()
 
     def award_user_HP(self, user_id, num=1):
         ui = UserInterface(user_id)
