@@ -41,8 +41,8 @@ class ItemDataMedpack(pydantic.BaseModel):
 
 
 class ItemDataWeapon(pydantic.BaseModel):
-    damage: int
-    fire_delay: float
+    shot_damage: int
+    shot_timeout: float
 
 
 ITEM_TYPE_VALIDATORS = {

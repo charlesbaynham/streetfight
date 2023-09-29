@@ -49,12 +49,12 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
 
     _check_alive(user_model)
 
-    if (user_model.shot_damage == weapon_data.damage) and (
-        user_model.shot_timeout == weapon_data.fire_delay
+    if (user_model.shot_damage == weapon_data.shot_damage) and (
+        user_model.shot_timeout == weapon_data.shot_timeout
     ):
         raise RuntimeError("You have already got this weapon")
 
-    user_interface.set_weapon_data(weapon_data.damage, weapon_data.fire_delay)
+    user_interface.set_weapon_data(weapon_data.shot_damage, weapon_data.shot_timeout)
     user_interface.get_ticker().post_message(f"{user_model.name} was revived!")
 
 

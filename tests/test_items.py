@@ -36,7 +36,7 @@ SAMPLE_AMMO_DATA = {
 SAMPLE_WEAPON_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "weapon",
-    "data": {"damage": 3, "fire_delay": 6.0},
+    "data": {"shot_damage": 3, "shot_timeout": 6.0},
 }
 
 SAMPLE_INVALID_DATA = {
