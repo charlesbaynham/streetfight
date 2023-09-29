@@ -205,7 +205,8 @@ def test_collecting_armour_doesnt_stack(user_in_team):
 
     armour_lv1.id = get_uuid()
     armour_lv1.sign()
-    UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
