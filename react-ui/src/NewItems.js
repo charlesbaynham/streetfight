@@ -9,7 +9,7 @@ const ITEM_PARAMS = {
     "ammo": ["num"],
     "armour": ["num"],
     "medpack": [],
-    "weapon": ["damage", "fire_delay"]
+    "weapon": ["shot_damage", "shot_timeout"]
 }
 
 function ItemDisplay({ item }) {
