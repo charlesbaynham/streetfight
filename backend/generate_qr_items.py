@@ -9,12 +9,15 @@ from PIL import Image
 from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
+from .model import ItemType
 
 logger = logging.getLogger(__name__)
 
 # A4 dimensions in pixels (approximately)
 A4_HEIGHT = 2480
 A4_WIDTH = 3508
+
+ITEM_TYPES = [i.value for i in ItemType]
 
 
 def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
@@ -57,7 +60,7 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
 @click.option(
     "--type",
     "-t",
-    type=click.Choice(["ammo", "medpack", "armour"]),
+    type=click.Choice(ITEM_TYPES),
     prompt="Item type",
     help="Item type to generate.",
 )
@@ -92,6 +95,10 @@ def generate(type: str, x: int, y: int, num: int, outdir: str, outfile: Optional
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
     """
+
+    if type == "weapon":
+        print("Sorry, not implemented yet")
+        raise NotImplementedError
 
     def generate_random_string(length):
         import string
