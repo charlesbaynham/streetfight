@@ -28,10 +28,13 @@ export default function FireButton({ userState, onClick }) {
 
   const circleVariants = {
     hidden: {
-      strokeDasharray: "0 1000",
+      pathLength: 0,
+      transition: {
+        duration: 0.3,
+      },
     },
     visible: {
-      strokeDasharray: "1000 1000",
+      pathLength: 1,
       transition: {
         duration: fireTimeout,
         ease: "linear",
