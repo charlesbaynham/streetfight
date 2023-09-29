@@ -39,7 +39,7 @@ export default function NewItems() {
     const [item, setItem] = useState(null);
 
     const [selectedItemType, setSelectedItemType] = useState("ammo");
-    const [selectedItemData, setSelectedItemData] = useState([]);
+    const [selectedItemData, setSelectedItemData] = useState({});
 
 
     const updateItemQR = useCallback(() => {
@@ -69,7 +69,7 @@ export default function NewItems() {
 
         <select
             value={selectedItemType}
-            onChange={(e) => { setSelectedItemData([]); setSelectedItemType(e.target.value) }}
+            onChange={(e) => { setSelectedItemType(e.target.value) }}
         >
             {Object.entries(ITEM_PARAMS).map((entry, idx) => (<option key={idx} value={entry[0]}>{entry[0]}</option>))}
         </select>
@@ -79,22 +79,25 @@ export default function NewItems() {
         <br />
 
         {
-            ITEM_PARAMS[selectedItemType].map((data_name, idx) => (
-                <>
-                    <span>{data_name}:</span>
-                    <input
-                        type="number"
-                        value={selectedItemData[idx]}
-                        key={idx}
-                        onChange={(e) => {
-                            const new_data = selectedItemData;
-                            new_data[idx] = e.target.value;
-                            setSelectedItemData(new_data)
-                            console.log(new_data)
-                        }}
-                    />
-                </>
-            ))
+            ITEM_PARAMS[selectedItemType].map((data_name) => {
+                const key = selectedItemType + data_name;
+                return (
+                    <>
+                        <span>{data_name}:</span>
+                        <input
+                            type="number"
+                            value={key in selectedItemData ? selectedItemData[key] : ""}
+                            key={key}
+                            onChange={(e) => {
+                                // Clone the object to trigger a state update
+                                const new_data = { ...selectedItemData };
+                                new_data[key] = e.target.value;
+                                setSelectedItemData(new_data)
+                            }}
+                        />
+                    </>
+                )
+            })
         }
 
         <br />
