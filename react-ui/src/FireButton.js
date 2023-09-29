@@ -24,7 +24,7 @@ export default function FireButton({ userState, onClick }) {
   const [animationState, setAnimationState] = useState("hidden")
   const [onCooldown, setOnCooldown] = useState(false);
 
-  const fireTimeout = 10;  // second
+  const fireTimeout = userState.shot_timeout;  // second
 
   const circleVariants = {
     hidden: {
