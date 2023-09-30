@@ -205,7 +205,7 @@ def test_collecting_armour_when_alive(valid_encoded_signed_lv1_armour, user_in_t
 
 
 def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_team):
-    UserInterface(user_in_team).award_HP(-1)
+    UserInterface(user_in_team).hit(1)
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
@@ -265,7 +265,7 @@ def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
 
 
 def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
-    UserInterface(user_in_team).award_HP(-1)
+    UserInterface(user_in_team).hit(1)
     assert UserInterface(user_in_team).get_user_model().hit_points == 0
     UserInterface(user_in_team).collect_item(valid_encoded_medpack)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
