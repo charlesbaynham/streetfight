@@ -166,6 +166,8 @@ class User(Base):
 
     @property
     def state(self):
+        if not self.team:
+            return "waiting"
         if self.hit_points > 0:
             return "alive"
         if self.time_of_death < time.time():
