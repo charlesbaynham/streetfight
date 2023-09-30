@@ -2,6 +2,7 @@ import datetime
 import enum
 import logging
 import random
+import time
 from typing import List
 from typing import Optional
 from uuid import UUID
@@ -145,6 +146,9 @@ class User(Base):
     shot_timeout = Column(Float, nullable=False, default=6)
     shot_damage = Column(Integer, nullable=False, default=1)
 
+    time_of_death = Column(Float, nullable=True)
+    "Timestamp at which this user transitions from dying to dead"
+
     shots = relationship("Shot", lazy=True, back_populates="user")
 
     items = relationship(
@@ -159,6 +163,15 @@ class User(Base):
             return False
 
         return self.team.game.active
+
+    @property
+    def state(self):
+        if self.hit_points > 0:
+            return "alive"
+        if self.time_of_death < time.time():
+            return "dead"
+        else:
+            return "knocked_out"
 
     @property
     def team_name(self):
@@ -245,9 +258,11 @@ class UserModel(pydantic.BaseModel):
     hit_points: int
     shot_timeout: float
     shot_damage: int
+    time_of_death: Optional[float]
 
-    # This is retrieved from the Game associated with the Team this user is in
+    # These are retrieved from the Game associated with the Team this user is in
     active: bool
+    state: str
 
     # This is retrieved from the team too
     team_name: Optional[str]
