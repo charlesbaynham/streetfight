@@ -31,6 +31,7 @@
           # Development
           pytest
           pytest-asyncio
+          pytest-mock
           # selenium
           # geckodriver-autoinstaller
           requests
