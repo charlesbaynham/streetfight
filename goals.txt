@@ -39,6 +39,7 @@ Essential:
   - [x] Sort out HTTPS / production server
   - [x] Armour should act like armour, i.e. doesn't stack
   - [x] When someone dies their future shots are cancelled and refunded (to prevent out-of-order errors)
+  - [ ]  Images are too low res, but high res mode has huge lag... Argh! I need to think about performance on the frontend
 
 Done but unchecked:
   - [x] Add ticker messages for kills
