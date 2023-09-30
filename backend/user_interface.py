@@ -96,8 +96,11 @@ class UserInterface:
 
     @db_scoped
     def hit(self, num=1) -> User:
-        "Take num hitpoints from the user"
-        self.get_user().hit_points -= num
+        "Take num hitpoints from the user, leaving them on as least zero"
+        u = self.get_user()
+        u.hit_points -= num
+        if u.hit_points < 0:
+            u.hit_points = 0
 
     @db_scoped
     def award_HP(self, num=1) -> User:
