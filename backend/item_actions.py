@@ -30,7 +30,6 @@ def _handle_ammo_team(user_interface: "UserInterface", item: ItemModel):
     _check_alive(user_model)
 
     user_orm = user_interface.get_user()
-    team_name = user_orm.team.name
     users_in_team = user_orm.team.users
 
     for team_user in users_in_team:
@@ -39,7 +38,7 @@ def _handle_ammo_team(user_interface: "UserInterface", item: ItemModel):
         )
 
     user_interface.get_ticker().post_message(
-        f"Team {team_name} collected {item.data['num']}x ammo"
+        f"Team {user_model.team_name} collected {item.data['num']}x ammo"
     )
 
 
