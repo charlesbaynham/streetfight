@@ -9,8 +9,8 @@ import styles from './WebcamView.module.css';
 import useScreenOrientation from './useScreenOrientation';
 
 const videoConstraints = {
-    // width: 1280,
-    // height: 720,
+    width: { ideal: 4096 },
+    height: { ideal: 2160 },
     facingMode: "environment"
 };
 
