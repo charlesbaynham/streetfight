@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 
 import { motion } from 'framer-motion';
 
@@ -48,6 +48,21 @@ function getTimeRemaining(timestamp) {
   return `${formattedMinutes}:${formattedSeconds}`;
 }
 
+function CountdownTimer({ deadline }) {
+  const [output, setOutput] = useState("");
+
+  const update = useCallback(() => {
+    setOutput(getTimeRemaining(deadline))
+  }, [setOutput, deadline])
+
+  useEffect(() => {
+    const timer_id = setInterval(update, 1000)
+    return () => { clearInterval(timer_id) }
+  }, [update])
+
+  return output
+}
+
 export const KnockedOutView = ({ user }) => (
   <div
     className={
@@ -62,9 +77,9 @@ export const KnockedOutView = ({ user }) => (
       transition={{
         duration: 1,
       }}>
-      <p>You are knocked out!</p>
-      <p className={styles.textSmaller}>Find a medkit quick</p>
-      <p className={styles.textSmaller}>{getTimeRemaining(1000 * user.time_of_death)}</p>
+      <p>You are knocked out</p>
+      <p className={styles.textSmaller}>Get a medkit quick! You will die in:</p>
+      <p className={styles.textSmaller}>{<CountdownTimer deadline={1000 * user.time_of_death} />}</p>
 
     </motion.div>
   </div >
