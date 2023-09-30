@@ -26,7 +26,8 @@ from .ticker import Ticker
 logger = logging.getLogger(__name__)
 
 # 10 minutes to get to safety
-TIME_KNOCKED_OUT = 10 * 60
+TIME_KNOCKED_OUT = 0.5 * 60
+# TIME_KNOCKED_OUT = 10 * 60  # FIXME
 
 make_user_lock = RLock()
 
