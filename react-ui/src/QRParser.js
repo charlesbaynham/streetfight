@@ -1,9 +1,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
+import useSound from 'use-sound';
 
 import QrScanner from 'qr-scanner';
 
 import { sendAPIRequest } from './utils';
+
+import error from './error.mp3';
 
 
 const timeout = 750;
@@ -13,11 +16,19 @@ const QRParser = ({ webcamRef }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
 
+    const [playError] = useSound(error);
+
+
     const scannedCallback = useCallback((data) => {
         sendAPIRequest("collect_item", {}, "POST", null, {
             data: data
+        }).then(async response => {
+            if (!response.ok) {
+                console.log("Error happened in item collection")
+                playError()
+            }
         })
-    }, []);
+    }, [playError]);
 
     const capture = useCallback(() => {
         // Create persistent service worker and canvas for performance
