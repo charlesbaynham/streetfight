@@ -302,6 +302,38 @@ def test_user_collect_item(api_client, team_factory, db_session):
     assert item in user.items
 
 
+def test_different_users_collect_repeat_item(two_users_in_different_teams):
+    user_a, user_b = two_users_in_different_teams
+
+    repeatable_item = ItemModel(**SAMPLE_AMMO_DATA)
+    repeatable_item.collected_only_once = False
+    encoded_repeatable_item = repeatable_item.sign().to_base64()
+
+    assert UserInterface(user_a).get_user_model().num_bullets == 0
+    UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+    assert UserInterface(user_b).get_user_model().num_bullets == 0
+    UserInterface(user_b).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_b).get_user_model().num_bullets == 1
+
+
+def test_same_users_collect_repeat_item(two_users_in_different_teams):
+    user_a, _ = two_users_in_different_teams
+
+    repeatable_item = ItemModel(**SAMPLE_AMMO_DATA)
+    repeatable_item.collected_only_once = False
+    encoded_repeatable_item = repeatable_item.sign().to_base64()
+
+    assert UserInterface(user_a).get_user_model().num_bullets == 0
+    UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+
 @pytest.mark.parametrize(
     "url",
     [
