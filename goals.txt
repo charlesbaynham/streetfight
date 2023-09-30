@@ -2,7 +2,6 @@ Goals
 -----
 
 - [ ] Polish:
-  - [ ] Add white flash on QR scan and maybe remove vibration
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
   - [ ] Improve admin kill interface

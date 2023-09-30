@@ -7,6 +7,7 @@ import QrScanner from 'qr-scanner';
 import { sendAPIRequest } from './utils';
 
 import error from './error.mp3';
+import BlankScreen from './BlankScreen';
 
 
 const timeout = 750;
@@ -20,7 +21,7 @@ const QRParser = ({ webcamRef }) => {
     const [lastScanTime, setLastScanTime] = useState(null);
 
     const [playError] = useSound(error);
-
+    const [showBlankScreen, setShowBlankScreen] = useState(false);
 
     const scannedCallback = useCallback((data) => {
         // Check that we haven't submitted this scan recently
@@ -30,6 +31,10 @@ const QRParser = ({ webcamRef }) => {
         // Store the time and data of this scan so that we can avoid resubmitting it
         setLastScanData(data)
         setLastScanTime(Date.now())
+
+        // Flash the screen
+        setShowBlankScreen(true)
+        const timer_id = setTimeout(() => { setShowBlankScreen(false) }, 100)
 
         // Submit the QR code to the API
         sendAPIRequest("collect_item", {}, "POST", null, {
@@ -41,6 +46,8 @@ const QRParser = ({ webcamRef }) => {
                 playError()
             }
         })
+
+        return () => { clearTimeout(timer_id) }
     }, [playError, lastScanData, lastScanTime]);
 
     const capture = useCallback(() => {
@@ -88,7 +95,12 @@ const QRParser = ({ webcamRef }) => {
     }, [webcamRef, capture])
 
 
-    return null;
+    return <BlankScreen
+        appear={showBlankScreen}
+        time_to_appear={0.1}
+        time_to_show={0.2}
+        time_to_disappear={1.0}
+    />;
 };
 
 
