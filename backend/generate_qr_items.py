@@ -26,7 +26,6 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
     box_height = A4_HEIGHT // num_y
 
     with Image.new("RGB", (A4_WIDTH, A4_HEIGHT), "white") as im:
-
         draw = ImageDraw.Draw(im)
 
         for i in range(1, num_y):
