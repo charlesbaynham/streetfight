@@ -212,7 +212,24 @@ class UserInterface:
                 403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
-        if self._get_item_from_database(item.id):
+        item_from_db = self._get_item_from_database(item.id)
+
+        already_collected = False
+
+        if item_from_db:
+            if item.collected_only_once:
+                already_collected = True
+            else:
+                u = self.get_user()
+                if item.collected_as_team:
+                    team_ids = [u.team_id for u in item_from_db.users]
+                    if u.team_id in team_ids:
+                        already_collected = True
+                else:
+                    if u in item_from_db.users:
+                        already_collected = True
+
+        if already_collected:
             raise HTTPException(403, "Item has already been collected")
 
         user: User = self.get_user()
