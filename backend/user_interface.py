@@ -9,6 +9,7 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from .asyncio_triggers import get_trigger_event
+from .asyncio_triggers import schedule_update_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
@@ -114,6 +115,9 @@ class UserInterface:
         # than once
         if initial_HP > 0 and u.hit_points <= 0:
             u.time_of_death = time.time() + TIME_KNOCKED_OUT
+
+            # Schedule an update ping
+            schedule_update_event("user", self.user_id, TIME_KNOCKED_OUT + 1)
 
     @db_scoped
     def award_HP(self, num=1) -> User:

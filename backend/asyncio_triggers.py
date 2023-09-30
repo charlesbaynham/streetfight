@@ -8,6 +8,7 @@ logger = logging.getLogger(__name__)
 
 
 _update_events: Dict[str, Dict[Hashable, asyncio.Event]] = {}
+_scheduled_tasks = set()
 
 
 def trigger_update_event(event_type: str, key: Hashable):
@@ -28,6 +29,35 @@ def trigger_update_event(event_type: str, key: Hashable):
         del these_events[key]
     else:
         logger.debug("No update event found - not triggering")
+
+
+def schedule_update_event(event_type: str, key: Hashable, timeout: float):
+    """Schedule an update event to happen after a timeout
+
+    Currently there is no way to cancel these. That's fine - it just means an
+    extra update of user state.
+    """
+    global _scheduled_tasks
+
+    logger.info(
+        "(asyncio_triggers) Scheduling an update for type %s, key %s in %s seconds",
+        event_type,
+        key,
+        timeout,
+    )
+
+    async def wait_then_trigger():
+        await asyncio.sleep(timeout)
+        logger.debug(
+            "Triggering scheduled update event (type %s, key %s, %s seconds)",
+            event_type,
+            key,
+            timeout,
+        )
+        trigger_update_event(event_type=event_type, key=key)
+
+    task = asyncio.create_task(wait_then_trigger())
+    task.add_done_callback(_scheduled_tasks.discard)
 
 
 def get_trigger_event(event_type: str, key: Hashable) -> asyncio.Event:
