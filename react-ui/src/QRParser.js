@@ -40,9 +40,10 @@ const QRParser = ({ webcamRef }) => {
         sendAPIRequest("collect_item", {}, "POST", null, {
             data: data
         }).then(async response => {
-            // Play an error sound if the API rejects us
+            // Play an error sound if the API rejects us with a forbidden error
+            // We might also get 404 errors for invalid QR codes - ignore these because the QR scanner occasionally misfires
             // Success sounds will be handled by the state updating
-            if (!response.ok) {
+            if (response.status === 403) {
                 playError()
             }
         })
