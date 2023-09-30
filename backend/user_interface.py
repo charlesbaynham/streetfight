@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from threading import RLock
 from typing import Optional
 from typing import Union
@@ -24,6 +25,8 @@ from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
+# 10 minutes to get to safety
+TIME_KNOCKED_OUT = 10 * 60
 
 make_user_lock = RLock()
 
@@ -98,9 +101,18 @@ class UserInterface:
     def hit(self, num=1) -> User:
         "Take num hitpoints from the user, leaving them on as least zero"
         u = self.get_user()
+        initial_HP = u.hit_points
+
         u.hit_points -= num
+
         if u.hit_points < 0:
             u.hit_points = 0
+
+        # Record the time of death if this shot killed the user. Note that we
+        # check if this was the death blow, since the user could be shot more
+        # than once
+        if initial_HP > 0 and u.hit_points <= 0:
+            u.time_of_death = time.time() + TIME_KNOCKED_OUT
 
     @db_scoped
     def award_HP(self, num=1) -> User:
