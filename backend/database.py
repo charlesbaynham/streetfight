@@ -3,15 +3,14 @@ import os
 import time
 from contextlib import contextmanager
 
-from dotenv import find_dotenv
-from dotenv import load_dotenv
 from sqlalchemy import create_engine
 from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 
-load_dotenv(find_dotenv())
+from .dotenv import load_env_vars
 
+load_env_vars()
 
 engine = None
 Session = None

@@ -9,15 +9,15 @@ from typing import Optional
 from uuid import UUID
 
 import pydantic
-from dotenv import find_dotenv
-from dotenv import load_dotenv
 
+from .dotenv import load_env_vars
 from .model import ItemType
 
 
 logger = logging.getLogger(__name__)
 
-load_dotenv(find_dotenv())
+
+load_env_vars()
 
 
 class _UUIDEncoder(json.JSONEncoder):

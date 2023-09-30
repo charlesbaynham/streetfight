@@ -15,8 +15,6 @@ from urllib.parse import urlunparse
 from uuid import UUID
 
 import pydantic
-from dotenv import find_dotenv
-from dotenv import load_dotenv
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
@@ -26,13 +24,14 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
 from .admin_interface import AdminInterface
+from .dotenv import load_env_vars
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
 SSE_KEEPALIVE_TIMEOUT = 5
 
-load_dotenv(find_dotenv())
+load_env_vars()
 
 
 def setup_logging():
