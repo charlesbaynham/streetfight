@@ -16,19 +16,32 @@ const QRParser = ({ webcamRef }) => {
     const [qrEngine, setQrEngine] = useState(null);
     const [canvas, setCanvas] = useState(null);
 
+    const [lastScanData, setLastScanData] = useState(null);
+    const [lastScanTime, setLastScanTime] = useState(null);
+
     const [playError] = useSound(error);
 
 
     const scannedCallback = useCallback((data) => {
+        // Check that we haven't submitted this scan recently
+        if (lastScanData && lastScanTime && data === lastScanData && (Date.now() - lastScanTime) < 5000)
+            return
+
+        // Store the time and data of this scan so that we can avoid resubmitting it
+        setLastScanData(data)
+        setLastScanTime(Date.now())
+
+        // Submit the QR code to the API
         sendAPIRequest("collect_item", {}, "POST", null, {
             data: data
         }).then(async response => {
+            // Play an error sound if the API rejects us
+            // Success sounds will be handled by the state updating
             if (!response.ok) {
-                console.log("Error happened in item collection")
                 playError()
             }
         })
-    }, [playError]);
+    }, [playError, lastScanData, lastScanTime]);
 
     const capture = useCallback(() => {
         // Create persistent service worker and canvas for performance
