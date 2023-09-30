@@ -212,26 +212,6 @@ class UserInterface:
                 403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
-        item_from_db = self._get_item_from_database(item.id)
-
-        already_collected = False
-
-        if item_from_db:
-            if item.collected_only_once:
-                already_collected = True
-            else:
-                u = self.get_user()
-                if item.collected_as_team:
-                    team_ids = [u.team_id for u in item_from_db.users]
-                    if u.team_id in team_ids:
-                        already_collected = True
-                else:
-                    if u in item_from_db.users:
-                        already_collected = True
-
-        if already_collected:
-            raise HTTPException(403, "Item has already been collected")
-
         user: User = self.get_user()
 
         if user.team is None:
@@ -240,19 +220,41 @@ class UserInterface:
                 "Cannot collect item, you are not in a game. How did you even get here?",
             )
 
+        item_from_db = self._get_item_from_database(item.id)
+
+        already_collected = False
+
+        if item_from_db:
+            if item.collected_only_once:
+                already_collected = True
+            else:
+                if item.collected_as_team:
+                    team_ids = [u.team_id for u in item_from_db.users]
+                    if user.team_id in team_ids:
+                        already_collected = True
+                else:
+                    if user in item_from_db.users:
+                        already_collected = True
+
+        if already_collected:
+            raise HTTPException(403, "Item has already been collected")
+
         try:
             do_item_actions(self, item)
         except RuntimeError as e:
             raise HTTPException(403, str(e))
 
-        user.items.append(
-            Item(
-                id=item.id,
-                item_type=item.itype,
-                data=item.data_as_json(),
-                game=user.team.game,
+        if item_from_db:
+            user.items.append(item_from_db)
+        else:
+            user.items.append(
+                Item(
+                    id=item.id,
+                    item_type=item.itype,
+                    data=item.data_as_json(),
+                    game=user.team.game,
+                )
             )
-        )
 
     @db_scoped
     def clear_unchecked_shots(self):
