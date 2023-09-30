@@ -35,8 +35,20 @@ export const DeadImage = () => (
   />
 );
 
+function getTimeRemaining(timestamp) {
+  const now = new Date().getTime();
+  const timeRemaining = Math.max(0, timestamp - now); // Ensure time doesn't go negative
 
-export const KnockedOutView = () => (
+  const minutes = Math.floor((timeRemaining / (1000 * 60)) % 60);
+  const seconds = Math.floor((timeRemaining / 1000) % 60);
+
+  const formattedMinutes = minutes.toString().padStart(2, '0');
+  const formattedSeconds = seconds.toString().padStart(2, '0');
+
+  return `${formattedMinutes}:${formattedSeconds}`;
+}
+
+export const KnockedOutView = ({ user }) => (
   <div
     className={
       screenfillStyles.screenFill + " " + styles.centeringDiv
@@ -52,6 +64,8 @@ export const KnockedOutView = () => (
       }}>
       <p>You are knocked out!</p>
       <p className={styles.textSmaller}>Find a medkit quick</p>
+      <p className={styles.textSmaller}>{getTimeRemaining(1000 * user.time_of_death)}</p>
+
     </motion.div>
   </div >
 );

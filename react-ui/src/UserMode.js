@@ -44,7 +44,11 @@ function GetView({ user }) {
     {isAlive ?
       <CrosshairImage />
       :
-      (user.state === "knocked out" ? < KnockedOutView /> : < DeadImage />)
+      (
+        user.state === "knocked out" ?
+          < KnockedOutView user={user} /> :
+          < DeadImage />
+      )
     }
 
     {isAlive ?
