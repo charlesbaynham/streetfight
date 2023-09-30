@@ -33,3 +33,21 @@ export const DeadImage = () => (
     }}
   />
 );
+
+
+export const KnockedOutView = () => (
+  <motion.img
+    alt="You are knocked out"
+    src={dead_image}
+    className={
+      screenfillStyles.screenFill
+    }
+    animate={{
+      width: ["20vw", "50vw"],
+      opacity: [0, 1, 1]
+    }}
+    transition={{
+      duration: 5,
+    }}
+  />
+);

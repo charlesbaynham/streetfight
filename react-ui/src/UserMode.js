@@ -1,10 +1,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 
-
-
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import { CrosshairImage, DeadImage } from './GuideImages';
+import { CrosshairImage, DeadImage, KnockedOutView } from './GuideImages';
 import FireButton from './FireButton';
 import BulletCount from './BulletCount';
 import { sendAPIRequest } from './utils';
@@ -22,13 +20,11 @@ const isGameRunning = (user) =>
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
 
-
   if (user === null) {
     return <p>Loading...</p>;
-    ;
   }
 
-  const isAlive = user ? (user.hit_points > 0) : false;
+  const isAlive = user ? user.state === "alive" : false;
 
   if (user.name === null || !isGameRunning(user)) {
     return <OnboardingView user={user} />;
@@ -48,7 +44,7 @@ function GetView({ user }) {
     {isAlive ?
       <CrosshairImage />
       :
-      <DeadImage />
+      (user.state === "knocked out" ? < KnockedOutView /> : < DeadImage />)
     }
 
     {isAlive ?
