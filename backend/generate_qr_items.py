@@ -73,6 +73,18 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
     help="If relevant for this item, the number that should be awarded per QR scan",
 )
 @click.option(
+    "--damage",
+    "-d",
+    default=1,
+    help="For weapons, the damage per shot",
+)
+@click.option(
+    "--timeout",
+    "-m",
+    default=6,
+    help="For weapons, the timeout",
+)
+@click.option(
     "--outdir",
     "-o",
     type=click.Path(
@@ -91,14 +103,19 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
         "Existing files will be overwritten."
     ),
 )
-def generate(type: str, x: int, y: int, num: int, outdir: str, outfile: Optional[str]):
+def generate(
+    type: str,
+    x: int,
+    y: int,
+    num: int,
+    outdir: str,
+    outfile: Optional[str],
+    damage: int,
+    timeout: float,
+):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
     """
-
-    if type == "weapon":
-        print("Sorry, not implemented yet")
-        raise NotImplementedError
 
     def generate_random_string(length):
         import string
@@ -114,7 +131,17 @@ def generate(type: str, x: int, y: int, num: int, outdir: str, outfile: Optional
 
     logger.debug("Outputting to %s", outfile)
 
-    qr_data = (AdminInterface().make_new_item(type, {"num": num}) for _ in range(x * y))
+    qr_data = (
+        AdminInterface().make_new_item(
+            type,
+            {
+                "num": num,
+                "shot_damage": damage,
+                "shot_timeout": timeout,
+            },
+        )
+        for _ in range(x * y)
+    )
     make_qr_grid(qr_data, outfile, x, y)
 
 
