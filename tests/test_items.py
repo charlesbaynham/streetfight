@@ -334,6 +334,51 @@ def test_same_users_collect_repeat_item(two_users_in_different_teams):
     assert UserInterface(user_a).get_user_model().num_bullets == 1
 
 
+def test_collect_team_item(two_users_in_different_teams, user_factory):
+    user_a1, user_b = two_users_in_different_teams
+
+    user_a2 = user_factory()
+    UserInterface(user_a2).join_team(UserInterface(user_a1).get_team_model().id)
+
+    team_item = ItemModel(**SAMPLE_AMMO_DATA)
+    team_item.collected_as_team = True
+    team_item.collected_only_once = True
+    encoded_team_item = team_item.sign().to_base64()
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 0
+    assert UserInterface(user_a2).get_user_model().num_bullets == 0
+    UserInterface(user_a1).collect_item(encoded_team_item)
+    assert UserInterface(user_a1).get_user_model().num_bullets == 1
+    assert UserInterface(user_a2).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_a2).collect_item(encoded_team_item)
+        UserInterface(user_b).collect_item(encoded_team_item)
+
+
+def test_collect_team_item_twice(two_users_in_different_teams, user_factory):
+    user_a1, user_b = two_users_in_different_teams
+
+    user_a2 = user_factory()
+    UserInterface(user_a2).join_team(UserInterface(user_a1).get_team_model().id)
+
+    team_item = ItemModel(**SAMPLE_AMMO_DATA)
+    team_item.collected_as_team = True
+    team_item.collected_only_once = False
+    encoded_team_repeatable_item = team_item.sign().to_base64()
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 0
+    assert UserInterface(user_a2).get_user_model().num_bullets == 0
+    assert UserInterface(user_b).get_user_model().num_bullets == 0
+
+    UserInterface(user_a1).collect_item(encoded_team_repeatable_item)
+    UserInterface(user_b).collect_item(encoded_team_repeatable_item)
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 1
+    assert UserInterface(user_a2).get_user_model().num_bullets == 1
+    assert UserInterface(user_b).get_user_model().num_bullets == 1
+
+
 @pytest.mark.parametrize(
     "url",
     [
