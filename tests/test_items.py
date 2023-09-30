@@ -444,7 +444,10 @@ def test_all_items_handled():
     from backend.model import ItemType
 
     for itype in ItemType:
-        assert itype in _ACTIONS
+        assert (itype, False) in _ACTIONS
+
+    # Only check collected_as_team for ammo
+    assert (ItemType.AMMO, True) in _ACTIONS
 
 
 def test_all_items_validated():

@@ -62,12 +62,16 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
 
 
 _ACTIONS = {
-    ItemType.AMMO: _handle_ammo,
-    ItemType.ARMOUR: _handle_armour,
-    ItemType.MEDPACK: _handle_medpack,
-    ItemType.WEAPON: _handle_weapon,
+    (ItemType.AMMO, False): _handle_ammo,
+    (ItemType.ARMOUR, False): _handle_armour,
+    (ItemType.MEDPACK, False): _handle_medpack,
+    (ItemType.WEAPON, False): _handle_weapon,
 }
 
 
 def do_item_actions(user_interface: "UserInterface", item: ItemModel):
-    return _ACTIONS[item.itype](user_interface, item)
+    key = (item.itype, item.collected_as_team)
+    try:
+        _ACTIONS[key](user_interface, item)
+    except KeyError:
+        raise NotImplementedError(f"Item collection for {key} has not been implemented")
