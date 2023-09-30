@@ -122,6 +122,13 @@ user_item_association_table = Table(
 )
 
 
+class UserState(str, enum.Enum):
+    WAITING = "waiting"
+    ALIVE = "alive"
+    DEAD = "dead"
+    KNOCKED_OUT = "knocked out"
+
+
 class User(Base):
     """
     Details of each user, recognised by their session id
@@ -165,15 +172,15 @@ class User(Base):
         return self.team.game.active
 
     @property
-    def state(self):
+    def state(self) -> UserState:
         if not self.team:
-            return "waiting"
+            return UserState.WAITING
         if self.hit_points > 0:
-            return "alive"
+            return UserState.ALIVE
         if self.time_of_death < time.time():
-            return "dead"
+            return UserState.DEAD
         else:
-            return "knocked_out"
+            return UserState.KNOCKED_OUT
 
     @property
     def team_name(self):
@@ -264,7 +271,7 @@ class UserModel(pydantic.BaseModel):
 
     # These are retrieved from the Game associated with the Team this user is in
     active: bool
-    state: str
+    state: UserState
 
     # This is retrieved from the team too
     team_name: Optional[str]

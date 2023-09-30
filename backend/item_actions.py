@@ -59,8 +59,11 @@ def _handle_armour(user_interface: "UserInterface", item: ItemModel):
 
 def _handle_medpack(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
+    # state = user_model.state
+
     if user_model.hit_points > 0:
-        raise RuntimeError("Medpacks can only be used on dead players")
+        raise RuntimeError("Medpacks can only be used on knocked-out players")
+    # if user
     user_interface.award_HP(1 - user_model.hit_points)
     user_interface.get_ticker().post_message(f"{user_model.name} was revived!")
 
