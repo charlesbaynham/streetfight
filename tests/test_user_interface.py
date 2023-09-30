@@ -7,6 +7,7 @@ from fastapi.exceptions import HTTPException
 from backend.model import User
 from backend.user_interface import UserInterface
 
+
 # Mock "create_task" for all unit tests in this module
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
