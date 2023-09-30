@@ -3,6 +3,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 import screenfillStyles from './ScreenFillStyles.module.css';
+import styles from './GuideImages.module.css';
 
 
 import dead_image from './images/you_are_dead.svg';
@@ -36,18 +37,21 @@ export const DeadImage = () => (
 
 
 export const KnockedOutView = () => (
-  <motion.img
-    alt="You are knocked out"
-    src={dead_image}
+  <div
     className={
-      screenfillStyles.screenFill
+      screenfillStyles.screenFill + " " + styles.centeringDiv
     }
-    animate={{
-      width: ["20vw", "50vw"],
-      opacity: [0, 1, 1]
-    }}
-    transition={{
-      duration: 5,
-    }}
-  />
+  >
+    <motion.div
+      animate={{
+        scale: [0, 1],
+        opacity: [0, 1]
+      }}
+      transition={{
+        duration: 1,
+      }}>
+      <p>You are knocked out!</p>
+      <p className={styles.textSmaller}>Find a medkit quick</p>
+    </motion.div>
+  </div >
 );

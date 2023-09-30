@@ -4,6 +4,7 @@ Goals
 - [ ] Polish:
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
+    - [ ] Needs asyncio bump on timeout since frontend uses "state". Or JS could update itself
   - [ ] Improve admin kill interface
   - [ ] Flash the torch on shots
   - [x] LOADS more items. We need:
