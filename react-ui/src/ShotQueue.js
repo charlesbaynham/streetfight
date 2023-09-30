@@ -12,10 +12,13 @@ export default function ShotQueue() {
     const update = useCallback(
         () => {
             sendAPIRequest("admin_get_shots", { limit: 1 })
-                .then(response => {
-                    setNumShots(response.numInQueue);
-                    if (response.shots.length > 0) {
-                        const newShot = response.shots[0];
+                .then(async response => {
+                    if (!response.ok)
+                        return
+                    const data = await response.json()
+                    setNumShots(data.numInQueue);
+                    if (data.shots.length > 0) {
+                        const newShot = data.shots[0];
                         // console.log("New shot:");
                         // console.dir(newShot);
                         setShot(newShot);
@@ -33,9 +36,6 @@ export default function ShotQueue() {
                 shot_id: shot_id,
                 target_user_id: target_user_id
             }, "POST")
-                .then(_ => {
-                    console.log(`Hit user ${target_user_id} from shot ${shot_id}`)
-                });
         },
         []
     );
@@ -44,7 +44,6 @@ export default function ShotQueue() {
         () => {
             sendAPIRequest("admin_mark_shot_checked", { shot_id: shot.id }, "POST")
                 .then(_ => {
-                    console.log(`Dismissed`)
                     update()
                 });
         },

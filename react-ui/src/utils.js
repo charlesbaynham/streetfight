@@ -33,22 +33,20 @@ export function sendAPIRequest(endpoint, query_params = null, method = 'GET', ca
         };
     }
 
+    // Callbacks are only called on success
+    // To handle errors, use the returned promise which gives the raw response
     return fetch(url, requestOptions)
-        .then(response => {
-            if (!response.ok) {
-                console.log(`Error in api call to ${url}:`)
-                console.dir(response)
-                console.dir(response.json())
-                return null
-            }
-            return response.json()
-        })
-        .then(data => {
+        .then(async response => {
             if (callback) {
-                callback(data);
-            } else {
-                return data;
+                if (!response.ok) {
+                    console.log(`Error in api call to ${url}:`)
+                    console.dir(response)
+                    console.dir(response.json())
+                } else {
+                    callback(await response.json())
+                }
             }
+            return response;
         });
 }
 
