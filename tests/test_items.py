@@ -8,6 +8,8 @@ from fastapi.exceptions import HTTPException
 
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
+from backend.model import Item
+from backend.model import User
 from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
@@ -18,7 +20,9 @@ SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
-    "sig": "1ffe1639435c5cb1e5280d3b56a768ef",
+    "collected_only_once": True,
+    "collected_as_team": False,
+    "sig": "db6a08d4acd56b636e532d7b1560f658",
     "salt": "test_salt",
 }
 
@@ -27,29 +31,39 @@ SAMPLE_MEDPACK_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "medpack",
     "data": {},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_AMMO_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "ammo",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 SAMPLE_WEAPON_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "weapon",
     "data": {"shot_damage": 3, "shot_timeout": 6.0},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 SAMPLE_INVALID_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "random",
     "data": {"num": 1},
+    "collected_only_once": True,
+    "collected_as_team": False,
 }
 
 
@@ -257,17 +271,17 @@ def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
 
-def test_user_collect_item(api_client, team_factory):
+def test_user_collect_item(api_client, team_factory, db_session):
     user_id = api_client.get(
         "/api/my_id",
     ).json()
 
     UserInterface(user_id).join_team(team_factory())
 
-    item = ItemModel(**SAMPLE_AMMO_DATA)
-    item.data = {"num": 10}
-    item.sign()
-    valid_encoded_ammo = item.to_base64()
+    item_model = ItemModel(**SAMPLE_AMMO_DATA)
+    item_model.data = {"num": 10}
+    item_model.sign()
+    valid_encoded_ammo = item_model.to_base64()
 
     assert UserInterface(user_id).get_user_model().num_bullets == 0
 
@@ -280,6 +294,89 @@ def test_user_collect_item(api_client, team_factory):
     assert r.ok
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
+
+    user = db_session.query(User).get(user_id)
+    item = db_session.query(Item).get(item_model.id)
+
+    assert user in item.users
+    assert item in user.items
+
+
+def test_different_users_collect_repeat_item(two_users_in_different_teams):
+    user_a, user_b = two_users_in_different_teams
+
+    repeatable_item = ItemModel(**SAMPLE_AMMO_DATA)
+    repeatable_item.collected_only_once = False
+    encoded_repeatable_item = repeatable_item.sign().to_base64()
+
+    assert UserInterface(user_a).get_user_model().num_bullets == 0
+    UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+    assert UserInterface(user_b).get_user_model().num_bullets == 0
+    UserInterface(user_b).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_b).get_user_model().num_bullets == 1
+
+
+def test_same_users_collect_repeat_item(two_users_in_different_teams):
+    user_a, _ = two_users_in_different_teams
+
+    repeatable_item = ItemModel(**SAMPLE_AMMO_DATA)
+    repeatable_item.collected_only_once = False
+    encoded_repeatable_item = repeatable_item.sign().to_base64()
+
+    assert UserInterface(user_a).get_user_model().num_bullets == 0
+    UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_a).collect_item(encoded_repeatable_item)
+    assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+
+def test_collect_team_item(two_users_in_different_teams, user_factory):
+    user_a1, user_b = two_users_in_different_teams
+
+    user_a2 = user_factory()
+    UserInterface(user_a2).join_team(UserInterface(user_a1).get_team_model().id)
+
+    team_item = ItemModel(**SAMPLE_AMMO_DATA)
+    team_item.collected_as_team = True
+    team_item.collected_only_once = True
+    encoded_team_item = team_item.sign().to_base64()
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 0
+    assert UserInterface(user_a2).get_user_model().num_bullets == 0
+    UserInterface(user_a1).collect_item(encoded_team_item)
+    assert UserInterface(user_a1).get_user_model().num_bullets == 1
+    assert UserInterface(user_a2).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_a2).collect_item(encoded_team_item)
+        UserInterface(user_b).collect_item(encoded_team_item)
+
+
+def test_collect_team_item_twice(two_users_in_different_teams, user_factory):
+    user_a1, user_b = two_users_in_different_teams
+
+    user_a2 = user_factory()
+    UserInterface(user_a2).join_team(UserInterface(user_a1).get_team_model().id)
+
+    team_item = ItemModel(**SAMPLE_AMMO_DATA)
+    team_item.collected_as_team = True
+    team_item.collected_only_once = False
+    encoded_team_repeatable_item = team_item.sign().to_base64()
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 0
+    assert UserInterface(user_a2).get_user_model().num_bullets == 0
+    assert UserInterface(user_b).get_user_model().num_bullets == 0
+
+    UserInterface(user_a1).collect_item(encoded_team_repeatable_item)
+    UserInterface(user_b).collect_item(encoded_team_repeatable_item)
+
+    assert UserInterface(user_a1).get_user_model().num_bullets == 1
+    assert UserInterface(user_a2).get_user_model().num_bullets == 1
+    assert UserInterface(user_b).get_user_model().num_bullets == 1
 
 
 @pytest.mark.parametrize(
@@ -347,7 +444,10 @@ def test_all_items_handled():
     from backend.model import ItemType
 
     for itype in ItemType:
-        assert itype in _ACTIONS
+        assert (itype, False) in _ACTIONS
+
+    # Only check collected_as_team for ammo
+    assert (ItemType.AMMO, True) in _ACTIONS
 
 
 def test_all_items_validated():

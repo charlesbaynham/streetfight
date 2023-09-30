@@ -64,6 +64,9 @@ class UserInterface:
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
 
+    def get_session(self):
+        return self._session
+
     @db_scoped
     def _make_user(self) -> User:
         """
@@ -212,10 +215,7 @@ class UserInterface:
                 403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
-        if self._get_item_from_database(item.id):
-            raise HTTPException(403, "Item has already been collected")
-
-        user = self.get_user()
+        user: User = self.get_user()
 
         if user.team is None:
             raise HTTPException(
@@ -223,20 +223,41 @@ class UserInterface:
                 "Cannot collect item, you are not in a game. How did you even get here?",
             )
 
+        item_from_db = self._get_item_from_database(item.id)
+
+        already_collected = False
+
+        if item_from_db:
+            if item.collected_only_once:
+                already_collected = True
+            else:
+                if item.collected_as_team:
+                    team_ids = [u.team_id for u in item_from_db.users]
+                    if user.team_id in team_ids:
+                        already_collected = True
+                else:
+                    if user in item_from_db.users:
+                        already_collected = True
+
+        if already_collected:
+            raise HTTPException(403, "Item has already been collected")
+
         try:
             do_item_actions(self, item)
         except RuntimeError as e:
             raise HTTPException(403, str(e))
 
-        self._session.add(
-            Item(
-                id=item.id,
-                item_type=item.itype,
-                data=item.data_as_json(),
-                user=user,
-                game=user.team.game,
+        if item_from_db:
+            user.items.append(item_from_db)
+        else:
+            user.items.append(
+                Item(
+                    id=item.id,
+                    item_type=item.itype,
+                    data=item.data_as_json(),
+                    game=user.team.game,
+                )
             )
-        )
 
     @db_scoped
     def clear_unchecked_shots(self):

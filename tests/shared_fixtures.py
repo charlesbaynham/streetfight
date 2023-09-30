@@ -6,6 +6,8 @@ from uuid import UUID
 
 import pytest
 
+from backend.user_interface import UserInterface
+
 TESTING_DB_URL = "sqlite:///testing.db"
 TEST_API_URL = "http://localhost:8000/api/hello"
 TEST_FRONTEND_URL = "http://localhost:3000/"
@@ -282,6 +284,20 @@ def user_in_team(team_factory, user_factory):
     UserInterface(user_id).join_team(team_id)
 
     return user_id
+
+
+@pytest.fixture
+def two_users_in_different_teams(team_factory, user_factory):
+    team_a = team_factory()
+    team_b = team_factory()
+
+    user_a = user_factory()
+    user_b = user_factory()
+
+    UserInterface(user_a).join_team(team_a)
+    UserInterface(user_b).join_team(team_b)
+
+    return user_a, user_b
 
 
 @pytest.fixture

@@ -283,10 +283,20 @@ def _add_params_to_url(url: str, params: Dict):
 
 
 @router.post("/admin_make_new_item")
-async def admin_make_new_item(item_type: str, item_data: Dict):
+async def admin_make_new_item(
+    item_type: str,
+    item_data: Dict,
+    collected_only_once=True,
+    collected_as_team=False,
+):
     logger.info("admin_make_new_item")
     try:
-        encoded_item = AdminInterface().make_new_item(item_type, item_data)
+        encoded_item = AdminInterface().make_new_item(
+            item_type,
+            item_data,
+            collected_only_once=collected_only_once,
+            collected_as_team=collected_as_team,
+        )
     except pydantic.ValidationError as e:
         raise HTTPException(400, f"Invalid submission - {e}")
 

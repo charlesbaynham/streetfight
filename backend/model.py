@@ -17,7 +17,9 @@ from sqlalchemy import Float
 from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
+from sqlalchemy import Table
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
@@ -111,6 +113,14 @@ class Team(Base):
     shots = relationship("Shot", lazy=True, back_populates="team")
 
 
+user_item_association_table = Table(
+    "association_table",
+    Base.metadata,
+    Column("user_id", ForeignKey("users.id"), primary_key=True),
+    Column("item_id", ForeignKey("items.id"), primary_key=True),
+)
+
+
 class User(Base):
     """
     Details of each user, recognised by their session id
@@ -136,7 +146,10 @@ class User(Base):
     shot_damage = Column(Integer, nullable=False, default=1)
 
     shots = relationship("Shot", lazy=True, back_populates="user")
-    items = relationship("Item", lazy=True, back_populates="user")
+
+    items = relationship(
+        "Item", secondary=user_item_association_table, back_populates="users"
+    )
 
     update_tag = Column(Integer(), default=random_counter_value)
 
@@ -197,14 +210,16 @@ class Item(Base):
     data = Column(String)
     "Arbitary data for objects of this type. Might be used for special, per-item code"
 
+    collected_only_once = Column(Boolean, default=True, nullable=False)
+    collected_as_team = Column(Boolean, default=False, nullable=False)
+
     game_id = Column(UUIDType, ForeignKey("games.id"))
     game = relationship(
         "Game", lazy="joined", foreign_keys=game_id, back_populates="items"
     )
 
-    user_id = Column(UUIDType, ForeignKey("users.id"))
-    user = relationship(
-        "User", lazy="joined", foreign_keys=user_id, back_populates="items"
+    users = relationship(
+        "User", secondary=user_item_association_table, back_populates="items"
     )
 
 

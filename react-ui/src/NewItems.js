@@ -9,7 +9,7 @@ const ITEM_PARAMS = {
     "ammo": ["num"],
     "armour": ["num"],
     "medpack": [],
-    "weapon": ["damage", "fire_delay"]
+    "weapon": ["shot_damage", "shot_timeout"]
 }
 
 function ItemDisplay({ item }) {
@@ -23,9 +23,7 @@ function ItemDisplay({ item }) {
         <br />
         Type: {item_type}
         <br />
-        {"num" in item_data ?
-            <>Num: {item_data.num}</>
-            : null}
+        <>item_data: {JSON.stringify(item_data)}</>
         <br />
         Code: {encoded_item}
         <br />
@@ -38,6 +36,9 @@ export default function NewItems() {
 
     const [selectedItemType, setSelectedItemType] = useState("ammo");
     const [selectedItemData, setSelectedItemData] = useState({});
+    const [collected_only_once, set_collected_only_once] = useState(true);
+    const [collected_as_team, set_collected_as_team] = useState(false);
+
 
     const updateItemQR = useCallback(() => {
         const postData = {};
@@ -57,12 +58,16 @@ export default function NewItems() {
 
         sendAPIRequest(
             "admin_make_new_item",
-            { "item_type": selectedItemType },
+            {
+                "item_type": selectedItemType,
+                "collected_only_once": collected_only_once,
+                "collected_as_team": collected_as_team
+            },
             'POST',
             callback,
             postData
         );
-    }, [setItem, selectedItemType, selectedItemData]);
+    }, [setItem, selectedItemType, selectedItemData, collected_only_once, collected_as_team]);
 
     useEffect(updateItemQR, [updateItemQR]);
 
@@ -103,6 +108,24 @@ export default function NewItems() {
                 )
             })
         }
+
+        <br />
+        <label for="collected_only_once">collected_only_once</label>
+        <input
+            id="collected_only_once"
+            type="checkbox"
+            checked={collected_only_once}
+            onClick={(_) => { set_collected_only_once(!collected_only_once) }}
+        />
+
+        <br />
+        <label for="collected_as_team">collected_as_team</label>
+        <input
+            id="collected_as_team"
+            type="checkbox"
+            checked={collected_as_team}
+            onClick={(_) => { set_collected_as_team(!collected_as_team) }}
+        />
 
         <br />
 
