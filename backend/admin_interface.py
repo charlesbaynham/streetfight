@@ -142,6 +142,11 @@ class AdminInterface:
 
         return num_shots, shot_models
 
+    def hit_user_by_admin(self, user_id, num=1):
+        ui = UserInterface(user_id)
+        ui.hit(num)
+        ui.get_ticker().post_message(f"Admin hit {ui.get_user().name}")
+
     def hit_user(self, shot_id, target_user_id):
         shot = self._get_shot_orm(shot_id)
 
