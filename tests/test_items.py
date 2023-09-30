@@ -10,6 +10,7 @@ from backend.items import ItemDataArmour
 from backend.items import ItemModel
 from backend.model import Item
 from backend.model import User
+from backend.model import UserState
 from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
@@ -264,11 +265,36 @@ def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
 
-def test_collecting_revive_while_dead(valid_encoded_medpack, user_in_team):
+def test_collecting_revive_while_knocked_out(valid_encoded_medpack, user_in_team):
+    assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     UserInterface(user_in_team).hit(1)
+    assert UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
     assert UserInterface(user_in_team).get_user_model().hit_points == 0
     UserInterface(user_in_team).collect_item(valid_encoded_medpack)
+    assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+
+def test_collecting_revive_while_dead(db_session, valid_encoded_medpack, user_in_team):
+    from backend.user_interface import TIME_KNOCKED_OUT
+
+    assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
+    UserInterface(user_in_team).hit(1)
+
+    assert UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
+
+    # Set time of death to the timeout + 10s ago
+    db_session.query(User).get(user_in_team).time_of_death -= TIME_KNOCKED_OUT + 10
+    db_session.commit()
+
+    assert UserInterface(user_in_team).get_user_model().state == UserState.DEAD
+    assert UserInterface(user_in_team).get_user_model().hit_points == 0
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_encoded_medpack)
+
+    assert UserInterface(user_in_team).get_user_model().state == UserState.DEAD
+    assert UserInterface(user_in_team).get_user_model().hit_points == 0
 
 
 def test_user_collect_item(api_client, team_factory, db_session):
