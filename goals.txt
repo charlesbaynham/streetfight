@@ -21,6 +21,7 @@ Goals
     - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
+  - [ ] Put fullscreen button back even in fullscreen
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
@@ -43,6 +44,8 @@ Done but unchecked:
   - [x] Add ticker messages for kills
 Bugs:
   - [ ] P0 - If you lock your phone for a while and repoen it, the streams do not reconnect
+  - [ ] Gaby could not scan anything
+  - [ ] Harry's phone didn't update the ammo count
 
 
 Backburner:
