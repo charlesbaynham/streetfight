@@ -16,29 +16,29 @@ import styles from './UserMode.module.css'
 import OnboardingView from './OnboardingView';
 import FullscreenButton from './FullscreenButton';
 
-const isGameRunning = (userState) =>
-  Boolean(userState && userState.active)
+const isGameRunning = (user) =>
+  Boolean(user && user.active)
 
-function GetView({ userState }) {
+function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
 
 
-  if (userState === null) {
+  if (user === null) {
     return <p>Loading...</p>;
     ;
   }
 
-  const isAlive = userState ? (userState.hit_points > 0) : false;
+  const isAlive = user ? (user.hit_points > 0) : false;
 
-  if (userState.name === null || !isGameRunning(userState)) {
-    return <OnboardingView userState={userState} />;
+  if (user.name === null || !isGameRunning(user)) {
+    return <OnboardingView user={user} />;
   }
 
   return <>
 
     <div className={styles.monitorsContainer}>
       {isAlive ?
-        <BulletCount user={userState} />
+        <BulletCount user={user} />
         : <div></div>}
       <TickerView />
     </div>
@@ -52,7 +52,7 @@ function GetView({ userState }) {
     }
 
     {isAlive ?
-      <FireButton userState={userState} onClick={
+      <FireButton user={user} onClick={
         () => {
           setTriggerShot(triggerShot + 1)
         }
@@ -64,21 +64,21 @@ function GetView({ userState }) {
 
 
 export default function UserMode() {
-  const [userStateHash, setUserStateHash] = useState(0);
+  const [userHash, setuserHash] = useState(0);
 
   const handle = useFullScreenHandle();
 
   const [isFullscreen, setIsFullscreen] = useState(false);
 
-  const [userState, setUserState] = useState(null);
+  const [user, setuser] = useState(null);
 
-  const updateUserState = useCallback(() => {
+  const updateuser = useCallback(() => {
     sendAPIRequest("user_info", null, "GET", data => {
-      setUserState(data)
+      setuser(data)
     })
-  }, [setUserState]);
+  }, [setuser]);
 
-  useEffect(updateUserState, [updateUserState, userStateHash]);
+  useEffect(updateuser, [updateuser, userHash]);
 
   const reportFullscreenChange = useCallback((state, _) => {
     setIsFullscreen(state);
@@ -90,15 +90,15 @@ export default function UserMode() {
     <UpdateListener
       update_type="user"
       callback={() => {
-        setUserStateHash(userStateHash + 1)
+        setuserHash(userHash + 1)
       }}
     />
 
     <FullScreen handle={handle} onChange={reportFullscreenChange}>
-      <GetView userState={userState} isFullscreen={isFullscreen} />
+      <GetView user={user} isFullscreen={isFullscreen} />
     </FullScreen>
     {isFullscreen ? null :
-      <FullscreenButton handle={handle} keepHintVisible={!isGameRunning(userState)} />
+      <FullscreenButton handle={handle} keepHintVisible={!isGameRunning(user)} />
     }
   </>
 }

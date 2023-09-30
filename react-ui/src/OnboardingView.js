@@ -32,8 +32,8 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
     </button>
 )
 
-function NameEntry({ userState }) {
-    const [nameBoxValue, setNameBoxValue] = useState(userState.name ? userState.name : "");
+function NameEntry({ user }) {
+    const [nameBoxValue, setNameBoxValue] = useState(user.name ? user.name : "");
 
     const setUserName = useCallback(() => {
         sendAPIRequest("set_name", { name: nameBoxValue }, 'POST', null);
@@ -45,7 +45,7 @@ function NameEntry({ userState }) {
         }
     }
 
-    const done = userState.name !== null;
+    const done = user.name !== null;
 
     return <motion.div layout className={styles.stackedItem + (
         done ? " " + styles.done : ""
@@ -77,17 +77,17 @@ function requestWebcamAccess(callbackCompleted) {
         .then(() => { callbackCompleted() })
 }
 
-function OnboardingView({ userState }) {
+function OnboardingView({ user }) {
     const [webcamAvailable, setWebcamAvailable] = useState(false);
 
     function getActionItems() {
-        const hasName = userState.name;
-        const inTeam = userState.team_name !== null;
-        const teamName = userState.team_name;
+        const hasName = user.name;
+        const inTeam = user.team_name !== null;
+        const teamName = user.team_name;
 
         const actionItems = [
             <NameEntry
-                userState={userState}
+                user={user}
                 key={"name"}
             />
         ];
@@ -118,7 +118,7 @@ function OnboardingView({ userState }) {
             )
         else return actionItems;
 
-        if (userState.team_id !== null)
+        if (user.team_id !== null)
             actionItems.push(
                 <ActionItem
                     text="Wait for game to start..."

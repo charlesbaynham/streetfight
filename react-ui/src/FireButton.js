@@ -12,19 +12,19 @@ import fireButtonImgCooldown from './images/firebutton_cooldown.svg';
 
 
 
-export default function FireButton({ userState, onClick }) {
+export default function FireButton({ user, onClick }) {
 
-  const isInTeam = userState ? userState.team_id !== null : false;
-  const hasBullets = userState ? (userState.num_bullets > 0) : false;
+  const isInTeam = user ? user.team_id !== null : false;
+  const hasBullets = user ? (user.num_bullets > 0) : false;
   const userHasAmmo = isInTeam && hasBullets;
 
-  const shotTimeout = userState.shot_timeout;
+  const shotTimeout = user.shot_timeout;
 
   const [playBang] = useSound(bang);
   const [animationState, setAnimationState] = useState("hidden")
   const [onCooldown, setOnCooldown] = useState(false);
 
-  const fireTimeout = userState.shot_timeout;  // second
+  const fireTimeout = user.shot_timeout;  // second
 
   const circleVariants = {
     hidden: {
