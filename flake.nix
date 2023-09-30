@@ -7,6 +7,12 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        backendPackage = pkgs.python3Packages.buildPythonPackage rec {
+          name = "backend";
+          src = ./backend;
+          propagatedBuildInputs = [ ];
+        };
+
         pythonReqs = with pkgs.python3Packages; [
           pip
 
@@ -28,6 +34,8 @@
           # selenium
           # geckodriver-autoinstaller
           requests
+
+          backendPackage
         ];
 
         reqs = with pkgs; [
@@ -37,12 +45,6 @@
           pkgs.black
           pkgs.caddy
         ];
-
-        backendPackage = pkgs.python3Packages.buildPythonPackage rec {
-          name = "backend";
-          src = ./backend;
-          propagatedBuildInputs = [ pythonReqs ];
-        };
 
         frontendBuild = pkgs.buildNpmPackage rec {
           pname = "streetfight";
