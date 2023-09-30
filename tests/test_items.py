@@ -16,6 +16,7 @@ from backend.user_interface import UserInterface
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
 
+
 # Mock "create_task" for all unit tests in this module
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
