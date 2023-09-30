@@ -14,12 +14,32 @@ def _check_alive(user_model: UserModel):
         raise RuntimeError("Cannot collect, you are dead!")
 
 
-def _handle_ammo(user_interface: "UserInterface", item: ItemModel):
+def _handle_ammo_user(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     _check_alive(user_model)
     user_interface.award_ammo(item.data["num"])
     user_interface.get_ticker().post_message(
         f"{user_model.name} collected {item.data['num']}x ammo"
+    )
+
+
+def _handle_ammo_team(user_interface: "UserInterface", item: ItemModel):
+    from .user_interface import UserInterface
+
+    user_model: UserModel = user_interface.get_user_model()
+    _check_alive(user_model)
+
+    user_orm = user_interface.get_user()
+    team_name = user_orm.team.name
+    users_in_team = user_orm.team.users
+
+    for team_user in users_in_team:
+        UserInterface(team_user.id, session=user_interface.get_session()).award_ammo(
+            item.data["num"]
+        )
+
+    user_interface.get_ticker().post_message(
+        f"Team {team_name} collected {item.data['num']}x ammo"
     )
 
 
@@ -62,7 +82,8 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
 
 
 _ACTIONS = {
-    (ItemType.AMMO, False): _handle_ammo,
+    (ItemType.AMMO, False): _handle_ammo_user,
+    (ItemType.AMMO, True): _handle_ammo_team,
     (ItemType.ARMOUR, False): _handle_armour,
     (ItemType.MEDPACK, False): _handle_medpack,
     (ItemType.WEAPON, False): _handle_weapon,

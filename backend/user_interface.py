@@ -64,6 +64,9 @@ class UserInterface:
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
 
+    def get_session(self):
+        return self._session
+
     @db_scoped
     def _make_user(self) -> User:
         """
