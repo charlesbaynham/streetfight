@@ -13,7 +13,6 @@ Goals
     - [x] A gun that fires every second
     - [x] A gun that hits for 3!
     - [ ] Images for all guns
-  - [ ] Pubs should give 2 bullets per team member when scanned by any team member
   - [ ] Location implementation:
     - [ ] Map in corner with own Location
     - [ ] Location reported to server regularly
