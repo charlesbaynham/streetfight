@@ -3,7 +3,6 @@ Goals
 
 - [ ] Polish:
   - [ ] Add white flash on QR scan and maybe remove vibration
-  - [ ] Add rejection noise for taken QR codes (with a timeout (?) to prevent immediate rejection after scanning. or stop resending the same QR code repeatedly)
   - [ ] Public scoreboard
   - [ ] 10 minutes timeout to be revived, then you are dead dead
   - [ ] Improve admin kill interface
