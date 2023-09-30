@@ -90,11 +90,16 @@ def test_add_user_to_team(api_client, one_team, three_users):
     assert response.ok
 
 
-@pytest.mark.parametrize("num", range(-3, 3))
-def test_admin_give_hp(api_client, user_factory, num):
-    user_id = user_factory()
-    api_client.post(f"/api/admin_give_hp?user_id={user_id}&num={num}")
-    assert UserInterface(user_id).get_user_model().hit_points == 1 + num
+@pytest.mark.parametrize("num", range(0, 3))
+def test_admin_give_positive_hp(api_client, user_in_team, num):
+    api_client.post(f"/api/admin_give_hp?user_id={user_in_team}&num={num}")
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1 + num
+
+
+@pytest.mark.parametrize("num", range(-3, 0))
+def test_admin_give_negative_hp(api_client, user_in_team, num):
+    api_client.post(f"/api/admin_give_hp?user_id={user_in_team}&num={num}")
+    assert UserInterface(user_in_team).get_user_model().hit_points == 0
 
 
 @pytest.mark.parametrize("num", range(-3, 3))
