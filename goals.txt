@@ -35,9 +35,6 @@ Non-code:
     - Quick-shoot gun is very rare and also in crates
 - We will have 4-6 people per team. We will decide the teams in advance
 
-Essential:
-  - [ ]  Images are too low res, but high res mode has huge lag... Argh! I need to think about performance on the frontend
-  Update: I've got a bit more performance by reducing the canvas size. More importantly, I've found out that the image hasn't got much lag. But the noise and the animation does. Phew! That sounds much easier to fix. 
 
 
 Bugs:
@@ -45,7 +42,7 @@ Bugs:
 
 Checks:
  - [ ] Harry and Gaby were not getting updates. I think this is fixed by the timeout but I should check
-
+ - [ ] Images are now higher res and lag is reduced - this needs to be checked live
 
 Backburner:
 
