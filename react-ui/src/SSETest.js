@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
+import { makeAPIURL } from './utils';
+
 
 function SSEComponent() {
     const [messages, setMessages] = useState([]);
 
 
     useEffect(() => {
-        const eventSource = new EventSource(document.origin + "/api/sse_updates");
+        const eventSource = new EventSource(makeAPIURL("sse_updates"));
 
         eventSource.onmessage = (event) => {
             console.log("Received SSE:", event);
