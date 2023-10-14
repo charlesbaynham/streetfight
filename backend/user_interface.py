@@ -43,7 +43,7 @@ def touch_user(user_interface: "UserInterface"):
 UserScopeWrapper = DatabaseScopeProvider(
     "users",
     precommit_method=touch_user,
-    exit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
+    postcommit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
         "user", user_interface.user_id
     ),
 )
@@ -213,14 +213,11 @@ class UserInterface:
             shot_damage=user.shot_damage,
         )
         self._session.add(shot_entry)
-        self._session.commit()
 
         user.num_bullets -= 1
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
-
-        return shot_entry.id
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:

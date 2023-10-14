@@ -40,10 +40,12 @@ def old_shot_prep(
     AdminInterface().award_user_ammo(user_b, 1000)
 
     # User A shoots user B (the admin hasn't checked it yet)
-    shot_a = UserInterface(user_a).submit_shot(test_image_string)
+    UserInterface(user_a).submit_shot(test_image_string)
+    shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
 
     # User B shoots user A (though they should be dead)
-    shot_b = UserInterface(user_b).submit_shot(test_image_string)
+    UserInterface(user_b).submit_shot(test_image_string)
+    shot_b = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
 
     # The admin checks user A and awards the shot to them
     response = api_client.post(
