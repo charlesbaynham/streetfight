@@ -5,9 +5,9 @@ import styles from './FullscreenButton.module.css';
 
 import fullscreenImg from './images/fullscreen-icon.svg';
 import hintImg from './images/better-in-fullscreen.svg';
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
-function FullscreenButton({ handle, keepHintVisible = false }) {
+function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
     const [hintHidden, setHintHidden] = useState(false);
 
     useEffect(() => {
@@ -19,9 +19,16 @@ function FullscreenButton({ handle, keepHintVisible = false }) {
         return () => { clearTimeout(handle) }
     }, [keepHintVisible, setHintHidden])
 
+    const toggleFullscreen = useCallback(() => {
+        if (isFullscreen)
+            handle.exit()
+        else
+            handle.enter()
+    })
+
     return (
         <motion.div className={styles.buttonContainer}>
-            <button onClick={handle.enter}>
+            <button onClick={toggleFullscreen}>
                 <img src={fullscreenImg} alt="Fullscreen" />
             </button>
             <motion.img
