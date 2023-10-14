@@ -29,7 +29,7 @@ from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
-SSE_KEEPALIVE_TIMEOUT = 5
+SSE_KEEPALIVE_TIMEOUT = 15
 
 load_env_vars()
 
@@ -330,6 +330,7 @@ async def updates_generator(user_id):
     update_ticker = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "ticker"})
     )
+    keepalive_message = make_sse_update_message(json.dumps({"handler": "keepalive"}))
 
     yield update_user
     yield update_ticker
@@ -419,7 +420,7 @@ async def updates_generator(user_id):
             elif target == "ticker":
                 yield update_ticker
             elif target == "keepalive":
-                yield ":keepalive\n\n"
+                yield keepalive_message
             else:
                 logger.error('Unknown update targer "%s"', target)
     finally:
