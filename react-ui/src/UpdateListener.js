@@ -6,7 +6,7 @@
  * via the passed callback.
  */
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { makeAPIURL } from './utils';
 
 const TIMEOUT_ON_ERROR = 3000
@@ -55,7 +55,7 @@ var lastTimestamp = 0;
 export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     const [bumpCounter, setBumpCounter] = useState(0);
 
-    function restartIfTimeout(cleanup) {
+    const restartIfTimeout = useCallback((cleanup) => {
         const timeSinceLastEvent = (getTimestamp() - lastTimestamp);
         // console.debug(`${timeSinceLastEvent / 1000} since last event`);
         if (timeSinceLastEvent > KEEPALIVE_TIMEOUT) {
@@ -63,7 +63,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
             cleanup();
             setBumpCounter(bumpCounter + 1)
         }
-    }
+    }, [bumpCounter, setBumpCounter]);
 
     useEffect(() => {
         const eventSource = new EventSource(makeAPIURL(endpoint));
@@ -98,7 +98,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
         keepalive_interval_handle = setInterval(() => { restartIfTimeout(cleanup) }, TIMEOUT_CHECK_INTERVAL)
 
         return cleanup;
-    }, [bumpCounter, setBumpCounter, endpoint]);
+    }, [bumpCounter, setBumpCounter, endpoint, restartIfTimeout]);
 
     return null;
 }
