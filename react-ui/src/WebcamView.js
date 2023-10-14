@@ -76,12 +76,15 @@ function WebcamCapture({ trigger, isDead }) {
                     }
                 />
                 : null}
-            <QRParser
-                webcamRef={webcamRef}
-            />
+
         </>
     );
 }
+
+// FIXME: Put this back!
+{/* <QRParser
+                webcamRef={webcamRef}
+            /> */}
 
 
 export default function WebcamView({
