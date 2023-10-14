@@ -17,6 +17,7 @@ var canvas = null;
 
 
 async function capture(webcamRef, scannedCallback) {
+    console.log("scanning")
     // Create persistent service worker and canvas for performance
     if (qrEngine === null) {
         QrScanner.createQrEngine(QrScanner.WORKER_PATH)
@@ -47,10 +48,8 @@ async function capture(webcamRef, scannedCallback) {
         .then(result => {
             scannedCallback(result.data)
         })
-        .catch(error => null)
-
+        .catch(_ => null)
 }
-
 
 
 const QRParser = ({ webcamRef }) => {
@@ -88,11 +87,28 @@ const QRParser = ({ webcamRef }) => {
         return () => { clearTimeout(timer_id) }
     }, [playError, lastScanData, lastScanTime]);
 
+    // Trigger a scan when triggerScan changes. After the scan completes, queue another one
+    const [triggerScan, setTriggerScan] = useState(0);
+    useEffect(() => {
+        if (triggerScan === 0)
+            return
+
+        console.log("Setting next")
+
+        capture(webcamRef, scannedCallback).then(() => {
+            setTimeout(() => {
+                setTriggerScan(triggerScan + 1)
+            }, timeout)
+        })
+
+    }, [triggerScan, setTriggerScan]);
+
+    //  Schedule the first scan once we have a webcamRef
     useEffect(() => {
         if (webcamRef === null)
             return
 
-        const timerID = setInterval(() => { capture(webcamRef, scannedCallback) }, timeout);
+        const timerID = setTimeout(() => { setTriggerScan(triggerScan + 1) }, timeout);
 
         return () => { clearInterval(timerID) }
     }, [webcamRef])
