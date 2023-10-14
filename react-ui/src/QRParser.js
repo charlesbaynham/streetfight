@@ -12,11 +12,48 @@ import BlankScreen from './BlankScreen';
 
 const timeout = 750;
 
+var qrEngine = null;
+var canvas = null;
+
+
+async function capture(webcamRef, scannedCallback) {
+    // Create persistent service worker and canvas for performance
+    if (qrEngine === null) {
+        QrScanner.createQrEngine(QrScanner.WORKER_PATH)
+            .then((e) => {
+                qrEngine = e;
+                canvas = document.createElement('canvas');
+            })
+        return
+    }
+
+    if (!webcamRef.current)
+        return
+
+    // Get an image from the webcam ref
+    const imageSrc = webcamRef.current.getScreenshot();
+
+    if (imageSrc === null)
+        return
+
+    // Scan it for QR codes
+    return QrScanner.scanImage(imageSrc,
+        {
+            qrEngine: qrEngine,
+            canvas: canvas,
+            returnDetailedScanResult: true
+        }
+    )
+        .then(result => {
+            scannedCallback(result.data)
+        })
+        .catch(error => null)
+
+}
+
+
 
 const QRParser = ({ webcamRef }) => {
-    const [qrEngine, setQrEngine] = useState(null);
-    const [canvas, setCanvas] = useState(null);
-
     const [lastScanData, setLastScanData] = useState(null);
     const [lastScanTime, setLastScanTime] = useState(null);
 
@@ -51,49 +88,14 @@ const QRParser = ({ webcamRef }) => {
         return () => { clearTimeout(timer_id) }
     }, [playError, lastScanData, lastScanTime]);
 
-    const capture = useCallback(() => {
-        // Create persistent service worker and canvas for performance
-        if (qrEngine === null) {
-            QrScanner.createQrEngine(QrScanner.WORKER_PATH)
-                .then((e) => {
-                    setQrEngine(e)
-                })
-
-            setCanvas(document.createElement('canvas'));
-        }
-
-        if (!webcamRef || !webcamRef.current)
-            return
-
-        // Get an image from the webcam ref
-        const imageSrc = webcamRef.current.getScreenshot();
-
-        if (imageSrc === null)
-            return
-
-        // Scan it for QR codes
-        QrScanner.scanImage(imageSrc,
-            {
-                qrEngine: qrEngine,
-                canvas: canvas,
-                returnDetailedScanResult: true
-            }
-        )
-            .then(result => {
-                scannedCallback(result.data)
-            })
-            .catch(error => null)
-
-    }, [qrEngine, webcamRef, canvas, scannedCallback]);
-
     useEffect(() => {
         if (webcamRef === null)
             return
 
-        const timerID = setInterval(capture, timeout);
+        const timerID = setInterval(() => { capture(webcamRef, scannedCallback) }, timeout);
 
         return () => { clearInterval(timerID) }
-    }, [webcamRef, capture])
+    }, [webcamRef])
 
 
     return <BlankScreen
