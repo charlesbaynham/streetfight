@@ -57,7 +57,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
 
     function restartIfTimeout(cleanup) {
         const timeSinceLastEvent = (getTimestamp() - lastTimestamp);
-        console.debug(`${timeSinceLastEvent / 1000} since last event`);
+        // console.debug(`${timeSinceLastEvent / 1000} since last event`);
         if (timeSinceLastEvent > KEEPALIVE_TIMEOUT) {
             console.log("Keepalive timeout - restarting SSE stream");
             cleanup();
@@ -74,7 +74,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
 
         eventSource.onmessage = (event) => {
             lastTimestamp = getTimestamp();
-            console.debug("Message received:", event)
+            // console.debug("Message received:", event)
             processMessage(JSON.parse(event.data));
         };
 
