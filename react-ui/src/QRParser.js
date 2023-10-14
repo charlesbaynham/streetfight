@@ -10,14 +10,13 @@ import error from './error.mp3';
 import BlankScreen from './BlankScreen';
 
 
-const timeout = 750;
+const timeout = 1000;
 
 var qrEngine = null;
 var canvas = null;
 
 
 async function capture(webcamRef, scannedCallback) {
-    console.log("scanning")
     // Create persistent service worker and canvas for performance
     if (qrEngine === null) {
         QrScanner.createQrEngine()
@@ -93,22 +92,20 @@ const QRParser = ({ webcamRef }) => {
         if (triggerScan === 0)
             return
 
-        console.log("Setting next")
-
         capture(webcamRef, scannedCallback).then(() => {
             setTimeout(() => {
                 setTriggerScan(triggerScan + 1)
             }, timeout)
         })
 
-    }, [triggerScan, setTriggerScan]);
+    }, [triggerScan, setTriggerScan, scannedCallback, webcamRef]);
 
     //  Schedule the first scan once we have a webcamRef
     useEffect(() => {
         if (webcamRef === null)
             return
 
-        const timerID = setTimeout(() => { setTriggerScan(triggerScan + 1) }, timeout);
+        const timerID = setTimeout(() => { setTriggerScan(1) }, timeout);
 
         return () => { clearInterval(timerID) }
     }, [webcamRef])
