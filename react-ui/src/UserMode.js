@@ -97,8 +97,6 @@ export default function UserMode() {
     <FullScreen handle={handle} onChange={reportFullscreenChange}>
       <GetView user={user} isFullscreen={isFullscreen} />
     </FullScreen>
-    {isFullscreen ? null :
-      <FullscreenButton handle={handle} keepHintVisible={!isGameRunning(user)} />
-    }
+    <FullscreenButton handle={handle} keepHintVisible={!isGameRunning(user)} />
   </>
 }

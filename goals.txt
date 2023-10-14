@@ -21,7 +21,7 @@ Goals
     - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
-  - [ ] Put fullscreen button back even in fullscreen
+  - [x] Put fullscreen button back even in fullscreen
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
