@@ -119,7 +119,7 @@ class AdminInterface:
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
-        ui = UserInterface(user_id)
+        ui = UserInterface(user_id, session=self.session)
         ui.join_team(team_id)
         user_name = ui.get_user_model().name
         team_name = ui.get_team_model().name
@@ -143,7 +143,7 @@ class AdminInterface:
         return num_shots, shot_models
 
     def hit_user_by_admin(self, user_id, num=1):
-        ui = UserInterface(user_id)
+        ui = UserInterface(user_id, session=self.session)
         ui.hit(num)
         ui.get_ticker().post_message(f"Admin hit {ui.get_user().name}")
 
@@ -151,22 +151,26 @@ class AdminInterface:
         shot = self._get_shot_orm(shot_id)
 
         u_from = shot.user
-        ui = UserInterface(target_user_id)
+        ui_target = UserInterface(target_user_id, session=self.session)
 
-        ui.hit(shot.shot_damage)
+        ui_target.hit(shot.shot_damage)
 
         u_to = self._get_user_orm(target_user_id)
 
         if u_to.hit_points > 0:
-            ui.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
+            ui_target.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
         else:
-            ui.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
-            ui.clear_unchecked_shots()
+            ui_target.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
+            ui_target.clear_unchecked_shots()
 
-        self.mark_shot_checked(shot_id)
+        try:
+            self.mark_shot_checked(shot_id)
+        except HTTPException:
+            # Handle the edge case where a user shoots themselves
+            pass
 
     def award_user_HP(self, user_id, num=1):
-        ui = UserInterface(user_id)
+        ui = UserInterface(user_id, session=self.session)
 
         ui.award_HP(num=num)
 
@@ -176,7 +180,7 @@ class AdminInterface:
             ticker.post_message(f"{user_model.name} was given {num} armour")
 
     def award_user_ammo(self, user_id, num=1):
-        ui = UserInterface(user_id)
+        ui = UserInterface(user_id, session=self.session)
 
         ui.award_ammo(num=num)
 
