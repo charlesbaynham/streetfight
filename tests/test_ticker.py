@@ -3,6 +3,7 @@ import time
 import pytest
 
 from backend.admin_interface import AdminInterface
+from backend.model import Shot
 from backend.ticker import Ticker
 from backend.user_interface import UserInterface
 
@@ -73,3 +74,23 @@ def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
 
     assert len(messages) == 2
     assert "hello" in messages
+
+
+def test_ticker_announces_kill(
+    db_session, api_client, api_user_id, team_factory, test_image_string
+):
+    UserInterface(api_user_id).join_team(team_factory())
+    UserInterface(api_user_id).award_ammo(1)
+    UserInterface(api_user_id).submit_shot(test_image_string)
+    shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
+    # Let's say the user shot themselves:
+    response = api_client.post(
+        f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={api_user_id}"
+    )
+    assert response.ok
+
+    response = api_client.get("/api/ticker_messages")
+    assert response.ok
+    messages = response.json()
+
+    assert "killed" in messages[0]
