@@ -7,8 +7,6 @@ from backend.admin_interface import AdminInterface
 from backend.model import Shot
 from backend.user_interface import UserInterface
 
-test_image_string = Path(__file__, "../sample_base64_image.txt").resolve().read_text()
-
 
 def test_making_item():
     assert isinstance(AdminInterface().make_new_item("ammo", {"num": 123}), str)
@@ -26,7 +24,9 @@ def test_making_item_fail():
 
 
 @pytest.fixture
-def old_shot_prep(api_client, db_session, user_factory, team_factory):
+def old_shot_prep(
+    api_client, db_session, user_factory, team_factory, test_image_string
+):
     team_a = team_factory()
     team_b = team_factory()
 

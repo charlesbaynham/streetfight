@@ -305,3 +305,8 @@ def api_user_id(api_client):
     response = api_client.get("/api/my_id")
     assert response.ok
     return UUID(response.json())
+
+
+@pytest.fixture
+def test_image_string():
+    return Path(__file__, "../sample_base64_image.txt").resolve().read_text()
