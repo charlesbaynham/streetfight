@@ -29,7 +29,8 @@ from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
-SSE_KEEPALIVE_TIMEOUT = 3
+# How often to send keepalive messages
+SSE_KEEPALIVE_TIMEOUT = 15
 
 load_env_vars()
 

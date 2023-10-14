@@ -6,11 +6,15 @@
  * via the passed callback.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { makeAPIURL } from './utils';
 
+// How long to wait before attempting a reconnect on error
 const TIMEOUT_ON_ERROR = 3000
+// How long to go without messages before calling it a timeout.
+// Should be greater than the timeout interval in main.py!
 const KEEPALIVE_TIMEOUT = 20000
+// How often to check if we have timed out:
 const TIMEOUT_CHECK_INTERVAL = 1000
 
 var listeners = new Map();
@@ -86,7 +90,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
 
         function processKeepaliveMessage(message) {
             const newKeepaliveCount = message.data;
-            console.debug("Keepalive count:", newKeepaliveCount, keepaliveCount)
+            // console.debug("Keepalive count:", newKeepaliveCount, keepaliveCount)
             if (keepaliveCount === null || newKeepaliveCount === keepaliveCount + 1)
                 keepaliveCount = newKeepaliveCount;
             else {
