@@ -30,6 +30,8 @@ class DatabaseScopeProvider:
         a. Call `precommit_method(self)` before the db commit
         b. Call `postcommit_method(self)` after the db commit
 
+    4. Regardless of whether the database state was altered, call `exit_method(self)`
+
     Example usage:
 
     @db_scoped("users", lambda self: self.get_user().touch()) def
@@ -42,11 +44,13 @@ class DatabaseScopeProvider:
         name: str,
         precommit_method: Callable = lambda _: None,
         postcommit_method: Callable = lambda _: None,
+        exit_method: Callable = lambda _: None,
     ) -> None:
         self.name = name
         self.update_events: Dict[int, asyncio.Event] = {}
         self.precommit_method = precommit_method
         self.postcommit_method = postcommit_method
+        self.exit_method = exit_method
 
     @staticmethod
     def session_is_dirty(session: Session):
@@ -125,5 +129,8 @@ class DatabaseScopeProvider:
                             "(DSP %s) Calling postcommit_method", self_outer.name
                         )
                         self_outer.postcommit_method(self)
+
+                    logger.debug("(DSP %s) Calling exit_method", self_outer.name)
+                    self_outer.exit_method(self)
 
         return f

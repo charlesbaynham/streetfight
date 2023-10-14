@@ -43,7 +43,7 @@ def touch_user(user_interface: "UserInterface"):
 UserScopeWrapper = DatabaseScopeProvider(
     "users",
     precommit_method=touch_user,
-    postcommit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
+    exit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
         "user", user_interface.user_id
     ),
 )

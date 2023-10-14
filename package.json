@@ -8,7 +8,7 @@
     "dev_both": "concurrently \"cd react-ui && npm start\" \"npm run backend\"",
     "dev": "cd react-ui && npm start",
     "frontend": "node server",
-    "backend": "(npm run resetdb || true) && uvicorn backend.main:app --reload --reload-dir backend",
+    "backend": "uvicorn backend.main:app --reload --reload-dir backend",
     "build": "cd react-ui && npm run build",
     "install": "cd react-ui/ && npm install",
     "resetdb": "python -m backend.reset_db",
