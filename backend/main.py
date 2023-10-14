@@ -29,7 +29,7 @@ from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
-SSE_KEEPALIVE_TIMEOUT = 15
+SSE_KEEPALIVE_TIMEOUT = 3
 
 load_env_vars()
 
@@ -330,7 +330,6 @@ async def updates_generator(user_id):
     update_ticker = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "ticker"})
     )
-    keepalive_message = make_sse_update_message(json.dumps({"handler": "keepalive"}))
 
     yield update_user
     yield update_ticker
@@ -340,8 +339,8 @@ async def updates_generator(user_id):
 
     # A function that logs a message every time an async generator yields
     async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
-        async for _ in generator:
-            await queue.put(message)
+        async for data in generator:
+            await queue.put((message, data))
 
     # A function that yields from the queue as soon as items arrive
     async def yield_from_queue() -> AsyncGenerator:
@@ -404,9 +403,12 @@ async def updates_generator(user_id):
 
     # Also add a keepalive producer
     async def keepalive_timer():
+        i = 0
+
         while True:
             await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
-            yield
+            yield i
+            i += 1
 
     producers.append(
         asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
@@ -414,13 +416,15 @@ async def updates_generator(user_id):
 
     # Iterate through the consumer:
     try:
-        async for target in yield_from_queue():
+        async for target, data in yield_from_queue():
             if target == "user":
                 yield update_user
             elif target == "ticker":
                 yield update_ticker
             elif target == "keepalive":
-                yield keepalive_message
+                yield make_sse_update_message(
+                    json.dumps({"handler": "keepalive", "data": data})
+                )
             else:
                 logger.error('Unknown update targer "%s"', target)
     finally:

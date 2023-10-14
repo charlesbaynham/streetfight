@@ -35,10 +35,7 @@ export function deregisterListener(type, handle) {
     listeners.get(type).delete(handle);
 }
 
-function processMessage(message) {
-    if (message.handler !== "update_prompt")
-        return
-
+function processUpdateMessage(message) {
     const update_target = message.data
 
     if (listeners.has(update_target)) {
@@ -50,38 +47,53 @@ function processMessage(message) {
     }
 }
 
+
 var lastTimestamp = 0;
 
 export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     const [bumpCounter, setBumpCounter] = useState(0);
 
-    const restartIfTimeout = useCallback((cleanup) => {
-        const timeSinceLastEvent = (getTimestamp() - lastTimestamp);
-        // console.debug(`${timeSinceLastEvent / 1000} since last event`);
-        if (timeSinceLastEvent > KEEPALIVE_TIMEOUT) {
-            console.log("Keepalive timeout - restarting SSE stream");
-            cleanup();
-            setBumpCounter(bumpCounter + 1)
-        }
-    }, [bumpCounter, setBumpCounter]);
+
 
     useEffect(() => {
         const eventSource = new EventSource(makeAPIURL(endpoint));
         var retry_timeout_handle = 0;
         var keepalive_interval_handle = 0;
+        var keepaliveCount = null;
 
         lastTimestamp = getTimestamp();
 
-        eventSource.onmessage = (event) => {
-            lastTimestamp = getTimestamp();
-            // console.debug("Message received:", event)
-            processMessage(JSON.parse(event.data));
+        function restartStream() {
+            cleanup();
+            setBumpCounter(bumpCounter + 1)
+        }
+
+        function restartIfTimeout() {
+            const timeSinceLastEvent = (getTimestamp() - lastTimestamp);
+            // console.debug(`${timeSinceLastEvent / 1000} since last event`);
+            if (timeSinceLastEvent > KEEPALIVE_TIMEOUT) {
+                console.log("Keepalive timeout - restarting SSE stream");
+                restartStream();
+            }
         };
 
-        eventSource.onerror = (_) => {
-            console.log("SSE stream closed - retrying");
-            retry_timeout_handle = setTimeout(() => { setBumpCounter(bumpCounter + 1) }, TIMEOUT_ON_ERROR)
+        function processMessage(message) {
+            if (message.handler === "update_prompt")
+                return processUpdateMessage(message)
+            else if (message.handler === "keepalive")
+                return processKeepaliveMessage(message)
         };
+
+        function processKeepaliveMessage(message) {
+            const newKeepaliveCount = message.data;
+            console.debug("Keepalive count:", newKeepaliveCount, keepaliveCount)
+            if (keepaliveCount === null || newKeepaliveCount === keepaliveCount + 1)
+                keepaliveCount = newKeepaliveCount;
+            else {
+                console.log("Keepalive desync - restarting stream")
+                restartStream()
+            }
+        }
 
         // Cleanup: close the SSE connection and deregister the timers
         function cleanup() {
@@ -94,11 +106,25 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
             }
         }
 
+        // When messages arrive, update the latest timestamp and
+        // pass them for processing by the listeners
+        eventSource.onmessage = (event) => {
+            lastTimestamp = getTimestamp();
+            const parsed_event = JSON.parse(event.data);
+            processMessage(parsed_event);
+        };
+
+        // Retry after a timeout if the stream fails
+        eventSource.onerror = (_) => {
+            console.log("SSE stream closed - retrying");
+            retry_timeout_handle = setTimeout(() => { setBumpCounter(bumpCounter + 1) }, TIMEOUT_ON_ERROR)
+        };
+
         // Register a watcher to restart the connection if we haven't heard anything in x seconds
-        keepalive_interval_handle = setInterval(() => { restartIfTimeout(cleanup) }, TIMEOUT_CHECK_INTERVAL)
+        keepalive_interval_handle = setInterval(restartIfTimeout, TIMEOUT_CHECK_INTERVAL)
 
         return cleanup;
-    }, [bumpCounter, setBumpCounter, endpoint, restartIfTimeout]);
+    }, [bumpCounter, setBumpCounter, endpoint]);
 
     return null;
 }
