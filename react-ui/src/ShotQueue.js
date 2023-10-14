@@ -35,17 +35,15 @@ export default function ShotQueue() {
             sendAPIRequest("admin_shot_hit_user", {
                 shot_id: shot_id,
                 target_user_id: target_user_id
-            }, "POST")
+            }, "POST").then(_ => { update() })
         },
-        []
+        [update]
     );
 
     const dismissShot = useCallback(
         () => {
             sendAPIRequest("admin_mark_shot_checked", { shot_id: shot.id }, "POST")
-                .then(_ => {
-                    update()
-                });
+                .then(_ => { update() });
         },
         [shot, update]
     );
@@ -70,7 +68,6 @@ export default function ShotQueue() {
                                             {target_user.name}
                                             <button onClick={() => {
                                                 hitUser(shot.id, target_user.id);
-                                                dismissShot();
                                             }}>Hit</button>
                                         </li>
                                     ))

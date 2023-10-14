@@ -163,6 +163,8 @@ class AdminInterface:
             ui.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
             ui.clear_unchecked_shots()
 
+        self.mark_shot_checked(shot_id)
+
     def award_user_HP(self, user_id, num=1):
         ui = UserInterface(user_id)
 

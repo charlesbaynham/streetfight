@@ -56,8 +56,15 @@ def old_shot_prep(
     return user_a, user_b, shot_a, shot_b
 
 
-# Now, shot B should be marked as checked
-def test_dead_user_old_shots_not_in_database(old_shot_prep, db_session):
+# Now, shot A should have been marked as checked (because it was)
+def test_alive_user_shot_checked(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
+    shot_a_model: Shot = db_session.query(Shot).get(shot_a)
+    assert shot_a_model.checked
+
+
+# Shot B should be marked as checked because it's now invalid
+def test_dead_user_shot_checked(old_shot_prep, db_session):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     shot_b_model: Shot = db_session.query(Shot).get(shot_b)
     assert shot_b_model.checked
@@ -66,7 +73,10 @@ def test_dead_user_old_shots_not_in_database(old_shot_prep, db_session):
 # ...and therefore not in the queue
 def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    assert len(AdminInterface().get_unchecked_shots()) == 0
+
+    num_shots, shots = AdminInterface().get_unchecked_shots()
+    assert len(shots) == 0
+    assert num_shots == 0
 
 
 # User b should be dead
