@@ -45,19 +45,22 @@ export default function FireButton({ user, onClick }) {
   const fire = useCallback((e) => {
     console.log("Firing!")
 
+    setOnCooldown(true);
+    playBang();
+    navigator.vibrate(200);
+
     setTimeout(() => {
-      setOnCooldown(true);
-      playBang();
-      navigator.vibrate(200);
       setAnimationState("visible")
+    }, 100);
+
+    setTimeout(() => {
+      onClick(e)
     }, 0);
 
     setTimeout(() => {
       setAnimationState("hidden")
       setOnCooldown(false)
     }, 1000 * shotTimeout)
-
-    return onClick(e)
   }, [setAnimationState, setOnCooldown, playBang, onClick]);
 
 
