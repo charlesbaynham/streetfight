@@ -9,8 +9,8 @@ import styles from './WebcamView.module.css';
 import useScreenOrientation from './useScreenOrientation';
 
 const videoConstraints = {
-    // width: { ideal: 4096 },
-    // height: { ideal: 2160 },
+    width: { ideal: 2048 },
+    height: { ideal: 1080 },
     facingMode: "environment"
 };
 
@@ -66,9 +66,11 @@ function WebcamCapture({ trigger, isDead }) {
                 <Webcam
                     ref={webcamRef}
                     audio={false}
-                    screenshotFormat="image/png"
+                    screenshotFormat="image/jpg"
                     videoConstraints={videoConstraints}
                     forceScreenshotSourceSize
+                    height="360"
+                    width="640"
                     className={
                         screenfillStyles.screenFill
                         + " " + styles.webcamVideo
@@ -76,15 +78,12 @@ function WebcamCapture({ trigger, isDead }) {
                     }
                 />
                 : null}
-
+            <QRParser
+                webcamRef={webcamRef}
+            />
         </>
     );
 }
-
-// FIXME: Put this back!
-{/* <QRParser
-                webcamRef={webcamRef}
-            /> */}
 
 
 export default function WebcamView({
