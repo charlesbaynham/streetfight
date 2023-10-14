@@ -20,7 +20,7 @@ async function capture(webcamRef, scannedCallback) {
     console.log("scanning")
     // Create persistent service worker and canvas for performance
     if (qrEngine === null) {
-        QrScanner.createQrEngine(QrScanner.WORKER_PATH)
+        QrScanner.createQrEngine()
             .then((e) => {
                 qrEngine = e;
                 canvas = document.createElement('canvas');
