@@ -56,11 +56,17 @@ def old_shot_prep(
     return user_a, user_b, shot_a, shot_b
 
 
-# Now, shot B should not be in the queue
-def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
+# Now, shot B should be marked as checked
+def test_dead_user_old_shots_not_in_database(old_shot_prep, db_session):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     shot_b_model: Shot = db_session.query(Shot).get(shot_b)
     assert shot_b_model.checked
+
+
+# ...and therefore not in the queue
+def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
+    assert len(AdminInterface().get_unchecked_shots()) == 0
 
 
 # User b should be dead
