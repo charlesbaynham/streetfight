@@ -25,6 +25,7 @@
           pillow
           psycopg2
           sqlalchemy-utils
+          tzdata
           fastapi
           wsproto
           uvicorn

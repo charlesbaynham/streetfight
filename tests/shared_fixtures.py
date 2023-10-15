@@ -141,10 +141,8 @@ def clean_server(full_server):
     backend.database.load()
     engine = backend.database.engine
 
-    Base.metadata.bind = engine
-
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     return full_server
 
@@ -178,10 +176,8 @@ def db_session(engine):
 
     random.seed(123)
 
-    Base.metadata.bind = engine
-
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     session = Session()
     try:
