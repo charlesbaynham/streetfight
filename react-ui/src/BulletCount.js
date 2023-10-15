@@ -87,7 +87,7 @@ export default function BulletCount({ user }) {
                 !anyActive
             } />
 
-            <button onClick={() => {
+            <button className={styles.showScoresButton} onClick={() => {
                 setShowScores(true)
             }}>
                 Show scores
