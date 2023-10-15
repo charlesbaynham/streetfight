@@ -13,31 +13,31 @@ const variants = {
 }
 
 function Popup({ children, visible, setVisible }) {
-    const [animate, setAnimate] = useState("open");
-
-    return (
-        <motion.div
-            className={styles.outerContainer}
-            initial="closed"
-            animate={visible ? "open" : "closed"}
-            transition={{ duration: 0.5 }}
-            variants={variants}
-            exit="closed"
+    const out = <motion.div
+        className={styles.outerContainer}
+        initial="closed"
+        animate={visible ? "open" : "closed"}
+        transition={{ duration: 0.5 }
+        }
+        variants={variants}
+        exit="closed"
+    >
+        <button
+            className={styles.exitButton}
+            onClick={() => {
+                setVisible(false)
+            }}
         >
-            <button
-                className={styles.exitButton}
-                onClick={() => {
-                    setAnimate("closed")
-                    setVisible(false)
-                }}
-            >
-                <img src={buttonImg} alt="" />
-            </button>
-            <div className={styles.innerContainer} >
-                {children}
-            </div>
-        </motion.div >
-    );
+            <img src={buttonImg} alt="" />
+        </button>
+        <div className={styles.innerContainer} >
+            {children}
+        </div>
+    </motion.div>
+
+    return <AnimatePresence>
+        {visible ? out : null}
+    </AnimatePresence>;
 }
 
 export default Popup;
