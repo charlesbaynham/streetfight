@@ -1,9 +1,9 @@
-import SSETest from "./SSETest";
+import Scoreboard from "./Scoreboard";
 
 
 const TestPage = () => {
     return <>
-        <SSETest />
+        <Scoreboard />
     </>
 };
 
