@@ -36,6 +36,9 @@ Non-code:
     - Quick-shoot gun is very rare and also in crates
 - We will have 4-6 people per team. We will decide the teams in advance
 
+Must implement refund for unsure shots
+Should add private ticker entries for e.g. results of shots (different colour)
+Generic game log table, for leaderboard
 
 
 Bugs:
