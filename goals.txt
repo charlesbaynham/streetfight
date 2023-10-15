@@ -23,7 +23,7 @@ Goals
   - [ ] Heartbeat animation when knocked out
   - [ ] Pickup messages for guns (/ armour?)
   - [x] Put fullscreen button back even in fullscreen
-
+ - [ ] ability to delay decision in a shit while processing others (conflict with ordering)
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
 - [ ] Need write-up explaining the rules
