@@ -1,10 +1,13 @@
+import Popup from "./Popup";
 import Scoreboard from "./Scoreboard";
 
 
 const TestPage = () => {
-    return <>
-        <Scoreboard />
-    </>
+    return (
+        <Popup>
+            <Scoreboard />
+        </Popup>
+    )
 };
 
 
