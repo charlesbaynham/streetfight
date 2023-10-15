@@ -45,7 +45,7 @@ function Scoreboard() {
                 <td>0</td>
             </tr>
             {
-                Array(20).fill(deadGaby)
+                Array(60).fill(deadGaby)
             }
         </table>
     );
