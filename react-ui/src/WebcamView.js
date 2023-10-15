@@ -14,6 +14,10 @@ const videoConstraints = {
     facingMode: "environment"
 };
 
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 
 function WebcamCapture({ trigger, isDead }) {
 
@@ -69,6 +73,33 @@ function WebcamCapture({ trigger, isDead }) {
                     screenshotFormat="image/jpg"
                     videoConstraints={videoConstraints}
                     forceScreenshotSourceSize
+                    onUserMedia={(stream) => {
+                        const track = stream.getTracks()[0]
+
+                        setTimeout(() => {
+                            track.applyConstraints({
+                                // width: { ideal: 2048 },
+                                // height: { ideal: 1080 },
+                                // facingMode: "environment",
+                                // torch: true,
+                                advanced: [
+                                    { torch: true }
+                                ]
+                            })
+                                .then(async () => { await sleep(1000) })
+                                .then(() => {
+                                    track.applyConstraints({
+                                        // width: { ideal: 2048 },
+                                        // height: { ideal: 1080 },
+                                        // facingMode: "environment",
+                                        // torch: true,
+                                        advanced: [
+                                            { torch: false }
+                                        ]
+                                    })
+                                })
+                        }, 5000)
+                    }}
                     height="360"
                     width="640"
                     className={
