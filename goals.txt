@@ -22,7 +22,7 @@ Goals
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
   - [ ] Pickup messages for guns (/ armour?)
-  - [x] Put fullscreen button back even in fullscreen
+  - [ ] Fix annoying popup button when I have proper inkscape
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
