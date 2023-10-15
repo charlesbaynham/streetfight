@@ -21,6 +21,7 @@ Goals
     - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
+  - [ ] Pickup messages for guns (/ armour?)
   - [x] Put fullscreen button back even in fullscreen
 
 Non-code:
