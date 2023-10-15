@@ -1,0 +1,33 @@
+[tool.poetry]
+name = "streetfight"
+version = "0.0.1"
+description = "A one-off app for a birthday party"
+authors = ["Charles Baynham <charles.baynham@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+python-dotenv = "^1.0.0"
+qrcode = "^7.4.2"
+click = "^8.1.7"
+sqlalchemy = "^2.0.22"
+pillow = "^10.0.1"
+psycopg2 = "^2.9.9"
+sqlalchemy-utils = "^0.41.1"
+tzdata = "^2023.3"
+fastapi = "^0.103.2"
+wsproto = "^1.2.0"
+uvicorn = "^0.23.2"
+pydantic = "<2.0"
+
+
+[tool.poetry.group.dev.dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+xfail_strict = true
+testpaths = "tests"
+pythonpath = "."
