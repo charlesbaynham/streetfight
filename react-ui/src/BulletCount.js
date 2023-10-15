@@ -78,6 +78,14 @@ export default function BulletCount({ user }) {
             }</p>
             <p><img className={styles.weaponImg} src={getGunImgFromUser(user)} alt="" /></p>
 
+            <p>
+                <button className={styles.showScoresButton} onClick={() => {
+                    setShowScores(true)
+                }}>
+                    Show scores &gt;&gt;
+                </button>
+            </p>
+
             <TemporaryOverlay img={bullet} appear={showBulletAnim} />
             <TemporaryOverlay img={armour} appear={showArmourAnim} />
             <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
@@ -87,11 +95,7 @@ export default function BulletCount({ user }) {
                 !anyActive
             } />
 
-            <button className={styles.showScoresButton} onClick={() => {
-                setShowScores(true)
-            }}>
-                Show scores
-            </button>
+
 
             <Popup visible={showScores} setVisible={setShowScores}>
                 <Scoreboard />
