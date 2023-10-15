@@ -12,7 +12,7 @@
     position: absolute;
     width: 90vw;
     left: 50vw;
-    top: 10vw;
+    top: 10vh;
     transform: translateX(-50%);
     background-color: rgba(0, 0, 0, 0.7);
 }
