@@ -1,4 +1,4 @@
-.popup {
+.outerContainer {
     position: absolute;
     width: 90vw;
     left: 50vw;
@@ -7,7 +7,12 @@
     background-color: rgba(0, 0, 0, 0.7);
 }
 
-.exit_button {
+.innerContainer {
+    max-height: 80vh;
+    overflow: scroll;
+}
+
+.exitButton {
     background: none;
     color: inherit;
     border: none;
@@ -22,7 +27,7 @@
     transform: translateX(50%) translateY(-50%);
 }
 
-.exit_button img {
+.exitButton img {
     width: 3em;
     background-color: white;
 }

@@ -3,6 +3,13 @@ import { makeAPIURL } from './utils';
 
 import styles from './Scoreboard.module.css'
 
+const deadGaby = <tr className={styles.dead}>
+    <td>Gaby</td>
+    <td>Team G</td>
+    <td>0</td>
+    <td>0</td>
+</tr>
+
 function Scoreboard() {
     return (
 
@@ -37,6 +44,9 @@ function Scoreboard() {
                 <td>0</td>
                 <td>0</td>
             </tr>
+            {
+                Array(20).fill(deadGaby)
+            }
         </table>
     );
 }
