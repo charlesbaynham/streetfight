@@ -1,54 +1,37 @@
-import React, { useState } from 'react';
-import { makeAPIURL } from './utils';
+import React, { useEffect, useState } from 'react';
+import { sendAPIRequest } from './utils';
 
 import styles from './Scoreboard.module.css'
 
-const deadGaby = <tr className={styles.dead}>
-    <td>Gaby</td>
-    <td>Team G</td>
-    <td>0</td>
-    <td>0</td>
-</tr>
 
 function Scoreboard() {
-    return (
+    const [tableHeader, setTableHeaders] = useState(null);
+    const [tableContents, setTableContents] = useState(null);
 
+    useEffect(() => {
+        sendAPIRequest("get_scoreboard")
+            .then(async response => {
+                if (!response.ok)
+                    return
+                const data = await response.json()
+
+                setTableHeaders(data.headers);
+                setTableContents(data.table);
+            });
+    }, [setTableHeaders, setTableContents])
+
+    return ((tableHeader !== null & tableContents !== null) ?
         <table className={styles.scoretable}>
             <tr>
-                <th>Player</th>
-                <th>Team</th>
-                <th>Armour</th>
-                <th>Damage</th>
+                {tableHeader.map((e, i) => <th key={i}>{e}</th>)}
             </tr>
-            <tr>
-                <td>Kirsty</td>
-                <td>Team K</td>
-                <td>1</td>
-                <td>999</td>
-            </tr>
-            <tr>
-                <td>Charles</td>
-                <td>Team K</td>
-                <td>0</td>
-                <td>6</td>
-            </tr>
-            <tr className={styles.knocked}>
-                <td>Harry</td>
-                <td>Team G</td>
-                <td>0</td>
-                <td>6</td>
-            </tr>
-            <tr className={styles.dead}>
-                <td>Gaby</td>
-                <td>Team G</td>
-                <td>0</td>
-                <td>0</td>
-            </tr>
-            {
-                Array(60).fill(deadGaby)
-            }
+            {tableContents.map((row, i_row) =>
+                <tr key={i_row}>
+                    {row.map((e, i) => <td key={i}>{e}</td>)}
+                </tr>
+            )}
         </table>
-    );
+        : null);
 }
 
 export default Scoreboard;
