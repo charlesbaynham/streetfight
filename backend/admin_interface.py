@@ -237,18 +237,19 @@ class AdminInterface:
         return encoded_item
 
     def get_scoreboard(self, game_id: UUID):
-        teams = self.session.query(Team).filter_by(game_id=game_id).all()
-        team_ids = [t.id for t in teams]
+        teams_and_ids = self.session.query(Team.id,Team.name).filter_by(game_id=game_id).all()
+        teams_by_id = {id: name for id, name in teams_and_ids}
 
-        users = (
+        user_data = (
             self.session.query(User.id, User.name, User.team_id)
-            .filter(User.team_id.in_(team_ids))
+            .filter(User.team_id.in_(teams_by_id.values()))
             .all()
         )
+        users_by_id = {id: (name, teams_by_id[team_id]) for id, name, team_id in user_data}
 
         table = []
-        for u in users:
-            table.append([u.name, u.name, u.name, u.name])
+        for user_id, (username, teamname) in users_by_id.items():
+            table.append([username, teamname])
 
     async def generate_any_ticker_updates(self, timeout=None):
         """

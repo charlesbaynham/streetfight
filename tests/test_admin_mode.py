@@ -119,3 +119,7 @@ def test_shots_record_targets(old_shot_prep):
 
     assert shot.user_id == user_b
     assert shot.target_user_id is None
+
+def test_scoreboard(db_session):
+    print(AdminInterface.get_scoreboard())
+    assert False
