@@ -19,6 +19,9 @@ Goals
   - [ ] Heartbeat animation when knocked out
   - [ ] Pickup messages for guns (/ armour?)
   - [ ] Handle shooting someone when they are already dead
+  - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
+  - [ ] Must implement refund for unsure shots
+  - [ ] Should add private ticker entries for e.g. results of shots (different colour)
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
