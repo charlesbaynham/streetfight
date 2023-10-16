@@ -159,7 +159,9 @@ class User(Base):
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
 
-    shots = relationship("Shot", lazy=True, back_populates="user")
+    shots = relationship(
+        "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
+    )
 
     items = relationship(
         "Item", secondary=user_item_association_table, back_populates="users"
