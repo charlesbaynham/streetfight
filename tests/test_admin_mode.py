@@ -134,6 +134,3 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
     print(game_id)
     print(AdminInterface().get_scoreboard(game_id))
 
-
-def test_scoreboard_contents():
-    raise NotImplementedError
