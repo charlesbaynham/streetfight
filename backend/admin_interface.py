@@ -237,7 +237,9 @@ class AdminInterface:
         return encoded_item
 
     def get_scoreboard(self, game_id: UUID):
-        teams_and_ids = self.session.query(Team.id,Team.name).filter_by(game_id=game_id).all()
+        teams_and_ids = (
+            self.session.query(Team.id, Team.name).filter_by(game_id=game_id).all()
+        )
         teams_by_id = {id: name for id, name in teams_and_ids}
 
         user_data = (
@@ -245,20 +247,37 @@ class AdminInterface:
             .filter(User.team_id.in_(teams_by_id.keys()))
             .all()
         )
-        users_by_id = {id: (name, teams_by_id[team_id], hit_points) for id, name, team_id,hit_points in user_data}
+        users_by_id = {
+            id: (name, teams_by_id[team_id], hit_points)
+            for id, name, team_id, hit_points in user_data
+        }
 
-        shots_by_these_users = self.session.query(Shot.user_id, Shot.shot_damage).filter(Shot.user_id.in_(users_by_id.keys())).all()
+        shots_by_these_users = (
+            self.session.query(Shot.user_id, Shot.shot_damage)
+            .filter(Shot.user_id.in_(users_by_id.keys()))
+            .all()
+        )
 
-        headers = ["Player", "Team", "Armour", "Damage"]
         table = []
         for user_id, (username, teamname, hitpoints) in users_by_id.items():
-            total_damage = sum(map(lambda s:s[1],filter(lambda s:s[0] == user_id, shots_by_these_users)))
-            table.append([username, teamname, max(0,hitpoints-1), total_damage])
+            total_damage = sum(
+                map(
+                    lambda s: s[1],
+                    filter(lambda s: s[0] == user_id, shots_by_these_users),
+                )
+            )
+            table.append(
+                {
+                    "name": username,
+                    "team": teamname,
+                    "hitpoints": hitpoints,
+                    "total_damage": total_damage,
+                }
+            )
 
-        table = sorted(table, key=lambda t: t[-1])
-        
+        table = sorted(table, key=lambda t: t["total_damage"])
 
-        return {"headers":headers, "table":table}
+        return {"table": table}
 
     async def generate_any_ticker_updates(self, timeout=None):
         """

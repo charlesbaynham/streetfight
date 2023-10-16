@@ -6,7 +6,6 @@ import styles from './Scoreboard.module.css'
 
 
 function Scoreboard() {
-    const [tableHeader, setTableHeaders] = useState(null);
     const [tableContents, setTableContents] = useState(null);
 
     const update = useCallback(() => {
@@ -15,35 +14,39 @@ function Scoreboard() {
                 if (!response.ok)
                     return
                 const data = await response.json()
-
-                setTableHeaders(data.headers);
                 setTableContents(data.table);
             });
-    }, [setTableHeaders, setTableContents]);
+    }, [setTableContents]);
 
     // Update scoreboard on load
     useEffect(update, [update])
 
     return <>
         {
-            (tableHeader !== null & tableContents !== null) ?
+            (tableContents !== null) ?
                 <table className={styles.scoretable}>
                     <tr>
-                        {tableHeader.map((e, i) => <th key={i}>{e}</th>)}
+                        <td>Player</td>
+                        <td>Team</td>
+                        <td>Armour</td>
+                        <td>Damage</td>
                     </tr>
-                    {tableContents.map((row, i_row) =>
-                        <tr key={i_row}>
-                            {row.map((e, i) => <td key={i}>{e}</td>)}
+                    {tableContents.map((row, i_row) => {
+                        // const className = 
+
+                        return <tr key={i_row}>
+                            <td>{row.name}</td>
+                            <td>{row.team}</td>
+                            <td>{Math.max(row.hitpoints - 1, 0)}</td>
+                            <td>{row.total_damage}</td>
                         </tr>
+                    }
                     )}
                 </table>
                 : null
         }
         {/* Also update scoreboard when the ticker updates */}
-        <UpdateListener
-            update_type="ticker"
-            callback={update}
-        />
+        <UpdateListener update_type="ticker" callback={update} />
     </>;
 }
 
