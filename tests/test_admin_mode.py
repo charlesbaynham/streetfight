@@ -1,4 +1,5 @@
 from pathlib import Path
+from backend.model import User
 
 import pytest
 from fastapi.exceptions import HTTPException
@@ -120,6 +121,15 @@ def test_shots_record_targets(old_shot_prep):
     assert shot.user_id == user_b
     assert shot.target_user_id is None
 
-def test_scoreboard(db_session):
-    print(AdminInterface.get_scoreboard())
+def test_scoreboard(db_session, team_factory, user_factory):
+    team_id = team_factory()
+    user_id_1 = user_factory()
+    user_id_2 = user_factory()
+    UserInterface(user_id_1).join_team(team_id)
+    UserInterface(user_id_2).join_team(team_id)
+    UserInterface(user_id_2).award_HP(2)
+    game_id = db_session.query(User).get(user_id_1).team.game.id
+
+    print(game_id)
+    print(AdminInterface().get_scoreboard(game_id))
     assert False

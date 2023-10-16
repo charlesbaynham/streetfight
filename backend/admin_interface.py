@@ -241,15 +241,20 @@ class AdminInterface:
         teams_by_id = {id: name for id, name in teams_and_ids}
 
         user_data = (
-            self.session.query(User.id, User.name, User.team_id)
-            .filter(User.team_id.in_(teams_by_id.values()))
+            self.session.query(User.id, User.name, User.team_id, User.hit_points)
+            .filter(User.team_id.in_(teams_by_id.keys()))
             .all()
         )
-        users_by_id = {id: (name, teams_by_id[team_id]) for id, name, team_id in user_data}
+        users_by_id = {id: (name, teams_by_id[team_id], hit_points) for id, name, team_id,hit_points in user_data}
+
+        shots_by_these_users = self.session.query(Shot.user_id, Shot.shot_damage).filter(Shot.user_id.in_(users_by_id.keys())).all()
 
         table = []
-        for user_id, (username, teamname) in users_by_id.items():
-            table.append([username, teamname])
+        for user_id, (username, teamname, hitpoints) in users_by_id.items():
+            total_damage = sum(map(lambda s:s[1],filter(lambda s:s[0] == user_id, shots_by_these_users)))
+            table.append([username, teamname, max(0,hitpoints-1), total_damage])
+
+        return table
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
