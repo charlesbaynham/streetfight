@@ -1,3 +1,4 @@
+import time
 import asyncio
 import logging
 from typing import List
@@ -243,13 +244,13 @@ class AdminInterface:
         teams_by_id = {id: name for id, name in teams_and_ids}
 
         user_data = (
-            self.session.query(User.id, User.name, User.team_id, User.hit_points)
+            self.session.query(User.id, User.name, User.team_id, User.hit_points, User.time_of_death)
             .filter(User.team_id.in_(teams_by_id.keys()))
             .all()
         )
         users_by_id = {
-            id: (name, teams_by_id[team_id], hit_points)
-            for id, name, team_id, hit_points in user_data
+            id: (name, teams_by_id[team_id], hit_points, time_of_death)
+            for id, name, team_id, hit_points, time_of_death in user_data
         }
 
         shots_by_these_users = (
@@ -259,7 +260,7 @@ class AdminInterface:
         )
 
         table = []
-        for user_id, (username, teamname, hitpoints) in users_by_id.items():
+        for user_id, (username, teamname, hitpoints, time_of_death) in users_by_id.items():
             total_damage = sum(
                 map(
                     lambda s: s[1],
@@ -272,6 +273,7 @@ class AdminInterface:
                     "team": teamname,
                     "hitpoints": hitpoints,
                     "total_damage": total_damage,
+                    "state": User.calculate_state(teamname, hitpoints, time_of_death)
                 }
             )
 

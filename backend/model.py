@@ -175,26 +175,28 @@ class User(Base):
             return False
 
         return self.team.game.active
-    
+
     @property
     def game_id(self):
         if not self.team:
             return None
 
         return self.team.game.id
-    
-    
 
-    @property
-    def state(self) -> UserState:
-        if not self.team:
+    @classmethod
+    def calculate_state(cls, team, hit_points, time_of_death):
+        if not team:
             return UserState.WAITING
-        if self.hit_points > 0:
+        if hit_points > 0:
             return UserState.ALIVE
-        if self.time_of_death < time.time():
+        if time_of_death < time.time():
             return UserState.DEAD
         else:
             return UserState.KNOCKED_OUT
+
+    @property
+    def state(self) -> UserState:
+        return self.calculate_state(self.team, self.hit_points, self.time_of_death)
 
     @property
     def team_name(self):

@@ -4,6 +4,12 @@ import UpdateListener from './UpdateListener';
 
 import styles from './Scoreboard.module.css'
 
+const classnameLookup = {
+    knocked_out: styles.knocked_out,
+    alive: styles.alive,
+    dead: styles.dead,
+}
+
 
 function Scoreboard() {
     const [tableContents, setTableContents] = useState(null);
@@ -25,23 +31,27 @@ function Scoreboard() {
         {
             (tableContents !== null) ?
                 <table className={styles.scoretable}>
-                    <tr>
-                        <td>Player</td>
-                        <td>Team</td>
-                        <td>Armour</td>
-                        <td>Damage</td>
-                    </tr>
-                    {tableContents.map((row, i_row) => {
-                        // const className = 
-
-                        return <tr key={i_row}>
-                            <td>{row.name}</td>
-                            <td>{row.team}</td>
-                            <td>{Math.max(row.hitpoints - 1, 0)}</td>
-                            <td>{row.total_damage}</td>
+                    <thead>
+                        <tr>
+                            <th>Player</th>
+                            <th>Team</th>
+                            <th>Armour</th>
+                            <th>Damage</th>
                         </tr>
-                    }
-                    )}
+                    </thead>
+                    <tbody>
+                        {tableContents.map((row, i_row) => {
+                            const className = classnameLookup[row.state.replace(" ", "_")];
+
+                            return <tr className={className} key={i_row}>
+                                <td>{row.name}</td>
+                                <td>{row.team}</td>
+                                <td>{Math.max(row.hitpoints - 1, 0)}</td>
+                                <td>{row.total_damage}</td>
+                            </tr>
+                        }
+                        )}
+                    </tbody>
                 </table>
                 : null
         }

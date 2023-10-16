@@ -27,10 +27,16 @@
     font-weight: bold;
 }
 
-.scoretable .knocked {
+.scoretable .alive {
+    color: white;
+}
+
+.scoretable .knocked_out {
     color: yellow;
+    font-style: italic;
 }
 
 .scoretable .dead {
     color: red;
+    font-style: italic;
 }
