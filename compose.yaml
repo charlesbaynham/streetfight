@@ -30,14 +30,14 @@ services:
     - ./logs:/data/logs
     restart: always
 
-  duckdns:
-    image: lscr.io/linuxserver/duckdns
-    environment:
-    - TZ=Europe/London
-    - SUBDOMAINS=${DUCKDNS_SUBDOMAIN}
-    - TOKEN=${DUCKDNS_KEY}
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
     restart: always
-
+    environment:
+      - API_KEY=${CLOUDFLARE_KEY}
+      - ZONE=${CLOUDFLARE_DOMAIN}
+      - SUBDOMAIN=${CLOUDFLARE_SUBDOMAIN}
+      - PROXIED=false
 
 volumes:
   caddy_data:
