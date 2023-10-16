@@ -23,6 +23,7 @@ from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
 
+
 logger = logging.getLogger(__name__)
 
 
@@ -234,6 +235,20 @@ class AdminInterface:
         logger.info("Made new item: %s => %s", item, encoded_item)
 
         return encoded_item
+
+    def get_scoreboard(self, game_id: UUID):
+        teams = self.session.query(Team).filter_by(game_id=game_id).all()
+        team_ids = [t.id for t in teams]
+
+        users = (
+            self.session.query(User.id, User.name, User.team_id)
+            .filter(User.team_id.in_(team_ids))
+            .all()
+        )
+
+        table = []
+        for u in users:
+            table.append([u.name, u.name, u.name, u.name])
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
