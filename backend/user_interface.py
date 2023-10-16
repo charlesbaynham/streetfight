@@ -101,7 +101,7 @@ class UserInterface:
     @db_scoped
     def hit(self, num=1) -> User:
         "Take num hitpoints from the user, leaving them on as least zero"
-        u :User= self.get_user()
+        u: User = self.get_user()
         initial_HP = u.hit_points
 
         u.hit_points -= num

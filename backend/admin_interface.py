@@ -1,12 +1,13 @@
-import time
 import asyncio
 import logging
+import time
 from typing import List
 from typing import Tuple
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
+from sqlalchemy import and_
 
 from . import database
 from .asyncio_triggers import get_trigger_event
@@ -23,7 +24,6 @@ from .model import User
 from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
-from sqlalchemy import and_
 
 
 logger = logging.getLogger(__name__)
@@ -245,7 +245,9 @@ class AdminInterface:
         teams_by_id = {id: name for id, name in teams_and_ids}
 
         user_data = (
-            self.session.query(User.id, User.name, User.team_id, User.hit_points, User.time_of_death)
+            self.session.query(
+                User.id, User.name, User.team_id, User.hit_points, User.time_of_death
+            )
             .filter(User.team_id.in_(teams_by_id.keys()))
             .all()
         )
@@ -256,12 +258,23 @@ class AdminInterface:
 
         completed_shots_by_these_users = (
             self.session.query(Shot.user_id, Shot.shot_damage)
-            .filter(and_(Shot.user_id.in_(users_by_id.keys()), Shot.checked, Shot.target_user_id != None))            
+            .filter(
+                and_(
+                    Shot.user_id.in_(users_by_id.keys()),
+                    Shot.checked,
+                    Shot.target_user_id != None,
+                )
+            )
             .all()
         )
 
         table = []
-        for user_id, (username, teamname, hitpoints, time_of_death) in users_by_id.items():
+        for user_id, (
+            username,
+            teamname,
+            hitpoints,
+            time_of_death,
+        ) in users_by_id.items():
             total_damage = sum(
                 map(
                     lambda s: s[1],
@@ -274,7 +287,7 @@ class AdminInterface:
                     "team": teamname,
                     "hitpoints": hitpoints,
                     "total_damage": total_damage,
-                    "state": User.calculate_state(teamname, hitpoints, time_of_death)
+                    "state": User.calculate_state(teamname, hitpoints, time_of_death),
                 }
             )
 

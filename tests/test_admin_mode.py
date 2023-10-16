@@ -1,11 +1,11 @@
 from pathlib import Path
-from backend.model import User
 
 import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
 from backend.model import Shot
+from backend.model import User
 from backend.user_interface import UserInterface
 
 
@@ -121,6 +121,7 @@ def test_shots_record_targets(old_shot_prep):
     assert shot.user_id == user_b
     assert shot.target_user_id is None
 
+
 def test_scoreboard_builds(db_session, team_factory, user_factory):
     team_id = team_factory()
     user_id_1 = user_factory()
@@ -132,6 +133,7 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
 
     print(game_id)
     print(AdminInterface().get_scoreboard(game_id))
-    
+
+
 def test_scoreboard_contents():
     raise NotImplementedError
