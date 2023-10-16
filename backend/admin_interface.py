@@ -256,8 +256,7 @@ class AdminInterface:
 
         completed_shots_by_these_users = (
             self.session.query(Shot.user_id, Shot.shot_damage)
-            .filter(Shot.user_id.in_(users_by_id.keys()))
-            .filter(and_(Shot.checked, Shot.target_user_id))            
+            .filter(and_(Shot.user_id.in_(users_by_id.keys()), Shot.checked, Shot.target_user_id != None))            
             .all()
         )
 
@@ -279,7 +278,7 @@ class AdminInterface:
                 }
             )
 
-        table = sorted(table, key=lambda t: t["total_damage"])
+        table = sorted(table, key=lambda t: t["total_damage"], reverse=True)
 
         return {"table": table}
 

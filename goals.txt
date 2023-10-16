@@ -24,7 +24,6 @@ Goals
   - [ ] Pickup messages for guns (/ armour?)
   - [x] Fix annoying popup button when I have proper inkscape
   - [ ] Handle shooting someone when they are already dead
-  - [ ] Scoreboard is not showing damage correctly
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
