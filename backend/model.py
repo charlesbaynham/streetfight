@@ -175,6 +175,15 @@ class User(Base):
             return False
 
         return self.team.game.active
+    
+    @property
+    def game_id(self):
+        if not self.team:
+            return None
+
+        return self.team.game.id
+    
+    
 
     @property
     def state(self) -> UserState:
@@ -275,6 +284,7 @@ class UserModel(pydantic.BaseModel):
     time_of_death: Optional[float]
 
     # These are retrieved from the Game associated with the Team this user is in
+    game_id: Optional[UUID]
     active: bool
     state: UserState
 

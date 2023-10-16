@@ -249,12 +249,16 @@ class AdminInterface:
 
         shots_by_these_users = self.session.query(Shot.user_id, Shot.shot_damage).filter(Shot.user_id.in_(users_by_id.keys())).all()
 
+        headers = ["Player", "Team", "Armour", "Damage"]
         table = []
         for user_id, (username, teamname, hitpoints) in users_by_id.items():
             total_damage = sum(map(lambda s:s[1],filter(lambda s:s[0] == user_id, shots_by_these_users)))
             table.append([username, teamname, max(0,hitpoints-1), total_damage])
 
-        return table
+        table = sorted(table, key=lambda t: t[-1])
+        
+
+        return {"headers":headers, "table":table}
 
     async def generate_any_ticker_updates(self, timeout=None):
         """

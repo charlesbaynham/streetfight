@@ -121,7 +121,7 @@ def test_shots_record_targets(old_shot_prep):
     assert shot.user_id == user_b
     assert shot.target_user_id is None
 
-def test_scoreboard(db_session, team_factory, user_factory):
+def test_scoreboard_builds(db_session, team_factory, user_factory):
     team_id = team_factory()
     user_id_1 = user_factory()
     user_id_2 = user_factory()
@@ -132,4 +132,6 @@ def test_scoreboard(db_session, team_factory, user_factory):
 
     print(game_id)
     print(AdminInterface().get_scoreboard(game_id))
-    assert False
+    
+def test_scoreboard_contents():
+    raise NotImplementedError

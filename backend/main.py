@@ -202,6 +202,14 @@ async def get_users(game_id: str = None, team_id: str = None):
     return AdminInterface().get_users(game_id=game_id, team_id=team_id)
 
 
+@router.get("/get_scoreboard")
+async def get_scoreboard(user_id=Depends(get_user_id)):
+    game_id = UserInterface(user_id).get_user_model().game_id
+    if game_id is None:
+        raise HTTPException(404, "User is not in a game")
+    
+    return AdminInterface().get_scoreboard(game_id)
+
 ######## ADMIN ###########
 @router.post("/admin_create_game")
 async def admin_create_game():
