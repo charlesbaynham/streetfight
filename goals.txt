@@ -2,11 +2,7 @@ Goals
 -----
 
 - [ ] Polish:
-  - [ ] Public scoreboard
-  - [ ] 10 minutes timeout to be revived, then you are dead dead
-    - [x] Needs asyncio bump on timeout since frontend uses "state". Or JS could update itself
   - [ ] Improve admin kill interface
-  - [ ] Flash the torch on shots
   - [x] LOADS more items. We need:
     - [x] A gun that hits for 2
     - [x] A gun that fires every second
@@ -22,8 +18,11 @@ Goals
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
   - [ ] Pickup messages for guns (/ armour?)
-  - [x] Put fullscreen button back even in fullscreen
- - [ ] ability to delay decision in a shit while processing others (conflict with ordering)
+  - [ ] Handle shooting someone when they are already dead
+  - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
+  - [ ] Must implement refund for unsure shots
+  - [ ] Should add private ticker entries for e.g. results of shots (different colour)
+
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
 - [ ] Need write-up explaining the rules
@@ -36,14 +35,6 @@ Non-code:
     - Quick-shoot gun is very rare and also in crates
 - We will have 4-6 people per team. We will decide the teams in advance
 
-Must implement refund for unsure shots
-Should add private ticker entries for e.g. results of shots (different colour)
-Generic game log table, for leaderboard
-
-
-Bugs:
-  - [ ] Gaby could not scan anything
-
 Checks:
  - [ ] Harry and Gaby were not getting updates. I think this is fixed by the timeout but I should check
  - [ ] Images are now higher res and lag is reduced - this needs to be checked live
@@ -55,3 +46,4 @@ Backburner:
 - [ ]: Users should be able to send items to other users (on their team? only bullets?)
 - [x] Fixed by moving to SSE: Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
 - [ ] QR code interface for joining team
+- [ ] Flash the torch on shots - probably not, only possible on Android

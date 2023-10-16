@@ -45,6 +45,7 @@
           pkgs.pre-commit
           pkgs.black
           pkgs.caddy
+          pkgs.ruby  # For pre-commit FIX-ME hook
         ];
 
         frontendBuild = pkgs.buildNpmPackage rec {

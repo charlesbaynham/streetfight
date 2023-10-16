@@ -22,7 +22,6 @@ export default function TickerView() {
         <UpdateListener
             update_type="ticker"
             callback={() => {
-                console.log(`Updating knownTickerHash to ${knownTickerHash + 1}`)
                 setKnownTickerHash(knownTickerHash + 1)
             }}
         />

@@ -1,11 +1,13 @@
 import asyncio
 import logging
+import time
 from typing import List
 from typing import Tuple
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
+from sqlalchemy import and_
 
 from . import database
 from .asyncio_triggers import get_trigger_event
@@ -22,6 +24,7 @@ from .model import User
 from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
+
 
 logger = logging.getLogger(__name__)
 
@@ -169,6 +172,10 @@ class AdminInterface:
             # Handle the edge case where a user shoots themselves
             pass
 
+        # Record the target user in the db
+        shot.target_user_id = target_user_id
+        self.session.commit()
+
     def award_user_HP(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
 
@@ -230,6 +237,63 @@ class AdminInterface:
         logger.info("Made new item: %s => %s", item, encoded_item)
 
         return encoded_item
+
+    def get_scoreboard(self, game_id: UUID):
+        teams_and_ids = (
+            self.session.query(Team.id, Team.name).filter_by(game_id=game_id).all()
+        )
+        teams_by_id = {id: name for id, name in teams_and_ids}
+
+        user_data = (
+            self.session.query(
+                User.id, User.name, User.team_id, User.hit_points, User.time_of_death
+            )
+            .filter(User.team_id.in_(teams_by_id.keys()))
+            .all()
+        )
+        users_by_id = {
+            id: (name, teams_by_id[team_id], hit_points, time_of_death)
+            for id, name, team_id, hit_points, time_of_death in user_data
+        }
+
+        completed_shots_by_these_users = (
+            self.session.query(Shot.user_id, Shot.shot_damage)
+            .filter(
+                and_(
+                    Shot.user_id.in_(users_by_id.keys()),
+                    Shot.checked,
+                    Shot.target_user_id != None,
+                )
+            )
+            .all()
+        )
+
+        table = []
+        for user_id, (
+            username,
+            teamname,
+            hitpoints,
+            time_of_death,
+        ) in users_by_id.items():
+            total_damage = sum(
+                map(
+                    lambda s: s[1],
+                    filter(lambda s: s[0] == user_id, completed_shots_by_these_users),
+                )
+            )
+            table.append(
+                {
+                    "name": username,
+                    "team": teamname,
+                    "hitpoints": hitpoints,
+                    "total_damage": total_damage,
+                    "state": User.calculate_state(teamname, hitpoints, time_of_death),
+                }
+            )
+
+        table = sorted(table, key=lambda t: t["total_damage"], reverse=True)
+
+        return {"table": table}
 
     async def generate_any_ticker_updates(self, timeout=None):
         """

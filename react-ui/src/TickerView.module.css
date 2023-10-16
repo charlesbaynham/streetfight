@@ -5,9 +5,14 @@
     text-shadow: 2px 2px #000;
     font-weight: bold;
     padding: 0.1em 1em;
-    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
     line-height: 1em;
     /* border-radius: 10px; */
+}
+
+.tickerview p,
+.tickerview span,
+.tickerview li {
+    font-family: inherit;
 }
 
 .tickerview li {

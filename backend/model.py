@@ -82,6 +82,9 @@ class Shot(Base):
         "User", lazy="joined", foreign_keys=user_id, back_populates="shots"
     )
 
+    target_user_id = Column(UUIDType, ForeignKey("users.id"), nullable=True)
+    target_user = relationship("User", lazy="joined", foreign_keys=user_id)
+
     team_id = Column(UUIDType, ForeignKey("teams.id"), nullable=False)
     team = relationship(
         "Team", lazy="joined", foreign_keys=team_id, back_populates="shots"
@@ -156,7 +159,9 @@ class User(Base):
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
 
-    shots = relationship("Shot", lazy=True, back_populates="user")
+    shots = relationship(
+        "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
+    )
 
     items = relationship(
         "Item", secondary=user_item_association_table, back_populates="users"
@@ -172,15 +177,26 @@ class User(Base):
         return self.team.game.active
 
     @property
-    def state(self) -> UserState:
+    def game_id(self) -> Optional[UUID]:
         if not self.team:
+            return None
+
+        return self.team.game.id
+
+    @classmethod
+    def calculate_state(cls, team, hit_points, time_of_death):
+        if not team:
             return UserState.WAITING
-        if self.hit_points > 0:
+        if hit_points > 0:
             return UserState.ALIVE
-        if self.time_of_death < time.time():
+        if time_of_death < time.time():
             return UserState.DEAD
         else:
             return UserState.KNOCKED_OUT
+
+    @property
+    def state(self) -> UserState:
+        return self.calculate_state(self.team, self.hit_points, self.time_of_death)
 
     @property
     def team_name(self):
@@ -270,6 +286,7 @@ class UserModel(pydantic.BaseModel):
     time_of_death: Optional[float]
 
     # These are retrieved from the Game associated with the Team this user is in
+    game_id: Optional[UUID]
     active: bool
     state: UserState
 
