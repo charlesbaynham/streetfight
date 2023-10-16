@@ -71,7 +71,7 @@ def test_dead_user_shot_checked(old_shot_prep, db_session):
 
 
 # ...and therefore not in the queue
-def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
+def test_dead_user_old_shots_not_in_queue(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
 
     num_shots, shots = AdminInterface().get_unchecked_shots()
@@ -80,24 +80,42 @@ def test_dead_user_old_shots_not_in_queue(old_shot_prep, db_session):
 
 
 # User b should be dead
-def test_dead_user_old_shots_user_b_dead(old_shot_prep, db_session):
+def test_dead_user_old_shots_user_b_dead(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_b).get_user_model().hit_points == 0
 
 
 # And user A should be alive
-def test_dead_user_old_shots_user_a_alive(old_shot_prep, db_session):
+def test_dead_user_old_shots_user_a_alive(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_a).get_user_model().hit_points == 1
 
 
 # And user B should have got a bullet refund
-def test_dead_user_old_shots_user_b_refunded(old_shot_prep, db_session):
+def test_dead_user_old_shots_user_b_refunded(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_b).get_user_model().num_bullets == 1000
 
 
 # But user A shouldn't have
-def test_dead_user_old_shots_user_a_not_refunded(old_shot_prep, db_session):
+def test_dead_user_old_shots_user_a_not_refunded(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     assert UserInterface(user_a).get_user_model().num_bullets == 999
+
+
+# The good Shot should now record both the shooter and the shootee
+def test_shots_record_targets(old_shot_prep):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
+    shot = AdminInterface()._get_shot_orm(shot_a)
+
+    assert shot.user_id == user_a
+    assert shot.target_user_id == user_b
+
+
+# The refunded Shot should be only the shooter
+def test_shots_record_targets(old_shot_prep):
+    user_a, user_b, shot_a, shot_b = old_shot_prep
+    shot = AdminInterface()._get_shot_orm(shot_b)
+
+    assert shot.user_id == user_b
+    assert shot.target_user_id is None
