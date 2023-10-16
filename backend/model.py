@@ -82,6 +82,9 @@ class Shot(Base):
         "User", lazy="joined", foreign_keys=user_id, back_populates="shots"
     )
 
+    target_user_id = Column(UUIDType, ForeignKey("users.id"), nullable=True)
+    target_user = relationship("User", lazy="joined", foreign_keys=user_id)
+
     team_id = Column(UUIDType, ForeignKey("teams.id"), nullable=False)
     team = relationship(
         "Team", lazy="joined", foreign_keys=team_id, back_populates="shots"

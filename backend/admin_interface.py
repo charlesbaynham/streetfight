@@ -169,6 +169,10 @@ class AdminInterface:
             # Handle the edge case where a user shoots themselves
             pass
 
+        # Record the target user in the db
+        shot.target_user_id = target_user_id
+        self.session.commit()
+
     def award_user_HP(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
 
