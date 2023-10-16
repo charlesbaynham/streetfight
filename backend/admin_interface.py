@@ -23,6 +23,7 @@ from .model import User
 from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
+from sqlalchemy import and_
 
 
 logger = logging.getLogger(__name__)
@@ -253,9 +254,10 @@ class AdminInterface:
             for id, name, team_id, hit_points, time_of_death in user_data
         }
 
-        shots_by_these_users = (
+        completed_shots_by_these_users = (
             self.session.query(Shot.user_id, Shot.shot_damage)
             .filter(Shot.user_id.in_(users_by_id.keys()))
+            .filter(and_(Shot.checked, Shot.target_user_id))            
             .all()
         )
 
@@ -264,7 +266,7 @@ class AdminInterface:
             total_damage = sum(
                 map(
                     lambda s: s[1],
-                    filter(lambda s: s[0] == user_id, shots_by_these_users),
+                    filter(lambda s: s[0] == user_id, completed_shots_by_these_users),
                 )
             )
             table.append(
