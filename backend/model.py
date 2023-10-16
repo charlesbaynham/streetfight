@@ -177,7 +177,7 @@ class User(Base):
         return self.team.game.active
 
     @property
-    def game_id(self):
+    def game_id(self) -> Optional[UUID]:
         if not self.team:
             return None
 

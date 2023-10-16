@@ -101,7 +101,7 @@ class UserInterface:
     @db_scoped
     def hit(self, num=1) -> User:
         "Take num hitpoints from the user, leaving them on as least zero"
-        u = self.get_user()
+        u :User= self.get_user()
         initial_HP = u.hit_points
 
         u.hit_points -= num
@@ -117,6 +117,7 @@ class UserInterface:
 
             # Schedule an update ping
             schedule_update_event("user", self.user_id, TIME_KNOCKED_OUT + 1)
+            schedule_update_event("ticker", u.game_id, TIME_KNOCKED_OUT + 1)
 
     @db_scoped
     def award_HP(self, num=1) -> User:
