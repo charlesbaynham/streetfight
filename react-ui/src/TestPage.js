@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Popup from "./Popup";
 import Scoreboard from "./Scoreboard";
 
@@ -16,6 +16,7 @@ const TestPage = () => {
             </button >
 
             <img
+                alt=""
                 src={streetImage}
                 style={{
                     height: "100vh",

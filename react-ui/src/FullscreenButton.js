@@ -24,7 +24,7 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
             handle.exit()
         else
             handle.enter()
-    })
+    }, [handle, isFullscreen])
 
     return (
         <motion.div className={styles.buttonContainer}>
