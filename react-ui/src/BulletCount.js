@@ -65,7 +65,7 @@ export default function BulletCount({ user }) {
             <p>Ammo: {
                 user.num_bullets > 0 ?
                     (
-                        user.num_bullets > 4 ?
+                        user.num_bullets > 3 ?
                             <>{make_n_images(1, bullet)} x{user.num_bullets}</> :
                             make_n_images(user.num_bullets, bullet)
                     ) :
