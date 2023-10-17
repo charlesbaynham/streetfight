@@ -1,7 +1,7 @@
-import gun_11 from './images/guns/gun_11.png';
-import gun_16 from './images/guns/gun_default.png';
-import gun_26 from './images/guns/gun_26.png';
-import gun_36 from './images/guns/gun_36.png';
+import gun_11 from './images/art/gun_11.png';
+import gun_16 from './images/art/gun_default.png';
+import gun_26 from './images/art/gun_26.png';
+import gun_36 from './images/art/gun_36.png';
 
 
 export function makeAPIURL(endpoint, query_params = null) {

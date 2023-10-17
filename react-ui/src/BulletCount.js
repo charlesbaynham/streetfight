@@ -8,9 +8,9 @@ import Scoreboard from "./Scoreboard";
 import styles from './BulletCount.module.css';
 
 
-import medkit from './images/medkit.svg';
-import bullet from './images/bullet.svg';
-import armour from './images/helmet.svg';
+import medkit from './images/art/medkit.png';
+import bullet from './images/art/bullet.png';
+import armour from './images/art/helmet.png';
 import cross from './images/cross.svg';
 import { getGunImgFromUser } from './utils';
 
