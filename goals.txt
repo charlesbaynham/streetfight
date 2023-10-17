@@ -3,11 +3,6 @@ Goals
 
 - [ ] Polish:
   - [ ] Improve admin kill interface
-  - [x] LOADS more items. We need:
-    - [x] A gun that hits for 2
-    - [x] A gun that fires every second
-    - [x] A gun that hits for 3!
-    - [ ] Images for all guns
   - [ ] Location implementation:
     - [ ] Map in corner with own Location
     - [ ] Location reported to server regularly
@@ -17,7 +12,6 @@ Goals
     - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
     - [ ] "Scanner" item which reveals other teams for x minutes
   - [ ] Heartbeat animation when knocked out
-  - [ ] Pickup messages for guns (/ armour?)
   - [ ] Handle shooting someone when they are already dead
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
   - [ ] Must implement refund for unsure shots
