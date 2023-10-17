@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import returnIcon from './images/return.svg';
 import actionNotDone from './images/hand-pointer-solid.svg';
 import actionDone from './images/check-solid.svg';
+import logo from './images/art/logo.png';
 
 import styles from './OnboardingView.module.css';
 
@@ -135,6 +136,11 @@ function OnboardingView({ user }) {
         <div className={styles.outerContainer}>
             <AnimatePresence>
                 <div className={styles.innerContainer}>
+                    <p className={styles.logo}><img
+                        src={logo}
+                        alt="Streetfight, by Charles and Gaby"
+                    />
+                    </p>
                     {getActionItems()}
                 </div>
             </AnimatePresence >
