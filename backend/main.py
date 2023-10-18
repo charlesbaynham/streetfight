@@ -237,6 +237,11 @@ async def admin_list_games():
     return AdminInterface().get_games()
 
 
+
+@router.get("/admin_get_unchecked_shot_ids")
+async def admin_get_unchecked_shot_ids():
+    return AdminInterface().get_unchecked_shot_ids()
+
 @router.get("/admin_get_shots")
 async def admin_get_shots(limit=5):
     num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(limit=limit)

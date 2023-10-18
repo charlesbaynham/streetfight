@@ -129,7 +129,8 @@ class AdminInterface:
         ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
-        num_shots, unchecked_shot_ids = self.get_unchecked_shot_ids()
+        unchecked_shot_ids = self.get_unchecked_shot_ids()
+        num_shots = len(unchecked_shot_ids)
         filtered_shot_ids = unchecked_shot_ids[:limit]
 
         filtered_shots = (
@@ -153,9 +154,8 @@ class AdminInterface:
         )
 
         shot_ids = query.all()
-        num_shots = len(shot_ids)
 
-        return num_shots, shot_ids
+        return shot_ids
 
     def hit_user_by_admin(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
