@@ -129,14 +129,14 @@ class AdminInterface:
         ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
-        query = (
+        num_shots, unchecked_shot_ids = self.get_unchecked_shot_ids()
+        filtered_shot_ids = unchecked_shot_ids[:limit]
+
+        filtered_shots = (
             self.session.query(Shot)
-            .filter_by(checked=False)
+            .filter(Shot.id.in_(filtered_shot_ids))
             .order_by(Shot.time_created)
         )
-
-        num_shots = query.count()
-        filtered_shots = query.limit(limit).all()
 
         shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
 
@@ -144,6 +144,18 @@ class AdminInterface:
             shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
 
         return num_shots, shot_models
+
+    def get_unchecked_shot_ids(self):
+        query = (
+            self.session.query(Shot.id)
+            .filter_by(checked=False)
+            .order_by(Shot.time_created)
+        )
+
+        shot_ids = query.all()
+        num_shots = len(shot_ids)
+
+        return num_shots, shot_ids
 
     def hit_user_by_admin(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
