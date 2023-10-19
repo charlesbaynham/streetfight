@@ -134,9 +134,7 @@ class AdminInterface:
             .order_by(Shot.time_created)
         )
 
-        shot_infos = [ShotInfoModel.from_orm(shot).dict() for shot in query.all()]
-
-        return shot_infos
+        return [ShotInfoModel.from_orm(shot).dict() for shot in query.all()]
 
     def hit_user_by_admin(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
