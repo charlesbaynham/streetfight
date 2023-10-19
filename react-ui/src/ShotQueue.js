@@ -12,32 +12,49 @@ export default function ShotQueue() {
     const [shotInfoArray, setShotInfoArray] = useState([]);
     const [selectedShotIdx, setSelectedShotIdx] = useState(0);
 
+    const [shotImgCache, setShotImgCache] = useState({})
+
     const updateInfo = useCallback(
         () => {
             sendAPIRequest("admin_get_unchecked_shot_info")
                 .then(r => r.json())
                 .then(list_of_shot_info => {
                     setShotInfoArray(list_of_shot_info)
-                    if (selectedShotIdx >= list_of_shot_info.length)
-                        setSelectedShotIdx(list_of_shot_info.length - 1)
                 })
         },
-        [selectedShotIdx]
+        []
     );
 
     const loadShot = useCallback(
         () => {
-            if (shotInfoArray.length <= selectedShotIdx)
-                return
             const this_shot_info = shotInfoArray[selectedShotIdx];
+            if (this_shot_info === undefined)
+                return
+            const this_shot_id = this_shot_info.id;
+
             setShotInfo(this_shot_info)
-            sendAPIRequest("admin_get_shot_image", { shot_id: this_shot_info.id })
-                .then(r => r.json())
-                .then(img => {
-                    setShotImg(img)
-                })
-        }, [shotInfoArray, selectedShotIdx]
+
+            if (this_shot_id in shotImgCache)
+                setShotImg(shotImgCache[this_shot_id])
+            else {
+                sendAPIRequest("admin_get_shot_image", { shot_id: this_shot_info.id })
+                    .then(r => r.json())
+                    .then(img => {
+                        const newImgCache = Object.assign({}, shotImgCache);
+                        newImgCache[this_shot_info.id] = img;
+                        setShotImgCache(newImgCache);
+                        setShotImg(img)
+                    })
+            }
+        }, [shotInfoArray, selectedShotIdx, shotImgCache]
     )
+
+    useEffect(() => {
+        if (selectedShotIdx >= shotInfoArray.length)
+            setSelectedShotIdx(shotInfoArray.length - 1)
+        if (selectedShotIdx < 0)
+            setSelectedShotIdx(0)
+    }, [selectedShotIdx, shotInfoArray])
 
 
     const hitUser = useCallback(
