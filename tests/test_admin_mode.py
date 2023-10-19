@@ -72,10 +72,10 @@ def test_dead_user_shot_checked(old_shot_prep, db_session):
 
 
 # ...and therefore not in the queue
-def test_dead_user_old_shots_not_in_queue(old_shot_prep):
+def test_dead_user_old_shots_not_in_queue(db_session, old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
 
-    game_id = UserInterface(user_a).get_user().team.game_id
+    game_id = UserInterface(user_a, session=db_session).get_user().team.game_id
 
     shots_infos = AdminInterface().get_unchecked_shot_info(game_id=game_id)
     assert len(shots_infos) == 0
