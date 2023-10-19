@@ -17,7 +17,9 @@ export default function ShotQueue() {
                     return await response.json();
                 })
                 .then(async list_of_shot_info => {
-                    if (list_of_shot_info.length == 0)
+                    const len = list_of_shot_info.length;
+                    setNumShots(len);
+                    if (len === 0)
                         return
 
                     const this_shot = list_of_shot_info[0];
@@ -62,12 +64,12 @@ export default function ShotQueue() {
                 <img alt="The next shot in the queue" src={shotImg} />
                 {
                     shotInfo.game.teams.map((team, idx_team) => (
-                        <>
+                        <div key={idx_team}>
                             <h3>{team.name}</h3>
                             <ul>
                                 {
                                     team.users.map((target_user, idx_target_user) => (
-                                        <li key={idx_target_user ** 2 + idx_team ** 3}>
+                                        <li key={idx_target_user}>
                                             {target_user.name}
                                             <button onClick={() => {
                                                 hitUser(shotInfo.id, target_user.id);
@@ -76,7 +78,7 @@ export default function ShotQueue() {
                                     ))
                                 }
                             </ul>
-                        </>
+                        </div>
                     ))
                 }
                 <button onClick={() => { dismissShot() }}>Missed</button>
