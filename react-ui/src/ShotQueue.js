@@ -21,32 +21,14 @@ export default function ShotQueue() {
                         return
 
                     const this_shot = list_of_shot_info[0];
-                    console.log(this_shot)
                     setShotInfo(this_shot)
                     sendAPIRequest("admin_get_shot_image", { shot_id: this_shot.id })
                         .then(r => r.json())
                         .then(img => {
-                            console.log(img)
                             setShotImg(img)
                         })
 
                 })
-            // FIXME: Use get_shot_infos instead of get_shots
-            // sendAPIRequest("admin_get_shots", { limit: 1 })
-            //     .then(async response => {
-            //         if (!response.ok)
-            //             return
-            //         const data = await response.json()
-            //         setNumShots(data.numInQueue);
-            //         if (data.shots.length > 0) {
-            //             const newShot = data.shots[0];
-            //             // console.log("New shot:");
-            //             // console.dir(newShot);
-            //             setShot(newShot);
-            //         } else {
-            //             setShot(null);
-            //         }
-            //     });
         },
         []
     );
