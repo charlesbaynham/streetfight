@@ -11,6 +11,10 @@ export default function ShotQueue() {
 
     const update = useCallback(
         () => {
+            sendAPIRequest("admin_get_unchecked_shot_info")
+                .then(async response => {
+                    console.log(await response.json())
+                })
             // FIXME: Use get_shot_infos instead of get_shots
             // sendAPIRequest("admin_get_shots", { limit: 1 })
             //     .then(async response => {

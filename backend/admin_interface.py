@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 import logging
 from typing import List
 from typing import Tuple
@@ -127,12 +128,14 @@ class AdminInterface:
         team_name = ui.get_team_model().name
         ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
-    def get_unchecked_shot_info(self, game_id):
+    def get_unchecked_shot_info(self, game_id: Optional[UUID]):
         query = (
             self.session.query(Shot)
-            .filter_by(checked=False, game_id=game_id)
+            .filter_by(checked=False)
             .order_by(Shot.time_created)
         )
+        if game_id:
+            query = query.filter_by(game_id=game_id)
 
         return [ShotInfoModel.from_orm(shot).dict() for shot in query.all()]
 
