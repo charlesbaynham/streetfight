@@ -153,7 +153,7 @@ class AdminInterface:
             .order_by(Shot.time_created)
         )
 
-        shot_ids = query.all()
+        shot_ids =[i[0] for i in  query.all()]
 
         return shot_ids
 
