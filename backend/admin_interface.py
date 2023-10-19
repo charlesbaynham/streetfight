@@ -1,6 +1,6 @@
 import asyncio
+from .model import ShotInfoModel
 import logging
-import time
 from typing import List
 from typing import Tuple
 from uuid import UUID
@@ -128,14 +128,14 @@ class AdminInterface:
         team_name = ui.get_team_model().name
         ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
-    def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
+    def get_unchecked_shots(self, game_id, limit=5) -> Tuple[int, List[ShotModel]]:
         unchecked_shot_ids = self.get_unchecked_shot_ids()
         num_shots = len(unchecked_shot_ids)
         filtered_shot_ids = unchecked_shot_ids[:limit]
 
         filtered_shots = (
             self.session.query(Shot)
-            .filter(Shot.id.in_(filtered_shot_ids))
+            .filter(Shot.id.in_(filtered_shot_ids), Shot.game_id == game_id)
             .order_by(Shot.time_created)
         )
 
@@ -145,17 +145,18 @@ class AdminInterface:
             shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
 
         return num_shots, shot_models
+    
 
-    def get_unchecked_shot_ids(self):
+    def get_unchecked_shot_info(self, game_id):
         query = (
-            self.session.query(Shot.id)
-            .filter_by(checked=False)
+            self.session.query(Shot)
+            .filter_by(checked=False, game_id=game_id)
             .order_by(Shot.time_created)
         )
 
-        shot_ids =[i[0] for i in  query.all()]
+        shot_infos = [ShotInfoModel.from_orm(shot).dict() for shot in query.all()]
 
-        return shot_ids
+        return shot_infos
 
     def hit_user_by_admin(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)

@@ -309,12 +309,12 @@ class TeamModel(pydantic.BaseModel):
         extra = "forbid"
 
 
-class ShotModel(pydantic.BaseModel):
+
+class ShotInfoModel(pydantic.BaseModel):
     id: int
     time_created: datetime.datetime
     game_id: UUID
     checked: bool
-    image_base64: str
 
     user: UserModel
     game: GameModel
@@ -325,6 +325,10 @@ class ShotModel(pydantic.BaseModel):
         orm_mode = True
         extra = "forbid"
 
+
+class ShotModel(ShotInfoModel):
+    """A ShotInfoModel but with the image included too"""
+    image_base64: str
 
 class TickerEntryModel(pydantic.BaseModel):
     id: int
