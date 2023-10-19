@@ -1,5 +1,4 @@
 import asyncio
-from .image_processing import draw_cross_on_image
 import logging
 import time
 from threading import RLock
@@ -13,6 +12,7 @@ from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import schedule_update_event
 from .database_scope_provider import DatabaseScopeProvider
+from .image_processing import draw_cross_on_image
 from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel

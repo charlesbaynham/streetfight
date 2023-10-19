@@ -309,7 +309,6 @@ class TeamModel(pydantic.BaseModel):
         extra = "forbid"
 
 
-
 class ShotInfoModel(pydantic.BaseModel):
     id: int
     time_created: datetime.datetime
@@ -328,7 +327,9 @@ class ShotInfoModel(pydantic.BaseModel):
 
 class ShotModel(ShotInfoModel):
     """A ShotInfoModel but with the image included too"""
+
     image_base64: str
+
 
 class TickerEntryModel(pydantic.BaseModel):
     id: int

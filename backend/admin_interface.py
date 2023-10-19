@@ -1,5 +1,4 @@
 import asyncio
-from .model import ShotInfoModel
 import logging
 from typing import List
 from typing import Tuple
@@ -17,6 +16,7 @@ from .model import Game
 from .model import GameModel
 from .model import ItemType
 from .model import Shot
+from .model import ShotInfoModel
 from .model import ShotModel
 from .model import Team
 from .model import User
@@ -140,9 +140,7 @@ class AdminInterface:
 
         shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
 
-
         return num_shots, shot_models
-    
 
     def get_unchecked_shot_info(self, game_id):
         query = (
