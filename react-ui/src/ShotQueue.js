@@ -6,14 +6,30 @@ import { sendAPIRequest } from './utils';
 
 export default function ShotQueue() {
 
-    const [shot, setShot] = useState(null);
+    const [shotInfo, setShotInfo] = useState(null);
+    const [shotImg, setShotImg] = useState(null);
     const [numShots, setNumShots] = useState("");
 
     const update = useCallback(
         () => {
             sendAPIRequest("admin_get_unchecked_shot_info")
                 .then(async response => {
-                    console.log(await response.json())
+                    return await response.json();
+                })
+                .then(async list_of_shot_info => {
+                    if (list_of_shot_info.length == 0)
+                        return
+
+                    const this_shot = list_of_shot_info[0];
+                    console.log(this_shot)
+                    setShotInfo(this_shot)
+                    sendAPIRequest("admin_get_shot_image", { shot_id: this_shot.id })
+                        .then(r => r.json())
+                        .then(img => {
+                            console.log(img)
+                            setShotImg(img)
+                        })
+
                 })
             // FIXME: Use get_shot_infos instead of get_shots
             // sendAPIRequest("admin_get_shots", { limit: 1 })
@@ -47,10 +63,10 @@ export default function ShotQueue() {
 
     const dismissShot = useCallback(
         () => {
-            sendAPIRequest("admin_mark_shot_checked", { shot_id: shot.id }, "POST")
+            sendAPIRequest("admin_mark_shot_checked", { shot_id: shotInfo.id }, "POST")
                 .then(_ => { update() });
         },
-        [shot, update]
+        [shotInfo, update]
     );
 
     useEffect(update, [update])
@@ -59,11 +75,11 @@ export default function ShotQueue() {
         <>
             <h1>Next unchecked shot ({numShots} in queue):</h1>
 
-            {shot ? <>
-                <em>By {shot.user.name}</em>
-                <img alt="The next shot in the queue" src={shot.image_base64} />
+            {shotInfo ? <>
+                <em>By {shotInfo.user.name}</em>
+                <img alt="The next shot in the queue" src={shotImg} />
                 {
-                    shot.game.teams.map((team, idx_team) => (
+                    shotInfo.game.teams.map((team, idx_team) => (
                         <>
                             <h3>{team.name}</h3>
                             <ul>
@@ -72,7 +88,7 @@ export default function ShotQueue() {
                                         <li key={idx_target_user ** 2 + idx_team ** 3}>
                                             {target_user.name}
                                             <button onClick={() => {
-                                                hitUser(shot.id, target_user.id);
+                                                hitUser(shotInfo.id, target_user.id);
                                             }}>Hit</button>
                                         </li>
                                     ))

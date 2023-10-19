@@ -140,7 +140,11 @@ class AdminInterface:
         return [ShotInfoModel.from_orm(shot).dict() for shot in query.all()]
 
     def get_shot_image(self, shot_id):
-        return self.session.query(Shot.image_base64).get(shot_id)
+        shot = self.session.query(Shot.image_base64).filter_by(id=shot_id).first()
+        if shot:
+            return shot.image_base64
+        else:
+            return None
 
     def hit_user_by_admin(self, user_id, num=1):
         ui = UserInterface(user_id, session=self.session)
