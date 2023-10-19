@@ -10,6 +10,7 @@ export default function ShotQueue() {
     const [shotImg, setShotImg] = useState(null);
 
     const [shotInfoArray, setShotInfoArray] = useState([]);
+    const [selectedShotIdx, setSelectedShotIdx] = useState(0);
 
     const updateInfo = useCallback(
         () => {
@@ -24,16 +25,16 @@ export default function ShotQueue() {
 
     const loadShot = useCallback(
         () => {
-            if (shotInfoArray.length == 0)
+            if (shotInfoArray.length <= selectedShotIdx)
                 return
-            const this_shot_info = shotInfoArray[0];
+            const this_shot_info = shotInfoArray[selectedShotIdx];
             setShotInfo(this_shot_info)
             sendAPIRequest("admin_get_shot_image", { shot_id: this_shot_info.id })
                 .then(r => r.json())
                 .then(img => {
                     setShotImg(img)
                 })
-        }, [shotInfoArray]
+        }, [shotInfoArray, selectedShotIdx]
     )
 
 
@@ -62,8 +63,18 @@ export default function ShotQueue() {
         <>
             <h1>Next unchecked shot ({shotInfoArray.length} in queue):</h1>
 
-            <button onClick={() => { }}>Next</button>
-            <button>Previous</button>
+            <button
+                onClick={() => { setSelectedShotIdx(selectedShotIdx - 1) }}
+                disabled={selectedShotIdx === 0}
+            >
+                Previous
+            </button>
+            <button
+                onClick={() => { setSelectedShotIdx(selectedShotIdx + 1) }}
+                disabled={selectedShotIdx === shotInfoArray.length - 1}
+            >
+                Next
+            </button>
 
             {shotInfo ? <>
                 <em>By {shotInfo.user.name}</em>
