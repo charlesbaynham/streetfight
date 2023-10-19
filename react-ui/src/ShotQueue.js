@@ -18,9 +18,11 @@ export default function ShotQueue() {
                 .then(r => r.json())
                 .then(list_of_shot_info => {
                     setShotInfoArray(list_of_shot_info)
+                    if (selectedShotIdx >= list_of_shot_info.length)
+                        setSelectedShotIdx(list_of_shot_info.length - 1)
                 })
         },
-        []
+        [selectedShotIdx]
     );
 
     const loadShot = useCallback(
