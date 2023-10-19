@@ -8,56 +8,62 @@ export default function ShotQueue() {
 
     const [shotInfo, setShotInfo] = useState(null);
     const [shotImg, setShotImg] = useState(null);
-    const [numShots, setNumShots] = useState("");
 
-    const update = useCallback(
+    const [shotInfoArray, setShotInfoArray] = useState([]);
+
+    const updateInfo = useCallback(
         () => {
             sendAPIRequest("admin_get_unchecked_shot_info")
-                .then(async response => {
-                    return await response.json();
-                })
-                .then(async list_of_shot_info => {
-                    const len = list_of_shot_info.length;
-                    setNumShots(len);
-                    if (len === 0)
-                        return
-
-                    const this_shot = list_of_shot_info[0];
-                    setShotInfo(this_shot)
-                    sendAPIRequest("admin_get_shot_image", { shot_id: this_shot.id })
-                        .then(r => r.json())
-                        .then(img => {
-                            setShotImg(img)
-                        })
-
+                .then(r => r.json())
+                .then(list_of_shot_info => {
+                    setShotInfoArray(list_of_shot_info)
                 })
         },
         []
     );
+
+    const loadShot = useCallback(
+        () => {
+            if (shotInfoArray.length == 0)
+                return
+            const this_shot_info = shotInfoArray[0];
+            setShotInfo(this_shot_info)
+            sendAPIRequest("admin_get_shot_image", { shot_id: this_shot_info.id })
+                .then(r => r.json())
+                .then(img => {
+                    setShotImg(img)
+                })
+        }, [shotInfoArray]
+    )
+
 
     const hitUser = useCallback(
         (shot_id, target_user_id) => {
             sendAPIRequest("admin_shot_hit_user", {
                 shot_id: shot_id,
                 target_user_id: target_user_id
-            }, "POST").then(_ => { update() })
+            }, "POST").then(_ => { updateInfo() })
         },
-        [update]
+        [updateInfo]
     );
 
     const dismissShot = useCallback(
         () => {
             sendAPIRequest("admin_mark_shot_checked", { shot_id: shotInfo.id }, "POST")
-                .then(_ => { update() });
+                .then(_ => { updateInfo() });
         },
-        [shotInfo, update]
+        [shotInfo, updateInfo]
     );
 
-    useEffect(update, [update])
+    useEffect(updateInfo, [updateInfo])
+    useEffect(loadShot, [loadShot, shotInfoArray])
 
     return (
         <>
-            <h1>Next unchecked shot ({numShots} in queue):</h1>
+            <h1>Next unchecked shot ({shotInfoArray.length} in queue):</h1>
+
+            <button onClick={() => { }}>Next</button>
+            <button>Previous</button>
 
             {shotInfo ? <>
                 <em>By {shotInfo.user.name}</em>
