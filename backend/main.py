@@ -242,6 +242,11 @@ async def admin_get_unchecked_shot_info(game_id: UUID):
     return AdminInterface().get_unchecked_shot_info(game_id)
 
 
+@router.get("/admin_get_shot_image")
+async def admin_get_shot_image(shot_id: int):
+    return AdminInterface().get_shot_image(shot_id)
+
+
 @router.post("/admin_shot_hit_user")
 async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
