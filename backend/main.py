@@ -242,14 +242,6 @@ async def admin_get_unchecked_shot_info(game_id: UUID):
     return AdminInterface().get_unchecked_shot_info(game_id)
 
 
-@router.get("/admin_get_shots")
-async def admin_get_shots(game_id: UUID, limit=5):
-    num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(
-        limit=limit, game_id=game_id
-    )
-    return {"numInQueue": num_in_queue, "shots": filtered_shots}
-
-
 @router.post("/admin_shot_hit_user")
 async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)

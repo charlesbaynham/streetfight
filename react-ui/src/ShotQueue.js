@@ -11,21 +11,22 @@ export default function ShotQueue() {
 
     const update = useCallback(
         () => {
-            sendAPIRequest("admin_get_shots", { limit: 1 })
-                .then(async response => {
-                    if (!response.ok)
-                        return
-                    const data = await response.json()
-                    setNumShots(data.numInQueue);
-                    if (data.shots.length > 0) {
-                        const newShot = data.shots[0];
-                        // console.log("New shot:");
-                        // console.dir(newShot);
-                        setShot(newShot);
-                    } else {
-                        setShot(null);
-                    }
-                });
+            // FIXME: Use get_shot_infos instead of get_shots
+            // sendAPIRequest("admin_get_shots", { limit: 1 })
+            //     .then(async response => {
+            //         if (!response.ok)
+            //             return
+            //         const data = await response.json()
+            //         setNumShots(data.numInQueue);
+            //         if (data.shots.length > 0) {
+            //             const newShot = data.shots[0];
+            //             // console.log("New shot:");
+            //             // console.dir(newShot);
+            //             setShot(newShot);
+            //         } else {
+            //             setShot(null);
+            //         }
+            //     });
         },
         []
     );

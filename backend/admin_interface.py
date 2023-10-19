@@ -127,21 +127,6 @@ class AdminInterface:
         team_name = ui.get_team_model().name
         ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
-    def get_unchecked_shots(self, game_id, limit=5) -> Tuple[int, List[ShotModel]]:
-        unchecked_shot_ids = self.get_unchecked_shot_ids()
-        num_shots = len(unchecked_shot_ids)
-        filtered_shot_ids = unchecked_shot_ids[:limit]
-
-        filtered_shots = (
-            self.session.query(Shot)
-            .filter(Shot.id.in_(filtered_shot_ids), Shot.game_id == game_id)
-            .order_by(Shot.time_created)
-        )
-
-        shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
-
-        return num_shots, shot_models
-
     def get_unchecked_shot_info(self, game_id):
         query = (
             self.session.query(Shot)
