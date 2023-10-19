@@ -1,4 +1,5 @@
 import asyncio
+from .image_processing import draw_cross_on_image
 import logging
 import time
 from threading import RLock
@@ -206,11 +207,13 @@ class UserInterface:
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
+        modified_img = draw_cross_on_image(image_base64)
+
         shot_entry = Shot(
             user=user,
             team=team,
             game=game,
-            image_base64=image_base64,
+            image_base64=modified_img,
             shot_damage=user.shot_damage,
         )
         self._session.add(shot_entry)

@@ -12,7 +12,6 @@ from sqlalchemy import and_
 from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
-from .image_processing import draw_cross_on_image
 from .items import ItemModel
 from .model import Game
 from .model import GameModel
@@ -141,8 +140,6 @@ class AdminInterface:
 
         shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
 
-        for shot_model in shot_models:
-            shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
 
         return num_shots, shot_models
     
