@@ -75,9 +75,8 @@ def test_dead_user_shot_checked(old_shot_prep, db_session):
 def test_dead_user_old_shots_not_in_queue(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
 
-    num_shots, shots = AdminInterface().get_unchecked_shots()
-    assert len(shots) == 0
-    assert num_shots == 0
+    shots_infos = AdminInterface().get_unchecked_shot_info()
+    assert len(shots_infos) == 0
 
 
 # User b should be dead
