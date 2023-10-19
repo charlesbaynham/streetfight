@@ -40,7 +40,7 @@ def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
     return image, split_img
 
 
-def draw_cross_on_image(base64_image: str, format="JPG") -> str:
+def draw_cross_on_image(base64_image: str, format="PNG") -> str:
     """
     Decode a base64 image, draw a cross on it and expand the centre, then reencode it back to base64.
     """
