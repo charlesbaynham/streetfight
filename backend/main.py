@@ -237,8 +237,8 @@ async def admin_list_games():
     return AdminInterface().get_games()
 
 
-@router.get("/admin_get_unchecked_shot_ids")
-async def admin_get_unchecked_shot_ids(game_id: UUID):
+@router.get("/admin_get_unchecked_shot_info")
+async def admin_get_unchecked_shot_info(game_id: UUID):
     return AdminInterface().get_unchecked_shot_info(game_id)
 
 
