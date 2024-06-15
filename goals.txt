@@ -1,7 +1,10 @@
 Goals
 -----
 
-- [ ] Polish:
+Bugs:
+- [ ] Frontend doesn't work on iPhone!
+
+Polish:
   - [ ] Improve admin kill interface
   - [ ] Location implementation:
     - [ ] Map in corner with own Location
