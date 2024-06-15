@@ -1,7 +1,7 @@
 .webcamVideo {
-    object-fit: cover;
+  object-fit: cover;
 }
 
 .webcamVideo.dead {
-    filter: grayscale(1);
+  filter: grayscale(1);
 }

@@ -37,5 +37,8 @@
     "fastapi",
     "react"
   ],
-  "license": "None"
+  "license": "None",
+  "devDependencies": {
+    "prettier": "3.3.2"
+  }
 }

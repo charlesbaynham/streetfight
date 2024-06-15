@@ -1,28 +1,26 @@
 .buttonContainer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    margin: 10mm;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  margin: 10mm;
 }
 
 .buttonContainer button {
-    cursor: pointer;
-    background: none;
-    border: none;
+  cursor: pointer;
+  background: none;
+  border: none;
 }
-
 
 .buttonContainer button img {
-    height: 10mm;
-    width: 10mm;
+  height: 10mm;
+  width: 10mm;
 }
 
-
 .fullscreenHint {
-    position: absolute;
-    height: 30mm;
-    right: -20%;
-    bottom: 50%;
-    transform: translateX(100%);
-    opacity: 1;
+  position: absolute;
+  height: 30mm;
+  right: -20%;
+  bottom: 50%;
+  transform: translateX(100%);
+  opacity: 1;
 }

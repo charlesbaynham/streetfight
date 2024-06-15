@@ -1,13 +1,13 @@
 .centeringDiv {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    text-align: center;
-    color: white;
-    text-shadow: 0.1em 0.1em black;
-    font-size: xx-large;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: white;
+  text-shadow: 0.1em 0.1em black;
+  font-size: xx-large;
 }
 
 .textSmaller {
-    font-size: large;
+  font-size: large;
 }

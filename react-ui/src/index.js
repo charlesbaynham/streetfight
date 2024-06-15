@@ -1,17 +1,14 @@
 import * as React from "react";
 import * as ReactDOM from "react-dom/client";
 
-import {
-  createBrowserRouter,
-  RouterProvider,
-} from "react-router-dom";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
 
-import './index.css'
+import "./index.css";
 
 const router = createBrowserRouter([
   {
@@ -24,16 +21,16 @@ const router = createBrowserRouter([
   },
   {
     path: "admin/shots",
-    element: <ShotQueue />
+    element: <ShotQueue />,
   },
   {
     path: "test",
-    element: <TestPage />
+    element: <TestPage />,
   },
 ]);
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
     <RouterProvider router={router} />
-  </React.StrictMode>
+  </React.StrictMode>,
 );

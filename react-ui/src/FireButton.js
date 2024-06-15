@@ -60,7 +60,7 @@ export default function FireButton({ user, onClick }) {
         setOnCooldown(false);
       }, 1000 * shotTimeout);
     },
-    [setAnimationState, setOnCooldown, playBang, onClick, shotTimeout]
+    [setAnimationState, setOnCooldown, playBang, onClick, shotTimeout],
   );
 
   return (

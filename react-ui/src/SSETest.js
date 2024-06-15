@@ -1,34 +1,34 @@
-import React, { useEffect, useState } from 'react';
-import { makeAPIURL } from './utils';
-
+import React, { useEffect, useState } from "react";
+import { makeAPIURL } from "./utils";
 
 function SSEComponent() {
-    const [messages, setMessages] = useState([]);
+  const [messages, setMessages] = useState([]);
 
+  useEffect(() => {
+    const eventSource = new EventSource(makeAPIURL("sse_updates"));
 
-    useEffect(() => {
-        const eventSource = new EventSource(makeAPIURL("sse_updates"));
+    eventSource.onmessage = (event) => {
+      console.log("Received SSE:", event);
+      setMessages((messages) => [...messages, event.data]);
+    };
 
-        eventSource.onmessage = (event) => {
-            console.log("Received SSE:", event);
-            setMessages(messages => [...messages, event.data]);
-        };
+    eventSource.onerror = (error) => {
+      console.log("SSE stream closed:", error);
+    };
 
-        eventSource.onerror = (error) => {
-            console.log("SSE stream closed:", error);
-        };
+    return () => {
+      // Cleanup: close the SSE connection when the component unmounts
+      eventSource.close();
+    };
+  }, []);
 
-        return () => {
-            // Cleanup: close the SSE connection when the component unmounts
-            eventSource.close();
-        };
-    }, []);
-
-    return (
-        <div>
-            {messages.map((m, i) => <div key={i}>{m}</div>)}
-        </div>
-    );
+  return (
+    <div>
+      {messages.map((m, i) => (
+        <div key={i}>{m}</div>
+      ))}
+    </div>
+  );
 }
 
 export default SSEComponent;

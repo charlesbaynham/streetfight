@@ -6,15 +6,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Nix
-      uses: cachix/install-nix-action@v22
-    - uses: actions/setup-node@v3
-      with:
-        cache: npm
-    - name: Install dependencies
-      run: nix develop -c npm install
-    - name: Test with pytest
-      run: |
-        cp .env.dev .env
-        nix develop -c pytest
+      - uses: actions/checkout@v2
+      - name: Install Nix
+        uses: cachix/install-nix-action@v22
+      - uses: actions/setup-node@v3
+        with:
+          cache: npm
+      - name: Install dependencies
+        run: nix develop -c npm install
+      - name: Test with pytest
+        run: |
+          cp .env.dev .env
+          nix develop -c pytest
