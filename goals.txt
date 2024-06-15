@@ -12,6 +12,7 @@ Priority:
 Polish:
   
   - [ ] Improve admin kill interface
+  - [ ] Clicking outside the socre card should exit it
   - [ ] Location implementation:
     - [ ] Map in corner with own Location
     - [ ] Location reported to server regularly
