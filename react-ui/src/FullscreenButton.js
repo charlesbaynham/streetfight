@@ -6,6 +6,8 @@ import fullscreenImg from "./images/fullscreen-icon.svg";
 import hintImg from "./images/better-in-fullscreen.svg";
 import { useCallback, useEffect, useState } from "react";
 
+const fullscreenPossible = document.fullscreenElement !== undefined;
+
 function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
   const [hintHidden, setHintHidden] = useState(false);
 
@@ -26,24 +28,28 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
     else handle.enter();
   }, [handle, isFullscreen]);
 
-  return (
-    <motion.div className={styles.buttonContainer}>
-      <button onClick={toggleFullscreen}>
-        <img src={fullscreenImg} alt="Fullscreen" />
-      </button>
-      <motion.img
-        className={styles.fullscreenHint}
-        animate={{
-          opacity: hintHidden ? 0 : 1,
-        }}
-        transition={{
-          duration: 3,
-        }}
-        src={hintImg}
-        alt="This app is better in fullscreen"
-      />
-    </motion.div>
-  );
+  if (fullscreenPossible) {
+    return (
+      <motion.div className={styles.buttonContainer}>
+        <button onClick={toggleFullscreen}>
+          <img src={fullscreenImg} alt="Fullscreen" />
+        </button>
+        <motion.img
+          className={styles.fullscreenHint}
+          animate={{
+            opacity: hintHidden ? 0 : 1,
+          }}
+          transition={{
+            duration: 3,
+          }}
+          src={hintImg}
+          alt="This app is better in fullscreen"
+        />
+      </motion.div>
+    );
+  } else {
+    return null;
+  }
 }
 
 export default FullscreenButton;
