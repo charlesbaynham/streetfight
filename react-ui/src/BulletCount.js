@@ -16,14 +16,7 @@ import { getGunImgFromUser } from "./utils";
 const make_n_images = (n, image) =>
   Array(n)
     .fill()
-    .map((_, i) => (
-      <img
-        src={image}
-        alt=""
-        key={i}
-        style={{ height: "1.5em", verticalAlign: "middle" }}
-      />
-    ));
+    .map((_, i) => <img src={image} alt="" key={i} className={styles.icon} />);
 
 export default function BulletCount({ user }) {
   const [previousUser, setPreviousUser] = useState(null);

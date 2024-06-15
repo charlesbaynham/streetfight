@@ -7,6 +7,11 @@
   /* border-radius: 10px; */
 }
 
+.icon {
+  height: 1.5em;
+  vertical-align: middle;
+}
+
 .bulletCount p {
   font-family: inherit;
 }
