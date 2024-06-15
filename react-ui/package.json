@@ -30,6 +30,9 @@
     "extends": [
       "react-app",
       "react-app/jest"
+    ],
+    "ignorePatterns": [
+      "modernizr.js"
     ]
   },
   "browserslist": {
