@@ -9,9 +9,14 @@ from backend.user_interface import UserInterface
 
 
 @pytest.fixture
-def ticker(game_factory) -> Ticker:
+def ticker(user_factory, game_factory) -> Ticker:
     return Ticker(game_id=game_factory())
 
+@pytest.fixture
+def ticker_for_user_in_game(api_user_id, team_factory):
+    team_id = team_factory()
+    AdminInterface().add_user_to_team(api_user_id, team_id)
+    return UserInterface(user_id=api_user_id).get_ticker()
 
 def test_ticker_starts_empty(ticker):
     assert ticker.get_messages(3) == []
@@ -51,10 +56,7 @@ def test_api_query_ticker_outside_team(api_client):
     assert messages == []
 
 
-def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
-    team_id = team_factory()
-    AdminInterface().add_user_to_team(api_user_id, team_id)
-
+def test_api_query_ticker_inside_team(api_client, ticker_for_user_in_game):
     response = api_client.get("/api/ticker_messages")
     assert response.ok
     messages = response.json()
@@ -62,11 +64,8 @@ def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
     assert len(messages) == 1  # Just the "joined team" message
 
 
-def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
-    team_id = team_factory()
-    AdminInterface().add_user_to_team(api_user_id, team_id)
-
-    UserInterface(api_user_id).get_ticker().post_message("hello")
+def test_api_query_ticker_messages(api_client, ticker_for_user_in_game):
+    ticker_for_user_in_game.post_message("hello")
 
     response = api_client.get("/api/ticker_messages")
     assert response.ok
