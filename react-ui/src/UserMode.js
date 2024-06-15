@@ -15,6 +15,7 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 
 const isGameRunning = (user) => Boolean(user && user.active);
+const fullscreenPossible = document.fullscreenElement !== undefined;
 
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
@@ -79,6 +80,8 @@ export default function UserMode() {
     setIsFullscreen(state);
   }, []);
 
+  const view = <GetView user={user} isFullscreen={isFullscreen} />;
+
   return (
     <>
       <UpdateSSEConnection />
@@ -89,14 +92,18 @@ export default function UserMode() {
         }}
       />
 
-      <FullScreen handle={handle} onChange={reportFullscreenChange}>
-        <GetView user={user} isFullscreen={isFullscreen} />
-        <FullscreenButton
-          handle={handle}
-          keepHintVisible={!isGameRunning(user)}
-          isFullscreen={isFullscreen}
-        />
-      </FullScreen>
+      {fullscreenPossible ? (
+        <FullScreen handle={handle} onChange={reportFullscreenChange}>
+          {view}
+          <FullscreenButton
+            handle={handle}
+            keepHintVisible={!isGameRunning(user)}
+            isFullscreen={isFullscreen}
+          />
+        </FullScreen>
+      ) : (
+        view
+      )}
     </>
   );
 }
