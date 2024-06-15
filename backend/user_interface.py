@@ -320,4 +320,4 @@ class UserInterface:
         logger.debug("(UserInterface %s) User team = %s", self.user_id, team)
         if team is None:
             return None
-        return Ticker(team.game_id, session=self._session)
+        return Ticker(game_id=team.game_id, user_id=self.user_id, session=self._session)

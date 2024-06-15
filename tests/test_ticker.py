@@ -10,7 +10,7 @@ from backend.user_interface import UserInterface
 
 @pytest.fixture
 def ticker(user_factory, game_factory) -> Ticker:
-    return Ticker(game_id=game_factory())
+    return Ticker(game_id=game_factory(), user_id=user_factory())
 
 @pytest.fixture
 def ticker_for_user_in_game(api_user_id, team_factory):

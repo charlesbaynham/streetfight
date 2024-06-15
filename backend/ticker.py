@@ -23,8 +23,14 @@ db_scoped = TickerScopeWrapper.db_scoped
 
 
 class Ticker:
-    def __init__(self, game_id: UUID, session=None) -> None:
+    def __init__(self, game_id: UUID, user_id: UUID, session=None) -> None:
+        """
+        Make a new ticker for a game / user
+
+        If user_id = None, access all messages in this game
+        """
         self.game_id = game_id
+        self.user_id = user_id
         self._session = session
 
     @db_scoped
