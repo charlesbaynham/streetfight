@@ -1,21 +1,20 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from "react";
 
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
-import { CrosshairImage, DeadImage, KnockedOutView } from './GuideImages';
-import FireButton from './FireButton';
-import BulletCount from './BulletCount';
-import { sendAPIRequest } from './utils';
-import WebcamView from './WebcamView';
-import UpdateListener, { UpdateSSEConnection } from './UpdateListener';
-import TickerView from './TickerView';
+import { CrosshairImage, DeadImage, KnockedOutView } from "./GuideImages";
+import FireButton from "./FireButton";
+import BulletCount from "./BulletCount";
+import { sendAPIRequest } from "./utils";
+import WebcamView from "./WebcamView";
+import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
+import TickerView from "./TickerView";
 
-import styles from './UserMode.module.css'
-import OnboardingView from './OnboardingView';
-import FullscreenButton from './FullscreenButton';
+import styles from "./UserMode.module.css";
+import OnboardingView from "./OnboardingView";
+import FullscreenButton from "./FullscreenButton";
 
-const isGameRunning = (user) =>
-  Boolean(user && user.active)
+const isGameRunning = (user) => Boolean(user && user.active);
 
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
@@ -30,38 +29,34 @@ function GetView({ user }) {
     return <OnboardingView user={user} />;
   }
 
-  return <>
+  return (
+    <>
+      <div className={styles.monitorsContainer}>
+        {isAlive ? <BulletCount user={user} /> : <div></div>}
+        <TickerView />
+      </div>
 
-    <div className={styles.monitorsContainer}>
-      {isAlive ?
-        <BulletCount user={user} />
-        : <div></div>}
-      <TickerView />
-    </div>
+      <WebcamView trigger={triggerShot} isDead={!isAlive} />
 
-    <WebcamView trigger={triggerShot} isDead={!isAlive} />
+      {isAlive ? (
+        <CrosshairImage />
+      ) : user.state === "knocked out" ? (
+        <KnockedOutView user={user} />
+      ) : (
+        <DeadImage />
+      )}
 
-    {isAlive ?
-      <CrosshairImage />
-      :
-      (
-        user.state === "knocked out" ?
-          < KnockedOutView user={user} /> :
-          < DeadImage />
-      )
-    }
-
-    {isAlive ?
-      <FireButton user={user} onClick={
-        () => {
-          setTriggerShot(triggerShot + 1)
-        }
-      } />
-      : null}
-
-  </ >;
+      {isAlive ? (
+        <FireButton
+          user={user}
+          onClick={() => {
+            setTriggerShot(triggerShot + 1);
+          }}
+        />
+      ) : null}
+    </>
+  );
 }
-
 
 export default function UserMode() {
   const [userHash, setuserHash] = useState(0);
@@ -73,9 +68,9 @@ export default function UserMode() {
   const [user, setuser] = useState(null);
 
   const updateuser = useCallback(() => {
-    sendAPIRequest("user_info", null, "GET", data => {
-      setuser(data)
-    })
+    sendAPIRequest("user_info", null, "GET", (data) => {
+      setuser(data);
+    });
   }, [setuser]);
 
   useEffect(updateuser, [updateuser, userHash]);
@@ -84,23 +79,24 @@ export default function UserMode() {
     setIsFullscreen(state);
   }, []);
 
-
-  return <>
-    <UpdateSSEConnection />
-    <UpdateListener
-      update_type="user"
-      callback={() => {
-        setuserHash(userHash + 1)
-      }}
-    />
-
-    <FullScreen handle={handle} onChange={reportFullscreenChange}>
-      <GetView user={user} isFullscreen={isFullscreen} />
-      <FullscreenButton
-        handle={handle}
-        keepHintVisible={!isGameRunning(user)}
-        isFullscreen={isFullscreen}
+  return (
+    <>
+      <UpdateSSEConnection />
+      <UpdateListener
+        update_type="user"
+        callback={() => {
+          setuserHash(userHash + 1);
+        }}
       />
-    </FullScreen>
-  </>
+
+      <FullScreen handle={handle} onChange={reportFullscreenChange}>
+        <GetView user={user} isFullscreen={isFullscreen} />
+        <FullscreenButton
+          handle={handle}
+          keepHintVisible={!isGameRunning(user)}
+          isFullscreen={isFullscreen}
+        />
+      </FullScreen>
+    </>
+  );
 }
