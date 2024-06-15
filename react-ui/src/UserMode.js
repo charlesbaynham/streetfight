@@ -15,7 +15,7 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 
 const isGameRunning = (user) => Boolean(user && user.active);
-const fullscreenPossible = document.fullscreenElement !== undefined;
+const fullscreenPossible = document.fullscreen !== undefined;
 
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
