@@ -3,6 +3,7 @@ Goals
 
 Bugs:
 - [ ] Frontend doesn't work on iPhone!
+  Notes: wow, so it turns out that fullscreen isn't supported on iphone!! Amazing. So I'd better just detect iPhones and disable the button. 
 
 Polish:
   - [ ] Improve admin kill interface
