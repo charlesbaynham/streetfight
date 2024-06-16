@@ -3,14 +3,14 @@ Goals
 
 Bugs:
 - [x] Frontend doesn't work on iPhone!
-  Notes: wow, so it turns out that fullscreen isn't supported on iphone!! Amazing. So I'd better just detect iPhones and disable the button. 
+  Notes: wow, so it turns out that fullscreen isn't supported on iphone!! Amazing. So I'd better just detect iPhones and disable the button.
 
 Priority:
   - [ ] Needs a "hit" noise / notification
   - [ ] You should find out if you hit someone
 
 Polish:
-  
+
   - [ ] Improve admin kill interface
   - [ ] Clicking outside the socre card should exit it
   - [ ] Location implementation:

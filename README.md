@@ -4,7 +4,7 @@ This app is not ready for people other than me to use. If you are reading this r
 
 Dev mode:
 
-1. `npm i`
+1. `npm run bootstrap`
 2. `npm run backend` in one terminal, `npm run dev` in other
 
 Production:
