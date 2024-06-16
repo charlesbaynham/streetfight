@@ -108,7 +108,7 @@ class AdminInterface:
             for user in team.users:
                 user_ids.append(user.id)
 
-        ticker = Ticker(game.id, user_id = None,session=self.session)
+        ticker = Ticker(game.id, user_id=None, session=self.session)
         if active:
             ticker.post_message(f"Game started")
         else:
