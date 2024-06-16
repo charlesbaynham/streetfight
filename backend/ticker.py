@@ -86,10 +86,14 @@ class Ticker:
             message,
             private_for_user_id,
         )
-        if private_for_user_id:
-            self._session.add(TickerEntry(game_id=self.game_id, message=message))
-        else:
-            self._session.add(TickerEntry(game_id=self.game_id, message=message))
+
+        self._session.add(
+            TickerEntry(
+                game_id=self.game_id,
+                message=message,
+                private_user_id=private_for_user_id,
+            )
+        )
 
     async def generate_updates(self, timeout=None):
         """

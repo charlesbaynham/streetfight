@@ -232,7 +232,7 @@ class TickerEntry(Base):
     )
 
     private_user_id = Column(
-        UUIDType, ForeignKey("games.id"), index=True, nullable=False
+        UUIDType, ForeignKey("games.id"), index=True, nullable=True
     )
     private_user = relationship(
         "User",
