@@ -3,6 +3,8 @@ import logging
 from typing import List
 from uuid import UUID
 
+from sqlalchemy import or_
+
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
@@ -23,13 +25,21 @@ db_scoped = TickerScopeWrapper.db_scoped
 
 
 class Ticker:
-    def __init__(self, game_id: UUID, session=None) -> None:
+    def __init__(self, game_id: UUID, user_id: UUID, session=None) -> None:
+        """
+        Make a new ticker for a game / user
+
+        If user_id is set, access all public messages + private ones for this user
+        If user_id = None, access only the public messages
+        """
         self.game_id = game_id
+        self.user_id = user_id
         self._session = session
 
     @db_scoped
     def get_messages(self, num_messages) -> List[str]:
-        """Gets the latest n messages for this game
+        """
+        Gets the latest n messages for this game and user
 
         Args:
             n_entries (int): Number of messages to get
@@ -40,6 +50,12 @@ class Ticker:
         ticker_entries = (
             self._session.query(TickerEntry)
             .filter_by(game_id=self.game_id)
+            .filter(
+                or_(
+                    TickerEntry.private_user_id == self.user_id,
+                    TickerEntry.private_user_id == None,
+                )
+            )
             .order_by(TickerEntry.id.desc())
             .limit(num_messages)
             .all()
@@ -63,13 +79,29 @@ class Ticker:
         self._get_game().touch()
 
     @db_scoped
-    def post_message(self, message: str):
+    def post_message(self, message: str, private_for_user_id: UUID = None):
+        """Post a message to this game's ticker
+
+        Args:
+            message (str):  The ticker message
+            private_for_user_id (UUID, optional):
+                            If provided, the message will be
+                            private for this user id. Defaults to None.
+        """
         logger.debug(
-            '(Game Ticker %s) Adding ticker entry "%s"',
+            '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s',
             self.game_id,
             message,
+            private_for_user_id,
         )
-        self._session.add(TickerEntry(game_id=self.game_id, message=message))
+
+        self._session.add(
+            TickerEntry(
+                game_id=self.game_id,
+                message=message,
+                private_user_id=private_for_user_id,
+            )
+        )
 
     async def generate_updates(self, timeout=None):
         """
@@ -77,7 +109,7 @@ class Ticker:
         ticker, or at most after timeout seconds
         """
         while True:
-            # Lookup / make an event for this user and subscribe to it
+            # Lookup / make an event for this game and subscribe to it
             event = get_trigger_event("ticker", self.game_id)
 
             try:
