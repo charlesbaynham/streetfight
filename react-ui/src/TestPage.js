@@ -5,7 +5,7 @@ import Scoreboard from "./Scoreboard";
 import streetImage from "./images/test-street-image.jpg";
 
 const TestPage = () => {
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] =    useState(false);
 
   return (
     <>
