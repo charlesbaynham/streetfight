@@ -2,7 +2,7 @@ import asyncio
 import logging
 from typing import List
 from uuid import UUID
-
+from sqlalchemy import or_
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
@@ -48,6 +48,12 @@ class Ticker:
         ticker_entries = (
             self._session.query(TickerEntry)
             .filter_by(game_id=self.game_id)
+            .filter(
+                or_(
+                    TickerEntry.private_user_id == self.user_id,
+                    TickerEntry.private_user_id == None,
+                )
+            )
             .order_by(TickerEntry.id.desc())
             .limit(num_messages)
             .all()
@@ -101,7 +107,7 @@ class Ticker:
         ticker, or at most after timeout seconds
         """
         while True:
-            # Lookup / make an event for this user and subscribe to it
+            # Lookup / make an event for this game and subscribe to it
             event = get_trigger_event("ticker", self.game_id)
 
             try:
