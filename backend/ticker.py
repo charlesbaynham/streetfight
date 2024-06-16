@@ -27,7 +27,8 @@ class Ticker:
         """
         Make a new ticker for a game / user
 
-        If user_id = None, access all messages in this game
+        If user_id is set, access all public messages + private ones for this user
+        If user_id = None, access only the public messages
         """
         self.game_id = game_id
         self.user_id = user_id
@@ -35,7 +36,8 @@ class Ticker:
 
     @db_scoped
     def get_messages(self, num_messages) -> List[str]:
-        """Gets the latest n messages for this game
+        """
+        Gets the latest n messages for this game and user
 
         Args:
             n_entries (int): Number of messages to get
@@ -69,13 +71,25 @@ class Ticker:
         self._get_game().touch()
 
     @db_scoped
-    def post_message(self, message: str):
+    def post_message(self, message: str, private_for_user_id: UUID = None):
+        """Post a message to this game's ticker
+
+        Args:
+            message (str):  The ticker message
+            private_for_user_id (UUID, optional):
+                            If provided, the message will be
+                            private for this user id. Defaults to None.
+        """
         logger.debug(
-            '(Game Ticker %s) Adding ticker entry "%s"',
+            '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s',
             self.game_id,
             message,
+            private_for_user_id,
         )
-        self._session.add(TickerEntry(game_id=self.game_id, message=message))
+        if private_for_user_id:
+            self._session.add(TickerEntry(game_id=self.game_id, message=message))
+        else:
+            self._session.add(TickerEntry(game_id=self.game_id, message=message))
 
     async def generate_updates(self, timeout=None):
         """

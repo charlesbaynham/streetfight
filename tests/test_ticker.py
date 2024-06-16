@@ -12,11 +12,13 @@ from backend.user_interface import UserInterface
 def ticker(user_factory, game_factory) -> Ticker:
     return Ticker(game_id=game_factory(), user_id=user_factory())
 
+
 @pytest.fixture
 def ticker_for_user_in_game(api_user_id, team_factory):
     team_id = team_factory()
     AdminInterface().add_user_to_team(api_user_id, team_id)
     return UserInterface(user_id=api_user_id).get_ticker()
+
 
 def test_ticker_starts_empty(ticker):
     assert ticker.get_messages(3) == []
@@ -54,6 +56,36 @@ def test_api_query_ticker_outside_team(api_client):
     messages = response.json()
 
     assert messages == []
+
+
+def test_user_sees_own_private_messages(ticker_for_user_in_game: Ticker):
+    msg = "Hello world"
+    user_id = ticker_for_user_in_game.user_id
+
+    initial_messages = ticker_for_user_in_game.get_messages(10)
+
+    ticker_for_user_in_game.post_message(message=msg, private_for_user_id=user_id)
+
+    later_messages = ticker_for_user_in_game.get_messages(10)
+
+    assert len(initial_messages) == len(later_messages) + 1
+    assert later_messages[-1] == msg
+
+
+def test_user_doesnt_see_others_private_messages(
+    user_factory, ticker_for_user_in_game: Ticker
+):
+    msg = "Hello world"
+
+    user_id_alt = user_factory()
+
+    initial_messages = ticker_for_user_in_game.get_messages(10)
+
+    ticker_for_user_in_game.post_message(message=msg, private_for_user_id=user_id_alt)
+
+    later_messages = ticker_for_user_in_game.get_messages(10)
+
+    assert len(initial_messages) == len(later_messages)
 
 
 def test_api_query_ticker_inside_team(api_client, ticker_for_user_in_game):

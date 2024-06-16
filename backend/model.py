@@ -231,6 +231,15 @@ class TickerEntry(Base):
         "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
     )
 
+    private_user_id = Column(
+        UUIDType, ForeignKey("games.id"), index=True, nullable=False
+    )
+    private_user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=private_user_id,
+    )
+
     message = Column(String, nullable=False)
 
 
