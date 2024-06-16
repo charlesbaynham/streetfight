@@ -46,7 +46,6 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
-    ticker_entries = relationship("TickerEntry", lazy=True, back_populates="game")
 
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
