@@ -21,4 +21,3 @@ jobs:
 
     - name: Prettify code
       uses: creyD/prettier_action@v4.3
-      
