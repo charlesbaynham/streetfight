@@ -89,7 +89,7 @@ class UserInterface:
     def __enter__(self):
         return self
 
-    def __exit__(self):
+    def __exit__(self, *args):
         if not self._session_is_external:
             self._session.close()
 
