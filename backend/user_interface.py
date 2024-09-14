@@ -55,8 +55,6 @@ class UserInterface:
     Class to query / interact with Users
     """
 
-    num_interfaces = 0
-
     def __init__(self, user_id: Union[UUID, str], session=None):
         if isinstance(user_id, str):
             self.user_id = UUID(user_id)
@@ -86,18 +84,11 @@ class UserInterface:
     def __exit__(self, *args):
         if not self._session_is_external:
             if self._session:
-                logger.critical(
-                    "UserInterface %s closing session (%d exist)",
+                logger.debug(
+                    "UserInterface %s closing session",
                     hash(self),
-                    self.__class__.num_interfaces,
                 )
                 self._session.close()
-            else:
-                logger.critical(
-                    "UserInterface %s never opened a session (%d exist)",
-                    hash(self),
-                    self.__class__.num_interfaces,
-                )
 
     def get_session(self):
         return self._session
