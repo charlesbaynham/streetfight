@@ -328,14 +328,17 @@ class AdminInterface:
 
         return {"table": table}
 
+    @db_scoped
+    def _get_all_game_ids(self):
+        return self._session.query(Game.id).all()
+
     async def generate_any_ticker_updates(self, timeout=None):
         """
         An async iterator that yields None every time any ticker is updated in any
         game, or at most after timeout seconds
         """
         while True:
-            # FIXME: Don't hold the db open
-            game_ids = self._session.query(Game.id).all()
+            game_ids = self._get_all_game_ids()
 
             # Lookup / make an event for each game's ticker
             events = []

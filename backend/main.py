@@ -398,7 +398,6 @@ async def updates_generator(user_id):
     async def ticker_generator_with_check_user_logic():
         logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
 
-        # FIXME this is where I need to think about how not to hold a session open forever
         ui = UserInterface(user_id)
 
         # get_ticker is db_scoped so this will not hold a session open
