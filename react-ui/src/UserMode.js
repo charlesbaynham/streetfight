@@ -81,7 +81,11 @@ export default function UserMode() {
     setIsFullscreen(state);
   }, []);
 
-  const view = <GetView user={user} isFullscreen={isFullscreen} />;
+  const view = <GetView
+    user={user}
+    isFullscreen={isFullscreen}
+    className={styles.viewContainer}
+  />;
 
   return (
     <>
@@ -93,7 +97,11 @@ export default function UserMode() {
         }}
       />
 
-      <FullScreen handle={handle} onChange={reportFullscreenChange}>
+      <FullScreen
+        handle={handle}
+        onChange={reportFullscreenChange}
+        className={styles.fullscreenContainer}
+      >
         {view}
         <FullscreenButton
           handle={handle}

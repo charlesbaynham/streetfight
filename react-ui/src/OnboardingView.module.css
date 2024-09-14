@@ -4,7 +4,7 @@
   left: 0;
   top: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   color: white;
 }
 
@@ -22,7 +22,7 @@
   width: 80vw;
   max-width: 150mm;
   height: 24mm;
-  max-height: 10vh;
+  max-height: 8vh;
   color: white;
 }
 
@@ -73,8 +73,8 @@ button.stackedItem {
   transform: translateY(-50%);
   width: 18mm;
   height: 18mm;
-  max-height: 8vh;
-  max-width: 8vh;
+  max-height: 6vh;
+  max-width: 6vh;
   border: none;
   border-radius: 50%;
   background: white;
