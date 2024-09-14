@@ -1,5 +1,3 @@
-
-
 require("add-to-homescreen/dist/add-to-homescreen.min.js");
 require("add-to-homescreen/dist/add-to-homescreen.min.css");
 
@@ -12,7 +10,7 @@ export function prepareInstallPrompt() {
       "https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@2.0/dist/assets/img/",
     maxModalDisplayCount: -1,
   });
-  console.log("Setup complete")
+  console.log("Setup complete");
 }
 
 export function isStandalone() {

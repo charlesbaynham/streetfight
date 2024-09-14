@@ -4,16 +4,17 @@ import styles from "./FullscreenButton.module.css";
 
 import fullscreenImg from "./images/fullscreen-icon.svg";
 import hintImg from "./images/better-in-fullscreen.svg";
-import { prepareInstallPrompt, showInstallPrompt, isStandalone } from "./AddToHomeScreen";
+import {
+  prepareInstallPrompt,
+  showInstallPrompt,
+  isStandalone,
+} from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
-
 
 const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
 
-
-
 function getTimeSinceLastPrompt() {
-  const last_prompt = localStorage.getItem('last_install_prompt');
+  const last_prompt = localStorage.getItem("last_install_prompt");
   var ts;
 
   if (last_prompt === null) {
@@ -27,10 +28,8 @@ function getTimeSinceLastPrompt() {
 
 function setLastPromptTime() {
   const time = Date.now();
-  localStorage.setItem('last_install_prompt', time);
+  localStorage.setItem("last_install_prompt", time);
 }
-
-
 
 function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
   const [hintHidden, setHintHidden] = useState(false);
@@ -39,7 +38,7 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
   useEffect(() => {
     prepareInstallPrompt();
     setIsInstalled(isStandalone());
-  }, [])
+  }, []);
 
   useEffect(() => {
     if (keepHintVisible) return;
@@ -69,29 +68,30 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
         handle.enter();
       }
     }
-
   }, [handle, isFullscreen]);
 
-  return <>
-    {isInstalled ? null :
-      <motion.div className={styles.buttonContainer}>
-        <button onClick={toggleFullscreen}>
-          <img src={fullscreenImg} alt="Fullscreen" />
-        </button>
-        <motion.img
-          className={styles.fullscreenHint}
-          animate={{
-            opacity: hintHidden ? 0 : 1,
-          }}
-          transition={{
-            duration: 3,
-          }}
-          src={hintImg}
-          alt="This app is better in fullscreen"
-        />
-      </motion.div>
-    }
-  </>;
+  return (
+    <>
+      {isInstalled ? null : (
+        <motion.div className={styles.buttonContainer}>
+          <button onClick={toggleFullscreen}>
+            <img src={fullscreenImg} alt="Fullscreen" />
+          </button>
+          <motion.img
+            className={styles.fullscreenHint}
+            animate={{
+              opacity: hintHidden ? 0 : 1,
+            }}
+            transition={{
+              duration: 3,
+            }}
+            src={hintImg}
+            alt="This app is better in fullscreen"
+          />
+        </motion.div>
+      )}
+    </>
+  );
 }
 
 export default FullscreenButton;
