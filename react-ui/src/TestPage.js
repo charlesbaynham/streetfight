@@ -19,9 +19,9 @@ const TestPage = () => {
       maxModalDisplayCount: -1
     });
 
-    window.AddToHomeScreenInstance.show('en');
+    const ret = window.AddToHomeScreenInstance.show('en');
 
-    setText("DOMContentLoaded completed");
+    setText(JSON.stringify(ret));
   }, []);
 
   return (
