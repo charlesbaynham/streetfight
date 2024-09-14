@@ -11,8 +11,6 @@ import {
 } from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
 
-const fullscreenPossible = document.fullscreen !== undefined;
-
 const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
 
 function getTimeSinceLastPrompt() {
