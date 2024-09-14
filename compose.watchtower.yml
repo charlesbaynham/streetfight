@@ -7,13 +7,22 @@ services:
   # container registry instead of the locally built versions:
   frontend:
     image: ${FRONTEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-frontend:latest}
+    labels:
+      com.centurylinklabs.watchtower.scope: streetfight
+
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-backend:latest}
+    labels:
+      com.centurylinklabs.watchtower.scope: streetfight
     
   watchtower:
     image: containrrr/watchtower
     restart: always
-    command: --interval 30
+    environment:
+      WATCHTOWER_SCOPE: streetfight
+      WATCHTOWER_INTERVAL: 30
+    labels:
+      com.centurylinklabs.watchtower.scope: streetfight
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     
