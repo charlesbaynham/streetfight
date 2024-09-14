@@ -7,6 +7,7 @@ from typing import Union
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
@@ -64,19 +65,32 @@ class UserInterface:
         else:
             raise TypeError
 
-        self._session = session
+        self._session: SQLAlchemySession = session
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
 
-        # FIXME
         self.__class__.num_interfaces += 1
-        logger.critical("UserInterface %s created (%d exist)", hash(self), self.__class__.num_interfaces)
+        logger.critical(
+            "UserInterface %s created (%d exist)",
+            hash(self),
+            self.__class__.num_interfaces,
+        )
 
     def __del__(self):
         self.__class__.num_interfaces -= 1
-        logger.critical("UserInterface %s destroyed (%d exist)", hash(self), self.__class__.num_interfaces)
+        logger.critical(
+            "UserInterface %s destroyed (%d exist)",
+            hash(self),
+            self.__class__.num_interfaces,
+        )
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self):
+        if not self._session_is_external:
+            self._session.close()
 
     def get_session(self):
         return self._session
