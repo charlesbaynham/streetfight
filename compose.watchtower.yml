@@ -1,0 +1,9 @@
+# Use watchtower to automatically get updates to the master branch on github
+services:
+  # Override the frontend and backend to get their containers from the github
+  # container registry instead of the locally built versions:
+  frontend:
+    image: ghcr.io/charlesbaynham/streetfight-frontend:latest
+  backend:
+    image: ghcr.io/charlesbaynham/streetfight-frontend:backend
+    
