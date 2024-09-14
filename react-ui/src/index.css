@@ -6,9 +6,13 @@ ul {
   list-style-type: none;
 }
 
+:root {
+  touch-action: pan-x pan-y;
+  height: 100%
+}
+
 * {
   font-family: "Lucida Sans", "Lucida Sans Regular", "Lucida Grande",
     "Lucida Sans Unicode", Geneva, Verdana, sans-serif;
   font-size: 12px;
-    /* font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif; */
 }

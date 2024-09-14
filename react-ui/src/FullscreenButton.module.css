@@ -1,8 +1,8 @@
 .buttonContainer {
   position: absolute;
-  bottom: 0;
+  bottom: 0vh;
   left: 0;
-  margin: 10mm;
+  margin: 3vh;
 }
 
 .buttonContainer button {
@@ -18,7 +18,7 @@
 
 .fullscreenHint {
   position: absolute;
-  height: 30mm;
+  height: 15vh;
   right: -20%;
   bottom: 50%;
   transform: translateX(100%);
