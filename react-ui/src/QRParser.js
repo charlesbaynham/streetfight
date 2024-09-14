@@ -47,7 +47,18 @@ const QRParser = ({ webcamRef }) => {
   const [lastScanTime, setLastScanTime] = useState(null);
 
   const [playError] = useSound(error);
+
   const [showBlankScreen, setShowBlankScreen] = useState(false);
+  const [colorBlankScreen, setColorBlankScreen] = useState("red");
+
+  const flashTheScreen = useCallback((color) => {
+    setColorBlankScreen(color);
+    setShowBlankScreen(true);
+    const timer_id = setTimeout(() => {
+      setShowBlankScreen(false);
+    }, 1000);
+    return timer_id;
+  }, [setShowBlankScreen, setColorBlankScreen])
 
   const scannedCallback = useCallback(
     (data) => {
@@ -64,11 +75,6 @@ const QRParser = ({ webcamRef }) => {
       setLastScanData(data);
       setLastScanTime(Date.now());
 
-      // Flash the screen
-      setShowBlankScreen(true);
-      const timer_id = setTimeout(() => {
-        setShowBlankScreen(false);
-      }, 100);
 
       // Submit the QR code to the API
       sendAPIRequest("collect_item", {}, "POST", null, {
@@ -78,15 +84,14 @@ const QRParser = ({ webcamRef }) => {
         // We might also get 404 errors for invalid QR codes - ignore these because the QR scanner occasionally misfires
         // Success sounds will be handled by the state updating
         if (response.status === 403) {
+          flashTheScreen("red");
           playError();
+        } else {
+          // flashTheScreen("green");
         }
       });
-
-      return () => {
-        clearTimeout(timer_id);
-      };
     },
-    [playError, lastScanData, lastScanTime],
+    [playError, lastScanData, lastScanTime, flashTheScreen],
   );
 
   // Trigger a scan when triggerScan changes. After the scan completes, queue another one
@@ -117,9 +122,10 @@ const QRParser = ({ webcamRef }) => {
   return (
     <BlankScreen
       appear={showBlankScreen}
-      time_to_appear={0.1}
-      time_to_show={0.2}
-      time_to_disappear={1.0}
+      color={colorBlankScreen}
+      time_to_appear={0.3}
+      time_to_show={0.7}
+      time_to_disappear={3.0}
     />
   );
 };
