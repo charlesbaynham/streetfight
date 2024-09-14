@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import AsyncGenerator
 from typing import Dict
+from typing import List
 from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
@@ -86,6 +87,7 @@ from .admin_interface import AdminInterface
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
+from .model import GameModel
 
 
 app = FastAPI()
@@ -236,7 +238,7 @@ async def admin_list_games(user_id: UUID, team_id: UUID) -> int:
 
 
 @router.get("/admin_list_games")
-async def admin_list_games():
+async def admin_list_games() -> List[GameModel]:
     logger.info("admin_list_games")
     return AdminInterface().get_games()
 
