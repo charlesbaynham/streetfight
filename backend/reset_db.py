@@ -5,7 +5,7 @@ from uuid import UUID
 from dotenv import find_dotenv
 from dotenv import load_dotenv
 
-from .database import engine
+from .database import engine as db_engine
 from .model import Base
 from .model import Game
 from .model import Team
@@ -21,11 +21,13 @@ SAMPLE_TEAMS = [
 ]
 
 
-def reset_database():
+def reset_database(engine):
     target_metadata = Base.metadata
     target_metadata.bind = engine
     target_metadata.drop_all()
     target_metadata.create_all()
+
+    logger.warning("Resetting database")
 
     load_dotenv(find_dotenv())
     if "MAKE_DEBUG_ENTRIES" in os.environ:
@@ -43,4 +45,4 @@ def reset_database():
 
 
 if __name__ == "__main__":
-    reset_database()
+    reset_database(engine=db_engine)

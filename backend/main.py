@@ -23,16 +23,11 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
-from .admin_interface import AdminInterface
 from .dotenv import load_env_vars
-from .ticker import Ticker
-from .user_id import get_user_id
-from .user_interface import UserInterface
+
 
 # How often to send keepalive messages
 SSE_KEEPALIVE_TIMEOUT = 15
-
-load_env_vars()
 
 
 def setup_logging():
@@ -83,7 +78,16 @@ def setup_logging():
             logging.getLogger(target_logger).setLevel(level)
 
 
+load_env_vars()
 setup_logging()
+
+# Import these after logging is setup since they might have side effects (e.g. database setup)
+from .admin_interface import AdminInterface
+from .ticker import Ticker
+from .user_id import get_user_id
+from .user_interface import UserInterface
+
+
 app = FastAPI()
 router = APIRouter()
 logger = logging.getLogger(__name__)
