@@ -97,7 +97,6 @@
               drv = (pkgs.writeShellScriptBin "script" ''
                 export PATH=${pkgs.lib.makeBinPath [ python ]}:$PATH
 
-                python -m backend.reset_db && true
                 exec python -m uvicorn backend.main:app --host 0.0.0.0
               '');
             };

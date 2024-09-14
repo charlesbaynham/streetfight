@@ -27,6 +27,8 @@ def reset_database():
     target_metadata.drop_all()
     target_metadata.create_all()
 
+    logger.warning("Resetting database")
+
     load_dotenv(find_dotenv())
     if "MAKE_DEBUG_ENTRIES" in os.environ:
         from . import database
