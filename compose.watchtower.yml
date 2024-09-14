@@ -1,9 +1,12 @@
 # Use watchtower to automatically get updates to the master branch on github
+#
+# To use this plugin, add it to the COMPOSE_FILE .env setup
+
 services:
   # Override the frontend and backend to get their containers from the github
   # container registry instead of the locally built versions:
   frontend:
-    image: ghcr.io/charlesbaynham/streetfight-frontend:latest
+    image: ${FRONTEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-frontend:latest}
   backend:
-    image: ghcr.io/charlesbaynham/streetfight-frontend:backend
+    image: ${BACKEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-frontend:backend}
     
