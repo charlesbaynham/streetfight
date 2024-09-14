@@ -4,6 +4,9 @@ Goals
 Bugs:
 - [x] Frontend doesn't work on iPhone!
   Notes: wow, so it turns out that fullscreen isn't supported on iphone!! Amazing. So I'd better just detect iPhones and disable the button.
+- On android (firefox?) the fullscreen button is hidden under the interface
+- The animation for the bullet reload is jerky
+- Something dodgy with deaths. I have to subtract armour to "-1" on the admin interface before someone dies - this should be zero
 
 Priority:
   - [ ] Needs a "hit" noise / notification
@@ -26,6 +29,7 @@ Polish:
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
   - [ ] Must implement refund for unsure shots
   - [ ] Should add private ticker entries for e.g. results of shots (different colour)
+  - [ ] Consider having the UI anticipate events from the server - this would make it more responsive
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
