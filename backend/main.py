@@ -120,7 +120,8 @@ async def get_my_id(
 async def get_user_info(
     user_id=Depends(get_user_id),
 ):
-    return UserInterface(user_id).get_user_model()
+    with UserInterface(user_id) as ui:
+        return ui.get_user_model()
 
 
 class _Shot(BaseModel):
@@ -134,7 +135,8 @@ async def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
-    return UserInterface(user_id).submit_shot(shot.photo)
+    with UserInterface(user_id) as ui:
+        return ui.submit_shot(shot.photo)
 
 
 @router.post("/set_name")
@@ -143,7 +145,8 @@ async def set_name(
     user_id=Depends(get_user_id),
 ):
     logger.info("Changing user %s name to %s", user_id, name)
-    UserInterface(user_id).set_name(name)
+    with UserInterface(user_id) as ui:
+        ui.set_name(name)
 
 
 @router.post("/join_game")
@@ -157,7 +160,8 @@ async def join_game(
         raise HTTPException(400, str(e))
     logger.info("User %s joining game %s", user_id, game_id)
 
-    return UserInterface(user_id).join_game(game_id)
+    with UserInterface(user_id) as ui:
+        return ui.join_game(game_id)
 
 
 class _EncodedItem(BaseModel):
@@ -178,7 +182,8 @@ async def collect_item(
         data = encoded_item.data
 
     try:
-        return UserInterface(user_id).collect_item(data)
+        with UserInterface(user_id) as ui:
+            return ui.collect_item(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
@@ -188,11 +193,12 @@ async def get_ticker_messages(
     num_messages=3,
     user_id=Depends(get_user_id),
 ):
-    ticker = UserInterface(user_id).get_ticker()
-    if ticker is None:
-        return []
+    with UserInterface(user_id) as ui:
+        ticker = ui.get_ticker()
+        if ticker is None:
+            return []
 
-    return ticker.get_messages(num_messages)
+        return ticker.get_messages(num_messages)
 
 
 @router.get("/get_users")
@@ -213,7 +219,9 @@ async def get_users(game_id: str = None, team_id: str = None):
 
 @router.get("/get_scoreboard")
 async def get_scoreboard(user_id=Depends(get_user_id)):
-    game_id = UserInterface(user_id).get_user_model().game_id
+    with UserInterface(user_id) as ui:
+        game_id = ui.get_user_model().game_id
+
     if game_id is None:
         raise HTTPException(404, "User is not in a game")
 
@@ -372,6 +380,7 @@ async def updates_generator(user_id):
     logger.debug("updates_generator - User updates for user %s starting", user_id)
 
     # Start a producer for user events:
+    # FIXME this is where I need to think about how not to hold a session open forever
     user_event_generator = UserInterface(user_id).generate_updates()
     producers.append(
         asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
