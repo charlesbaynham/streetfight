@@ -11,6 +11,8 @@ import {
 } from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
 
+const fullscreenPossible = document.fullscreen !== undefined;
+
 const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
 
 function getTimeSinceLastPrompt() {
@@ -59,13 +61,13 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
       // install the app
       const elapsed_time = getTimeSinceLastPrompt();
       console.log("getTimeSinceLastPrompt() = ", elapsed_time);
-      if (elapsed_time > TIME_BETWEEN_INSTALL_PROMPTS) {
+      if (elapsed_time > TIME_BETWEEN_INSTALL_PROMPTS || !fullscreenPossible) {
         setLastPromptTime();
         console.debug("Showing prompt");
         showInstallPrompt();
       } else {
         // Otherwise, just go fullscreen as requested
-        handle.enter();
+        if (fullscreenPossible) { handle.enter(); }
       }
     }
   }, [handle, isFullscreen]);
