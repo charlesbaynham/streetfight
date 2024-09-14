@@ -20,7 +20,7 @@ services:
     restart: always
     environment:
       WATCHTOWER_SCOPE: streetfight
-      WATCHTOWER_INTERVAL: 30
+      WATCHTOWER_POLL_INTERVAL: 30
     labels:
       com.centurylinklabs.watchtower.scope: streetfight
     volumes:
