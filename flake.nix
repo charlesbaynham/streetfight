@@ -55,6 +55,7 @@
           version = "0.0.0";
           src = ./react-ui;
           npmDepsHash = "sha256-rvNAh/yElZLBTOHW74vxL3HP1s24yMCx1b+cpwWU2EQ=";
+          makeCacheWritable = true;
           installPhase = ''
             mkdir $out
             cp -a build/. $out
