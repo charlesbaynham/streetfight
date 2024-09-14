@@ -66,6 +66,11 @@ class AdminInterface:
         return s
 
     @db_scoped
+    def get_shot_model(self, shot_id) -> ShotModel:
+        s = self._get_shot_orm(shot_id)
+        return ShotModel.from_orm(s)
+
+    @db_scoped
     def get_games(self) -> List[GameModel]:
         logger.info("AdminInterface - get_games")
         return [GameModel.from_orm(g) for g in self._session.query(Game).all()]

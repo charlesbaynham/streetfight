@@ -116,7 +116,7 @@ def test_shots_record_targets(old_shot_prep):
 # The refunded Shot should be only the shooter
 def test_shots_record_targets(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    shot = AdminInterface()._get_shot_orm(shot_b)
+    shot = AdminInterface().get_shot_model(shot_b)
 
     assert shot.user_id == user_b
     assert shot.target_user_id is None
