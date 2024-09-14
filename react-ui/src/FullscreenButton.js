@@ -7,6 +7,11 @@ import hintImg from "./images/better-in-fullscreen.svg";
 import { prepareInstallPrompt, showInstallPrompt, isStandalone } from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
 
+
+const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
+
+
+
 function getTimeSinceLastPrompt() {
   const last_prompt = localStorage.getItem('last_install_prompt');
   var ts;
@@ -50,18 +55,21 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
 
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) handle.exit();
-    else handle.enter();
-
-    // Also, if we haven't shown a message in 15 minutes then prompt the user to
-    // install the app
-    const elapsed_time = getTimeSinceLastPrompt();
-    console.log("getTimeSinceLastPrompt() = ", elapsed_time);
-    // if (elapsed_time > 15 * 60 * 1000) {
-    if (elapsed_time > 0) {
-      setLastPromptTime();
-      console.debug("Showing prompt");
-      showInstallPrompt();
+    else {
+      // If we haven't shown a message in xxx minutes then prompt the user to
+      // install the app
+      const elapsed_time = getTimeSinceLastPrompt();
+      console.log("getTimeSinceLastPrompt() = ", elapsed_time);
+      if (elapsed_time > TIME_BETWEEN_INSTALL_PROMPTS) {
+        setLastPromptTime();
+        console.debug("Showing prompt");
+        showInstallPrompt();
+      } else {
+        // Otherwise, just go fullscreen as requested
+        handle.enter();
+      }
     }
+
   }, [handle, isFullscreen]);
 
   return <>
