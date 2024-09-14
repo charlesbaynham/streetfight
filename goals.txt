@@ -7,6 +7,7 @@ Bugs:
 - On android (firefox?) the fullscreen button is hidden under the interface
 - The animation for the bullet reload is jerky
 - Something dodgy with deaths. I have to subtract armour to "-1" on the admin interface before someone dies - this should be zero
+- TOP PRIORITY: The database keeps locking up!! It can't seem to sustain enough concurrent uses. Am I holding the sessions open too long?
 
 Priority:
   - [ ] Needs a "hit" noise / notification
