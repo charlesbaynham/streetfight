@@ -87,14 +87,19 @@ class AdminInterface:
 
         return g.id
 
-    def create_team(self, game_id: UUID, name: str) -> int:
+    def create_team(self, game_id: UUID, name: str) -> UUID:
         logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)
         team = Team(name=name)
         game.teams.append(team)
         self.session.commit()
 
+        self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
+
         return team.id
+
+    def _get_game_ticker(self, game_id: UUID):
+        return Ticker(game_id, session=self.session)
 
     def set_game_active(self, game_id: UUID, active: bool) -> int:
         logger.info("AdminInterface - set_game_active %s/%s", game_id, active)
@@ -108,7 +113,7 @@ class AdminInterface:
             for user in team.users:
                 user_ids.append(user.id)
 
-        ticker = Ticker(game.id, session=self.session)
+        ticker = self._get_game_ticker(game_id=game_id)
         if active:
             ticker.post_message(f"Game started")
         else:

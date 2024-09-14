@@ -48,7 +48,7 @@ function GameView({ game }) {
 
       <h3>Controls</h3>
 
-      <CreateNewTeam game_id={game} />
+      <CreateNewTeam game_id={game.id} />
       <br />
       <AddUserToTeam teams={game.teams} />
     </>
@@ -86,7 +86,8 @@ function UserControls({ user }) {
 
   return (
     <li>
-      {user.name} ({user.hit_points}❤️ {user.num_bullets}A)
+      {user.name} {user.hit_points <= 0 ? <span>&#x1F480;</span> : null} (
+      {user.hit_points}❤️ {user.num_bullets}A)
       <button
         onClick={() => {
           give_n_health(+1);

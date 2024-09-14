@@ -17,10 +17,10 @@ from backend.user_interface import UserInterface
 os.environ["SECRET_KEY"] = "test_secret_key"
 
 
-# Mock "create_task" for all unit tests in this module
+# Mock "schedule_update_event" since we don't have an asyncio loop
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
-    mocker.patch("asyncio.create_task")
+    mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
 SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
@@ -323,7 +323,7 @@ def test_user_collect_item(api_client, team_factory, db_session):
     )
 
     print(r.json())
-    assert r.ok
+    assert r.is_success
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
 
@@ -445,7 +445,7 @@ def test_user_collect_url(api_client, team_factory, url):
     )
 
     print(r.json())
-    assert r.ok
+    assert r.is_success
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
 

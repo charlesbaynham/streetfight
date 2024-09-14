@@ -66,7 +66,7 @@ def test_can_set_username(api_client):
 
 def test_get_users(api_client, three_users):
     response = api_client.get(f"/api/get_users")
-    assert response.ok
+    assert response.is_success
     all_users = response.json()
 
     retrieved_ids = [UserModel(**user).id for user in all_users]
@@ -78,7 +78,7 @@ def test_get_users(api_client, three_users):
 
 def test_get_user_id(api_client):
     response = api_client.get("/api/my_id")
-    assert response.ok
+    assert response.is_success
     UUID(response.json())
 
 
@@ -87,7 +87,7 @@ def test_add_user_to_team(api_client, one_team, three_users):
     response = api_client.post(
         f"/api/admin_add_user_to_team?user_id={the_lucky_user}&team_id={one_team}"
     )
-    assert response.ok
+    assert response.is_success
 
 
 @pytest.mark.parametrize("num", range(0, 3))

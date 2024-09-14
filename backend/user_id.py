@@ -11,7 +11,7 @@ no_cookie_clients = {}
 no_cookie_lock = RLock()
 
 
-async def get_user_id(*, request: Request = None, websocket: WebSocket = None):
+async def get_user_id(*, request: Request = None, websocket: WebSocket = None) -> UUID:
     request_or_ws = request or websocket
 
     temporary_id = request_or_ws.client.host

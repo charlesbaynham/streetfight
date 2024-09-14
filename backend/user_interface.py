@@ -10,7 +10,6 @@ from fastapi import HTTPException
 
 from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
-from .asyncio_triggers import schedule_update_event
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
 from .item_actions import do_item_actions
@@ -116,8 +115,12 @@ class UserInterface:
             u.time_of_death = time.time() + TIME_KNOCKED_OUT
 
             # Schedule an update ping
-            schedule_update_event("user", self.user_id, TIME_KNOCKED_OUT + 1)
-            schedule_update_event("ticker", u.game_id, TIME_KNOCKED_OUT + 1)
+            asyncio_triggers.schedule_update_event(
+                "user", self.user_id, TIME_KNOCKED_OUT + 1
+            )
+            asyncio_triggers.schedule_update_event(
+                "ticker", u.game_id, TIME_KNOCKED_OUT + 1
+            )
 
     @db_scoped
     def award_HP(self, num=1) -> User:

@@ -1,6 +1,7 @@
 {
   description = "Simple npm+python environment";
   inputs.flake-utils.url = "github:numtide/flake-utils";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
 
   outputs = { self, nixpkgs, flake-utils }:
     flake-utils.lib.eachDefaultSystem (system:
@@ -24,6 +25,7 @@
           pillow
           psycopg2
           sqlalchemy-utils
+          tzdata
           fastapi
           wsproto
           uvicorn
@@ -97,7 +99,6 @@
               drv = (pkgs.writeShellScriptBin "script" ''
                 export PATH=${pkgs.lib.makeBinPath [ python ]}:$PATH
 
-                python -m backend.reset_db && true
                 exec python -m uvicorn backend.main:app --host 0.0.0.0
               '');
             };
