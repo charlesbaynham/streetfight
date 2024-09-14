@@ -299,7 +299,7 @@ def two_users_in_different_teams(team_factory, user_factory):
 @pytest.fixture
 def api_user_id(api_client):
     response = api_client.get("/api/my_id")
-    assert response.ok
+    assert response.is_success
     return UUID(response.json())
 
 

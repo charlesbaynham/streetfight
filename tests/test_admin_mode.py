@@ -52,7 +52,7 @@ def old_shot_prep(
     response = api_client.post(
         f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={user_b}"
     )
-    assert response.ok
+    assert response.is_success
 
     return user_a, user_b, shot_a, shot_b
 

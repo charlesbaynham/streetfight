@@ -15,7 +15,7 @@ function Scoreboard() {
 
   const update = useCallback(() => {
     sendAPIRequest("get_scoreboard").then(async (response) => {
-      if (!response.ok) return;
+      if (!response.is_success) return;
       const data = await response.json();
       setTableContents(data.table);
     });

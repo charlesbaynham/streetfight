@@ -45,7 +45,7 @@ async def test_ticker_messages_via_user_outside_team(user_factory):
 
 def test_api_query_ticker_outside_team(api_client):
     response = api_client.get("/api/ticker_messages")
-    assert response.ok
+    assert response.is_success
     messages = response.json()
 
     assert messages == []
@@ -56,7 +56,7 @@ def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
     AdminInterface().add_user_to_team(api_user_id, team_id)
 
     response = api_client.get("/api/ticker_messages")
-    assert response.ok
+    assert response.is_success
     messages = response.json()
 
     assert len(messages) == 1  # Just the "joined team" message
@@ -69,7 +69,7 @@ def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
     UserInterface(api_user_id).get_ticker().post_message("hello")
 
     response = api_client.get("/api/ticker_messages")
-    assert response.ok
+    assert response.is_success
     messages = response.json()
 
     assert len(messages) == 2
@@ -87,10 +87,10 @@ def test_ticker_announces_kill(
     response = api_client.post(
         f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={api_user_id}"
     )
-    assert response.ok
+    assert response.is_success
 
     response = api_client.get("/api/ticker_messages")
-    assert response.ok
+    assert response.is_success
     messages = response.json()
 
     assert "killed" in messages[0]
