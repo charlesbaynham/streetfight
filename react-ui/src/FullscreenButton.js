@@ -12,6 +12,7 @@ import {
 import { useCallback, useEffect, useState } from "react";
 
 const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
+const fullscreenPossible = document.fullscreen !== undefined;
 
 function getTimeSinceLastPrompt() {
   const last_prompt = localStorage.getItem("last_install_prompt");
