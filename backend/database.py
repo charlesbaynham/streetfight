@@ -68,14 +68,14 @@ def load():
 
         session_hash = hash(session)
 
-        logger.critical(
+        logger.debug(
             "Creating session hash %d (%d exist)", session_hash, session_counter
         )
 
         def log_close():
             global session_counter
 
-            logger.critical(
+            logger.debug(
                 "Garbage collecting session hash %d (%d exist)",
                 session_hash,
                 session_counter,
