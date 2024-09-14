@@ -14,7 +14,7 @@ services:
     image: ${BACKEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-backend:latest}
     labels:
       com.centurylinklabs.watchtower.scope: streetfight
-    
+
   watchtower:
     image: containrrr/watchtower
     restart: always
@@ -24,5 +24,4 @@ services:
     labels:
       com.centurylinklabs.watchtower.scope: streetfight
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    
+    - /var/run/docker.sock:/var/run/docker.sock:ro
