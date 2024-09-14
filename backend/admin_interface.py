@@ -95,11 +95,10 @@ class AdminInterface:
         self.session.commit()
 
         self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
-        
-        
+
         return team.id
-    
-    def _get_game_ticker(self,game_id: UUID):
+
+    def _get_game_ticker(self, game_id: UUID):
         return Ticker(game_id, session=self.session)
 
     def set_game_active(self, game_id: UUID, active: bool) -> int:
