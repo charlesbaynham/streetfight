@@ -1,36 +1,34 @@
-import { useState } from "react";
-import Popup from "./Popup";
-import Scoreboard from "./Scoreboard";
 
-import streetImage from "./images/test-street-image.jpg";
+import React, {  useEffect } from "react";
 
-const TestPage = () => {
-  const [visible, setVisible] = useState(false);
+// import addToHomescreen from 'add-to-homescreen';
+// import 'add-to-homescreen/dist/style/addtohomescreen.css';
+
+const addToHomescreen = require('add-to-homescreen/src/addtohomescreen');
+
+const AddToHomeScreen = () => {
+  useEffect(() => {
+
+
+    console.log(addToHomescreen);
+
+
+    // // Initialize the add-to-homescreen prompt
+    // addToHomescreen({
+    //   startDelay: 0, // Start immediately after page load
+    //   lifespan: 15,  // How long to display the prompt (in seconds)
+    //   autostart: true, // Automatically show the prompt
+    //   maxDisplayCount: 2, // Show a maximum of two times
+    // });
+  }, []);
+
+
 
   return (
-    <>
-      <button
-        onClick={() => {
-          setVisible(!visible);
-        }}
-      >
-        Toggle
-      </button>
-
-      <img
-        alt=""
-        src={streetImage}
-        style={{
-          height: "100vh",
-          width: "100vw",
-        }}
-      />
-
-      <Popup visible={visible} setVisible={setVisible}>
-        <Scoreboard />
-      </Popup>
-    </>
+    <div>
+      <h1>My React App</h1>
+    </div>
   );
 };
 
-export default TestPage;
+export default AddToHomeScreen;
