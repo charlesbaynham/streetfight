@@ -3,3 +3,8 @@
   width: 100%;
   justify-content: space-between;
 }
+
+
+.viewContainer {
+  background-color: white;
+}

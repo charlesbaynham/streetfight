@@ -1,35 +1,33 @@
-import { useState } from "react";
-import Popup from "./Popup";
-import Scoreboard from "./Scoreboard";
+import React, { useEffect, useState } from "react";
 
-import streetImage from "./images/test-street-image.jpg";
+require("add-to-homescreen/dist/add-to-homescreen.min.js");
+require("add-to-homescreen/dist/add-to-homescreen.min.css");
 
 const TestPage = () => {
-  const [visible, setVisible] = useState(false);
+  const [text, setText] = useState("Not set yet");
+
+  useEffect(() => {
+    setText("DOMContentLoaded starting");
+
+    window.AddToHomeScreenInstance = new window.AddToHomeScreen({
+      appName: "Streetfight",
+      appIconUrl: "logo512.png",
+      assetUrl:
+        "https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@2.0/dist/assets/img/",
+      maxModalDisplayCount: -1,
+    });
+
+    const ret = window.AddToHomeScreenInstance.show("en");
+
+    setText(JSON.stringify(ret));
+  }, []);
 
   return (
-    <>
-      <button
-        onClick={() => {
-          setVisible(!visible);
-        }}
-      >
-        Toggle
-      </button>
+    <div>
+      <h1>This is a test</h1>
 
-      <img
-        alt=""
-        src={streetImage}
-        style={{
-          height: "100vh",
-          width: "100vw",
-        }}
-      />
-
-      <Popup visible={visible} setVisible={setVisible}>
-        <Scoreboard />
-      </Popup>
-    </>
+      {text}
+    </div>
   );
 };
 

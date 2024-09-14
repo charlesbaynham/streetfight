@@ -4,7 +4,7 @@
   left: 0;
   top: 0;
   width: 100vw;
-  height: 100vh;
+  height: 100%;
   color: white;
 }
 
@@ -22,6 +22,7 @@
   width: 80vw;
   max-width: 150mm;
   height: 24mm;
+  max-height: 8vh;
   color: white;
 }
 
@@ -71,13 +72,13 @@ button.stackedItem {
   /* Adjust the distance from the input's right edge */
   transform: translateY(-50%);
   width: 18mm;
-  /* Adjust the size of the button */
   height: 18mm;
+  max-height: 6vh;
+  max-width: 6vh;
   border: none;
   border-radius: 50%;
   background: white;
   cursor: pointer;
-  font-size: 16mm;
 }
 
 .done {
@@ -100,6 +101,7 @@ button.stackedItem {
   text-align: center;
   padding-bottom: 1em;
 }
+
 .logo img {
   max-width: 50vw;
   max-height: 40vh;

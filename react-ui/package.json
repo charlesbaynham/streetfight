@@ -7,6 +7,7 @@
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
+    "add-to-homescreen": "github:philfung/add-to-homescreen",
     "framer-motion": "^10.16.4",
     "qr-scanner": "^1.4.2",
     "react": "^18.2.0",
@@ -14,7 +15,7 @@
     "react-full-screen": "^1.1.1",
     "react-qr-code": "^2.0.12",
     "react-router-dom": "^6.15.0",
-    "react-scripts": "5.0.1",
+    "react-scripts": "^5.0.1",
     "react-webcam": "^7.1.1",
     "use-sound": "^4.0.1",
     "web-vitals": "^2.1.4"
