@@ -51,14 +51,17 @@ const QRParser = ({ webcamRef }) => {
   const [showBlankScreen, setShowBlankScreen] = useState(false);
   const [colorBlankScreen, setColorBlankScreen] = useState("red");
 
-  const flashTheScreen = useCallback((color) => {
-    setColorBlankScreen(color);
-    setShowBlankScreen(true);
-    const timer_id = setTimeout(() => {
-      setShowBlankScreen(false);
-    }, 1000);
-    return timer_id;
-  }, [setShowBlankScreen, setColorBlankScreen])
+  const flashTheScreen = useCallback(
+    (color) => {
+      setColorBlankScreen(color);
+      setShowBlankScreen(true);
+      const timer_id = setTimeout(() => {
+        setShowBlankScreen(false);
+      }, 1000);
+      return timer_id;
+    },
+    [setShowBlankScreen, setColorBlankScreen],
+  );
 
   const scannedCallback = useCallback(
     (data) => {
@@ -74,7 +77,6 @@ const QRParser = ({ webcamRef }) => {
       // Store the time and data of this scan so that we can avoid resubmitting it
       setLastScanData(data);
       setLastScanTime(Date.now());
-
 
       // Submit the QR code to the API
       sendAPIRequest("collect_item", {}, "POST", null, {

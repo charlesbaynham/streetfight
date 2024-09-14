@@ -46,7 +46,7 @@ function BlankScreen({
   return (
     <motion.div
       style={{
-        backgroundColor: color
+        backgroundColor: color,
       }}
       className={styles.overlay}
       initial="hidden"
