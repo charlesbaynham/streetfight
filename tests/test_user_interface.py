@@ -24,6 +24,25 @@ def test_can_join_new_team(user_factory):
     UserInterface(user_id=user_id).join_team(uuid())
 
 
+def test_can_use_userinterface_as_contextmanager(user_factory):
+    user_id = user_factory()
+
+    with UserInterface(user_id=user_id) as ui:
+        ui.join_team(uuid())
+
+
+def test_can_reuse_userinterface_as_contextmanager(user_factory):
+    user_id = user_factory()
+
+    user_interface = UserInterface(user_id=user_id)
+
+    with user_interface as ui:
+        ui.join_team(uuid())
+
+    with user_interface as ui:
+        ui.get_user_model()
+
+
 def test_can_join_existing_team(user_factory, team_factory):
     user_id = user_factory()
 

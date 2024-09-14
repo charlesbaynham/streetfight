@@ -70,6 +70,7 @@ class UserInterface:
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
 
+        # FIXME
         self.__class__.num_interfaces += 1
         logger.critical(
             "UserInterface %s created (%d exist)",
