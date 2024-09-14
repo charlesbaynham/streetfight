@@ -217,14 +217,14 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
 
 ######## ADMIN ###########
 @router.post("/admin_create_game")
-async def admin_create_game():
+async def admin_create_game() -> UUID:
     game_id = AdminInterface().create_game()
     logger.info("Created new game with id = %s", game_id)
     return game_id
 
 
 @router.post("/admin_create_team")
-async def admin_list_games(game_id: UUID, team_name: str) -> int:
+async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
     logger.info("Creating new team '%s' for game %s", team_name, game_id)
     return AdminInterface().create_team(game_id, team_name)
 
