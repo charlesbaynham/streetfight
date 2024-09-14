@@ -232,7 +232,7 @@ async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
 
 
 @router.post("/admin_add_user_to_team")
-async def admin_list_games(user_id: UUID, team_id: UUID) -> int:
+async def admin_add_user_to_team(user_id: UUID, team_id: UUID) -> None:
     logger.info("Adding user %s to team %s", user_id, team_id)
     return AdminInterface().add_user_to_team(user_id, team_id)
 
