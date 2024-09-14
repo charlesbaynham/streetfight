@@ -54,6 +54,8 @@ class UserInterface:
     Class to query / interact with Users
     """
 
+    num_interfaces = 0
+
     def __init__(self, user_id: Union[UUID, str], session=None):
         if isinstance(user_id, str):
             self.user_id = UUID(user_id)
@@ -66,6 +68,15 @@ class UserInterface:
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
+
+        # FIXME
+        self.__class__.num_interfaces += 1
+        logger.critical("UserInterface %s created (%d exist)", hash(self), self.__class__.num_interfaces)
+
+    def __del__(self):
+        self.__class__.num_interfaces -= 1
+        logger.critical("UserInterface %s destroyed (%d exist)", hash(self), self.__class__.num_interfaces)
+
 
     def get_session(self):
         return self._session
