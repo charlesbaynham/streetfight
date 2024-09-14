@@ -4,20 +4,21 @@
 
 services:
   frontend:
+    # Disable direct access - all access will be via traefik
     ports: !reset []
     # Copied from https://gist.github.com/lfache/a02c01dde1e55345f4583cfce724cf1f:
     labels:
       traefik.enable: true
       traefik.docker.network: traefik
-      traefik.http.routers.wwfrontend.rule: Host(`${TRAFIK_HOST}`)
-      traefik.http.routers.wwfrontend.entrypoints: https
-      traefik.http.routers.wwfrontend.tls.certresolver: letsencrypt-cloudflare
+      traefik.http.routers.streetfight.rule: Host(`${TRAFIK_HOST}`)
+      traefik.http.routers.streetfight.entrypoints: https
+      traefik.http.routers.streetfight.tls.certresolver: letsencrypt-cloudflare
 
       # HTTP redirection
-      traefik.http.routers.wwfrontend-http.entrypoints: http
-      traefik.http.routers.wwfrontend-http.rule: Host(`${TRAFIK_HOST}`)
+      traefik.http.routers.streetfight-http.entrypoints: http
+      traefik.http.routers.streetfight-http.rule: Host(`${TRAFIK_HOST}`)
       traefik.http.middlewares.https-redirect.redirectscheme.scheme: https
-      traefik.http.routers.wwfrontend-http.middlewares: https-redirect
+      traefik.http.routers.streetfight-http.middlewares: https-redirect
 
     networks:
     - default
