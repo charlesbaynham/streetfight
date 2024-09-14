@@ -109,7 +109,7 @@ async def hello():
 @router.get("/my_id")
 async def get_my_id(
     user_id=Depends(get_user_id),
-):
+) -> UUID:
     return user_id
 
 

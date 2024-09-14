@@ -121,7 +121,7 @@ def wait_until_server_up(test_url, timeout):
         logging.info("Connection attempt %s", i)
         try:
             r = requests.get(test_url)
-            if r.ok:
+            if r.is_success:
                 logging.info("Server up and running")
                 return
         except (ConnectionError, requests.exceptions.RequestException):
