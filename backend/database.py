@@ -15,6 +15,7 @@ load_env_vars()
 
 engine = None
 Session = None
+session_counter = 0
 
 
 logger = logging.getLogger("sqltimings")
@@ -62,14 +63,26 @@ def load():
     def get_wrapped_session(*args, **kwargs):
         session = RawSession(*args, **kwargs)
 
+        global session_counter
+        session_counter += 1
+
         session_hash = hash(session)
 
-        logger.critical("Creating session hash %d", session_hash)
-
-        weakref.finalize(
-            session,
-            lambda: logger.critical("Garbage collection session hash %d", session_hash),
+        logger.critical(
+            "Creating session hash %d (%d exist)", session_hash, session_counter
         )
+
+        def log_close():
+            global session_counter
+
+            logger.critical(
+                "Garbage collecting session hash %d (%d exist)",
+                session_hash,
+                session_counter,
+            )
+            session_counter -= 1
+
+        weakref.finalize(session, lambda: log_close)
 
         return session
 
