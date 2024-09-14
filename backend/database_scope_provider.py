@@ -124,6 +124,9 @@ class DatabaseScopeProvider:
                     logger.debug("(DSP %s) Committing session", self_outer.name)
                     self._session.commit()
 
+                    logger.debug("(DSP %s) Closing session", self_outer.name)
+                    self._session.close()
+
                     if wrapper_data["session_modified"]:
                         logger.debug(
                             "(DSP %s) Calling postcommit_method", self_outer.name

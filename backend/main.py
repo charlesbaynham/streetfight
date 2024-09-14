@@ -380,8 +380,9 @@ async def updates_generator(user_id):
     logger.debug("updates_generator - User updates for user %s starting", user_id)
 
     # Start a producer for user events:
-    # FIXME this is where I need to think about how not to hold a session open forever
-    user_event_generator = UserInterface(user_id).generate_updates()
+    with UserInterface(user_id) as ui:
+        user_event_generator = ui.generate_updates()
+
     producers.append(
         asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
     )
@@ -396,13 +397,20 @@ async def updates_generator(user_id):
     # TODO: Handle the user changing team while this connection is running
     async def ticker_generator_with_check_user_logic():
         logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
+
+        # FIXME this is where I need to think about how not to hold a session open forever
         ui = UserInterface(user_id)
 
+        # get_ticker is db_scoped so this will not hold a session open
         ticker: Optional[Ticker] = ui.get_ticker()
+
         while ticker is None:
             logger.debug("Ticker updates - User %s is not in a game, waiting", user_id)
+            # generate_updates does not interact with the database session, so
+            # will not block other database requests
             await anext(ui.generate_updates())
             ticker = ui.get_ticker()
+
             if ticker:
                 logger.debug("Ticker updates - User %s now in game", user_id)
             else:

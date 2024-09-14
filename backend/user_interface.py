@@ -334,6 +334,8 @@ class UserInterface:
         """
         A generator that yields None every time an update is available for this
         user, or at most after timeout seconds
+
+        Does not use the database.
         """
         while True:
             # Lookup / make an event for this user and subscribe to it
