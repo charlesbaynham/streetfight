@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import AsyncGenerator
 from typing import Dict
+from typing import List
 from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
@@ -23,16 +24,11 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
-from .admin_interface import AdminInterface
 from .dotenv import load_env_vars
-from .ticker import Ticker
-from .user_id import get_user_id
-from .user_interface import UserInterface
+
 
 # How often to send keepalive messages
 SSE_KEEPALIVE_TIMEOUT = 15
-
-load_env_vars()
 
 
 def setup_logging():
@@ -83,7 +79,17 @@ def setup_logging():
             logging.getLogger(target_logger).setLevel(level)
 
 
+load_env_vars()
 setup_logging()
+
+# Import these after logging is setup since they might have side effects (e.g. database setup)
+from .admin_interface import AdminInterface
+from .ticker import Ticker
+from .user_id import get_user_id
+from .user_interface import UserInterface
+from .model import GameModel
+
+
 app = FastAPI()
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -103,7 +109,7 @@ async def hello():
 @router.get("/my_id")
 async def get_my_id(
     user_id=Depends(get_user_id),
-):
+) -> UUID:
     return user_id
 
 
@@ -213,26 +219,26 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
 
 ######## ADMIN ###########
 @router.post("/admin_create_game")
-async def admin_create_game():
+async def admin_create_game() -> UUID:
     game_id = AdminInterface().create_game()
     logger.info("Created new game with id = %s", game_id)
     return game_id
 
 
 @router.post("/admin_create_team")
-async def admin_list_games(game_id: UUID, team_name: str) -> int:
+async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
     logger.info("Creating new team '%s' for game %s", team_name, game_id)
     return AdminInterface().create_team(game_id, team_name)
 
 
 @router.post("/admin_add_user_to_team")
-async def admin_list_games(user_id: UUID, team_id: UUID) -> int:
+async def admin_add_user_to_team(user_id: UUID, team_id: UUID) -> None:
     logger.info("Adding user %s to team %s", user_id, team_id)
     return AdminInterface().add_user_to_team(user_id, team_id)
 
 
 @router.get("/admin_list_games")
-async def admin_list_games():
+async def admin_list_games() -> List[GameModel]:
     logger.info("admin_list_games")
     return AdminInterface().get_games()
 

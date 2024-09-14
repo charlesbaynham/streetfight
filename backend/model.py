@@ -285,7 +285,7 @@ class UserModel(pydantic.BaseModel):
     id: UUID
     name: Optional[str]
 
-    team_id: Optional[int]
+    team_id: Optional[UUID]
 
     num_bullets: int
     hit_points: int

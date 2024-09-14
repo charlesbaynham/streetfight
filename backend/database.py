@@ -39,8 +39,12 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
 
 
 def load():
-    # an Engine, which the Session will use for connection
-    # resources
+    """
+    Set up a database connection to be used from now on
+    """
+    from sqlalchemy_utils import database_exists
+    from .reset_db import reset_database
+
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
         raise ValueError(
@@ -53,6 +57,9 @@ def load():
 
     engine = create_engine(db_url)
     Session = sessionmaker(bind=engine)
+
+    if not database_exists(engine.url):
+        reset_database(engine=engine)
 
 
 @contextmanager
