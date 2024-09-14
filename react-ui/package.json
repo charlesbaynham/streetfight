@@ -9,6 +9,7 @@
     "@testing-library/user-event": "^13.5.0",
     "add-to-homescreen": "github:philfung/add-to-homescreen",
     "framer-motion": "^10.16.4",
+    "npm-check-updates": "^17.1.1",
     "qr-scanner": "^1.4.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -25,7 +26,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "predeploy": "npm run build"
+    "predeploy": "npm run build",
+    "update": "ncu -u"
   },
   "eslintConfig": {
     "extends": [
