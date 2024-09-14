@@ -10,3 +10,8 @@ services:
   backend:
     image: ${BACKEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-backend:latest}
     
+  watchtower:
+    image: containrrr/watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    
