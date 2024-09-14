@@ -56,14 +56,17 @@ def setup_logging():
     root_logger.addHandler(rotating_handler)
     rotating_handler.doRollover()
 
+    # Set the uvicorn logger to inherit from the root logger
+    uvicorn_logger.setLevel("NOTSET")
+
     # Set the root logger level to LOG_LEVEL if specified
     if "LOG_LEVEL" in os.environ:
-        logging.getLogger().setLevel(os.environ.get("LOG_LEVEL"))
+        root_logger.setLevel(os.environ.get("LOG_LEVEL"))
         root_logger.warning(
             "Setting log level to %s from env var config", os.environ.get("LOG_LEVEL")
         )
     else:
-        logging.getLogger().setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)
         root_logger.warning("Setting log level to INFO by default")
 
     if "LOG_OVERRIDES" in os.environ:
