@@ -1,34 +1,36 @@
 
-import React, {  useEffect } from "react";
+import React, { useEffect, useState } from "react";
 
-// import addToHomescreen from 'add-to-homescreen';
-// import 'add-to-homescreen/dist/style/addtohomescreen.css';
 
-const addToHomescreen = require('add-to-homescreen/src/addtohomescreen');
+require('add-to-homescreen/dist/add-to-homescreen.min.js');
+require('add-to-homescreen/dist/add-to-homescreen.min.css');
 
-const AddToHomeScreen = () => {
+
+const TestPage = () => {
+  const [text, setText] = useState("Not set yet");
+
   useEffect(() => {
+    setText("DOMContentLoaded starting");
 
+    window.AddToHomeScreenInstance = new window.AddToHomeScreen({
+      appName: 'Streetfight',
+      appIconUrl: 'logo512.png',
+      assetUrl: 'https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@2.0/dist/assets/img/',
+      maxModalDisplayCount: -1
+    });
 
-    console.log(addToHomescreen);
+    window.AddToHomeScreenInstance.show('en');
 
-
-    // // Initialize the add-to-homescreen prompt
-    // addToHomescreen({
-    //   startDelay: 0, // Start immediately after page load
-    //   lifespan: 15,  // How long to display the prompt (in seconds)
-    //   autostart: true, // Automatically show the prompt
-    //   maxDisplayCount: 2, // Show a maximum of two times
-    // });
+    setText("DOMContentLoaded completed");
   }, []);
-
-
 
   return (
     <div>
-      <h1>My React App</h1>
+      <h1>This is a test</h1>
+
+      {text}
     </div>
   );
 };
 
-export default AddToHomeScreen;
+export default TestPage;
