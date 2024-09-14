@@ -12,6 +12,7 @@ from sqlalchemy import and_
 from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
+from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
 from .model import Game
@@ -25,47 +26,55 @@ from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
 
-
 logger = logging.getLogger(__name__)
+
+
+AdminScopeWrapper = DatabaseScopeProvider("admin")
+db_scoped = AdminScopeWrapper.db_scoped
 
 
 class AdminInterface:
     def __init__(self) -> None:
-        logger.debug("Making session for AdminInterface")
-        self.session = database.Session()
+        self._session = None
 
+    @db_scoped
     def _get_user_orm(self, user_id) -> User:
-        g = self.session.query(User).filter_by(id=user_id).first()
+        g = self._session.query(User).filter_by(id=user_id).first()
         if not g:
             raise HTTPException(404, f"User {user_id} not found")
         return g
 
+    @db_scoped
     def _get_game_orm(self, game_id) -> Game:
-        g = self.session.query(Game).filter_by(id=game_id).first()
+        g = self._session.query(Game).filter_by(id=game_id).first()
         if not g:
             raise HTTPException(404, f"Game {game_id} not found")
         return g
 
+    @db_scoped
     def _get_team_orm(self, team_id) -> Team:
-        t = self.session.query(Team).filter_by(id=team_id).first()
+        t = self._session.query(Team).filter_by(id=team_id).first()
         if not t:
             raise HTTPException(404, f"Team {team_id} not found")
         return t
 
+    @db_scoped
     def _get_shot_orm(self, shot_id) -> Shot:
-        s = self.session.query(Shot).get(shot_id)
+        s = self._session.query(Shot).get(shot_id)
         if not s:
             raise HTTPException(404, f"Shot {shot_id} not found")
         return s
 
+    @db_scoped
     def get_games(self) -> List[GameModel]:
         logger.info("AdminInterface - get_games")
-        return [GameModel.from_orm(g) for g in self.session.query(Game).all()]
+        return [GameModel.from_orm(g) for g in self._session.query(Game).all()]
 
+    @db_scoped
     def get_users(self, team_id: UUID = None, game_id: UUID = None) -> List[UserModel]:
         logger.info("AdminInterface - get_users")
 
-        q = self.session.query(User)
+        q = self._session.query(User)
 
         if team_id:
             q.filter_by(team_id=team_id)
@@ -74,33 +83,38 @@ class AdminInterface:
 
         return [UserModel.from_orm(g) for g in q.all()]
 
+    @db_scoped
     def get_game(self, game_id) -> GameModel:
         logger.info("AdminInterface - get_game")
         g = self._get_game_orm(game_id)
         return GameModel.from_orm(g)
 
+    @db_scoped
     def create_game(self) -> UUID:
         logger.info("AdminInterface - create_game")
         g = Game()
-        self.session.add(g)
-        self.session.commit()
+        self._session.add(g)
+        self._session.commit()
 
         return g.id
 
+    @db_scoped
     def create_team(self, game_id: UUID, name: str) -> UUID:
         logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)
         team = Team(name=name)
         game.teams.append(team)
-        self.session.commit()
+        self._session.commit()
 
         self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
 
         return team.id
 
+    @db_scoped
     def _get_game_ticker(self, game_id: UUID):
-        return Ticker(game_id, session=self.session)
+        return Ticker(game_id, session=self._session)
 
+    @db_scoped
     def set_game_active(self, game_id: UUID, active: bool) -> int:
         logger.info("AdminInterface - set_game_active %s/%s", game_id, active)
 
@@ -119,7 +133,7 @@ class AdminInterface:
         else:
             ticker.post_message(f"Game paused")
 
-        self.session.commit()
+        self._session.commit()
 
         # Manually bump all the users
         for user_id in user_ids:
@@ -127,15 +141,16 @@ class AdminInterface:
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
-        ui = UserInterface(user_id, session=self.session)
-        ui.join_team(team_id)
-        user_name = ui.get_user_model().name
-        team_name = ui.get_team_model().name
-        ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
+        with UserInterface(user_id) as ui:
+            ui.join_team(team_id)
+            user_name = ui.get_user_model().name
+            team_name = ui.get_team_model().name
+            ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
 
+    @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
         query = (
-            self.session.query(Shot)
+            self._session.query(Shot)
             .filter_by(checked=False)
             .order_by(Shot.time_created)
         )
@@ -145,21 +160,24 @@ class AdminInterface:
 
         shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
 
+        self._session.close()
+
         for shot_model in shot_models:
             shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
 
         return num_shots, shot_models
 
     def hit_user_by_admin(self, user_id, num=1):
-        ui = UserInterface(user_id, session=self.session)
-        ui.hit(num)
-        ui.get_ticker().post_message(f"Admin hit {ui.get_user().name}")
+        with UserInterface(user_id) as ui:
+            ui.hit(num)
+            ui.get_ticker().post_message(f"Admin hit {ui.get_user().name}")
 
+    @db_scoped
     def hit_user(self, shot_id, target_user_id):
         shot = self._get_shot_orm(shot_id)
 
         u_from = shot.user
-        ui_target = UserInterface(target_user_id, session=self.session)
+        ui_target = UserInterface(target_user_id, session=self._session)
 
         ui_target.hit(shot.shot_damage)
 
@@ -179,30 +197,30 @@ class AdminInterface:
 
         # Record the target user in the db
         shot.target_user_id = target_user_id
-        self.session.commit()
 
     def award_user_HP(self, user_id, num=1):
-        ui = UserInterface(user_id, session=self.session)
+        with UserInterface(user_id) as ui:
+            ui.award_HP(num=num)
 
-        ui.award_HP(num=num)
+            user_model = ui.get_user_model()
+            ticker = ui.get_ticker()
 
-        user_model = ui.get_user_model()
-        ticker = ui.get_ticker()
-        if ticker:
-            ticker.post_message(f"{user_model.name} was given {num} armour")
+            if ticker:
+                ticker.post_message(f"{user_model.name} was given {num} armour")
 
     def award_user_ammo(self, user_id, num=1):
-        ui = UserInterface(user_id, session=self.session)
+        with UserInterface(user_id) as ui:
+            ui.award_ammo(num=num)
 
-        ui.award_ammo(num=num)
+            user_model = ui.get_user_model()
+            ticker = ui.get_ticker()
 
-        user_model = ui.get_user_model()
-        ticker = ui.get_ticker()
-        if ticker:
-            ticker.post_message(f"{user_model.name} was given {num} ammo")
+            if ticker:
+                ticker.post_message(f"{user_model.name} was given {num} ammo")
 
+    @db_scoped
     def mark_shot_checked(self, shot_id):
-        shot = self.session.query(Shot).filter_by(id=shot_id).first()
+        shot = self._session.query(Shot).filter_by(id=shot_id).first()
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
@@ -211,7 +229,7 @@ class AdminInterface:
             raise HTTPException(400, f"Shot id {shot_id} has already been checked")
 
         shot.checked = True
-        self.session.commit()
+        self._session.commit()
 
     def make_new_item(
         self,
@@ -243,14 +261,15 @@ class AdminInterface:
 
         return encoded_item
 
+    @db_scoped
     def get_scoreboard(self, game_id: UUID):
         teams_and_ids = (
-            self.session.query(Team.id, Team.name).filter_by(game_id=game_id).all()
+            self._session.query(Team.id, Team.name).filter_by(game_id=game_id).all()
         )
         teams_by_id = {id: name for id, name in teams_and_ids}
 
         user_data = (
-            self.session.query(
+            self._session.query(
                 User.id, User.name, User.team_id, User.hit_points, User.time_of_death
             )
             .filter(User.team_id.in_(teams_by_id.keys()))
@@ -262,7 +281,7 @@ class AdminInterface:
         }
 
         completed_shots_by_these_users = (
-            self.session.query(Shot.user_id, Shot.shot_damage)
+            self._session.query(Shot.user_id, Shot.shot_damage)
             .filter(
                 and_(
                     Shot.user_id.in_(users_by_id.keys()),
@@ -272,6 +291,8 @@ class AdminInterface:
             )
             .all()
         )
+
+        self._session.close()
 
         table = []
         for user_id, (
@@ -306,7 +327,8 @@ class AdminInterface:
         game, or at most after timeout seconds
         """
         while True:
-            game_ids = self.session.query(Game.id).all()
+            # FIXME: Don't hold the db open
+            game_ids = self._session.query(Game.id).all()
 
             # Lookup / make an event for each game's ticker
             events = []

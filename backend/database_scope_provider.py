@@ -24,11 +24,11 @@ class DatabaseScopeProvider:
     1. For the first db_scoped method, starts a session and stores it in
        self._session
 
-    2. When the last @db_scoped method returns, commit the session
+    2. When the last @db_scoped method returns, commit and close the session
 
     3. If any of the decorated functions altered the database state,
         a. Call `precommit_method(self)` before the db commit
-        b. Call `postcommit_method(self)` after the db commit
+        b. Call `postcommit_method(self)` after the db close
 
     4. Regardless of whether the database state was altered, call `exit_method(self)`
 
