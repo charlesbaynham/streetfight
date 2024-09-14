@@ -58,9 +58,7 @@ def load():
     engine = create_engine(db_url)
     Session = sessionmaker(bind=engine)
 
-    
-
-    if not database_exists(engine.url):        
+    if not database_exists(engine.url):
         reset_database(engine=engine)
 
 
