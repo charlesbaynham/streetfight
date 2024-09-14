@@ -121,7 +121,7 @@ def wait_until_server_up(test_url, timeout):
         logging.info("Connection attempt %s", i)
         try:
             r = requests.get(test_url)
-            if r.ok:
+            if r.is_success:
                 logging.info("Server up and running")
                 return
         except (ConnectionError, requests.exceptions.RequestException):
@@ -141,10 +141,8 @@ def clean_server(full_server):
     backend.database.load()
     engine = backend.database.engine
 
-    Base.metadata.bind = engine
-
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     return full_server
 
@@ -178,10 +176,8 @@ def db_session(engine):
 
     random.seed(123)
 
-    Base.metadata.bind = engine
-
-    Base.metadata.drop_all()
-    Base.metadata.create_all()
+    Base.metadata.drop_all(bind=engine)
+    Base.metadata.create_all(bind=engine)
 
     session = Session()
     try:
@@ -303,7 +299,7 @@ def two_users_in_different_teams(team_factory, user_factory):
 @pytest.fixture
 def api_user_id(api_client):
     response = api_client.get("/api/my_id")
-    assert response.ok
+    assert response.is_success
     return UUID(response.json())
 
 

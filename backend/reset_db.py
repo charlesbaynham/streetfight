@@ -23,9 +23,9 @@ SAMPLE_TEAMS = [
 
 def reset_database(engine):
     target_metadata = Base.metadata
-    target_metadata.bind = engine
-    target_metadata.drop_all()
-    target_metadata.create_all()
+    # target_metadata.bind = engine
+    target_metadata.drop_all(bind=engine)
+    target_metadata.create_all(bind=engine)
 
     logger.warning("Resetting database")
 

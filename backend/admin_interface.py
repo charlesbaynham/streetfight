@@ -87,7 +87,7 @@ class AdminInterface:
 
         return g.id
 
-    def create_team(self, game_id: UUID, name: str) -> int:
+    def create_team(self, game_id: UUID, name: str) -> UUID:
         logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)
         team = Team(name=name)
