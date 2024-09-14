@@ -48,7 +48,7 @@ function GameView({ game }) {
 
       <h3>Controls</h3>
 
-      <CreateNewTeam game_id={game} />
+      <CreateNewTeam game_id={game.id} />
       <br />
       <AddUserToTeam teams={game.teams} />
     </>
