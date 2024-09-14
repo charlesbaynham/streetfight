@@ -7,6 +7,7 @@ from typing import Union
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
@@ -62,10 +63,32 @@ class UserInterface:
         else:
             raise TypeError
 
-        self._session = session
+        self._session: SQLAlchemySession = session
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
+
+    def __enter__(self):
+        from . import database
+
+        # Create a session here instead of letting db_scoped do it. This will
+        # mean that we have ownership of it here, so db_scoped will leave it
+        # alone and let us manage its lifecycle.
+        if self._session:
+            self._session.close()
+
+        self._session = database.Session()
+
+        return self
+
+    def __exit__(self, *args):
+        if not self._session_is_external:
+            if self._session:
+                logger.debug(
+                    "UserInterface %s closing session",
+                    hash(self),
+                )
+                self._session.close()
 
     def get_session(self):
         return self._session
@@ -303,6 +326,8 @@ class UserInterface:
         """
         A generator that yields None every time an update is available for this
         user, or at most after timeout seconds
+
+        Does not use the database.
         """
         while True:
             # Lookup / make an event for this user and subscribe to it
