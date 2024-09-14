@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import weakref
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
@@ -56,7 +57,23 @@ def load():
     global Session
 
     engine = create_engine(db_url)
-    Session = sessionmaker(bind=engine)
+    RawSession = sessionmaker(bind=engine)
+
+    def get_wrapped_session(*args, **kwargs):
+        session = RawSession(*args, **kwargs)
+
+        session_hash = hash(session)
+
+        logger.critical("Creating session hash %d", session_hash)
+
+        weakref.finalize(
+            session,
+            lambda: logger.critical("Garbage collection session hash %d", session_hash),
+        )
+
+        return session
+
+    Session = get_wrapped_session
 
     if not database_exists(engine.url):
         reset_database(engine=engine)
