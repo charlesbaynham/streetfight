@@ -1,10 +1,7 @@
-
 import React, { useEffect, useState } from "react";
 
-
-require('add-to-homescreen/dist/add-to-homescreen.min.js');
-require('add-to-homescreen/dist/add-to-homescreen.min.css');
-
+require("add-to-homescreen/dist/add-to-homescreen.min.js");
+require("add-to-homescreen/dist/add-to-homescreen.min.css");
 
 const TestPage = () => {
   const [text, setText] = useState("Not set yet");
@@ -13,13 +10,14 @@ const TestPage = () => {
     setText("DOMContentLoaded starting");
 
     window.AddToHomeScreenInstance = new window.AddToHomeScreen({
-      appName: 'Streetfight',
-      appIconUrl: 'logo512.png',
-      assetUrl: 'https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@2.0/dist/assets/img/',
-      maxModalDisplayCount: -1
+      appName: "Streetfight",
+      appIconUrl: "logo512.png",
+      assetUrl:
+        "https://cdn.jsdelivr.net/gh/philfung/add-to-homescreen@2.0/dist/assets/img/",
+      maxModalDisplayCount: -1,
     });
 
-    const ret = window.AddToHomeScreenInstance.show('en');
+    const ret = window.AddToHomeScreenInstance.show("en");
 
     setText(JSON.stringify(ret));
   }, []);
