@@ -16,8 +16,6 @@ import FullscreenButton from "./FullscreenButton";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
-
-
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
 
@@ -81,11 +79,13 @@ export default function UserMode() {
     setIsFullscreen(state);
   }, []);
 
-  const view = <GetView
-    user={user}
-    isFullscreen={isFullscreen}
-    className={styles.viewContainer}
-  />;
+  const view = (
+    <GetView
+      user={user}
+      isFullscreen={isFullscreen}
+      className={styles.viewContainer}
+    />
+  );
 
   return (
     <>

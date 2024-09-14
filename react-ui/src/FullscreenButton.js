@@ -65,7 +65,9 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
         showInstallPrompt();
       } else {
         // Otherwise, just go fullscreen as requested
-        if (fullscreenPossible) { handle.enter(); }
+        if (fullscreenPossible) {
+          handle.enter();
+        }
       }
     }
   }, [handle, isFullscreen]);
