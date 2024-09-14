@@ -8,10 +8,10 @@ from backend.model import User
 from backend.user_interface import UserInterface
 
 
-# Mock "create_task" for all unit tests in this module
+# Mock "schedule_update_event" since we don't have an asyncio loop
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
-    mocker.patch("asyncio.create_task")
+    mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
 @pytest.fixture

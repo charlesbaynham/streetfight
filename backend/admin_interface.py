@@ -175,7 +175,9 @@ class AdminInterface:
     def hit_user_by_admin(self, user_id, num=1):
         with UserInterface(user_id) as ui:
             ui.hit(num)
-            ui.get_ticker().post_message(f"Admin hit {ui.get_user().name}")
+
+            if ticker := ui.get_ticker():
+                ticker.post_message(f"Admin hit {ui.get_user().name}")
 
     @db_scoped
     def hit_user(self, shot_id, target_user_id):
