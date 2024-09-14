@@ -54,8 +54,12 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
 
     // Also, if we haven't shown a message in 15 minutes then prompt the user to
     // install the app
-    if (getTimeSinceLastPrompt() > 15 * 60) {
+    const elapsed_time = getTimeSinceLastPrompt();
+    console.log("getTimeSinceLastPrompt() = ", elapsed_time);
+    // if (elapsed_time > 15 * 60 * 1000) {
+    if (elapsed_time > 0) {
       setLastPromptTime();
+      console.debug("Showing prompt");
       showInstallPrompt();
     }
   }, [handle, isFullscreen]);
