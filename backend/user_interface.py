@@ -87,6 +87,16 @@ class UserInterface:
         )
 
     def __enter__(self):
+        from . import database
+
+        # Create a session here instead of letting db_scoped do it. This will
+        # mean that we have ownership of it here, so db_scoped will leave it
+        # alone and let us manage its lifecycle.
+        if self._session:
+            self._session.close()
+
+        self._session = database.Session()
+
         return self
 
     def __exit__(self, *args):

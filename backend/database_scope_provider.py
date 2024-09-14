@@ -131,12 +131,18 @@ class DatabaseScopeProvider:
                     logger.debug("(DSP %s) Committing session", self_outer.name)
                     self._session.commit()
 
-                    if self._session.__owner == hash(self):
-                        logger.debug("(DSP %s) Closing session", self_outer.name)
-                        self._session.close()
-                    else:
+                    try:
+                        if self._session.__owner == hash(self):
+                            logger.debug("(DSP %s) Closing session", self_outer.name)
+                            self._session.close()
+                        else:
+                            logger.debug(
+                                "(DSP %s) Not closing session, it was made by another object",
+                                self_outer.name,
+                            )
+                    except AttributeError:
                         logger.debug(
-                            "(DSP %s) Not closing session, it's not ours",
+                            "(DSP %s) Not closing session, it was made outside this wrapper",
                             self_outer.name,
                         )
 
