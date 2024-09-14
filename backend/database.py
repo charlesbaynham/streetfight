@@ -82,7 +82,7 @@ def load():
             )
             session_counter -= 1
 
-        weakref.finalize(session, lambda: log_close)
+        weakref.finalize(session, log_close)
 
         return session
 
