@@ -17,6 +17,12 @@ from backend.user_interface import UserInterface
 os.environ["SECRET_KEY"] = "test_secret_key"
 
 
+# Mock "schedule_update_event" since we don't have an asyncio loop
+@pytest.fixture(autouse=True)
+def mock_asyncio_tasks(mocker):
+    mocker.patch("backend.asyncio_triggers.schedule_update_event")
+
+
 SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
