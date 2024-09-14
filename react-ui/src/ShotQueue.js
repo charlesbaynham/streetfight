@@ -7,7 +7,7 @@ export default function ShotQueue() {
 
   const update = useCallback(() => {
     sendAPIRequest("admin_get_shots", { limit: 1 }).then(async (response) => {
-      if (!response.is_success) return;
+      if (!response.ok) return;
       const data = await response.json();
       setNumShots(data.numInQueue);
       if (data.shots.length > 0) {

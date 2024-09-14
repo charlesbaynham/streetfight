@@ -44,7 +44,7 @@ export function sendAPIRequest(
   // To handle errors, use the returned promise which gives the raw response
   return fetch(url, requestOptions).then(async (response) => {
     if (callback) {
-      if (!response.is_success) {
+      if (!response.ok) {
         console.log(`Error in api call to ${url}:`);
         console.dir(response);
         console.dir(response.json());
