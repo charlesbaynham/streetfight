@@ -7,6 +7,26 @@ import hintImg from "./images/better-in-fullscreen.svg";
 import { prepareInstallPrompt, showInstallPrompt, isStandalone } from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
 
+function getTimeSinceLastPrompt() {
+  const last_prompt = localStorage.getItem('last_install_prompt');
+  var ts;
+
+  if (last_prompt === null) {
+    ts = 0;
+  } else {
+    ts = JSON.parse(last_prompt);
+  }
+
+  return Date.now() - ts;
+}
+
+function setLastPromptTime() {
+  const time = Date.now();
+  localStorage.setItem('last_install_prompt', time);
+}
+
+
+
 function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
   const [hintHidden, setHintHidden] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -31,6 +51,13 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
   const toggleFullscreen = useCallback(() => {
     if (isFullscreen) handle.exit();
     else handle.enter();
+
+    // Also, if we haven't shown a message in 15 minutes then prompt the user to
+    // install the app
+    if (getTimeSinceLastPrompt() > 15 * 60) {
+      setLastPromptTime();
+      showInstallPrompt();
+    }
   }, [handle, isFullscreen]);
 
   return <>
