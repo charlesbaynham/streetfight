@@ -91,6 +91,11 @@ class UserInterface:
 
     def __exit__(self, *args):
         if not self._session_is_external:
+            logger.critical(
+                "UserInterface %s closing session (%d exist)",
+                hash(self),
+                self.__class__.num_interfaces,
+            )
             self._session.close()
 
     def get_session(self):
