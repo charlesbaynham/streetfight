@@ -39,5 +39,6 @@ services:
     - PROXIED=false
 
 volumes:
+  database:
   caddy_data:
   caddy_config:
