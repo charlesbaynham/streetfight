@@ -23,8 +23,8 @@ from .model import Team
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
-from .ticker_message_dispatcher import TickerMessageType
-from .ticker_message_dispatcher import send_ticker_message
+
+from . import ticker_message_dispatcher as tk
 from .user_interface import UserInterface
 
 logger = logging.getLogger(__name__)
@@ -156,8 +156,8 @@ class AdminInterface:
             team_name = u.team.name
             game_id = u.team.game_id
 
-            send_ticker_message(
-                TickerMessageType.USER_JOINED_TEAM,
+            tk.send_ticker_message(
+                tk.TickerMessageType.USER_JOINED_TEAM,
                 {"user": user_name, "team": team_name},
                 game_id=game_id,
                 session=ui.get_session(),

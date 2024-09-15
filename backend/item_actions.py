@@ -5,7 +5,7 @@ from .items import ItemModel
 from .model import ItemType
 from .model import UserModel
 from .model import UserState
-from .ticker_message_dispatcher import send_ticker_message, TickerMessageType
+from . import ticker_message_dispatcher as tk
 
 if TYPE_CHECKING:
     from .user_interface import UserInterface
@@ -28,8 +28,8 @@ def _handle_ammo_user(user_interface: "UserInterface", item: ItemModel):
     _check_alive(user_model)
     user_interface.award_ammo(item.data["num"])
 
-    send_ticker_message(
-        TickerMessageType.USER_COLLECTED_AMMO,
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_AMMO,
         {"user": user_model.name, "num": item.data["num"]},
         team_id=user_model.team_id,
         game_id=user_model.game_id,
@@ -50,8 +50,8 @@ def _handle_ammo_team(user_interface: "UserInterface", item: ItemModel):
             item.data["num"]
         )
 
-    send_ticker_message(
-        TickerMessageType.TEAM_COLLECTED_AMMO,
+    tk.send_ticker_message(
+        tk.TickerMessageType.TEAM_COLLECTED_AMMO,
         {"user": user_model.name, "num": item.data["num"]},
         team_id=user_model.team_id,
         game_id=user_model.game_id,
@@ -69,8 +69,8 @@ def _handle_armour(user_interface: "UserInterface", item: ItemModel):
 
     user_interface.award_HP(item.data["num"] - current_HP + 1)
 
-    send_ticker_message(
-        TickerMessageType.USER_COLLECTED_ARMOUR,
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_ARMOUR,
         {"user": user_model.name, "num": item.data["num"]},
         team_id=user_model.team_id,
         game_id=user_model.game_id,
@@ -85,8 +85,8 @@ def _handle_medpack(user_interface: "UserInterface", item: ItemModel):
 
     user_interface.award_HP(1 - user_model.hit_points)
 
-    send_ticker_message(
-        TickerMessageType.USER_COLLECTED_MEDPACK,
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_MEDPACK,
         {"user": user_model.name},
         team_id=user_model.team_id,
         game_id=user_model.game_id,
@@ -113,8 +113,8 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
     except KeyError:
         weapon_name = "<unnamed>"
 
-    send_ticker_message(
-        TickerMessageType.USER_COLLECTED_WEAPON,
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_WEAPON,
         {"user": user_model.name, "weapon": weapon_name},
         team_id=user_model.team_id,
         game_id=user_model.game_id,
