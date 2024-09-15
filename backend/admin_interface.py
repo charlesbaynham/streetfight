@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import time
 from typing import List
 from typing import Tuple
 from uuid import UUID
@@ -9,7 +8,6 @@ from uuid import uuid4 as get_uuid
 from fastapi import HTTPException
 from sqlalchemy import and_
 
-from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
