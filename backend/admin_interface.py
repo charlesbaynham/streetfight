@@ -23,7 +23,8 @@ from .model import Team
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
-from .ticker_message_dispatcher import send_ticker_message, TickerMessageType
+from .ticker_message_dispatcher import TickerMessageType
+from .ticker_message_dispatcher import send_ticker_message
 from .user_interface import UserInterface
 
 logger = logging.getLogger(__name__)

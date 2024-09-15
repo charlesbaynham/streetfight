@@ -2,7 +2,6 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import Optional
 from typing import Union
 from uuid import UUID
 
@@ -22,7 +21,6 @@ from .model import Team
 from .model import TeamModel
 from .model import User
 from .model import UserModel
-from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
 
