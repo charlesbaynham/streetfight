@@ -30,6 +30,7 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "{user} has joined team {team}",
     )
+    # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
 
 
