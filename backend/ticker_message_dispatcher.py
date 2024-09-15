@@ -35,7 +35,7 @@ TICKER_MESSAGES = {
 
 def send_ticker_message(
     message_type: TickerMessageType,
-    supporting_strings: Dict[str],
+    supporting_strings: Dict[str, str],
     user_id: Optional[UUID] = None,
     team_id: Optional[UUID] = None,
     game_id: Optional[UUID] = None,
