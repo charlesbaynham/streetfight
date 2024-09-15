@@ -1,14 +1,10 @@
-import asyncio
-import json
 import logging
 import os
 import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import AsyncGenerator
 from typing import Dict
 from typing import List
-from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from urllib.parse import urlparse
@@ -83,7 +79,6 @@ setup_logging()
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
-from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 from .model import GameModel

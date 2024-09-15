@@ -1,34 +1,12 @@
 import asyncio
 import json
 import logging
-import os
-import re
-from logging.handlers import RotatingFileHandler
-from pathlib import Path
 from typing import AsyncGenerator
-from typing import Dict
-from typing import List
 from typing import Optional
-from urllib.parse import parse_qs
-from urllib.parse import urlencode
-from urllib.parse import urlparse
-from urllib.parse import urlunparse
-from uuid import UUID
 
-import pydantic
-from fastapi import APIRouter
-from fastapi import Depends
-from fastapi import FastAPI
-from fastapi import HTTPException
-from pydantic import BaseModel
-from starlette.middleware.sessions import SessionMiddleware
-from starlette.responses import StreamingResponse
 
 from .admin_interface import AdminInterface
-from .dotenv import load_env_vars
-from .model import GameModel
 from .ticker import Ticker
-from .user_id import get_user_id
 from .user_interface import UserInterface
 
 
