@@ -23,7 +23,6 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
-
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)

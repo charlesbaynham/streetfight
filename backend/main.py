@@ -26,7 +26,6 @@ from starlette.responses import StreamingResponse
 
 from .dotenv import load_env_vars
 
-
 # How often to send keepalive messages
 SSE_KEEPALIVE_TIMEOUT = 15
 
@@ -87,11 +86,10 @@ setup_logging()
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
+from .model import GameModel
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
-from .model import GameModel
-
 
 app = FastAPI()
 router = APIRouter()
