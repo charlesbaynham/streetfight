@@ -8,8 +8,8 @@ from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
-from . import database
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
@@ -35,7 +35,7 @@ db_scoped = AdminScopeWrapper.db_scoped
 
 class AdminInterface:
     def __init__(self) -> None:
-        self._session = None
+        self._session: Session = None
 
     @db_scoped
     def _get_user_orm(self, user_id) -> User:
@@ -116,7 +116,7 @@ class AdminInterface:
         return team.id
 
     @db_scoped
-    def _get_game_ticker(self, game_id: UUID):
+    def _get_game_ticker(self, game_id: UUID) -> Ticker:
         return Ticker(game_id, user_id=None, session=self._session)
 
     @db_scoped
