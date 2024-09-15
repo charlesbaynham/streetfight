@@ -95,7 +95,6 @@ TICKER_MESSAGES = {
         TickerTarget.PRIVATE_USER,
         "You were given {num}x ammo!",
     ),
-    # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
 
 
