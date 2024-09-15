@@ -6,7 +6,7 @@ import pytest
 logging.basicConfig(level=logging.DEBUG)
 
 # Shared fixtures:
-from .shared_fixtures import *
+from .shared_fixtures import *  # noqa
 
 
 def pytest_addoption(parser):
