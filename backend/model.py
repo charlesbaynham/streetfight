@@ -327,6 +327,9 @@ class ShotModel(pydantic.BaseModel):
     user: UserModel
     game: GameModel
 
+    user_id: UUID
+    target_user_id: Optional[UUID]
+
     shot_damage: int
 
     class Config:

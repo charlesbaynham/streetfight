@@ -273,11 +273,11 @@ def one_game(game_factory):
 
 @pytest.fixture
 def user_in_team(team_factory, user_factory):
-    from backend.user_interface import UserInterface
-
     team_id = team_factory()
     user_id = user_factory()
-    UserInterface(user_id).join_team(team_id)
+
+    with UserInterface(user_id) as ui:
+        ui.join_team(team_id)
 
     return user_id
 
@@ -290,8 +290,10 @@ def two_users_in_different_teams(team_factory, user_factory):
     user_a = user_factory()
     user_b = user_factory()
 
-    UserInterface(user_a).join_team(team_a)
-    UserInterface(user_b).join_team(team_b)
+    with UserInterface(user_a) as ui:
+        ui.join_team(team_a)
+    with UserInterface(user_b) as ui:
+        ui.join_team(team_b)
 
     return user_a, user_b
 

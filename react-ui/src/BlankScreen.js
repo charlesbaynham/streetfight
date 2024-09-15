@@ -10,6 +10,7 @@ function sleep(ms) {
 
 function BlankScreen({
   appear,
+  color = "white",
   time_to_appear = 0.5,
   time_to_show = 0.5,
   time_to_disappear = 1.5,
@@ -44,6 +45,9 @@ function BlankScreen({
 
   return (
     <motion.div
+      style={{
+        backgroundColor: color,
+      }}
       className={styles.overlay}
       initial="hidden"
       animate={visible ? "visible" : "hidden"}

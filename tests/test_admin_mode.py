@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import pytest
 from fastapi.exceptions import HTTPException
 
@@ -7,6 +5,12 @@ from backend.admin_interface import AdminInterface
 from backend.model import Shot
 from backend.model import User
 from backend.user_interface import UserInterface
+
+
+# Mock "schedule_update_event" since we don't have an asyncio loop
+@pytest.fixture(autouse=True)
+def mock_asyncio_tasks(mocker):
+    mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
 def test_making_item():
@@ -116,7 +120,7 @@ def test_shots_record_targets(old_shot_prep):
 # The refunded Shot should be only the shooter
 def test_shots_record_targets(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    shot = AdminInterface()._get_shot_orm(shot_b)
+    shot = AdminInterface().get_shot_model(shot_b)
 
     assert shot.user_id == user_b
     assert shot.target_user_id is None
@@ -133,3 +137,8 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
 
     print(game_id)
     print(AdminInterface().get_scoreboard(game_id))
+
+
+def test_hit_user(user_factory):
+    user_id = user_factory()
+    AdminInterface().hit_user_by_admin(user_id=user_id)
