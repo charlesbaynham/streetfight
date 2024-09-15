@@ -23,6 +23,7 @@ class TickerMessageType(Enum):
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
     ADMIN_HIT_USER = auto()
+    ADMIN_HIT_AND_KILL_USER = auto()
     HIT_AND_DAMAGE = auto()
     HIT_AND_KILL = auto()
     ADMIN_GAVE_ARMOUR = auto()
@@ -65,6 +66,10 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "Admin hit {user} for {num} damage",
     ),
+    TickerMessageType.ADMIN_HIT_AND_KILL_USER: (
+        TickerTarget.PUBLIC,
+        "Admin killed {user}!",
+    ),
     TickerMessageType.HIT_AND_DAMAGE: (
         TickerTarget.PUBLIC,
         "{user} hit {target} for {num} damage",
@@ -74,11 +79,13 @@ TICKER_MESSAGES = {
         "{user} killed {target}!",
     ),
     TickerMessageType.ADMIN_GAVE_ARMOUR: (
-        TickerTarget.PRIVATE_USER,
+        # TickerTarget.PRIVATE_USER, FIXME
+        TickerTarget.PUBLIC,
         "You were given a level {num} armour!",
     ),
     TickerMessageType.ADMIN_REVIVED_USER: (
-        TickerTarget.PRIVATE_USER,
+        # TickerTarget.PRIVATE_USER, FIXME
+        TickerTarget.PUBLIC,
         "You were revived by the admin!",
     ),
     TickerMessageType.ADMIN_GAVE_AMMO: (

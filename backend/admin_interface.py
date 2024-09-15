@@ -190,9 +190,14 @@ class AdminInterface:
 
             user_name = u.name
             game_id = u.team.game_id
+            
+            if u.hit_points > 0:
+                message_type = tk.TickerMessageType.ADMIN_HIT_USER
+            else:
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILL_USER
 
             tk.send_ticker_message(
-                tk.TickerMessageType.ADMIN_HIT_USER,
+                message_type,
                 {"user": user_name, "num": num},
                 session=ui.get_session(),
                 user_id=user_id,
@@ -237,19 +242,23 @@ class AdminInterface:
         with UserInterface(user_id) as ui:
             ui.award_HP(num=num)
 
-            user_model = ui.get_user_model()
+            u = ui.get_user()
 
-            if user_model.hit_points > 0:
+            
+
+            if u.hit_points > 0:
                 message_type = tk.TickerMessageType.ADMIN_GAVE_ARMOUR
             else:
                 message_type = tk.TickerMessageType.ADMIN_REVIVED_USER
 
+            logger.error("Awarding user %d HP", num)
+
             tk.send_ticker_message(
                 message_type,
-                {"user": user_model.name, "num": num},
+                {"user": u.name, "num": num},
                 user_id=user_id,
-                game_id=user_model.game_id,
-                team_id=user_model.team_id,
+                game_id=u.team.game_id,
+                team_id=u.team_id,
                 session=ui.get_session(),
             )
 
