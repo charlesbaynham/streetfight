@@ -23,6 +23,7 @@ from .model import Team
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
+from .ticker_message_dispatcher import send_ticker_message, TickerMessageType
 from .user_interface import UserInterface
 
 logger = logging.getLogger(__name__)
@@ -147,9 +148,19 @@ class AdminInterface:
         logger.info("AdminInterface - add_user_to_team")
         with UserInterface(user_id) as ui:
             ui.join_team(team_id)
-            user_name = ui.get_user_model().name
-            team_name = ui.get_team_model().name
-            ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
+
+            u = ui.get_user()
+
+            user_name = u.name
+            team_name = u.team.name
+            game_id = u.team.game_id
+
+            send_ticker_message(
+                TickerMessageType.USER_JOINED_TEAM,
+                {"user": user_name, "team": team_name},
+                game_id=game_id,
+                session=ui.get_session(),
+            )
 
     @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
