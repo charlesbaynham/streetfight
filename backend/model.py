@@ -20,7 +20,6 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
