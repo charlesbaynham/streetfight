@@ -3,6 +3,10 @@ from uuid import UUID
 from backend.model import User
 
 
+def test_user_factory(user_factory):
+    user_factory()
+
+
 def test_three_users(three_users):
     assert [isinstance(u, UUID) for u in three_users]
 

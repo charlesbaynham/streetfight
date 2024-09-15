@@ -226,12 +226,10 @@ class TickerEntry(Base):
     time_created = Column(DateTime, server_default=func.now())
 
     game_id = Column(UUIDType, ForeignKey("games.id"), index=True, nullable=False)
-    game = relationship(
-        "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
-    )
+    game = relationship("Game", lazy=True, foreign_keys=game_id)
 
     private_user_id = Column(
-        UUIDType, ForeignKey("games.id"), index=True, nullable=True
+        UUIDType, ForeignKey("users.id"), index=True, nullable=True
     )
     private_user = relationship(
         "User",
