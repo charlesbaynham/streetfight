@@ -25,6 +25,9 @@ class TickerMessageType(Enum):
     ADMIN_HIT_USER = auto()
     HIT_AND_DAMAGE = auto()
     HIT_AND_KILL = auto()
+    ADMIN_GAVE_ARMOUR = auto()
+    ADMIN_REVIVED_USER = auto()
+    ADMIN_GAVE_AMMO = auto()
 
 
 class TickerTarget(Enum):
@@ -70,12 +73,25 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "{user} killed {target}!",
     ),
+    TickerMessageType.ADMIN_GAVE_ARMOUR: (
+        TickerTarget.PRIVATE_USER,
+        "You were given a level {num} armour!",
+    ),
+    TickerMessageType.ADMIN_REVIVED_USER: (
+        TickerTarget.PRIVATE_USER,
+        "You were revived by the admin!",
+    ),
+    TickerMessageType.ADMIN_GAVE_AMMO: (
+        TickerTarget.PRIVATE_USER,
+        "You were given {num}x ammo!",
+    ),
     # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
 
 
 assert len(TICKER_MESSAGES) == len(TickerMessageType)
 assert all(m in TickerMessageType for m in TICKER_MESSAGES.keys())
+
 
 def send_ticker_message(
     message_type: TickerMessageType,

@@ -222,6 +222,7 @@ class AdminInterface:
             message_type,
             {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
             game_id=u_from.team.game_id,
+            session=self._session,
         )
 
         try:
@@ -238,20 +239,37 @@ class AdminInterface:
             ui.award_HP(num=num)
 
             user_model = ui.get_user_model()
-            ticker = ui.get_ticker()
 
-            if ticker:
-                ticker.post_message(f"{user_model.name} was given {num} armour")
+            if user_model.hit_points > 0:
+                message_type = tk.TickerMessageType.ADMIN_GAVE_ARMOUR
+            else:
+                message_type = tk.TickerMessageType.ADMIN_REVIVED_USER
+
+            tk.send_ticker_message(
+                message_type,
+                {"user": user_model.name, "num": num},
+                user_id=user_id,
+                game_id=user_model.game_id,
+                team_id=user_model.team_id,
+                session=ui.get_session(),
+            )
 
     def award_user_ammo(self, user_id, num=1):
         with UserInterface(user_id) as ui:
             ui.award_ammo(num=num)
 
             user_model = ui.get_user_model()
-            ticker = ui.get_ticker()
+            
 
-            if ticker:
-                ticker.post_message(f"{user_model.name} was given {num} ammo")
+            tk.send_ticker_message(
+                tk.TickerMessageType.ADMIN_GAVE_AMMO,
+                {"user": user_model.name, "num": num},
+                user_id=user_id,
+                game_id=user_model.game_id,
+                team_id=user_model.team_id,
+                session=ui.get_session(),
+            )
+
 
     @db_scoped
     def mark_shot_checked(self, shot_id):
