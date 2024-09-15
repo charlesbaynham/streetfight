@@ -11,7 +11,7 @@ jobs:
 
     - name: Search for FIXME
       run: |
-        if grep -r --exclude=".github/workflows/check_fixme.yml" "FIXME" .; then
+        if grep -r --exclude-dir=.github/ --exclude-dir=node_modules/ --exclude-dir=.git "FIXME" .; then
                 echo "FIXME found in the repository"
                 exit 1
         else
