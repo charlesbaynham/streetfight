@@ -468,7 +468,7 @@ async def updates_generator(user_id):
 
 
 @router.get("/sse_updates")
-async def sse_endpoint(
+async def sse_updates(
     user_id=Depends(get_user_id),
 ):
     return StreamingResponse(
@@ -492,7 +492,7 @@ async def admin_updates_generator():
 
 
 @router.get("/sse_admin_updates")
-async def sse_endpoint():
+async def sse_admin_updates():
     return StreamingResponse(
         admin_updates_generator(),
         headers={
