@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import List
+from typing import List,Tuple
 from typing import Union
 from uuid import UUID
 
@@ -308,7 +308,7 @@ class UserInterface:
             )
 
     @db_scoped
-    def get_messages(self, num, private=False, newest_first=True) -> List[str]:
+    def get_messages(self, num, private=False, newest_first=True) -> List[Tuple[str,str]]:
         """
         Get ticker messages for this user
 
@@ -316,6 +316,9 @@ class UserInterface:
             num (int): Number of messages to get
             private (bool, optional): If True, only get messages that are private for this user. Defaults to False.
             newest_first (bool, optional): If True, get the newest messages first. Defaults to True.
+
+        Returns:
+            List[Tuple[str,str]]: A list of messages, each as a tuple of (type, message)
         """
         user = self.get_user()
 
