@@ -1,6 +1,7 @@
 import asyncio
 import logging
-from typing import List, Tuple
+from typing import List
+from typing import Tuple
 from uuid import UUID
 
 from sqlalchemy import or_
@@ -38,7 +39,7 @@ class Ticker:
         self._session: Session = session
 
     @db_scoped
-    def get_messages(self, num_messages, newest_first=True) -> List[Tuple[str,str]]:
+    def get_messages(self, num_messages, newest_first=True) -> List[Tuple[str, str]]:
         """
         Retrieve a list of messages from the ticker entries for the current game.
         Args:
@@ -78,7 +79,7 @@ class Ticker:
                 out.append(("user", message))
             else:
                 out.append(("public", message))
-        
+
         return out
 
     @db_scoped

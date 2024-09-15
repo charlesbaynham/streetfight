@@ -105,7 +105,6 @@ def test_api_query_ticker_messages(api_client, ticker_for_user_in_game):
     messages = response.json()
 
     assert len(messages) == 2
-    
 
 
 def test_ticker_announces_kill(
@@ -126,7 +125,6 @@ def test_ticker_announces_kill(
     messages = response.json()
 
     assert "killed" in messages[0][1]
-
 
 
 def test_get_messages_empty(ticker):
@@ -156,14 +154,18 @@ def test_get_messages_order_newest_first(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3, newest_first=True) == [("public", msg) for msg in messages[::-1]]
+    assert ticker.get_messages(3, newest_first=True) == [
+        ("public", msg) for msg in messages[::-1]
+    ]
 
 
 def test_get_messages_order_oldest_first(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3, newest_first=False) == [("public", msg) for msg in messages]
+    assert ticker.get_messages(3, newest_first=False) == [
+        ("public", msg) for msg in messages
+    ]
 
 
 def test_get_messages_private_messages(ticker, user_factory):
@@ -171,7 +173,10 @@ def test_get_messages_private_messages(ticker, user_factory):
     ticker.post_message("Public message")
     ticker.post_message("Private message", private_for_user_id=user_id)
     ticker.user_id = user_id
-    assert ticker.get_messages(2) == [("user", "Private message"), ("public", "Public message")]
+    assert ticker.get_messages(2) == [
+        ("user", "Private message"),
+        ("public", "Public message"),
+    ]
 
 
 def test_get_messages_excludes_others_private_messages(ticker, user_factory):
@@ -179,4 +184,3 @@ def test_get_messages_excludes_others_private_messages(ticker, user_factory):
     ticker.post_message("Public message")
     ticker.post_message("Private message", private_for_user_id=user_id)
     assert ticker.get_messages(2) == [("public", "Public message")]
-
