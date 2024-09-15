@@ -18,6 +18,7 @@ from .model import Game
 from .model import Item
 from .model import Shot
 from .model import Team
+from .ticker import Ticker
 from .model import TeamModel
 from .model import User
 from .model import UserModel
@@ -291,6 +292,24 @@ class UserInterface:
                     game=user.team.game,
                 )
             )
+
+    @db_scoped
+    def get_messages(self, num, private=False, newest_first=True):
+        """
+        Get ticker messages for this user
+
+        Args:
+            num (int): Number of messages to get
+            private (bool, optional): If True, only get messages that are private for this user. Defaults to False.
+            newest_first (bool, optional): If True, get the newest messages first. Defaults to True.
+        """
+        user = self.get_user()
+
+        return Ticker(
+            game_id=user.team.game.id,
+            session=self.get_session,
+            user_id=self.user_id if private else None,
+        ).get_messages(num_messages=num, newest_first=newest_first)
 
     @db_scoped
     def clear_unchecked_shots(self):

@@ -144,7 +144,7 @@ class User(Base):
     name = Column(String)
 
     team_id = Column(UUIDType, ForeignKey("teams.id"))
-    team: Team = relationship(
+    team = relationship(
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
     )
 
