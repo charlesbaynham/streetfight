@@ -128,41 +128,42 @@ def test_ticker_announces_kill(
     assert "killed" in messages[0][1]
 
 
+
 def test_get_messages_empty(ticker):
     assert ticker.get_messages(3) == []
 
 
 def test_get_messages_single_message(ticker):
     ticker.post_message("Test message")
-    assert ticker.get_messages(1) == ["Test message"]
+    assert ticker.get_messages(1) == [("public", "Test message")]
 
 
 def test_get_messages_multiple_messages(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3) == messages[::-1]
+    assert ticker.get_messages(3) == [("public", msg) for msg in messages[::-1]]
 
 
 def test_get_messages_limit(ticker):
     messages = ["Message 1", "Message 2", "Message 3", "Message 4"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(2) == messages[-1:-3:-1]
+    assert ticker.get_messages(2) == [("public", msg) for msg in messages[-1:-3:-1]]
 
 
 def test_get_messages_order_newest_first(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3, newest_first=True) == messages[::-1]
+    assert ticker.get_messages(3, newest_first=True) == [("public", msg) for msg in messages[::-1]]
 
 
 def test_get_messages_order_oldest_first(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3, newest_first=False) == messages
+    assert ticker.get_messages(3, newest_first=False) == [("public", msg) for msg in messages]
 
 
 def test_get_messages_private_messages(ticker, user_factory):
@@ -170,11 +171,12 @@ def test_get_messages_private_messages(ticker, user_factory):
     ticker.post_message("Public message")
     ticker.post_message("Private message", private_for_user_id=user_id)
     ticker.user_id = user_id
-    assert ticker.get_messages(2) == ["Private message", "Public message"]
+    assert ticker.get_messages(2) == [("user", "Private message"), ("public", "Public message")]
 
 
 def test_get_messages_excludes_others_private_messages(ticker, user_factory):
     user_id = user_factory()
     ticker.post_message("Public message")
     ticker.post_message("Private message", private_for_user_id=user_id)
-    assert ticker.get_messages(2) == ["Public message"]
+    assert ticker.get_messages(2) == [("public", "Public message")]
+
