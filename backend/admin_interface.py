@@ -238,7 +238,6 @@ class AdminInterface:
         # Record the target user in the db
         shot.target_user_id = target_user_id
 
-    
     def set_user_HP(self, user_id, num=1):
         with UserInterface(user_id) as ui:
             ui.set_HP(num)

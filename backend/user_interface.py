@@ -147,7 +147,7 @@ class UserInterface:
         """
         Set the user's health, wiping any death state
         """
-        u :User= self.get_user()
+        u: User = self.get_user()
         u.hit_points = num
         u.time_of_death = 0
 
