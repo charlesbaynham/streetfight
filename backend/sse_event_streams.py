@@ -15,7 +15,6 @@ from .admin_interface import AdminInterface
 from .ticker import Ticker
 from .user_interface import UserInterface
 
-
 # How often to send keepalive messages
 SSE_KEEPALIVE_TIMEOUT = 15
 

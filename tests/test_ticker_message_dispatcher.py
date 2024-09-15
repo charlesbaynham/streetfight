@@ -4,10 +4,10 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
-from backend.ticker_message_dispatcher import send_ticker_message
 from backend.ticker_message_dispatcher import TICKER_MESSAGES
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.ticker_message_dispatcher import TickerTarget
+from backend.ticker_message_dispatcher import send_ticker_message
 
 
 @pytest.fixture
