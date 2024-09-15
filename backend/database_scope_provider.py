@@ -6,7 +6,6 @@ from typing import Dict
 
 from sqlalchemy.orm import Session
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -21,16 +20,22 @@ class DatabaseScopeProvider:
     and should be used by class code to access the database), and
     `_database_scope_data` which is private for this class.
 
+    It also creates a member on the `_session` object called `__owner` which is
+    set to the hash of `self` if the session was created by this class. This
+    class will only close sessions that were created by the wrapped object (but
+    it will still commit them).
+
     1. For the first db_scoped method, starts a session and stores it in
        self._session
 
-    2. When the last @db_scoped method returns, commit the session
+    2. When the last @db_scoped method returns, commit and close the session
 
     3. If any of the decorated functions altered the database state,
         a. Call `precommit_method(self)` before the db commit
-        b. Call `postcommit_method(self)` after the db commit
+        b. Call `postcommit_method(self)` after the db close
 
-    4. Regardless of whether the database state was altered, call `exit_method(self)`
+    4. Regardless of whether the database state was altered, call
+       `exit_method(self)`
 
     Example usage:
 
@@ -75,10 +80,11 @@ class DatabaseScopeProvider:
 
             if not self._session:
                 self._session = database.Session()
+                self._session.__owner = hash(self)
 
             # If we're the entrypoint to a db_scoped session, reset the
             # session_modified flag. Note that we can't rely on the
-            # initialisation above because the user may well reuse object with
+            # initialisation above because the user may well reuse objects with
             # db_scoped methods and call them more than once.
             if wrapper_data["session_users"] == 0:
                 wrapper_data["session_modified"] = False
@@ -123,6 +129,21 @@ class DatabaseScopeProvider:
                 if wrapper_data["session_users"] == 0:
                     logger.debug("(DSP %s) Committing session", self_outer.name)
                     self._session.commit()
+
+                    try:
+                        if self._session.__owner == hash(self):
+                            logger.debug("(DSP %s) Closing session", self_outer.name)
+                            self._session.close()
+                        else:
+                            logger.debug(
+                                "(DSP %s) Not closing session, it was made by another object",
+                                self_outer.name,
+                            )
+                    except AttributeError:
+                        logger.debug(
+                            "(DSP %s) Not closing session, it was made outside this wrapper",
+                            self_outer.name,
+                        )
 
                     if wrapper_data["session_modified"]:
                         logger.debug(

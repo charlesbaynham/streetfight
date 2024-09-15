@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+import weakref
 from contextlib import contextmanager
 
 from sqlalchemy import create_engine
@@ -14,6 +15,7 @@ load_env_vars()
 
 engine = None
 Session = None
+session_counter = 0
 
 
 logger = logging.getLogger("sqltimings")
@@ -43,6 +45,7 @@ def load():
     Set up a database connection to be used from now on
     """
     from sqlalchemy_utils import database_exists
+
     from .reset_db import reset_database
 
     db_url = os.environ.get("DATABASE_URL")
@@ -56,7 +59,35 @@ def load():
     global Session
 
     engine = create_engine(db_url)
-    Session = sessionmaker(bind=engine)
+    RawSession = sessionmaker(bind=engine)
+
+    def get_wrapped_session(*args, **kwargs):
+        session = RawSession(*args, **kwargs)
+
+        global session_counter
+        session_counter += 1
+
+        session_hash = hash(session)
+
+        logger.debug(
+            "Creating session hash %d (%d exist)", session_hash, session_counter
+        )
+
+        def log_close():
+            global session_counter
+
+            logger.debug(
+                "Garbage collecting session hash %d (%d exist)",
+                session_hash,
+                session_counter,
+            )
+            session_counter -= 1
+
+        weakref.finalize(session, log_close)
+
+        return session
+
+    Session = get_wrapped_session
 
     if not database_exists(engine.url):
         reset_database(engine=engine)

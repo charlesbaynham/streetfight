@@ -8,10 +8,10 @@ from backend.model import User
 from backend.user_interface import UserInterface
 
 
-# Mock "create_task" for all unit tests in this module
+# Mock "schedule_update_event" since we don't have an asyncio loop
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
-    mocker.patch("asyncio.create_task")
+    mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
 @pytest.fixture
@@ -22,6 +22,25 @@ def test_image():
 def test_can_join_new_team(user_factory):
     user_id = user_factory()
     UserInterface(user_id=user_id).join_team(uuid())
+
+
+def test_can_use_userinterface_as_contextmanager(user_factory):
+    user_id = user_factory()
+
+    with UserInterface(user_id=user_id) as ui:
+        ui.join_team(uuid())
+
+
+def test_can_reuse_userinterface_as_contextmanager(user_factory):
+    user_id = user_factory()
+
+    user_interface = UserInterface(user_id=user_id)
+
+    with user_interface as ui:
+        ui.join_team(uuid())
+
+    with user_interface as ui:
+        ui.get_user_model()
 
 
 def test_can_join_existing_team(user_factory, team_factory):

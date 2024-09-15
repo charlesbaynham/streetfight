@@ -1,3 +1,0 @@
-# Configure pre-commit-search-and-replace hook to fail if FIXME is in the code
-- search: FIXME
-  insensitive: false

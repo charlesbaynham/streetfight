@@ -20,10 +20,8 @@ from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
-
 
 Base = declarative_base()
 
@@ -46,7 +44,6 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
-    ticker_entries = relationship("TickerEntry", lazy=True, back_populates="game")
 
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
@@ -227,8 +224,15 @@ class TickerEntry(Base):
     time_created = Column(DateTime, server_default=func.now())
 
     game_id = Column(UUIDType, ForeignKey("games.id"), index=True, nullable=False)
-    game = relationship(
-        "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
+    game = relationship("Game", lazy=True, foreign_keys=game_id)
+
+    private_user_id = Column(
+        UUIDType, ForeignKey("users.id"), index=True, nullable=True
+    )
+    private_user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=private_user_id,
     )
 
     message = Column(String, nullable=False)
@@ -318,6 +322,9 @@ class ShotModel(pydantic.BaseModel):
 
     user: UserModel
     game: GameModel
+
+    user_id: UUID
+    target_user_id: Optional[UUID]
 
     shot_damage: int
 

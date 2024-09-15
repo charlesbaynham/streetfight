@@ -33,9 +33,9 @@ def backend_server():
     Launch and finally close a test server, just for the backend
     """
 
-    import subprocess as sp
     import os
     import signal
+    import subprocess as sp
 
     with cd(NPM_ROOT_DIR):
         logging.info("Launching backend...")
@@ -76,9 +76,9 @@ def full_server(backend_server):
     Launch and finally close a test server for the backend and frontend
     """
 
-    import subprocess as sp
     import os
     import signal
+    import subprocess as sp
 
     with cd(NPM_ROOT_DIR):
         logging.info("Building site...")
@@ -109,8 +109,9 @@ def full_server(backend_server):
 
 
 def wait_until_server_up(test_url, timeout):
-    import requests
     import time
+
+    import requests
 
     interval = 0.5
     max_tries = int(timeout / interval)
@@ -170,9 +171,10 @@ def db_session(engine):
     Get an SQLAlchemy database session to a clean database with the model schema
     set up and seed the random number generator.
     """
-    from backend.model import Base
-    from backend.database import Session
     import random
+
+    from backend.database import Session
+    from backend.model import Base
 
     random.seed(123)
 
@@ -200,6 +202,7 @@ def api_client_factory(db_session):
     Get a factory for FastAPI TestClients pointing at the app with a clean database session
     """
     from fastapi.testclient import TestClient
+
     from backend.main import app
 
     return lambda: TestClient(app)
@@ -273,11 +276,11 @@ def one_game(game_factory):
 
 @pytest.fixture
 def user_in_team(team_factory, user_factory):
-    from backend.user_interface import UserInterface
-
     team_id = team_factory()
     user_id = user_factory()
-    UserInterface(user_id).join_team(team_id)
+
+    with UserInterface(user_id) as ui:
+        ui.join_team(team_id)
 
     return user_id
 
@@ -290,8 +293,10 @@ def two_users_in_different_teams(team_factory, user_factory):
     user_a = user_factory()
     user_b = user_factory()
 
-    UserInterface(user_a).join_team(team_a)
-    UserInterface(user_b).join_team(team_b)
+    with UserInterface(user_a) as ui:
+        ui.join_team(team_a)
+    with UserInterface(user_b) as ui:
+        ui.join_team(team_b)
 
     return user_a, user_b
 

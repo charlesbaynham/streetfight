@@ -1,14 +1,10 @@
-import asyncio
-import json
 import logging
 import os
 import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
-from typing import AsyncGenerator
 from typing import Dict
 from typing import List
-from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlencode
 from urllib.parse import urlparse
@@ -25,10 +21,6 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
 from .dotenv import load_env_vars
-
-
-# How often to send keepalive messages
-SSE_KEEPALIVE_TIMEOUT = 15
 
 
 def setup_logging():
@@ -56,14 +48,17 @@ def setup_logging():
     root_logger.addHandler(rotating_handler)
     rotating_handler.doRollover()
 
+    # Set the uvicorn logger to inherit from the root logger
+    uvicorn_logger.setLevel("NOTSET")
+
     # Set the root logger level to LOG_LEVEL if specified
     if "LOG_LEVEL" in os.environ:
-        logging.getLogger().setLevel(os.environ.get("LOG_LEVEL"))
+        root_logger.setLevel(os.environ.get("LOG_LEVEL"))
         root_logger.warning(
             "Setting log level to %s from env var config", os.environ.get("LOG_LEVEL")
         )
     else:
-        logging.getLogger().setLevel(logging.INFO)
+        root_logger.setLevel(logging.INFO)
         root_logger.warning("Setting log level to INFO by default")
 
     if "LOG_OVERRIDES" in os.environ:
@@ -82,13 +77,13 @@ def setup_logging():
 load_env_vars()
 setup_logging()
 
+from . import sse_event_streams
+
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
-from .ticker import Ticker
+from .model import GameModel
 from .user_id import get_user_id
 from .user_interface import UserInterface
-from .model import GameModel
-
 
 app = FastAPI()
 router = APIRouter()
@@ -117,7 +112,8 @@ async def get_my_id(
 async def get_user_info(
     user_id=Depends(get_user_id),
 ):
-    return UserInterface(user_id).get_user_model()
+    with UserInterface(user_id) as ui:
+        return ui.get_user_model()
 
 
 class _Shot(BaseModel):
@@ -131,7 +127,8 @@ async def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
-    return UserInterface(user_id).submit_shot(shot.photo)
+    with UserInterface(user_id) as ui:
+        return ui.submit_shot(shot.photo)
 
 
 @router.post("/set_name")
@@ -140,7 +137,8 @@ async def set_name(
     user_id=Depends(get_user_id),
 ):
     logger.info("Changing user %s name to %s", user_id, name)
-    UserInterface(user_id).set_name(name)
+    with UserInterface(user_id) as ui:
+        ui.set_name(name)
 
 
 @router.post("/join_game")
@@ -154,7 +152,8 @@ async def join_game(
         raise HTTPException(400, str(e))
     logger.info("User %s joining game %s", user_id, game_id)
 
-    return UserInterface(user_id).join_game(game_id)
+    with UserInterface(user_id) as ui:
+        return ui.join_game(game_id)
 
 
 class _EncodedItem(BaseModel):
@@ -175,7 +174,8 @@ async def collect_item(
         data = encoded_item.data
 
     try:
-        return UserInterface(user_id).collect_item(data)
+        with UserInterface(user_id) as ui:
+            return ui.collect_item(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
@@ -185,11 +185,7 @@ async def get_ticker_messages(
     num_messages=3,
     user_id=Depends(get_user_id),
 ):
-    ticker = UserInterface(user_id).get_ticker()
-    if ticker is None:
-        return []
-
-    return ticker.get_messages(num_messages)
+    return UserInterface(user_id).get_messages(num_messages, private=True)
 
 
 @router.get("/get_users")
@@ -210,7 +206,9 @@ async def get_users(game_id: str = None, team_id: str = None):
 
 @router.get("/get_scoreboard")
 async def get_scoreboard(user_id=Depends(get_user_id)):
-    game_id = UserInterface(user_id).get_user_model().game_id
+    with UserInterface(user_id) as ui:
+        game_id = ui.get_user_model().game_id
+
     if game_id is None:
         raise HTTPException(404, "User is not in a game")
 
@@ -254,12 +252,14 @@ async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
 
 
-@router.post("/admin_give_hp")
-async def admin_give_hp(user_id, num: int = 1):
-    if num < 0:
-        AdminInterface().hit_user_by_admin(user_id, num=-1 * num)
-    else:
-        AdminInterface().award_user_HP(user_id, num=num)
+@router.post("/admin_set_hp")
+async def admin_set_hp(user_id, num: int = 1):
+    AdminInterface().set_user_HP(user_id, num=num)
+
+
+@router.post("/admin_hit_user")
+async def admin_hit_user(user_id, num: int = 1):
+    AdminInterface().hit_user_by_admin(user_id, num=num)
 
 
 @router.post("/admin_give_ammo")
@@ -335,125 +335,12 @@ async def admin_set_game_active(game_id: UUID, active: bool):
     AdminInterface().set_game_active(game_id, active)
 
 
-def make_sse_update_message(m):
-    return f"data: {m}\n\n"
-
-
-async def updates_generator(user_id):
-    update_user = make_sse_update_message(
-        json.dumps({"handler": "update_prompt", "data": "user"})
-    )
-    update_ticker = make_sse_update_message(
-        json.dumps({"handler": "update_prompt", "data": "ticker"})
-    )
-
-    yield update_user
-    yield update_ticker
-
-    # An asyncio queue to pass to the generators
-    queue = asyncio.Queue()
-
-    # A function that logs a message every time an async generator yields
-    async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
-        async for data in generator:
-            await queue.put((message, data))
-
-    # A function that yields from the queue as soon as items arrive
-    async def yield_from_queue() -> AsyncGenerator:
-        while True:
-            yield await asyncio.wait_for(queue.get(), timeout=None)
-
-    # Keep track of the asyncio tasks we start for producers
-    producers = []
-
-    logger.debug("updates_generator - User updates for user %s starting", user_id)
-
-    # Start a producer for user events:
-    user_event_generator = UserInterface(user_id).generate_updates()
-    producers.append(
-        asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
-    )
-
-    # Start a more complicated producer for the ticker. This:
-    #
-    # a) If the user is in a team, attaches to the ticker updates
-    #
-    # b) If the user is not in a team, attaches to the user_updates until the
-    # user is in a team, then attaches to the ticker updates
-    #
-    # TODO: Handle the user changing team while this connection is running
-    async def ticker_generator_with_check_user_logic():
-        logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
-        ui = UserInterface(user_id)
-
-        ticker: Optional[Ticker] = ui.get_ticker()
-        while ticker is None:
-            logger.debug("Ticker updates - User %s is not in a game, waiting", user_id)
-            await anext(ui.generate_updates())
-            ticker = ui.get_ticker()
-            if ticker:
-                logger.debug("Ticker updates - User %s now in game", user_id)
-            else:
-                logger.debug("Ticker updates - User %s still not in game", user_id)
-
-        logger.debug(
-            "updates_generator - User is in game, mounting to game ticker for user %s",
-            user_id,
-        )
-        # Yield one update immediately to refresh the ticker
-        yield None
-
-        # Then yield from the ticker
-        async for x in ticker.generate_updates():
-            logger.debug(
-                "updates_generator - Forwarding ticker event for user %s", user_id
-            )
-            yield x
-
-    # Queue the ticker generator
-    producers.append(
-        asyncio.create_task(
-            feed_generator_to_queue(ticker_generator_with_check_user_logic(), "ticker")
-        )
-    )
-
-    # Also add a keepalive producer
-    async def keepalive_timer():
-        i = 0
-
-        while True:
-            await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
-            yield i
-            i += 1
-
-    producers.append(
-        asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
-    )
-
-    # Iterate through the consumer:
-    try:
-        async for target, data in yield_from_queue():
-            if target == "user":
-                yield update_user
-            elif target == "ticker":
-                yield update_ticker
-            elif target == "keepalive":
-                yield make_sse_update_message(
-                    json.dumps({"handler": "keepalive", "data": data})
-                )
-            else:
-                logger.error('Unknown update targer "%s"', target)
-    finally:
-        for task in producers:
-            task.cancel()
-
-
 @router.get("/sse_updates")
-async def sse_endpoint(
+async def sse_updates(
     user_id=Depends(get_user_id),
 ):
     return StreamingResponse(
-        updates_generator(user_id),
+        sse_event_streams.updates_generator(user_id),
         headers={
             "Content-type": "text/event-stream",
             "Cache-Control": "no-cache",
@@ -462,20 +349,10 @@ async def sse_endpoint(
     )
 
 
-async def admin_updates_generator():
-    update_admin = make_sse_update_message(
-        json.dumps({"handler": "update_prompt", "data": "admin"})
-    )
-    yield update_admin
-    async for _ in AdminInterface().generate_any_ticker_updates():
-        logger.debug("(admin_updates_generator) Update received - sending")
-        yield update_admin
-
-
 @router.get("/sse_admin_updates")
-async def sse_endpoint():
+async def sse_admin_updates():
     return StreamingResponse(
-        admin_updates_generator(),
+        sse_event_streams.admin_updates_generator(),
         headers={
             "Content-type": "text/event-stream",
             "Cache-Control": "no-cache",

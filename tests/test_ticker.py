@@ -9,8 +9,18 @@ from backend.user_interface import UserInterface
 
 
 @pytest.fixture
-def ticker(game_factory) -> Ticker:
-    return Ticker(game_id=game_factory())
+def ticker(user_factory, game_factory) -> Ticker:
+    return Ticker(game_id=game_factory(), user_id=user_factory())
+
+
+@pytest.fixture
+def ticker_for_user_in_game(api_user_id, team_factory):
+    team_id = team_factory()
+    AdminInterface().add_user_to_team(api_user_id, team_id)
+
+    user_model = UserInterface(api_user_id).get_user_model()
+
+    return Ticker(game_id=user_model.game_id, user_id=None)
 
 
 def test_ticker_starts_empty(ticker):
@@ -19,7 +29,7 @@ def test_ticker_starts_empty(ticker):
 
 def test_ticker_can_be_filled(ticker):
     ticker.post_message("hello world")
-    assert ticker.get_messages(3) == ["hello world"]
+    assert ticker.get_messages(3) == [("public", "hello world")]
 
 
 def test_ticker_filters_correctly_len(ticker):
@@ -34,13 +44,11 @@ def test_ticker_filters_correctly_order(ticker):
         ticker.post_message(str(i))
         time.sleep(0.01)
 
-    assert ticker.get_messages(3) == ["9", "8", "7"]
-
-
-@pytest.mark.asyncio
-async def test_ticker_messages_via_user_outside_team(user_factory):
-    ticker = UserInterface(user_factory()).get_ticker()
-    assert ticker is None
+    assert ticker.get_messages(3) == [
+        ("public", "9"),
+        ("public", "8"),
+        ("public", "7"),
+    ]
 
 
 def test_api_query_ticker_outside_team(api_client):
@@ -51,10 +59,37 @@ def test_api_query_ticker_outside_team(api_client):
     assert messages == []
 
 
-def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
-    team_id = team_factory()
-    AdminInterface().add_user_to_team(api_user_id, team_id)
+def test_user_sees_own_private_messages(ticker_for_user_in_game: Ticker):
+    msg = "Hello world"
+    user_id = ticker_for_user_in_game.user_id
 
+    initial_messages = ticker_for_user_in_game.get_messages(10)
+
+    ticker_for_user_in_game.post_message(message=msg, private_for_user_id=user_id)
+
+    later_messages = ticker_for_user_in_game.get_messages(10)
+
+    assert len(later_messages) == 1 + len(initial_messages)
+    assert later_messages[0][1] == msg
+
+
+def test_user_doesnt_see_others_private_messages(
+    user_factory, ticker_for_user_in_game: Ticker
+):
+    msg = "Hello world"
+
+    user_id_alt = user_factory()
+
+    initial_messages = ticker_for_user_in_game.get_messages(10)
+
+    ticker_for_user_in_game.post_message(message=msg, private_for_user_id=user_id_alt)
+
+    later_messages = ticker_for_user_in_game.get_messages(10)
+
+    assert len(initial_messages) == len(later_messages)
+
+
+def test_api_query_ticker_inside_team(api_client, ticker_for_user_in_game):
     response = api_client.get("/api/ticker_messages")
     assert response.is_success
     messages = response.json()
@@ -62,18 +97,14 @@ def test_api_query_ticker_inside_team(api_client, api_user_id, team_factory):
     assert len(messages) == 1  # Just the "joined team" message
 
 
-def test_api_query_ticker_messages(api_client, api_user_id, team_factory):
-    team_id = team_factory()
-    AdminInterface().add_user_to_team(api_user_id, team_id)
-
-    UserInterface(api_user_id).get_ticker().post_message("hello")
+def test_api_query_ticker_messages(api_client, ticker_for_user_in_game):
+    ticker_for_user_in_game.post_message("hello")
 
     response = api_client.get("/api/ticker_messages")
     assert response.is_success
     messages = response.json()
 
     assert len(messages) == 2
-    assert "hello" in messages
 
 
 def test_ticker_announces_kill(
@@ -93,4 +124,63 @@ def test_ticker_announces_kill(
     assert response.is_success
     messages = response.json()
 
-    assert "killed" in messages[0]
+    assert "killed" in messages[0][1]
+
+
+def test_get_messages_empty(ticker):
+    assert ticker.get_messages(3) == []
+
+
+def test_get_messages_single_message(ticker):
+    ticker.post_message("Test message")
+    assert ticker.get_messages(1) == [("public", "Test message")]
+
+
+def test_get_messages_multiple_messages(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3) == [("public", msg) for msg in messages[::-1]]
+
+
+def test_get_messages_limit(ticker):
+    messages = ["Message 1", "Message 2", "Message 3", "Message 4"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(2) == [("public", msg) for msg in messages[-1:-3:-1]]
+
+
+def test_get_messages_order_newest_first(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3, newest_first=True) == [
+        ("public", msg) for msg in messages[::-1]
+    ]
+
+
+def test_get_messages_order_oldest_first(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3, newest_first=False) == [
+        ("public", msg) for msg in messages
+    ]
+
+
+def test_get_messages_private_messages(ticker, user_factory):
+    user_id = user_factory()
+    ticker.post_message("Public message")
+    ticker.post_message("Private message", private_for_user_id=user_id)
+    ticker.user_id = user_id
+    assert ticker.get_messages(2) == [
+        ("user", "Private message"),
+        ("public", "Public message"),
+    ]
+
+
+def test_get_messages_excludes_others_private_messages(ticker, user_factory):
+    user_id = user_factory()
+    ticker.post_message("Public message")
+    ticker.post_message("Private message", private_for_user_id=user_id)
+    assert ticker.get_messages(2) == [("public", "Public message")]

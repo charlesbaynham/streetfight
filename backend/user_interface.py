@@ -2,11 +2,13 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import Optional
+from typing import List
+from typing import Tuple
 from typing import Union
 from uuid import UUID
 
 from fastapi import HTTPException
+from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
@@ -62,10 +64,32 @@ class UserInterface:
         else:
             raise TypeError
 
-        self._session = session
+        self._session: SQLAlchemySession = session
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
+
+    def __enter__(self):
+        from . import database
+
+        # Create a session here instead of letting db_scoped do it. This will
+        # mean that we have ownership of it here, so db_scoped will leave it
+        # alone and let us manage its lifecycle.
+        if self._session:
+            self._session.close()
+
+        self._session = database.Session()
+
+        return self
+
+    def __exit__(self, *args):
+        if not self._session_is_external:
+            if self._session:
+                logger.debug(
+                    "UserInterface %s closing session",
+                    hash(self),
+                )
+                self._session.close()
 
     def get_session(self):
         return self._session
@@ -114,18 +138,19 @@ class UserInterface:
         if initial_HP > 0 and u.hit_points <= 0:
             u.time_of_death = time.time() + TIME_KNOCKED_OUT
 
-            # Schedule an update ping
-            asyncio_triggers.schedule_update_event(
-                "user", self.user_id, TIME_KNOCKED_OUT + 1
-            )
-            asyncio_triggers.schedule_update_event(
-                "ticker", u.game_id, TIME_KNOCKED_OUT + 1
-            )
-
     @db_scoped
     def award_HP(self, num=1) -> User:
         "Give health to the user"
         self.get_user().hit_points += num
+
+    @db_scoped
+    def set_HP(self, num) -> User:
+        """
+        Set the user's health, wiping any death state
+        """
+        u: User = self.get_user()
+        u.hit_points = num
+        u.time_of_death = 0
 
     @db_scoped
     def award_ammo(self, num=1) -> User:
@@ -136,6 +161,10 @@ class UserInterface:
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None
+
+    @db_scoped
+    def get_team_id(self) -> UUID:
+        return self.get_user().team_id
 
     @db_scoped
     def get_team_model(self) -> UserModel:
@@ -280,6 +309,58 @@ class UserInterface:
             )
 
     @db_scoped
+    def get_messages(
+        self, num, private=False, newest_first=True
+    ) -> List[Tuple[str, str]]:
+        """
+        Get ticker messages for this user
+
+        Args:
+            num (int): Number of messages to get
+            private (bool, optional): If True, only get messages that are private for this user. Defaults to False.
+            newest_first (bool, optional): If True, get the newest messages first. Defaults to True.
+
+        Returns:
+            List[Tuple[str,str]]: A list of messages, each as a tuple of (type, message)
+        """
+        user = self.get_user()
+
+        if not user.team:
+            return []
+
+        return Ticker(
+            game_id=user.team.game.id,
+            session=self.get_session(),
+            user_id=self.user_id if private else None,
+        ).get_messages(num_messages=num, newest_first=newest_first)
+
+    def generate_updates(self, timeout=None):
+        """
+        An async generator that yields None every time an update is available
+        for this user
+
+        Note that this does not hold a database session open, so it can be used
+        in parallel with other database operations
+
+        Args:
+            timeout (int, optional): Maximum number of seconds to wait for an
+            update. Defaults to no timeout.
+        """
+
+        with self:
+            game_id = self.get_user().team_id
+
+        if game_id is None:
+            raise ValueError("User is not in a game")
+
+        ticker = Ticker(
+            game_id=game_id,
+            user_id=self.user_id,
+        )
+
+        return ticker.generate_updates(timeout=timeout)
+
+    @db_scoped
     def clear_unchecked_shots(self):
         """
         Mark all unchecked shots for this user as checked and refund all bullets
@@ -303,6 +384,8 @@ class UserInterface:
         """
         A generator that yields None every time an update is available for this
         user, or at most after timeout seconds
+
+        Does not use the database.
         """
         while True:
             # Lookup / make an event for this user and subscribe to it
@@ -316,11 +399,3 @@ class UserInterface:
             except asyncio.TimeoutError:
                 logger.info(f"Event timeout for user {self.user_id}")
                 yield
-
-    @db_scoped
-    def get_ticker(self) -> Optional[Ticker]:
-        team = self.get_user().team
-        logger.debug("(UserInterface %s) User team = %s", self.user_id, team)
-        if team is None:
-            return None
-        return Ticker(team.game_id, session=self._session)
