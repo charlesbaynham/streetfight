@@ -11,6 +11,7 @@ from backend.items import ItemModel
 from backend.model import Item
 from backend.model import User
 from backend.model import UserState
+from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
@@ -450,25 +451,18 @@ def test_user_collect_url(api_client, team_factory, url):
     assert UserInterface(user_id).get_user_model().num_bullets == 10
 
 
-def test_user_collect_item_gives_message(api_user_id, api_client, team_factory):
-    UserInterface(api_user_id).join_team(team_factory())
-
-    item = ItemModel(**SAMPLE_AMMO_DATA)
-    item.data = {"num": 10}
-    item.sign()
-    valid_encoded_ammo = item.to_base64()
-
-    assert UserInterface(api_user_id).get_ticker().get_messages(3) == []
-
-    api_client.post(
-        "/api/collect_item",
-        json={"data": valid_encoded_ammo},
+def test_collect_item_announces_message(valid_encoded_ammo, user_in_team, mocker):
+    mock_send_ticker_message = mocker.patch(
+        "backend.ticker_message_dispatcher.send_ticker_message"
     )
 
-    messages = UserInterface(api_user_id).get_ticker().get_messages(3)
-    assert len(messages) == 1
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
 
-    assert "ammo" in messages[0]
+    mock_send_ticker_message.assert_called_once()
+    assert (
+        mock_send_ticker_message.call_args[0][0]
+        is TickerMessageType.USER_COLLECTED_AMMO
+    )
 
 
 def test_all_items_handled():

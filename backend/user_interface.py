@@ -2,7 +2,8 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import Optional
+from typing import List
+from typing import Tuple
 from typing import Union
 from uuid import UUID
 
@@ -143,6 +144,15 @@ class UserInterface:
         self.get_user().hit_points += num
 
     @db_scoped
+    def set_HP(self, num) -> User:
+        """
+        Set the user's health, wiping any death state
+        """
+        u: User = self.get_user()
+        u.hit_points = num
+        u.time_of_death = 0
+
+    @db_scoped
     def award_ammo(self, num=1) -> User:
         "Give ammo to the user"
         self.get_user().num_bullets += num
@@ -151,6 +161,10 @@ class UserInterface:
     def get_user_model(self) -> UserModel:
         u = self.get_user()
         return UserModel.from_orm(u) if u else None
+
+    @db_scoped
+    def get_team_id(self) -> UUID:
+        return self.get_user().team_id
 
     @db_scoped
     def get_team_model(self) -> UserModel:
@@ -295,6 +309,58 @@ class UserInterface:
             )
 
     @db_scoped
+    def get_messages(
+        self, num, private=False, newest_first=True
+    ) -> List[Tuple[str, str]]:
+        """
+        Get ticker messages for this user
+
+        Args:
+            num (int): Number of messages to get
+            private (bool, optional): If True, only get messages that are private for this user. Defaults to False.
+            newest_first (bool, optional): If True, get the newest messages first. Defaults to True.
+
+        Returns:
+            List[Tuple[str,str]]: A list of messages, each as a tuple of (type, message)
+        """
+        user = self.get_user()
+
+        if not user.team:
+            return []
+
+        return Ticker(
+            game_id=user.team.game.id,
+            session=self.get_session(),
+            user_id=self.user_id if private else None,
+        ).get_messages(num_messages=num, newest_first=newest_first)
+
+    def generate_updates(self, timeout=None):
+        """
+        An async generator that yields None every time an update is available
+        for this user
+
+        Note that this does not hold a database session open, so it can be used
+        in parallel with other database operations
+
+        Args:
+            timeout (int, optional): Maximum number of seconds to wait for an
+            update. Defaults to no timeout.
+        """
+
+        with self:
+            game_id = self.get_user().team_id
+
+        if game_id is None:
+            raise ValueError("User is not in a game")
+
+        ticker = Ticker(
+            game_id=game_id,
+            user_id=self.user_id,
+        )
+
+        return ticker.generate_updates(timeout=timeout)
+
+    @db_scoped
     def clear_unchecked_shots(self):
         """
         Mark all unchecked shots for this user as checked and refund all bullets
@@ -333,11 +399,3 @@ class UserInterface:
             except asyncio.TimeoutError:
                 logger.info(f"Event timeout for user {self.user_id}")
                 yield
-
-    @db_scoped
-    def get_ticker(self) -> Optional[Ticker]:
-        team = self.get_user().team
-        logger.debug("(UserInterface %s) User team = %s", self.user_id, team)
-        if team is None:
-            return None
-        return Ticker(team.game_id, session=self._session)

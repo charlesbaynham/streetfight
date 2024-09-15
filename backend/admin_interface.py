@@ -7,7 +7,9 @@ from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 from sqlalchemy import and_
+from sqlalchemy.orm import Session
 
+from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
@@ -33,7 +35,7 @@ db_scoped = AdminScopeWrapper.db_scoped
 
 class AdminInterface:
     def __init__(self) -> None:
-        self._session = None
+        self._session: Session = None
 
     @db_scoped
     def _get_user_orm(self, user_id) -> User:
@@ -114,8 +116,8 @@ class AdminInterface:
         return team.id
 
     @db_scoped
-    def _get_game_ticker(self, game_id: UUID):
-        return Ticker(game_id, session=self._session)
+    def _get_game_ticker(self, game_id: UUID) -> Ticker:
+        return Ticker(game_id, user_id=None, session=self._session)
 
     @db_scoped
     def set_game_active(self, game_id: UUID, active: bool) -> int:
@@ -146,9 +148,19 @@ class AdminInterface:
         logger.info("AdminInterface - add_user_to_team")
         with UserInterface(user_id) as ui:
             ui.join_team(team_id)
-            user_name = ui.get_user_model().name
-            team_name = ui.get_team_model().name
-            ui.get_ticker().post_message(f'{user_name} joined team "{team_name}"')
+
+            u = ui.get_user()
+
+            user_name = u.name
+            team_name = u.team.name
+            game_id = u.team.game_id
+
+            tk.send_ticker_message(
+                tk.TickerMessageType.USER_JOINED_TEAM,
+                {"user": user_name, "team": team_name},
+                game_id=game_id,
+                session=ui.get_session(),
+            )
 
     @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
@@ -174,8 +186,23 @@ class AdminInterface:
         with UserInterface(user_id) as ui:
             ui.hit(num)
 
-            if ticker := ui.get_ticker():
-                ticker.post_message(f"Admin hit {ui.get_user().name}")
+            u: User = ui.get_user()
+
+            user_name = u.name
+            game_id = u.team.game_id
+
+            if u.hit_points > 0:
+                message_type = tk.TickerMessageType.ADMIN_HIT_USER
+            else:
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KNOCKED_OUT_USER
+
+            tk.send_ticker_message(
+                message_type,
+                {"user": user_name, "num": num},
+                session=ui.get_session(),
+                user_id=user_id,
+                game_id=game_id,
+            )
 
     @db_scoped
     def hit_user(self, shot_id, target_user_id):
@@ -189,10 +216,18 @@ class AdminInterface:
         u_to = self._get_user_orm(target_user_id)
 
         if u_to.hit_points > 0:
-            ui_target.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
+            message_type = tk.TickerMessageType.HIT_AND_DAMAGE
+
         else:
-            ui_target.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
+            message_type = tk.TickerMessageType.HIT_AND_KNOCKOUT
             ui_target.clear_unchecked_shots()
+
+        tk.send_ticker_message(
+            message_type,
+            {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
+            game_id=u_from.team.game_id,
+            session=self._session,
+        )
 
         try:
             self.mark_shot_checked(shot_id)
@@ -203,25 +238,42 @@ class AdminInterface:
         # Record the target user in the db
         shot.target_user_id = target_user_id
 
-    def award_user_HP(self, user_id, num=1):
+    def set_user_HP(self, user_id, num=1):
         with UserInterface(user_id) as ui:
-            ui.award_HP(num=num)
+            ui.set_HP(num)
 
-            user_model = ui.get_user_model()
-            ticker = ui.get_ticker()
+            u = ui.get_user()
 
-            if ticker:
-                ticker.post_message(f"{user_model.name} was given {num} armour")
+            if u.hit_points > 1:
+                message_type = tk.TickerMessageType.ADMIN_GAVE_ARMOUR
+            elif u.hit_points == 1:
+                message_type = tk.TickerMessageType.ADMIN_REVIVED_USER
+            else:
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILLED_USER
+
+            tk.send_ticker_message(
+                message_type,
+                {"user": u.name, "num": num - 1},
+                user_id=user_id,
+                game_id=u.team.game_id,
+                team_id=u.team_id,
+                session=ui.get_session(),
+            )
 
     def award_user_ammo(self, user_id, num=1):
         with UserInterface(user_id) as ui:
             ui.award_ammo(num=num)
 
             user_model = ui.get_user_model()
-            ticker = ui.get_ticker()
 
-            if ticker:
-                ticker.post_message(f"{user_model.name} was given {num} ammo")
+            tk.send_ticker_message(
+                tk.TickerMessageType.ADMIN_GAVE_AMMO,
+                {"user": user_model.name, "num": num},
+                user_id=user_id,
+                game_id=user_model.game_id,
+                team_id=user_model.team_id,
+                session=ui.get_session(),
+            )
 
     @db_scoped
     def mark_shot_checked(self, shot_id):

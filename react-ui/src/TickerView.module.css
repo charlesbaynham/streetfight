@@ -3,7 +3,7 @@
   /* width: 50%; */
   color: rgb(255, 255, 255);
   text-shadow: 2px 2px #000;
-  font-weight: bold;
+  /* font-weight: bold; */
   padding: 0.1em 1em;
   line-height: 1em;
   /* border-radius: 10px; */
@@ -17,4 +17,9 @@
 
 .tickerview li {
   padding: 0.25em 0;
+}
+
+
+.tickerview li:global(.user) {
+  font-style: italic;
 }

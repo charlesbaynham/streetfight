@@ -44,7 +44,6 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
-    ticker_entries = relationship("TickerEntry", lazy=True, back_populates="game")
 
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
@@ -225,8 +224,15 @@ class TickerEntry(Base):
     time_created = Column(DateTime, server_default=func.now())
 
     game_id = Column(UUIDType, ForeignKey("games.id"), index=True, nullable=False)
-    game = relationship(
-        "Game", lazy=True, foreign_keys=game_id, back_populates="ticker_entries"
+    game = relationship("Game", lazy=True, foreign_keys=game_id)
+
+    private_user_id = Column(
+        UUIDType, ForeignKey("users.id"), index=True, nullable=True
+    )
+    private_user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=private_user_id,
     )
 
     message = Column(String, nullable=False)

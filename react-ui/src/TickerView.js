@@ -6,7 +6,7 @@ import { sendAPIRequest } from "./utils";
 import styles from "./TickerView.module.css";
 
 export default function TickerView() {
-  const [messages, setMessages] = useState(["test"]);
+  const [messages, setMessages] = useState([[]]);
   const [knownTickerHash, setKnownTickerHash] = useState(0);
 
   const updateMessages = useCallback(() => {
@@ -28,7 +28,9 @@ export default function TickerView() {
       <div className={styles.tickerview}>
         <ul>
           {messages.map((m, i) => (
-            <li key={i}>{m}</li>
+            <li key={i} className={m[0]}>
+              {m[1]}
+            </li>
           ))}
         </ul>
       </div>
