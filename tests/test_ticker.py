@@ -17,7 +17,10 @@ def ticker(user_factory, game_factory) -> Ticker:
 def ticker_for_user_in_game(api_user_id, team_factory):
     team_id = team_factory()
     AdminInterface().add_user_to_team(api_user_id, team_id)
-    return UserInterface(user_id=api_user_id).get_ticker()
+
+    user_model = UserInterface(api_user_id).get_user_model()
+
+    return Ticker(game_id=user_model.game_id)
 
 
 def test_ticker_starts_empty(ticker):
@@ -42,12 +45,6 @@ def test_ticker_filters_correctly_order(ticker):
         time.sleep(0.01)
 
     assert ticker.get_messages(3) == ["9", "8", "7"]
-
-
-@pytest.mark.asyncio
-async def test_ticker_messages_via_user_outside_team(user_factory):
-    ticker = UserInterface(user_factory()).get_ticker()
-    assert ticker is None
 
 
 def test_api_query_ticker_outside_team(api_client):
