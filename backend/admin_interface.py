@@ -194,7 +194,7 @@ class AdminInterface:
             if u.hit_points > 0:
                 message_type = tk.TickerMessageType.ADMIN_HIT_USER
             else:
-                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILLED_USER
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KNOCKED_OUT_USER
 
             tk.send_ticker_message(
                 message_type,
@@ -219,7 +219,7 @@ class AdminInterface:
             message_type = tk.TickerMessageType.HIT_AND_DAMAGE
 
         else:
-            message_type = tk.TickerMessageType.HIT_AND_KILL
+            message_type = tk.TickerMessageType.HIT_AND_KNOCKOUT
             ui_target.clear_unchecked_shots()
 
         tk.send_ticker_message(
