@@ -190,7 +190,7 @@ class AdminInterface:
             u: User = ui.get_user()
 
             user_name = u.name
-            game_id  = u.team.game_id
+            game_id = u.team.game_id
 
             tk.send_ticker_message(
                 tk.TickerMessageType.ADMIN_HIT_USER,
@@ -199,7 +199,6 @@ class AdminInterface:
                 user_id=user_id,
                 game_id=game_id,
             )
-
 
     @db_scoped
     def hit_user(self, shot_id, target_user_id):
@@ -213,10 +212,17 @@ class AdminInterface:
         u_to = self._get_user_orm(target_user_id)
 
         if u_to.hit_points > 0:
-            ui_target.get_ticker().post_message(f"{u_from.name} hit {u_to.name}")
+            message_type = tk.TickerMessageType.HIT_AND_DAMAGE
+
         else:
-            ui_target.get_ticker().post_message(f"{u_from.name} killed {u_to.name}")
+            message_type = tk.TickerMessageType.HIT_AND_KILL
             ui_target.clear_unchecked_shots()
+
+        tk.send_ticker_message(
+            message_type,
+            {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
+            game_id=u_from.team.game_id,
+        )
 
         try:
             self.mark_shot_checked(shot_id)

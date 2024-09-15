@@ -23,6 +23,8 @@ class TickerMessageType(Enum):
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
     ADMIN_HIT_USER = auto()
+    HIT_AND_DAMAGE = auto()
+    HIT_AND_KILL = auto()
 
 
 class TickerTarget(Enum):
@@ -59,6 +61,14 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_HIT_USER: (
         TickerTarget.PUBLIC,
         "Admin hit {user} for {num} damage",
+    ),
+    TickerMessageType.HIT_AND_DAMAGE: (
+        TickerTarget.PUBLIC,
+        "{user} hit {target} for {num} damage",
+    ),
+    TickerMessageType.HIT_AND_KILL: (
+        TickerTarget.PUBLIC,
+        "{user} killed {target}!",
     ),
     # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
