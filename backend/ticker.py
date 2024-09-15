@@ -4,6 +4,7 @@ from typing import List
 from uuid import UUID
 
 from sqlalchemy import or_
+from sqlalchemy.orm import Session
 
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
@@ -34,7 +35,7 @@ class Ticker:
         """
         self.game_id = game_id
         self.user_id = user_id
-        self._session = session
+        self._session: Session = session
 
     @db_scoped
     def get_messages(self, num_messages, newest_first=True) -> List[str]:
@@ -111,6 +112,8 @@ class Ticker:
         """
         A generator that yields None every time an update is available for this
         ticker, or at most after timeout seconds
+
+        Does not block the database session.
         """
         while True:
             # Lookup / make an event for this game and subscribe to it
