@@ -79,13 +79,11 @@ TICKER_MESSAGES = {
         "{user} killed {target}!",
     ),
     TickerMessageType.ADMIN_GAVE_ARMOUR: (
-        # TickerTarget.PRIVATE_USER, FIXME
-        TickerTarget.PUBLIC,
+        TickerTarget.PRIVATE_USER,
         "You were given a level {num} armour!",
     ),
     TickerMessageType.ADMIN_REVIVED_USER: (
-        # TickerTarget.PRIVATE_USER, FIXME
-        TickerTarget.PUBLIC,
+        TickerTarget.PRIVATE_USER,
         "You were revived by the admin!",
     ),
     TickerMessageType.ADMIN_GAVE_AMMO: (

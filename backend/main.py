@@ -185,7 +185,7 @@ async def get_ticker_messages(
     num_messages=3,
     user_id=Depends(get_user_id),
 ):
-    return UserInterface(user_id).get_messages(num_messages)
+    return UserInterface(user_id).get_messages(num_messages, private=True)
 
 
 @router.get("/get_users")
