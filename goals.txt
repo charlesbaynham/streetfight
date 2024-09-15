@@ -3,7 +3,6 @@ Goals
 
 Bugs:
 - The animation for the bullet reload is jerky
-- Something dodgy with deaths. I have to subtract armour to "-1" on the admin interface before someone dies - this should be zero
 
 Priority:
   - [ ] Needs a "hit" noise / notification
