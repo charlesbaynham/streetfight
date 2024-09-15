@@ -144,8 +144,12 @@ class UserInterface:
 
     @db_scoped
     def set_HP(self, num) -> User:
-        "Set the user's health"
-        self.get_user().hit_points = num
+        """
+        Set the user's health, wiping any death state
+        """
+        u :User= self.get_user()
+        u.hit_points = num
+        u.time_of_death = 0
 
     @db_scoped
     def award_ammo(self, num=1) -> User:
