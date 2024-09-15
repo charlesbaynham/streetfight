@@ -194,7 +194,7 @@ class AdminInterface:
             if u.hit_points > 0:
                 message_type = tk.TickerMessageType.ADMIN_HIT_USER
             else:
-                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILL_USER
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILLED_USER
 
             tk.send_ticker_message(
                 message_type,
@@ -247,8 +247,10 @@ class AdminInterface:
 
             if u.hit_points > 1:
                 message_type = tk.TickerMessageType.ADMIN_GAVE_ARMOUR
-            else:
+            elif u.hit_points == 1:
                 message_type = tk.TickerMessageType.ADMIN_REVIVED_USER
+            else:
+                message_type = tk.TickerMessageType.ADMIN_HIT_AND_KILLED_USER
 
             tk.send_ticker_message(
                 message_type,

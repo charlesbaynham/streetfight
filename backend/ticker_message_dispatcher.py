@@ -23,7 +23,7 @@ class TickerMessageType(Enum):
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
     ADMIN_HIT_USER = auto()
-    ADMIN_HIT_AND_KILL_USER = auto()
+    ADMIN_HIT_AND_KILLED_USER = auto()
     HIT_AND_DAMAGE = auto()
     HIT_AND_KILL = auto()
     ADMIN_GAVE_ARMOUR = auto()
@@ -66,7 +66,7 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "Admin hit {user} for {num} damage",
     ),
-    TickerMessageType.ADMIN_HIT_AND_KILL_USER: (
+    TickerMessageType.ADMIN_HIT_AND_KILLED_USER: (
         TickerTarget.PUBLIC,
         "Admin killed {user}!",
     ),
