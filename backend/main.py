@@ -252,12 +252,14 @@ async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
 
 
-@router.post("/admin_give_hp")
-async def admin_give_hp(user_id, num: int = 1):
-    if num < 0:
-        AdminInterface().hit_user_by_admin(user_id, num=-1 * num)
-    else:
-        AdminInterface().award_user_HP(user_id, num=num)
+@router.post("/admin_set_hp")
+async def admin_set_hp(user_id, num: int = 1):
+    AdminInterface().set_user_HP(user_id, num=num)
+
+
+@router.post("/admin_hit_user")
+async def admin_hit_user(user_id, num: int = 1):
+    AdminInterface().hit_user_by_admin(user_id, num=num)
 
 
 @router.post("/admin_give_ammo")

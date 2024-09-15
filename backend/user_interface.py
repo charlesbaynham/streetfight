@@ -143,6 +143,11 @@ class UserInterface:
         self.get_user().hit_points += num
 
     @db_scoped
+    def set_HP(self, num) -> User:
+        "Set the user's health"
+        self.get_user().hit_points = num
+
+    @db_scoped
     def award_ammo(self, num=1) -> User:
         "Give ammo to the user"
         self.get_user().num_bullets += num

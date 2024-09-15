@@ -190,7 +190,7 @@ class AdminInterface:
 
             user_name = u.name
             game_id = u.team.game_id
-            
+
             if u.hit_points > 0:
                 message_type = tk.TickerMessageType.ADMIN_HIT_USER
             else:
@@ -238,24 +238,21 @@ class AdminInterface:
         # Record the target user in the db
         shot.target_user_id = target_user_id
 
-    def award_user_HP(self, user_id, num=1):
+    
+    def set_user_HP(self, user_id, num=1):
         with UserInterface(user_id) as ui:
-            ui.award_HP(num=num)
+            ui.set_HP(num)
 
             u = ui.get_user()
 
-            
-
-            if u.hit_points > 0:
+            if u.hit_points > 1:
                 message_type = tk.TickerMessageType.ADMIN_GAVE_ARMOUR
             else:
                 message_type = tk.TickerMessageType.ADMIN_REVIVED_USER
 
-            logger.error("Awarding user %d HP", num)
-
             tk.send_ticker_message(
                 message_type,
-                {"user": u.name, "num": num},
+                {"user": u.name, "num": num - 1},
                 user_id=user_id,
                 game_id=u.team.game_id,
                 team_id=u.team_id,
