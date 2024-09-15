@@ -1,9 +1,14 @@
+"""
+sse_event_streams.py
+
+This module provides functionality for generating Server-Sent Events (SSE) updates for users and administrators.
+It includes functions to create SSE update messages, generate updates for users, and generate updates for administrators.
+"""
 import asyncio
 import json
 import logging
 from typing import AsyncGenerator
 from typing import Optional
-
 
 from .admin_interface import AdminInterface
 from .ticker import Ticker
@@ -21,6 +26,16 @@ def make_sse_update_message(m):
 
 
 async def updates_generator(user_id):
+    """
+    Yields SSE update prompts that should be received by a given user
+
+    This generator just sends out bumps to prompt clients to refresh themselves.
+
+    This is an async generator - it will collect messages from all relevant
+    source for this user (including global announcements) and include keepalive
+    events.
+    """
+
     update_user = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "user"})
     )
@@ -138,6 +153,14 @@ async def updates_generator(user_id):
 
 
 async def admin_updates_generator():
+    """
+    Asynchronous generator that yields Server-Sent Events (SSE) updates for the
+    admin interface.
+
+    This just prompts an update any time anything happens in any game. Very
+    inefficient, but who cares, there's only one admin and it's me.
+    """
+
     update_admin = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "admin"})
     )
