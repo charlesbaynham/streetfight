@@ -4,10 +4,12 @@
   "homepage": "http://localhost/",
   "private": true,
   "dependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^13.4.0",
     "@testing-library/user-event": "^13.5.0",
     "add-to-homescreen": "github:philfung/add-to-homescreen",
+    "babel-preset-react-app": "^10.0.1",
     "framer-motion": "^10.16.4",
     "qr-scanner": "^1.4.2",
     "react": "^18.2.0",
