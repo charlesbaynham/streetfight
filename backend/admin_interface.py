@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from sqlalchemy import and_
 from sqlalchemy.orm import Session
 
+from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .database_scope_provider import DatabaseScopeProvider
@@ -23,8 +24,6 @@ from .model import Team
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
-
-from . import ticker_message_dispatcher as tk
 from .user_interface import UserInterface
 
 logger = logging.getLogger(__name__)

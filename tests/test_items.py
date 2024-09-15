@@ -11,8 +11,8 @@ from backend.items import ItemModel
 from backend.model import Item
 from backend.model import User
 from backend.model import UserState
-from backend.user_interface import UserInterface
 from backend.ticker_message_dispatcher import TickerMessageType
+from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
@@ -452,12 +452,17 @@ def test_user_collect_url(api_client, team_factory, url):
 
 
 def test_collect_item_announces_message(valid_encoded_ammo, user_in_team, mocker):
-    mock_send_ticker_message = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
+    mock_send_ticker_message = mocker.patch(
+        "backend.ticker_message_dispatcher.send_ticker_message"
+    )
 
     UserInterface(user_in_team).collect_item(valid_encoded_ammo)
 
     mock_send_ticker_message.assert_called_once()
-    assert mock_send_ticker_message.call_args[0][0] is TickerMessageType.USER_COLLECTED_AMMO
+    assert (
+        mock_send_ticker_message.call_args[0][0]
+        is TickerMessageType.USER_COLLECTED_AMMO
+    )
 
 
 def test_all_items_handled():

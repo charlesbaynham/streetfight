@@ -2,9 +2,9 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import Union,List
+from typing import List
+from typing import Union
 from uuid import UUID
-
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session as SQLAlchemySession
@@ -19,10 +19,10 @@ from .model import Game
 from .model import Item
 from .model import Shot
 from .model import Team
-from .ticker import Ticker
 from .model import TeamModel
 from .model import User
 from .model import UserModel
+from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
 

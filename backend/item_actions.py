@@ -1,11 +1,11 @@
 from typing import TYPE_CHECKING
 
+from . import ticker_message_dispatcher as tk
 from .items import ItemDataWeapon
 from .items import ItemModel
 from .model import ItemType
 from .model import UserModel
 from .model import UserState
-from . import ticker_message_dispatcher as tk
 
 if TYPE_CHECKING:
     from .user_interface import UserInterface
