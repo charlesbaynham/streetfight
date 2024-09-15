@@ -45,6 +45,7 @@ def load():
     Set up a database connection to be used from now on
     """
     from sqlalchemy_utils import database_exists
+
     from .reset_db import reset_database
 
     db_url = os.environ.get("DATABASE_URL")

@@ -483,8 +483,8 @@ def test_all_items_handled():
 
 
 def test_all_items_validated():
-    from backend.model import ItemType
     from backend.items import ITEM_TYPE_VALIDATORS
+    from backend.model import ItemType
 
     for itype in ItemType:
         assert itype in ITEM_TYPE_VALIDATORS

@@ -13,7 +13,6 @@ import pydantic
 from .dotenv import load_env_vars
 from .model import ItemType
 
-
 logger = logging.getLogger(__name__)
 
 

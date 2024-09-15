@@ -33,9 +33,9 @@ def backend_server():
     Launch and finally close a test server, just for the backend
     """
 
-    import subprocess as sp
     import os
     import signal
+    import subprocess as sp
 
     with cd(NPM_ROOT_DIR):
         logging.info("Launching backend...")
@@ -76,9 +76,9 @@ def full_server(backend_server):
     Launch and finally close a test server for the backend and frontend
     """
 
-    import subprocess as sp
     import os
     import signal
+    import subprocess as sp
 
     with cd(NPM_ROOT_DIR):
         logging.info("Building site...")
@@ -109,8 +109,9 @@ def full_server(backend_server):
 
 
 def wait_until_server_up(test_url, timeout):
-    import requests
     import time
+
+    import requests
 
     interval = 0.5
     max_tries = int(timeout / interval)
@@ -170,9 +171,10 @@ def db_session(engine):
     Get an SQLAlchemy database session to a clean database with the model schema
     set up and seed the random number generator.
     """
-    from backend.model import Base
-    from backend.database import Session
     import random
+
+    from backend.database import Session
+    from backend.model import Base
 
     random.seed(123)
 
@@ -200,6 +202,7 @@ def api_client_factory(db_session):
     Get a factory for FastAPI TestClients pointing at the app with a clean database session
     """
     from fastapi.testclient import TestClient
+
     from backend.main import app
 
     return lambda: TestClient(app)
