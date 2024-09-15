@@ -68,7 +68,7 @@ def test_user_sees_own_private_messages(ticker_for_user_in_game: Ticker):
 
     later_messages = ticker_for_user_in_game.get_messages(10)
 
-    assert len(initial_messages) == len(later_messages) + 1
+    assert len(later_messages) == 1 + len(initial_messages)
     assert later_messages[-1] == msg
 
 
