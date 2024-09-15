@@ -37,16 +37,20 @@ class Ticker:
         self._session = session
 
     @db_scoped
-    def get_messages(self, num_messages) -> List[str]:
+    def get_messages(self, num_messages, newest_first=True) -> List[str]:
         """
-        Gets the latest n messages for this game and user
-
+        Retrieve a list of messages from the ticker entries for the current game.
         Args:
-            n_entries (int): Number of messages to get
-
+            num_messages (int): The number of messages to retrieve.
+            newest_first (bool): If True, retrieve the newest messages first. Defaults to True.
         Returns:
-            List[str]: Messages
+            List[str]: A list of messages from the ticker entries.
         """
+        if newest_first:
+            order = TickerEntry.id.desc()
+        else:
+            order = TickerEntry.id.asc()
+
         ticker_entries = (
             self._session.query(TickerEntry)
             .filter_by(game_id=self.game_id)
@@ -56,7 +60,7 @@ class Ticker:
                     TickerEntry.private_user_id == None,
                 )
             )
-            .order_by(TickerEntry.id.desc())
+            .order_by(order)
             .limit(num_messages)
             .all()
         )
