@@ -69,7 +69,8 @@ def test_user_sees_own_private_messages(ticker_for_user_in_game: Ticker):
     later_messages = ticker_for_user_in_game.get_messages(10)
 
     assert len(later_messages) == 1 + len(initial_messages)
-    assert later_messages[-1] == msg
+    assert msg in later_messages
+    assert later_messages[0] == msg
 
 
 def test_user_doesnt_see_others_private_messages(
@@ -125,3 +126,55 @@ def test_ticker_announces_kill(
     messages = response.json()
 
     assert "killed" in messages[0]
+
+
+def test_get_messages_empty(ticker):
+    assert ticker.get_messages(3) == []
+
+
+def test_get_messages_single_message(ticker):
+    ticker.post_message("Test message")
+    assert ticker.get_messages(1) == ["Test message"]
+
+
+def test_get_messages_multiple_messages(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3) == messages[::-1]
+
+
+def test_get_messages_limit(ticker):
+    messages = ["Message 1", "Message 2", "Message 3", "Message 4"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(2) == messages[-1:-3:-1]
+
+
+def test_get_messages_order_newest_first(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3, newest_first=True) == messages[::-1]
+
+
+def test_get_messages_order_oldest_first(ticker):
+    messages = ["Message 1", "Message 2", "Message 3"]
+    for msg in messages:
+        ticker.post_message(msg)
+    assert ticker.get_messages(3, newest_first=False) == messages
+
+
+def test_get_messages_private_messages(ticker, user_factory):
+    user_id = user_factory()
+    ticker.post_message("Public message")
+    ticker.post_message("Private message", private_for_user_id=user_id)
+    ticker.user_id = user_id
+    assert ticker.get_messages(2) == ["Private message", "Public message"]
+
+
+def test_get_messages_excludes_others_private_messages(ticker, user_factory):
+    user_id = user_factory()
+    ticker.post_message("Public message")
+    ticker.post_message("Private message", private_for_user_id=user_id)
+    assert ticker.get_messages(2) == ["Public message"]
