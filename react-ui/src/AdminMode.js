@@ -101,10 +101,7 @@ function UserControls({ user }) {
   return (
     <li>
       {user.name} {user.hit_points <= 0 ? <span>&#x1F480;</span> : null} (
-      {user.hit_points}❤️ {user.num_bullets}A)
-
-      Health:
-
+      {user.hit_points}❤️ {user.num_bullets}A) Health:
       <button
         onClick={() => {
           set_health(0);
@@ -112,7 +109,6 @@ function UserControls({ user }) {
       >
         <span>&#x1F480; Kill &#x1F480;</span>
       </button>
-
       <button
         onClick={() => {
           hit_user(1);
@@ -120,7 +116,6 @@ function UserControls({ user }) {
       >
         <span>&#x1F480; Shoot &#x1F480;</span>
       </button>
-
       <button
         onClick={() => {
           set_health(1);
@@ -128,7 +123,6 @@ function UserControls({ user }) {
       >
         Revive
       </button>
-
       <button
         onClick={() => {
           set_health(2);
@@ -136,7 +130,6 @@ function UserControls({ user }) {
       >
         Lv. 1
       </button>
-
       <button
         onClick={() => {
           set_health(3);
@@ -144,7 +137,6 @@ function UserControls({ user }) {
       >
         Lv. 2
       </button>
-
       <button
         onClick={() => {
           set_health(4);
@@ -152,9 +144,7 @@ function UserControls({ user }) {
       >
         Lv. 3
       </button>
-
       Ammo:
-
       <button
         onClick={() => {
           give_n_ammo(+1);
