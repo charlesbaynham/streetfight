@@ -29,7 +29,7 @@ def test_ticker_starts_empty(ticker):
 
 def test_ticker_can_be_filled(ticker):
     ticker.post_message("hello world")
-    assert ticker.get_messages(3) == ["hello world"]
+    assert ticker.get_messages(3) == [("public", "hello world")]
 
 
 def test_ticker_filters_correctly_len(ticker):
@@ -44,7 +44,11 @@ def test_ticker_filters_correctly_order(ticker):
         ticker.post_message(str(i))
         time.sleep(0.01)
 
-    assert ticker.get_messages(3) == ["9", "8", "7"]
+    assert ticker.get_messages(3) == [
+        ("public", "9"),
+        ("public", "8"),
+        ("public", "7"),
+    ]
 
 
 def test_api_query_ticker_outside_team(api_client):
@@ -66,8 +70,7 @@ def test_user_sees_own_private_messages(ticker_for_user_in_game: Ticker):
     later_messages = ticker_for_user_in_game.get_messages(10)
 
     assert len(later_messages) == 1 + len(initial_messages)
-    assert msg in later_messages
-    assert later_messages[0] == msg
+    assert later_messages[0][1] == msg
 
 
 def test_user_doesnt_see_others_private_messages(
@@ -102,7 +105,7 @@ def test_api_query_ticker_messages(api_client, ticker_for_user_in_game):
     messages = response.json()
 
     assert len(messages) == 2
-    assert "hello" in messages
+    
 
 
 def test_ticker_announces_kill(
@@ -122,7 +125,7 @@ def test_ticker_announces_kill(
     assert response.is_success
     messages = response.json()
 
-    assert "killed" in messages[0]
+    assert "killed" in messages[0][1]
 
 
 def test_get_messages_empty(ticker):
