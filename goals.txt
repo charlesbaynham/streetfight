@@ -6,10 +6,10 @@ Bugs:
 
 Priority:
   - [ ] Needs a "hit" noise / notification
-  - [ ] You should find out if you hit someone
+  - [ ] You should find out if you hit someone (use private tickers)
 
 Polish:
-
+  - [ ] Show scoreboard in dead mode
   - [ ] Improve admin kill interface
   - [ ] Clicking outside the socre card should exit it
   - [ ] Location implementation:
@@ -24,7 +24,6 @@ Polish:
   - [ ] Handle shooting someone when they are already dead
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
   - [ ] Must implement refund for unsure shots
-  - [ ] Should add private ticker entries for e.g. results of shots (different colour)
   - [ ] Consider having the UI anticipate events from the server - this would make it more responsive
 
 Non-code:
