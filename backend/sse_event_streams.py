@@ -85,20 +85,13 @@ async def updates_generator(user_id):
 
         ui = UserInterface(user_id)
 
-        # get_ticker is db_scoped so this will not hold a session open
-        ticker: Optional[Ticker] = ui.get_ticker()
+        # Check if the user is in a team
+        while ui.get_team_id() is None:
+            logger.debug("User %s is not in a game, waiting", user_id)
 
-        while ticker is None:
-            logger.debug("Ticker updates - User %s is not in a game, waiting", user_id)
             # generate_updates does not interact with the database session, so
             # will not block other database requests
             await anext(ui.generate_updates())
-            ticker = ui.get_ticker()
-
-            if ticker:
-                logger.debug("Ticker updates - User %s now in game", user_id)
-            else:
-                logger.debug("Ticker updates - User %s still not in game", user_id)
 
         logger.debug(
             "updates_generator - User is in game, mounting to game ticker for user %s",
@@ -108,7 +101,7 @@ async def updates_generator(user_id):
         yield None
 
         # Then yield from the ticker
-        async for x in ticker.generate_updates():
+        async for x in ui.generate_updates():
             logger.debug(
                 "updates_generator - Forwarding ticker event for user %s", user_id
             )

@@ -153,6 +153,10 @@ class UserInterface:
         return UserModel.from_orm(u) if u else None
 
     @db_scoped
+    def get_team_id(self) -> UUID:
+        return self.get_user().team_id
+
+    @db_scoped
     def get_team_model(self) -> UserModel:
         team = self.get_user().team
         return TeamModel.from_orm(team) if team else None
@@ -314,6 +318,32 @@ class UserInterface:
             session=self.get_session(),
             user_id=self.user_id if private else None,
         ).get_messages(num_messages=num, newest_first=newest_first)
+
+    def generate_updates(self, timeout=None):
+        """
+        An async generator that yields None every time an update is available
+        for this user
+
+        Note that this does not hold a database session open, so it can be used
+        in parallel with other database operations
+
+        Args:
+            timeout (int, optional): Maximum number of seconds to wait for an
+            update. Defaults to no timeout.
+        """
+
+        with self:
+            game_id = self.get_user().team_id
+
+        if game_id is None:
+            raise ValueError("User is not in a game")
+
+        ticker = Ticker(
+            game_id=game_id,
+            user_id=self.user_id,
+        )
+
+        return ticker.generate_updates(timeout=timeout)
 
     @db_scoped
     def clear_unchecked_shots(self):
