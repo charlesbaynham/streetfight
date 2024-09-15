@@ -4,6 +4,7 @@ sse_event_streams.py
 This module provides functionality for generating Server-Sent Events (SSE) updates for users and administrators.
 It includes functions to create SSE update messages, generate updates for users, and generate updates for administrators.
 """
+
 import asyncio
 import json
 import logging
