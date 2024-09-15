@@ -9,10 +9,8 @@ import asyncio
 import json
 import logging
 from typing import AsyncGenerator
-from typing import Optional
 
 from .admin_interface import AdminInterface
-from .ticker import Ticker
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
