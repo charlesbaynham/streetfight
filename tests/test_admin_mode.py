@@ -139,6 +139,5 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
     print(AdminInterface().get_scoreboard(game_id))
 
 
-def test_hit_user(user_factory):
-    user_id = user_factory()
-    AdminInterface().hit_user_by_admin(user_id=user_id)
+def test_hit_user(user_in_team):
+    AdminInterface().hit_user_by_admin(user_id=user_in_team)

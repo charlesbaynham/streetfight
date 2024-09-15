@@ -102,10 +102,9 @@ def test_admin_give_negative_hp(api_client, user_in_team, num):
 
 
 @pytest.mark.parametrize("num", range(-3, 3))
-def test_admin_give_ammo(api_client, user_factory, num):
-    user_id = user_factory()
-    api_client.post(f"/api/admin_give_ammo?user_id={user_id}&num={num}")
-    assert UserInterface(user_id).get_user_model().num_bullets == num
+def test_admin_give_ammo(api_client, user_in_team, num):
+    api_client.post(f"/api/admin_give_ammo?user_id={user_in_team}&num={num}")
+    assert UserInterface(user_in_team).get_user_model().num_bullets == num
 
 
 def test_admin_make_item(api_client, user_in_team):

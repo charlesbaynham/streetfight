@@ -259,7 +259,6 @@ class AdminInterface:
             ui.award_ammo(num=num)
 
             user_model = ui.get_user_model()
-            
 
             tk.send_ticker_message(
                 tk.TickerMessageType.ADMIN_GAVE_AMMO,
@@ -269,7 +268,6 @@ class AdminInterface:
                 team_id=user_model.team_id,
                 session=ui.get_session(),
             )
-
 
     @db_scoped
     def mark_shot_checked(self, shot_id):
