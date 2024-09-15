@@ -6,7 +6,6 @@ from uuid import uuid4 as get_uuid
 from fastapi import Request
 from fastapi import WebSocket
 
-
 no_cookie_clients = {}
 no_cookie_lock = RLock()
 

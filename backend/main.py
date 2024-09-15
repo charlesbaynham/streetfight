@@ -23,6 +23,7 @@ from starlette.responses import StreamingResponse
 from .dotenv import load_env_vars
 
 
+
 def setup_logging():
     # Redirect the uvicorn logger to root
     root_logger = logging.getLogger()
@@ -83,6 +84,10 @@ from .user_id import get_user_id
 from .user_interface import UserInterface
 from .model import GameModel
 from . import sse_event_streams
+from .model import GameModel
+from .ticker import Ticker
+from .user_id import get_user_id
+from .user_interface import UserInterface
 
 app = FastAPI()
 router = APIRouter()
