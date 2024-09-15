@@ -56,10 +56,24 @@ function GameView({ game }) {
 }
 
 function UserControls({ user }) {
-  const give_n_health = useCallback(
+  const set_health = useCallback(
     (n) => {
       sendAPIRequest(
-        "admin_give_hp",
+        "admin_set_hp",
+        {
+          user_id: user.id,
+          num: n,
+        },
+        "POST",
+      );
+    },
+    [user.id],
+  );
+
+  const hit_user = useCallback(
+    (n) => {
+      sendAPIRequest(
+        "admin_hit_user",
         {
           user_id: user.id,
           num: n,
@@ -88,20 +102,59 @@ function UserControls({ user }) {
     <li>
       {user.name} {user.hit_points <= 0 ? <span>&#x1F480;</span> : null} (
       {user.hit_points}❤️ {user.num_bullets}A)
+
+      Health:
+
       <button
         onClick={() => {
-          give_n_health(+1);
+          set_health(0);
         }}
       >
-        +❤️
+        <span>&#x1F480; Kill &#x1F480;</span>
       </button>
+
       <button
         onClick={() => {
-          give_n_health(-1);
+          hit_user(1);
         }}
       >
-        -❤️
+        <span>&#x1F480; Shoot &#x1F480;</span>
       </button>
+
+      <button
+        onClick={() => {
+          set_health(1);
+        }}
+      >
+        Revive
+      </button>
+
+      <button
+        onClick={() => {
+          set_health(2);
+        }}
+      >
+        Lv. 1
+      </button>
+
+      <button
+        onClick={() => {
+          set_health(3);
+        }}
+      >
+        Lv. 2
+      </button>
+
+      <button
+        onClick={() => {
+          set_health(4);
+        }}
+      >
+        Lv. 3
+      </button>
+
+      Ammo:
+
       <button
         onClick={() => {
           give_n_ammo(+1);
