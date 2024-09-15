@@ -5,6 +5,7 @@ from .items import ItemModel
 from .model import ItemType
 from .model import UserModel
 from .model import UserState
+from .ticker_message_dispatcher import send_ticker_message, TickerMessageType
 
 if TYPE_CHECKING:
     from .user_interface import UserInterface
@@ -19,8 +20,12 @@ def _handle_ammo_user(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     _check_alive(user_model)
     user_interface.award_ammo(item.data["num"])
-    user_interface.get_ticker().post_message(
-        f"{user_model.name} collected {item.data['num']}x ammo"
+
+    send_ticker_message(
+        TickerMessageType.USER_COLLECTED_AMMO,
+        {"user": user_model.name, "num": item.data["num"]},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
     )
 
 

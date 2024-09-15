@@ -17,6 +17,7 @@ what they say.
 
 class TickerMessageType(Enum):
     USER_JOINED_TEAM = auto()
+    USER_COLLECTED_AMMO = auto()
 
 
 class TickerTarget(Enum):
@@ -29,7 +30,11 @@ TICKER_MESSAGES = {
     TickerMessageType.USER_JOINED_TEAM: (
         TickerTarget.PUBLIC,
         "{user} has joined team {team}",
-    )
+    ),
+    TickerMessageType.USER_COLLECTED_AMMO: (
+        TickerTarget.PRIVATE_TEAM,
+        "{user} collected {num}x ammo",
+    ),
     # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
 
