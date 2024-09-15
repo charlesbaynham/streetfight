@@ -10,6 +10,13 @@ from .ticker_message_dispatcher import send_ticker_message, TickerMessageType
 if TYPE_CHECKING:
     from .user_interface import UserInterface
 
+WEAPON_NAME_LOOKUP = {
+    (1, 1): "Eat-a-bullet",
+    (2, 6): "Tracka-Tracka",
+    (3, 6): "OMG",
+    (1, 6): "Pewster",
+}
+
 
 def _check_alive(user_model: UserModel):
     if user_model.hit_points <= 0:
@@ -43,8 +50,11 @@ def _handle_ammo_team(user_interface: "UserInterface", item: ItemModel):
             item.data["num"]
         )
 
-    user_interface.get_ticker().post_message(
-        f"Team {user_model.team_name} collected {item.data['num']}x ammo"
+    send_ticker_message(
+        TickerMessageType.TEAM_COLLECTED_AMMO,
+        {"user": user_model.name, "num": item.data["num"]},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
     )
 
 
@@ -58,8 +68,12 @@ def _handle_armour(user_interface: "UserInterface", item: ItemModel):
         raise RuntimeError("You already have armour as good as this")
 
     user_interface.award_HP(item.data["num"] - current_HP + 1)
-    user_interface.get_ticker().post_message(
-        f"{user_model.name} collected a level {item.data['num']} armour"
+
+    send_ticker_message(
+        TickerMessageType.USER_COLLECTED_ARMOUR,
+        {"user": user_model.name, "num": item.data["num"]},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
     )
 
 
@@ -70,7 +84,13 @@ def _handle_medpack(user_interface: "UserInterface", item: ItemModel):
         raise RuntimeError("Medpacks can only be used on knocked-out players")
 
     user_interface.award_HP(1 - user_model.hit_points)
-    user_interface.get_ticker().post_message(f"{user_model.name} was revived!")
+
+    send_ticker_message(
+        TickerMessageType.USER_COLLECTED_MEDPACK,
+        {"user": user_model.name},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
 
 
 def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
@@ -85,7 +105,20 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
         raise RuntimeError("You have already got this weapon")
 
     user_interface.set_weapon_data(weapon_data.shot_damage, weapon_data.shot_timeout)
-    user_interface.get_ticker().post_message(f"{user_model.name} was revived!")
+
+    try:
+        weapon_name = WEAPON_NAME_LOOKUP[
+            (weapon_data.shot_damage, weapon_data.shot_timeout)
+        ]
+    except KeyError:
+        weapon_name = "<unnamed>"
+
+    send_ticker_message(
+        TickerMessageType.USER_COLLECTED_WEAPON,
+        {"user": user_model.name, "weapon": weapon_name},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
 
 
 _ACTIONS = {
