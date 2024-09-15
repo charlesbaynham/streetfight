@@ -54,7 +54,7 @@
           pname = "streetfight";
           version = "0.0.0";
           src = ./react-ui;
-          npmDepsHash = "sha256-rvNAh/yElZLBTOHW74vxL3HP1s24yMCx1b+cpwWU2EQ=";
+          npmDepsHash = "sha256-Sia19X0h7Yuqgk2p/SA7CmT7fcL8jXg6YhbH4Qr+HMk=";
           makeCacheWritable = true;
           installPhase = ''
             mkdir $out

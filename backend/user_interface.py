@@ -333,11 +333,3 @@ class UserInterface:
             except asyncio.TimeoutError:
                 logger.info(f"Event timeout for user {self.user_id}")
                 yield
-
-    @db_scoped
-    def get_ticker(self) -> Optional[Ticker]:
-        team = self.get_user().team
-        logger.debug("(UserInterface %s) User team = %s", self.user_id, team)
-        if team is None:
-            return None
-        return Ticker(game_id=team.game_id, user_id=self.user_id, session=self._session)
