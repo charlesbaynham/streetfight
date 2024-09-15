@@ -20,7 +20,7 @@ def ticker_for_user_in_game(api_user_id, team_factory):
 
     user_model = UserInterface(api_user_id).get_user_model()
 
-    return Ticker(game_id=user_model.game_id)
+    return Ticker(game_id=user_model.game_id, user_id=None)
 
 
 def test_ticker_starts_empty(ticker):

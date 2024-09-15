@@ -2,8 +2,9 @@ import asyncio
 import logging
 import time
 from threading import RLock
-from typing import Union
+from typing import Union,List
 from uuid import UUID
+
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session as SQLAlchemySession
@@ -294,7 +295,7 @@ class UserInterface:
             )
 
     @db_scoped
-    def get_messages(self, num, private=False, newest_first=True):
+    def get_messages(self, num, private=False, newest_first=True) -> List[str]:
         """
         Get ticker messages for this user
 
@@ -305,9 +306,12 @@ class UserInterface:
         """
         user = self.get_user()
 
+        if not user.team:
+            return []
+
         return Ticker(
             game_id=user.team.game.id,
-            session=self.get_session,
+            session=self.get_session(),
             user_id=self.user_id if private else None,
         ).get_messages(num_messages=num, newest_first=newest_first)
 
