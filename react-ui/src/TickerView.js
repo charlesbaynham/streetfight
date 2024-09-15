@@ -28,7 +28,9 @@ export default function TickerView() {
       <div className={styles.tickerview}>
         <ul>
           {messages.map((m, i) => (
-            <li key={i} className={m[0]}>{m[1]}</li>
+            <li key={i} className={m[0]}>
+              {m[1]}
+            </li>
           ))}
         </ul>
       </div>
