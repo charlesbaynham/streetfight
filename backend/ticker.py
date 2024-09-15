@@ -53,7 +53,7 @@ class Ticker:
             order = TickerEntry.id.asc()
 
         ticker_entries = (
-            self._session.query(TickerEntry)
+            self._session.query(TickerEntry.private_user_id, TickerEntry.message)
             .filter_by(game_id=self.game_id)
             .filter(
                 or_(
@@ -72,7 +72,14 @@ class Ticker:
             len(ticker_entries),
         )
 
-        return [t.message for t in ticker_entries]
+        out = []
+        for private_user_id, message in ticker_entries:
+            if private_user_id:
+                out.append("<em>" + message + "</em>")
+            else:
+                out.append(message)
+        
+        return out
 
     @db_scoped
     def _get_game(self) -> Game:
