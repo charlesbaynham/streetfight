@@ -22,6 +22,7 @@ class TickerMessageType(Enum):
     USER_COLLECTED_ARMOUR = auto()
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
+    ADMIN_HIT_USER = auto()
 
 
 class TickerTarget(Enum):
@@ -55,9 +56,16 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "{user} collected a {weapon}",
     ),
+    TickerMessageType.ADMIN_HIT_USER: (
+        TickerTarget.PUBLIC,
+        "Admin hit {user} for {num} damage",
+    ),
     # FIXME: Add more message types here and remove all direct access to Ticker in other modules
 }
 
+
+assert len(TICKER_MESSAGES) == len(TickerMessageType)
+assert all(m in TickerMessageType for m in TICKER_MESSAGES.keys())
 
 def send_ticker_message(
     message_type: TickerMessageType,

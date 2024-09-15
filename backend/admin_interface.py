@@ -187,8 +187,19 @@ class AdminInterface:
         with UserInterface(user_id) as ui:
             ui.hit(num)
 
-            if ticker := ui.get_ticker():
-                ticker.post_message(f"Admin hit {ui.get_user().name}")
+            u: User = ui.get_user()
+
+            user_name = u.name
+            game_id  = u.team.game_id
+
+            tk.send_ticker_message(
+                tk.TickerMessageType.ADMIN_HIT_USER,
+                {"user": user_name, "num": num},
+                session=ui.get_session(),
+                user_id=user_id,
+                game_id=game_id,
+            )
+
 
     @db_scoped
     def hit_user(self, shot_id, target_user_id):
