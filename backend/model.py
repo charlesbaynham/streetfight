@@ -235,6 +235,15 @@ class TickerEntry(Base):
         foreign_keys=private_user_id,
     )
 
+    highlight_user_id = Column(
+        UUIDType, ForeignKey("users.id"), index=True, nullable=True
+    )
+    highlight_user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=highlight_user_id,
+    )
+
     message = Column(String, nullable=False)
 
 
