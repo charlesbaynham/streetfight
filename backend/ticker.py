@@ -54,7 +54,11 @@ class Ticker:
             order = TickerEntry.id.asc()
 
         ticker_entries = (
-            self._session.query(TickerEntry.private_user_id,TickerEntry.highlight_user_id ,TickerEntry.message)
+            self._session.query(
+                TickerEntry.private_user_id,
+                TickerEntry.highlight_user_id,
+                TickerEntry.message,
+            )
             .filter_by(game_id=self.game_id)
             .filter(
                 or_(
@@ -74,14 +78,14 @@ class Ticker:
         )
 
         out = []
-        for private_user_id,highlight_user_id, message in ticker_entries:
+        for private_user_id, highlight_user_id, message in ticker_entries:
             message_class = "public"
 
             if private_user_id:
-                message_class="user"
-                
+                message_class = "user"
+
             if highlight_user_id == self.user_id:
-                message_class="highlight"
+                message_class = "highlight"
 
             out.append((message_class, message))
 
@@ -97,7 +101,12 @@ class Ticker:
         self._get_game().touch()
 
     @db_scoped
-    def post_message(self, message: str, private_for_user_id: UUID = None, highlight_user_id:UUID=None):
+    def post_message(
+        self,
+        message: str,
+        private_for_user_id: UUID = None,
+        highlight_user_id: UUID = None,
+    ):
         """Post a message to this game's ticker
 
         Args:
@@ -121,7 +130,7 @@ class Ticker:
                 game_id=self.game_id,
                 message=message,
                 private_user_id=private_for_user_id,
-                highlight_user_id=highlight_user_id
+                highlight_user_id=highlight_user_id,
             )
         )
 

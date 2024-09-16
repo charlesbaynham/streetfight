@@ -227,7 +227,7 @@ class AdminInterface:
             {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
             game_id=u_from.team.game_id,
             session=self._session,
-            highlight_user_id=u_from.id
+            highlight_user_id=u_from.id,
         )
 
         try:

@@ -151,7 +151,9 @@ def send_ticker_message(
             raise ValueError("User ID required for private user ticker messages")
 
         Ticker(game_id, user_id=user_id, session=session).post_message(
-            message=formatted_msg, private_for_user_id=user_id, highlight_user_id=highlight_user_id
+            message=formatted_msg,
+            private_for_user_id=user_id,
+            highlight_user_id=highlight_user_id,
         )
     elif target == TickerTarget.PRIVATE_TEAM:
         raise NotImplementedError("Private team messages not yet implemented")
