@@ -54,7 +54,7 @@ class Ticker:
             order = TickerEntry.id.asc()
 
         ticker_entries = (
-            self._session.query(TickerEntry.private_user_id, TickerEntry.message)
+            self._session.query(TickerEntry.private_user_id,TickerEntry.highlight_user_id ,TickerEntry.message)
             .filter_by(game_id=self.game_id)
             .filter(
                 or_(
@@ -74,11 +74,16 @@ class Ticker:
         )
 
         out = []
-        for private_user_id, message in ticker_entries:
+        for private_user_id,highlight_user_id, message in ticker_entries:
+            message_class = "public"
+
             if private_user_id:
-                out.append(("user", message))
-            else:
-                out.append(("public", message))
+                message_class="user"
+                
+            if highlight_user_id == self.user_id:
+                message_class="highlight"
+
+            out.append((message_class, message))
 
         return out
 
