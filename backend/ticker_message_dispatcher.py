@@ -109,6 +109,7 @@ def send_ticker_message(
     team_id: Optional[UUID] = None,
     game_id: Optional[UUID] = None,
     session: Optional[Session] = None,
+    highlight_user_id: Optional[UUID] = None,
 ):
     """
     Sends a message to the appropriate ticker(s).
@@ -141,7 +142,7 @@ def send_ticker_message(
             raise ValueError("Game ID required for public ticker messages")
 
         Ticker(game_id, user_id=None, session=session).post_message(
-            message=formatted_msg
+            message=formatted_msg, highlight_user_id=highlight_user_id
         )
     elif target == TickerTarget.PRIVATE_USER:
         if not game_id:
@@ -150,7 +151,7 @@ def send_ticker_message(
             raise ValueError("User ID required for private user ticker messages")
 
         Ticker(game_id, user_id=user_id, session=session).post_message(
-            message=formatted_msg, private_for_user_id=user_id
+            message=formatted_msg, private_for_user_id=user_id, highlight_user_id=highlight_user_id
         )
     elif target == TickerTarget.PRIVATE_TEAM:
         raise NotImplementedError("Private team messages not yet implemented")

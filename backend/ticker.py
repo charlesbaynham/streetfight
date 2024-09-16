@@ -92,7 +92,7 @@ class Ticker:
         self._get_game().touch()
 
     @db_scoped
-    def post_message(self, message: str, private_for_user_id: UUID = None):
+    def post_message(self, message: str, private_for_user_id: UUID = None, highlight_user_id:UUID=None):
         """Post a message to this game's ticker
 
         Args:
@@ -100,6 +100,9 @@ class Ticker:
             private_for_user_id (UUID, optional):
                             If provided, the message will be
                             private for this user id. Defaults to None.
+            highlight_user_id (UUID, optional):
+                            If provided, the message will be
+                            highlighted for this user id. Defaults to None.
         """
         logger.debug(
             '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s',
@@ -113,6 +116,7 @@ class Ticker:
                 game_id=self.game_id,
                 message=message,
                 private_user_id=private_for_user_id,
+                highlight_user_id=highlight_user_id
             )
         )
 
