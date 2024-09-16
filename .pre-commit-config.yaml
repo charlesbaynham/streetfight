@@ -11,8 +11,8 @@ repos:
     args: [--unsafe]
 
 # Sort python imports
-- repo: https://github.com/pre-commit/mirrors-isort
-  rev: v5.10.1
+- repo: https://github.com/PyCQA/isort
+  rev: 5.13.2
   hooks:
   - id: isort
     args: [--profile, black, --force-single-line-imports]
