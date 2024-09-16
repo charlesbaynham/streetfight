@@ -23,3 +23,7 @@
 .tickerview li:global(.user) {
   font-style: italic;
 }
+
+.tickerview li:global(.highlight) {
+  color: red;
+}
