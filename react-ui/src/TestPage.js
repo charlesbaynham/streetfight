@@ -6,13 +6,16 @@ const TestPage = () => {
 
   useEffect(() => {
     if (navigator.geolocation) {
+      setLoc("Loading...");
+
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setLoc(`Latitude: ${latitude}, Longitude: ${longitude}`);
+          setLoc(`Timestamp: ${position.timestamp}, Latitude: ${latitude}, Longitude: ${longitude}, Accuracy: ${position.coords.accuracy}`);
         },
         (error) => {
           console.error("Error watching position:", error);
+          setLoc("Error getting position");
         }
       );
 
