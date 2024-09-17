@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from "react";
 
-
 const TestPage = () => {
   const [loc, setLoc] = useState(null);
 
@@ -11,12 +10,14 @@ const TestPage = () => {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          setLoc(`Timestamp: ${position.timestamp}, Latitude: ${latitude}, Longitude: ${longitude}, Accuracy: ${position.coords.accuracy}`);
+          setLoc(
+            `Timestamp: ${position.timestamp}, Latitude: ${latitude}, Longitude: ${longitude}, Accuracy: ${position.coords.accuracy}`,
+          );
         },
         (error) => {
           console.error("Error watching position:", error);
           setLoc("Error getting position");
-        }
+        },
       );
 
       return () => {
@@ -25,8 +26,7 @@ const TestPage = () => {
     } else {
       console.error("Geolocation is not supported by this browser.");
     }
-
-  }, [])
+  }, []);
 
   return (
     <div>
@@ -35,7 +35,6 @@ const TestPage = () => {
       <h3>Your location:</h3>
 
       {loc}
-
     </div>
   );
 };
