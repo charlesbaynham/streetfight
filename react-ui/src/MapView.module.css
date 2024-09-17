@@ -3,6 +3,7 @@
     position: relative;
     width: 5cm;
     height: 5cm;
+    overflow: hidden;
 }
 
 .mapImage {
@@ -17,4 +18,5 @@
 
 .mapDot {
     width: 2em;
+    
 }
