@@ -6,12 +6,9 @@ const TestPage = () => {
 
   useEffect(() => {
     if (navigator.geolocation) {
-
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
-          setLoc(
-            position
-          );
+          setLoc(position);
         },
         (error) => {
           console.error("Error watching position:", error);
@@ -33,7 +30,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      {loc ? <MapView position={loc} /> :null}
+      {loc ? <MapView position={loc} /> : null}
     </div>
   );
 };
