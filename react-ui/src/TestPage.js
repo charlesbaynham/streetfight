@@ -1,18 +1,14 @@
 import React, { useEffect, useState } from "react";
+import MapView from "./MapView";
 
 const TestPage = () => {
   const [loc, setLoc] = useState(null);
 
   useEffect(() => {
     if (navigator.geolocation) {
-      setLoc("Loading...");
-
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
-          const { latitude, longitude } = position.coords;
-          setLoc(
-            `Timestamp: ${position.timestamp}, Latitude: ${latitude}, Longitude: ${longitude}, Accuracy: ${position.coords.accuracy}`,
-          );
+          setLoc(position);
         },
         (error) => {
           console.error("Error watching position:", error);
@@ -34,7 +30,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      {loc}
+      {loc ? <MapView position={loc} /> : null}
     </div>
   );
 };
