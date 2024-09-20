@@ -50,7 +50,10 @@ export default function MapView({ position }) {
 
   return (
     <>
+      <p>Details:</p>
       {out}
+
+      <p>Map:</p>
       <div className={styles.mapContainer}>
         <img className={styles.mapImage} src={mapSrc} />
         <Dot x={x} y={y} />
