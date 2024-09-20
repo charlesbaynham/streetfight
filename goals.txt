@@ -13,7 +13,14 @@ Location:
   - [ ] Plot on the admin interface
   - [ ] When a shot happens, record where everyone was so the interface can suggest who was closest
   - [ ] Implement the circle!!
-
+- [ ] Location implementation old comments:
+    - [ ] Map in corner with own Location
+    - [ ] Location reported to server regularly
+    - [ ] Locations displayed on admin page
+    - [ ] Hand-drawn map with pubs marked
+    - [ ] Circles displayed on map, triggered by admins
+    - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
+    - [ ] "Scanner" item which reveals other teams for x minutes
 
 Priority:
   - [ ] Needs a "hit" noise / notification
@@ -23,14 +30,7 @@ Polish:
   - [ ] Show scoreboard in dead mode
   - [ ] Improve admin kill interface
   - [ ] Clicking outside the socre card should exit it
-  - [ ] Location implementation:
-    - [ ] Map in corner with own Location
-    - [ ] Location reported to server regularly
-    - [ ] Locations displayed on admin page
-    - [ ] Hand-drawn map with pubs marked
-    - [ ] Circles displayed on map, triggered by admins
-    - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
-    - [ ] "Scanner" item which reveals other teams for x minutes
+  
   - [ ] Heartbeat animation when knocked out
   - [ ] Handle shooting someone when they are already dead
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
