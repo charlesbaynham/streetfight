@@ -56,11 +56,7 @@ export default function MapView({ position }) {
 
       <h3>Map:</h3>
       <div className={styles.mapContainer}>
-        <img
-          className={styles.mapImage}
-          src={mapSrc}
-          alt="Map"
-        />
+        <img className={styles.mapImage} src={mapSrc} alt="Map" />
         <Dot x={x} y={y} />
       </div>
     </>
