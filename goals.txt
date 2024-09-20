@@ -4,6 +4,17 @@ Goals
 Bugs:
 - The animation for the bullet reload is jerky
 
+Location:
+  Not a priority, but I'm apparently doing it anyway. Classic. 
+  - [ ] Plot location on map in corner
+  - [ ] Click map - show larger version
+  - [ ] Orientation?
+  - [ ] Keep an up-to-date record of everyone's location
+  - [ ] Plot on the admin interface
+  - [ ] When a shot happens, record where everyone was so the interface can suggest who was closest
+  - [ ] Implement the circle!!
+
+
 Priority:
   - [ ] Needs a "hit" noise / notification
   - [ ] You should find out if you hit someone (use private tickers)
