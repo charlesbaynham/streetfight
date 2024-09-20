@@ -5,7 +5,7 @@ Bugs:
 - The animation for the bullet reload is jerky
 
 Location:
-  Not a priority, but I'm apparently doing it anyway. Classic. 
+  Not a priority, but I'm apparently doing it anyway. Classic.
   - [ ] Plot location on map in corner
   - [ ] Click map - show larger version
   - [ ] Orientation?
