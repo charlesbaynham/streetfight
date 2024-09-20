@@ -19,6 +19,7 @@ function Dot({ x, y }) {
     <img
       className={styles.mapDot}
       src={dotSrc}
+      alt=""
       style={{
         left: 100 * x + "%",
         bottom: 100 * y + "%",
@@ -50,12 +51,16 @@ export default function MapView({ position }) {
 
   return (
     <>
-      <p>Details:</p>
+      <h3>Details:</h3>
       {out}
 
-      <p>Map:</p>
+      <h3>Map:</h3>
       <div className={styles.mapContainer}>
-        <img className={styles.mapImage} src={mapSrc} />
+        <img
+          className={styles.mapImage}
+          src={mapSrc}
+          alt="Map"
+        />
         <Dot x={x} y={y} />
       </div>
     </>
