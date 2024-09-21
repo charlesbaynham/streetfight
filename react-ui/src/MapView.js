@@ -129,14 +129,34 @@ export function MapViewSelf() {
   return <MapView ownPosition={position} />;
 }
 
+
 export function MapViewAdmin() {
-  useEffect(() => {
+  const [locationWithColors, setLocationWithColors] = useState([]);
+
+  const updateLocations = useCallback(() => {
     sendAPIRequest("admin_get_locations").then(async (response) => {
       if (!response.ok) return;
-      const data = await response.json();
-      console.log(data);
-    });
-  });
+      const locations = await response.json();
 
-  return <MapView />;
+
+      const team_ids = locations.map((user) => (user.team_id));
+      const unique_team_ids = [...new Set(team_ids)];
+
+      const colors = ["brown", "black", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"];
+      const teamColors = {};
+      unique_team_ids.forEach((team_id, index) => {
+        teamColors[team_id] = colors[index % colors.length];
+      });
+
+      setLocationWithColors (locations.map((user) => (
+        { position: { coords: { latitude: user.latitude, longitude: user.longitude } }, color: teamColors[user.team_id] }
+      )));
+    });
+  }, []);
+
+  useEffect(() => {
+    updateLocations();
+  }, [updateLocations]);  // FIXME: Needs to repeat
+
+  return <MapView other_positions_and_colors={locationWithColors}/>;
 }
