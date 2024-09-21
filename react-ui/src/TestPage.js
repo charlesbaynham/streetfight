@@ -8,7 +8,12 @@ const TestPage = () => {
 
   useEffect(() => {
     const handleOrientation = (event) => {
-      setOrientation(event.alpha);
+      if (event.absolute) {
+        setOrientation(event.alpha);
+      } else {
+        setOrientation("Orientation not absolute");
+      }
+      console.log(event);
     };
 
     window.addEventListener("deviceorientation", handleOrientation);
