@@ -49,16 +49,23 @@ function Dot({ x, y, color = null }) {
   );
 }
 
+let lastUpdateTime = 0;
+const RATE_LIMIT_INTERVAL = 1 * 1000; // 1 second
+
 function sendLocationUpdate(lat, long) {
-  sendAPIRequest(
-    "set_location",
-    {
-      latitude: lat,
-      longitude: long,
-    },
-    "POST",
-    null,
-  );
+  const currentTime = Date.now();
+  if (currentTime - lastUpdateTime >= RATE_LIMIT_INTERVAL) {
+    sendAPIRequest(
+      "set_location",
+      {
+        latitude: lat,
+        longitude: long,
+      },
+      "POST",
+      null,
+    );
+    lastUpdateTime = currentTime;
+  }
 }
 
 function MapView({
