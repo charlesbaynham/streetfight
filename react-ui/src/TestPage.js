@@ -8,7 +8,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      <MapView />
+      <MapView adminMode={true} />
     </div>
   );
 };

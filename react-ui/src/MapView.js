@@ -41,7 +41,7 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-export default function MapView() {
+export default function MapView({adminMode = false}) {
   const [position, setPosition] = useState(null);
 
   useEffect(() => {
@@ -81,6 +81,7 @@ export default function MapView() {
 
   return (
     <>
+      adminMode = {JSON.stringify( adminMode)}
       <div className={styles.mapContainer}>
         {unknownLocation ? <div className={styles.mapOverlay}></div> : null }
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
