@@ -55,6 +55,7 @@ function MapView({
   grayedOut = false,
   ownPosition = null,
   other_positions_and_colors = [],
+  expanded = false
 }) {
   const posToXY = useCallback((pos) => {
     const x =
@@ -78,7 +79,7 @@ function MapView({
 
   return (
     <>
-      <div className={styles.mapContainer}>
+      <div className={`${styles.mapContainer} ${expanded ? styles.mapContainerExpanded : styles.mapContainerCorner}`}>
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
         {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
@@ -166,5 +167,8 @@ export function MapViewAdmin() {
     updateLocations();
   }, [updateLocations]); // FIXME: Needs to repeat
 
-  return <MapView other_positions_and_colors={locationWithColors} />;
+  return <MapView
+  other_positions_and_colors={locationWithColors}
+  expanded={true}
+  />;
 }

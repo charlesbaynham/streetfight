@@ -1,10 +1,19 @@
-
 .mapContainer {
     position: relative;
+    overflow: hidden;
+    border: blue 1px solid;
+    /* FIXME remove border */
+}
+
+.mapContainerCorner {
     width: 10em;
     height: 10em;
-    overflow: hidden;
-    border: blue 1px solid;  /* FIXME remove border */
+}
+
+.mapContainerExpanded {
+    max-width: 100%;
+    aspect-ratio: 1;
+    max-height: 100%;
 }
 
 .mapOverlay {
