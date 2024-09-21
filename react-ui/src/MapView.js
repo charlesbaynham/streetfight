@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 
 import mapSrc from "./images/art/medkit.png";
 import dotSrc from "./images/art/bullet.png";
@@ -28,7 +28,30 @@ function Dot({ x, y }) {
   );
 }
 
-export default function MapView({ position }) {
+export default function MapView() {
+
+  const [position, setPosition] = useState(null);
+
+  useEffect(() => {
+    if (navigator.geolocation) {
+      const watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          setPosition(position);
+        },
+        (error) => {
+          console.error("Error watching position:", error);
+        },
+      );
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    } else {
+      console.error("Geolocation is not supported by this browser.");
+    }
+  }, []);
+
+
   if (!position) return <p>Unknown</p>;
 
   const x =

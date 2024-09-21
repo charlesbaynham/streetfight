@@ -1,30 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React  from "react";
 import MapView from "./MapView";
 
 const TestPage = () => {
-  const [loc, setLoc] = useState(null);
 
-
-
-  useEffect(() => {
-    if (navigator.geolocation) {
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setLoc(position);
-        },
-        (error) => {
-          console.error("Error watching position:", error);
-          setLoc("Error getting position");
-        },
-      );
-
-      return () => {
-        navigator.geolocation.clearWatch(watchId);
-      };
-    } else {
-      console.error("Geolocation is not supported by this browser.");
-    }
-  }, []);
 
   return (
     <div>
@@ -32,7 +10,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      {loc ? <MapView position={loc} /> : null}
+      <MapView />
 
     </div>
   );
