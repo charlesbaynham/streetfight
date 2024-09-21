@@ -6,12 +6,12 @@ import dotSrc from "./images/art/bullet.png";
 import styles from "./MapView.module.css";
 
 const map_top_left = {
-  lat: 51.503021862376734,
-  long: -0.18977085858990242,
+  lat: 51.79323378424228,
+  long: -2.7384925628606496,
 };
 const map_bottom_right = {
-  lat: 51.4930475913438,
-  long: -0.17170030380316062,
+  lat: 51.79136033583688,
+  long: -2.733293938485373,
 };
 
 function Dot({ x, y }) {
