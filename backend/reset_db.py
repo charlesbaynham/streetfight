@@ -34,6 +34,7 @@ def reset_database(engine):
 
         session = database.Session()
         g = Game(id=SAMPLE_GAME_ID)
+        g.active = True
         session.add(g)
         for team_id, team_name in SAMPLE_TEAMS:
             session.add(Team(id=team_id, game=g, name=team_name))
