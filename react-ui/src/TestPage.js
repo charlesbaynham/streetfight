@@ -1,5 +1,6 @@
 import React from "react";
-import MapView from "./MapView";
+import { MapViewSelf } from "./MapView";
+
 
 const TestPage = () => {
   return (
@@ -8,7 +9,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      <MapView adminMode={true} />
+      <MapViewSelf  adminMode={true} />
     </div>
   );
 };

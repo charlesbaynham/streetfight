@@ -41,11 +41,32 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-export default function MapView({ adminMode = false }) {
+
+function MapView({ grayedOut = false,  ownPosition=null }) {
+  const x =
+    (ownPosition?.coords.latitude - map_top_left.lat) /
+    (map_bottom_right.lat - map_top_left.lat);
+  const y =
+    (ownPosition?.coords.longitude - map_top_left.long) /
+    (map_bottom_right.long - map_top_left.long);
+
+  return (
+    <>
+      <div className={styles.mapContainer}>
+        {grayedOut ? <div className={styles.mapOverlay}></div> : null}
+        <img className={styles.mapImage} src={mapSrc} alt="Map" />
+        {!grayedOut && ownPosition !== null? <Dot x={x} y={y} /> : null}
+      </div>
+    </>
+  );
+}
+
+
+export function MapViewSelf() {
   const [position, setPosition] = useState(null);
 
   useEffect(() => {
-    if (!adminMode && navigator.geolocation) {
+    if (navigator.geolocation) {
       // Register a callback for changes to the user's position.
       // This a) updates the location on the map and b) sends the location to the server.
       const watchId = navigator.geolocation.watchPosition(
@@ -68,25 +89,7 @@ export default function MapView({ adminMode = false }) {
     } else {
       console.error("Geolocation is not supported by this browser.");
     }
-  }, [adminMode]);
+  }, []);
 
-  const unknownLocation = !adminMode && position === null;
-
-  const x =
-    (position?.coords.latitude - map_top_left.lat) /
-    (map_bottom_right.lat - map_top_left.lat);
-  const y =
-    (position?.coords.longitude - map_top_left.long) /
-    (map_bottom_right.long - map_top_left.long);
-
-  return (
-    <>
-      adminMode = {JSON.stringify(adminMode)}
-      <div className={styles.mapContainer}>
-        {unknownLocation ? <div className={styles.mapOverlay}></div> : null}
-        <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        {!adminMode && !unknownLocation ? <Dot x={x} y={y} /> : null}
-      </div>
-    </>
-  );
+  return <MapView ownPosition={position} />;
 }
