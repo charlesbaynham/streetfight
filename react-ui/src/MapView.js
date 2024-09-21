@@ -16,6 +16,14 @@ const map_top_right = {
   lat: 51.796,
 };
 
+const degreesLongitudePerKm = 1 / (111.32 * Math.cos((map_bottom_left.lat + map_top_right.lat) / 2 * (Math.PI / 180)));
+const degreesLatitudePerKm = 1 / 110.574;
+
+const mapWidthKm = (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
+const mapHeightKm = (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
+
+const mapAspectRatio = mapWidthKm / mapHeightKm;
+
 const MAP_POLL_TIME = 5 * 1000;
 
 function Dot({ x, y, color = null }) {
@@ -85,7 +93,14 @@ function MapView({
         className={`${styles.mapContainer} ${expanded ? styles.mapContainerExpanded : styles.mapContainerCorner}`}
       >
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-        <img className={styles.mapImage} src={mapSrc} alt="Map" />
+        <img
+          className={styles.mapImage}
+          src={mapSrc}
+          alt="Map"
+          style={{
+            aspectRatio: mapAspectRatio
+          }}
+          />
         {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
         {otherDots}
       </div>
