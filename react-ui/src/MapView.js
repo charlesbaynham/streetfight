@@ -93,3 +93,9 @@ export function MapViewSelf() {
 
   return <MapView ownPosition={position} />;
 }
+
+
+
+export function MapViewAdmin() {
+  return <MapView />;
+}
