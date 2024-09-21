@@ -142,12 +142,15 @@ export function MapViewAdmin() {
       const team_ids = locations.map((user) => (user.team_id));
       const unique_team_ids = [...new Set(team_ids)];
 
+      // Assign a color to each unique team
       const colors = ["brown", "black", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"];
       const teamColors = {};
       unique_team_ids.forEach((team_id, index) => {
         teamColors[team_id] = colors[index % colors.length];
       });
 
+      // Color each location point according to the team
+      // FIXME: Should be gray if dead
       setLocationWithColors (locations.map((user) => (
         { position: { coords: { latitude: user.latitude, longitude: user.longitude } }, color: teamColors[user.team_id] }
       )));
