@@ -29,7 +29,6 @@ function Dot({ x, y }) {
 }
 
 export default function MapView() {
-
   const [position, setPosition] = useState(null);
 
   useEffect(() => {
@@ -51,7 +50,6 @@ export default function MapView() {
     }
   }, []);
 
-
   const hideMap = position === null;
 
   // FIXME: Better view for a map with no location
@@ -63,12 +61,11 @@ export default function MapView() {
     (position?.coords.longitude - map_top_left.long) /
     (map_bottom_right.long - map_top_left.long);
 
-
   return (
     <>
       <div className={styles.mapContainer}>
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        {hideMap ? null : <Dot x={x} y={y}  />}
+        {hideMap ? null : <Dot x={x} y={y} />}
       </div>
     </>
   );

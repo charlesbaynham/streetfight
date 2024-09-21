@@ -1,9 +1,7 @@
-import React  from "react";
+import React from "react";
 import MapView from "./MapView";
 
 const TestPage = () => {
-
-
   return (
     <div>
       <h1>This is a test</h1>
@@ -11,7 +9,6 @@ const TestPage = () => {
       <h3>Your location:</h3>
 
       <MapView />
-
     </div>
   );
 };
