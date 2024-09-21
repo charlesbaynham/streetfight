@@ -13,7 +13,7 @@ const map_bottom_left = {
 
 const map_top_right = {
   long: -2.73,
-  lat: 51.796,
+  lat: 51.896,
 };
 
 const degreesLongitudePerKm = 1 / (111.32 * Math.cos((map_bottom_left.lat + map_top_right.lat) / 2 * (Math.PI / 180)));
