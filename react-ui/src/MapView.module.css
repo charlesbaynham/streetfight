@@ -19,5 +19,5 @@
 
 .mapDot {
     width: 2em;
-
+    aspect-ratio: 1;
 }
