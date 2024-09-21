@@ -7,6 +7,7 @@ Bugs:
 Location:
   Not a priority, but I'm apparently doing it anyway. Classic.
   - [ ] Plot location on map in corner
+  - [ ] Make ticker messages disappear eventually. Clientside.
   - [ ] Click map - show larger version
   - [ ] Orientation?
   - [ ] Keep an up-to-date record of everyone's location

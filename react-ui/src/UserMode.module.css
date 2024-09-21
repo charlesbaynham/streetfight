@@ -1,9 +1,16 @@
 .monitorsContainer {
+  /* flexbox with horizontal boxes, spread out maximally */
   display: flex;
   width: 100%;
   justify-content: space-between;
 }
 
+.mapAndTickerContainer {
+  /* flexbox for RHS, vertical stack with RHS alignment */
+  display: flex;
+  flex-direction: column;
+  align-items: end;
+}
 
 .viewContainer {
   background-color: white;

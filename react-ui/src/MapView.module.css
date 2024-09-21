@@ -1,9 +1,10 @@
 
 .mapContainer {
     position: relative;
-    width: 5cm;
-    height: 5cm;
+    width: 10em;
+    height: 10em;
     overflow: hidden;
+    border: blue 1px solid;  /* FIXME remove border */
 }
 
 .mapImage {
