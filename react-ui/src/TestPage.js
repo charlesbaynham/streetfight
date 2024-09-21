@@ -1,7 +1,6 @@
 import React from "react";
 import { MapViewAdmin } from "./MapView";
 
-
 const TestPage = () => {
   return (
     <div>

@@ -41,8 +41,7 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-
-function MapView({ grayedOut = false,  ownPosition=null }) {
+function MapView({ grayedOut = false, ownPosition = null }) {
   const x =
     (ownPosition?.coords.latitude - map_top_left.lat) /
     (map_bottom_right.lat - map_top_left.lat);
@@ -55,12 +54,11 @@ function MapView({ grayedOut = false,  ownPosition=null }) {
       <div className={styles.mapContainer}>
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        {!grayedOut && ownPosition !== null? <Dot x={x} y={y} /> : null}
+        {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
       </div>
     </>
   );
 }
-
 
 export function MapViewSelf() {
   const [position, setPosition] = useState(null);
@@ -93,8 +91,6 @@ export function MapViewSelf() {
 
   return <MapView ownPosition={position} />;
 }
-
-
 
 export function MapViewAdmin() {
   useEffect(() => {
