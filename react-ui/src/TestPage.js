@@ -4,26 +4,7 @@ import MapView from "./MapView";
 const TestPage = () => {
   const [loc, setLoc] = useState(null);
 
-  const [orientation, setOrientation] = useState(null);
 
-  useEffect(() => {
-    const handleOrientation = (event) => {
-      setOrientation(JSON.stringify(event));
-
-      // if (event.absolute) {
-      //   setOrientation(event.alpha);
-      // } else {
-      //   setOrientation("Orientation not absolute");
-      // }
-      console.log(event);
-    };
-
-    window.addEventListener("deviceorientation", handleOrientation);
-
-    return () => {
-      window.removeEventListener("deviceorientation", handleOrientation);
-    };
-  }, []);
 
   useEffect(() => {
     if (navigator.geolocation) {
@@ -53,9 +34,6 @@ const TestPage = () => {
 
       {loc ? <MapView position={loc} /> : null}
 
-      <h3>Your orientation:</h3>
-
-      {orientation ? <p>Orientation: {orientation}</p> : <p>Unknown</p>}
     </div>
   );
 };
