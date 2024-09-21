@@ -12,33 +12,30 @@ const map_bottom_left = {
 };
 
 const map_top_right = {
-  long: -2.730,
+  long: -2.73,
   lat: 51.796,
 };
 
-
 function Dot({ x, y, color = null }) {
-  return (
-    color === null ? (
-      <img
-        className={styles.mapDotSelf}
-        src={dotSrc}
-        alt=""
-        style={{
-          left: 100 * x + "%",
-          bottom: 100 * y + "%",
-        }}
-      />
-    ) : (
-      <div
-        className={styles.mapDotGeneric}
-        style={{
-          left: 100 * x + "%",
-          bottom: 100 * y + "%",
-          backgroundColor: color,
-        }}
-      />
-    )
+  return color === null ? (
+    <img
+      className={styles.mapDotSelf}
+      src={dotSrc}
+      alt=""
+      style={{
+        left: 100 * x + "%",
+        bottom: 100 * y + "%",
+      }}
+    />
+  ) : (
+    <div
+      className={styles.mapDotGeneric}
+      style={{
+        left: 100 * x + "%",
+        bottom: 100 * y + "%",
+        backgroundColor: color,
+      }}
+    />
   );
 }
 
@@ -54,36 +51,73 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapView({ grayedOut = false, ownPosition = null, other_positions_and_colors = [
-  { position: { coords: { latitude: 51.787, longitude: -2.731 } }, color: "brown" },
-  { position: { coords: { latitude: 51.788, longitude: -2.733 } }, color: "black" },
-  { position: { coords: { latitude: 51.789, longitude: -2.735 } }, color: "red" },
-  { position: { coords: { latitude: 51.790, longitude: -2.736 } }, color: "blue" },
-  { position: { coords: { latitude: 51.791, longitude: -2.737 } }, color: "green" },
-  { position: { coords: { latitude: 51.792, longitude: -2.738 } }, color: "yellow" },
-  { position: { coords: { latitude: 51.793, longitude: -2.739 } }, color: "purple" },
-  { position: { coords: { latitude: 51.794, longitude: -2.740 } }, color: "orange" },
-  { position: { coords: { latitude: 51.793, longitude: -2.741 } }, color: "pink" },
-  { position: { coords: { latitude: 51.792, longitude: -2.742 } }, color: "cyan" },
+function MapView({
+  grayedOut = false,
+  ownPosition = null,
+  other_positions_and_colors = [
+    {
+      position: { coords: { latitude: 51.787, longitude: -2.731 } },
+      color: "brown",
+    },
+    {
+      position: { coords: { latitude: 51.788, longitude: -2.733 } },
+      color: "black",
+    },
+    {
+      position: { coords: { latitude: 51.789, longitude: -2.735 } },
+      color: "red",
+    },
+    {
+      position: { coords: { latitude: 51.79, longitude: -2.736 } },
+      color: "blue",
+    },
+    {
+      position: { coords: { latitude: 51.791, longitude: -2.737 } },
+      color: "green",
+    },
+    {
+      position: { coords: { latitude: 51.792, longitude: -2.738 } },
+      color: "yellow",
+    },
+    {
+      position: { coords: { latitude: 51.793, longitude: -2.739 } },
+      color: "purple",
+    },
+    {
+      position: { coords: { latitude: 51.794, longitude: -2.74 } },
+      color: "orange",
+    },
+    {
+      position: { coords: { latitude: 51.793, longitude: -2.741 } },
+      color: "pink",
+    },
+    {
+      position: { coords: { latitude: 51.792, longitude: -2.742 } },
+      color: "cyan",
+    },
 
-  // FIXME
-] }) {
+    // FIXME
+  ],
+}) {
   const posToXY = useCallback((pos) => {
     const x =
-    (pos?.coords.longitude - map_bottom_left.long) /
-    (map_top_right.long - map_bottom_left.long);
+      (pos?.coords.longitude - map_bottom_left.long) /
+      (map_top_right.long - map_bottom_left.long);
 
-    const y =(pos?.coords.latitude - map_bottom_left.lat) /
-    (map_top_right.lat - map_bottom_left.lat);
+    const y =
+      (pos?.coords.latitude - map_bottom_left.lat) /
+      (map_top_right.lat - map_bottom_left.lat);
     return { x, y };
   }, []);
 
   const { x, y } = posToXY(ownPosition);
 
-  const otherDots = other_positions_and_colors.map(({ position, color }, index) => {
-    const { x, y } = posToXY(position);
-    return <Dot key={index} x={x} y={y} color={color} />;
-  });
+  const otherDots = other_positions_and_colors.map(
+    ({ position, color }, index) => {
+      const { x, y } = posToXY(position);
+      return <Dot key={index} x={x} y={y} color={color} />;
+    },
+  );
 
   return (
     <>
@@ -129,7 +163,6 @@ export function MapViewSelf() {
   return <MapView ownPosition={position} />;
 }
 
-
 export function MapViewAdmin() {
   const [locationWithColors, setLocationWithColors] = useState([]);
 
@@ -138,12 +171,22 @@ export function MapViewAdmin() {
       if (!response.ok) return;
       const locations = await response.json();
 
-
-      const team_ids = locations.map((user) => (user.team_id));
+      const team_ids = locations.map((user) => user.team_id);
       const unique_team_ids = [...new Set(team_ids)];
 
       // Assign a color to each unique team
-      const colors = ["brown", "black", "red", "blue", "green", "yellow", "purple", "orange", "pink", "cyan"];
+      const colors = [
+        "brown",
+        "black",
+        "red",
+        "blue",
+        "green",
+        "yellow",
+        "purple",
+        "orange",
+        "pink",
+        "cyan",
+      ];
       const teamColors = {};
       unique_team_ids.forEach((team_id, index) => {
         teamColors[team_id] = colors[index % colors.length];
@@ -151,15 +194,20 @@ export function MapViewAdmin() {
 
       // Color each location point according to the team
       // FIXME: Should be gray if dead
-      setLocationWithColors (locations.map((user) => (
-        { position: { coords: { latitude: user.latitude, longitude: user.longitude } }, color: teamColors[user.team_id] }
-      )));
+      setLocationWithColors(
+        locations.map((user) => ({
+          position: {
+            coords: { latitude: user.latitude, longitude: user.longitude },
+          },
+          color: teamColors[user.team_id],
+        })),
+      );
     });
   }, []);
 
   useEffect(() => {
     updateLocations();
-  }, [updateLocations]);  // FIXME: Needs to repeat
+  }, [updateLocations]); // FIXME: Needs to repeat
 
-  return <MapView other_positions_and_colors={locationWithColors}/>;
+  return <MapView other_positions_and_colors={locationWithColors} />;
 }
