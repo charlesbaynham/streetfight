@@ -8,11 +8,13 @@ const TestPage = () => {
 
   useEffect(() => {
     const handleOrientation = (event) => {
-      if (event.absolute) {
-        setOrientation(event.alpha);
-      } else {
-        setOrientation("Orientation not absolute");
-      }
+      setOrientation(JSON.stringify(event));
+
+      // if (event.absolute) {
+      //   setOrientation(event.alpha);
+      // } else {
+      //   setOrientation("Orientation not absolute");
+      // }
       console.log(event);
     };
 
