@@ -101,12 +101,23 @@ function MapView({
 
 
   // Measure the width and height of the map container so that we can scale the
-  // map image
+  // map image. Tolerate resizes / screen rotations.
   useEffect(() => {
-    if (mapContainerRef.current) {
-      setMapWidth(mapContainerRef.current.clientWidth);
-      setMapHeight(mapContainerRef.current.clientHeight);
-    }
+    const handleResize = () => {
+      if (mapContainerRef.current) {
+        setMapWidth(mapContainerRef.current.clientWidth);
+        setMapHeight(mapContainerRef.current.clientHeight);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+
+    // Initial measurement
+    handleResize();
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+    };
   }, [mapContainerRef]);
 
 
