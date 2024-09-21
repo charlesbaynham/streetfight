@@ -41,7 +41,19 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapView({ grayedOut = false, ownPosition = null, other_positions=null }) {
+function MapView({ grayedOut = false, ownPosition = null, other_positions_and_colours=[
+  { position: { coords: { latitude: 51.792, longitude: -2.735 } }, color: "red" },
+  { position: { coords: { latitude: 51.791, longitude: -2.736 } }, color: "blue" },
+  { position: { coords: { latitude: 51.792, longitude: -2.737 } }, color: "green" },
+  { position: { coords: { latitude: 51.791, longitude: -2.738 } }, color: "yellow" },
+  { position: { coords: { latitude: 51.792, longitude: -2.739 } }, color: "purple" },
+  { position: { coords: { latitude: 51.791, longitude: -2.740 } }, color: "orange" },
+  { position: { coords: { latitude: 51.792, longitude: -2.741 } }, color: "pink" },
+  { position: { coords: { latitude: 51.791, longitude: -2.742 } }, color: "cyan" },
+  { position: { coords: { latitude: 51.792, longitude: -2.743 } }, color: "brown" },
+  { position: { coords: { latitude: 51.791, longitude: -2.744 } }, color: "black" },
+  // FIXME
+] }) {
   const posToXY = useCallback((pos) => {
     const x =
       (pos?.coords.latitude - map_top_left.lat) /
@@ -54,12 +66,18 @@ function MapView({ grayedOut = false, ownPosition = null, other_positions=null }
 
   const { x, y } = posToXY(ownPosition);
 
+  const otherDots = other_positions_and_colours.map(({ position, color }, index) => {
+    const { x, y } = posToXY(position);
+    return <Dot key={index} x={x} y={y} color={color} />;
+  });
+
   return (
     <>
       <div className={styles.mapContainer}>
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
         {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
+        {otherDots}
       </div>
     </>
   );
