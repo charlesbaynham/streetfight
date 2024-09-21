@@ -320,6 +320,23 @@ class AdminInterface:
         return encoded_item
 
     @db_scoped
+    def get_locations(self, game_id: UUID):
+        teams = self._session.query(Team).filter_by(game_id=game_id).all()
+        locations = []
+        for team in teams:
+            for user in team.users:
+                locations.append(
+                    {
+                        "user_id": user.id,
+                        "team_id": team.id,
+                        "latitude": user.latitude,
+                        "longitude": user.longitude,
+                        "state": user.state,
+                    }
+                )
+        return locations
+
+    @db_scoped
     def get_scoreboard(self, game_id: UUID):
         teams_and_ids = (
             self._session.query(Team.id, Team.name).filter_by(game_id=game_id).all()

@@ -97,5 +97,11 @@ export function MapViewSelf() {
 
 
 export function MapViewAdmin() {
+  useEffect(() => {
+    sendAPIRequest("admin_get_locations").then((data) => {
+      console.log(data);
+    });
+  });
+
   return <MapView />;
 }
