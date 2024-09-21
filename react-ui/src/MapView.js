@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/art/medkit.png";
@@ -13,19 +13,21 @@ const map_bottom_left = {
 
 const map_top_right = {
   long: -2.73,
-  lat: 51.896,
+  lat: 51.796,
 };
 
 const degreesLongitudePerKm = 1 / (111.32 * Math.cos((map_bottom_left.lat + map_top_right.lat) / 2 * (Math.PI / 180)));
 const degreesLatitudePerKm = 1 / 110.574;
 
-const mapWidthKm = (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
-const mapHeightKm = (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
-
-const mapAspectRatio = mapWidthKm / mapHeightKm;
+const MAP_WIDTH_KM = (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
+const MAP_HEIGHT_KM = (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
 
 const MAP_POLL_TIME = 5 * 1000;
+const RATE_LIMIT_INTERVAL = 1 * 1000;
 
+const CORNER_BOX_WIDTH_KM = 0.5;
+
+// FIXME: needs to be centered in css
 function Dot({ x, y, color = null }) {
   return color === null ? (
     <img
@@ -50,7 +52,6 @@ function Dot({ x, y, color = null }) {
 }
 
 let lastUpdateTime = 0;
-const RATE_LIMIT_INTERVAL = 1 * 1000; // 1 second
 
 function sendLocationUpdate(lat, long) {
   const currentTime = Date.now();
@@ -94,20 +95,39 @@ function MapView({
     },
   );
 
+  const mapContainerRef = useRef(null);
+  const [mapWidth, setMapWidth] = useState(0);
+  const [mapHeight, setMapHeight] = useState(0);
+
+
+  // Measure the width and height of the map container so that we can scale the
+  // map image
+  useEffect(() => {
+    if (mapContainerRef.current) {
+      setMapWidth(mapContainerRef.current.clientWidth);
+      setMapHeight(mapContainerRef.current.clientHeight);
+    }
+  }, [mapContainerRef]);
+
+
   return (
     <>
       <div
         className={`${styles.mapContainer} ${expanded ? styles.mapContainerExpanded : styles.mapContainerCorner}`}
+        ref={mapContainerRef}
       >
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-        <img
+        <div
           className={styles.mapImage}
           src={mapSrc}
           alt="Map"
           style={{
-            aspectRatio: mapAspectRatio
+            backgroundImage: `url(${mapSrc})`,
+            backgroundPosition: "100% 100%",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: MAP_WIDTH_KM / CORNER_BOX_WIDTH_KM * 100 + "% " + MAP_HEIGHT_KM / CORNER_BOX_WIDTH_KM * 100 + "%",
           }}
-          />
+        />
         {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
         {otherDots}
       </div>
