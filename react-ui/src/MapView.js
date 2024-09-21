@@ -44,33 +44,34 @@ function sendLocationUpdate(lat, long) {
 export default function MapView({adminMode = false}) {
   const [position, setPosition] = useState(null);
 
-  useEffect(() => {
-    if (navigator.geolocation) {
-      // Register a callback for changes to the user's position.
-      // This a) updates the location on the map and b) sends the location to the server.
-      const watchId = navigator.geolocation.watchPosition(
-        (position) => {
-          setPosition(position);
-          sendLocationUpdate(
-            position.coords.latitude,
-            position.coords.longitude,
-          );
-        },
-        (error) => {
-          console.error("Error watching position:", error);
-        },
-      );
 
-      return () => {
-        // Clean up the watch when this component is unmounted.
-        navigator.geolocation.clearWatch(watchId);
-      };
-    } else {
-      console.error("Geolocation is not supported by this browser.");
-    }
-  }, []);
+    useEffect(() => {
+      if (!adminMode && navigator.geolocation) {
+        // Register a callback for changes to the user's position.
+        // This a) updates the location on the map and b) sends the location to the server.
+        const watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            setPosition(position);
+            sendLocationUpdate(
+              position.coords.latitude,
+              position.coords.longitude,
+            );
+          },
+          (error) => {
+            console.error("Error watching position:", error);
+          },
+        );
 
-  const unknownLocation = position === null;
+        return () => {
+          // Clean up the watch when this component is unmounted.
+          navigator.geolocation.clearWatch(watchId);
+        };
+      } else {
+        console.error("Geolocation is not supported by this browser.");
+      }
+    }, [adminMode]);
+
+  const unknownLocation = !adminMode && position === null;
 
   const x =
     (position?.coords.latitude - map_top_left.lat) /
@@ -85,7 +86,7 @@ export default function MapView({adminMode = false}) {
       <div className={styles.mapContainer}>
         {unknownLocation ? <div className={styles.mapOverlay}></div> : null }
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        {unknownLocation ? null : <Dot x={x} y={y} />}
+        {!adminMode && !unknownLocation ? <Dot x={x} y={y} /> : null}
       </div>
     </>
   );
