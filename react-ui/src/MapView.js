@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 
 import mapSrc from "./images/art/medkit.png";
-import dotSrc from "./images/art/bullet.png";
+import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
 
