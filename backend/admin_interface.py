@@ -329,6 +329,8 @@ class AdminInterface:
                     {
                         "user_id": user.id,
                         "team_id": team.id,
+                        "user": user.name,
+                        "team": team.name,
                         "latitude": user.latitude,
                         "longitude": user.longitude,
                         "state": user.state,

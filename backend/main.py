@@ -283,9 +283,9 @@ async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
 
-@router.post("/admin_get_locations")
+@router.get("/admin_get_locations")
 async def admin_get_locations(game_id):
-    AdminInterface().get_locations(game_id=game_id)
+    return AdminInterface().get_locations(game_id=game_id)
 
 
 def _add_params_to_url(url: str, params: Dict):
