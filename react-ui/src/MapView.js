@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
-
 import mapSrc from "./images/art/medkit.png";
 import dotSrc from "./images/art/helmet.png";
 
@@ -31,10 +30,15 @@ function Dot({ x, y }) {
 }
 
 function sendLocationUpdate(lat, long) {
-  sendAPIRequest("set_location", {
-    latitude: lat,
-    longitude: long
-  }, "POST", null);
+  sendAPIRequest(
+    "set_location",
+    {
+      latitude: lat,
+      longitude: long,
+    },
+    "POST",
+    null,
+  );
 }
 
 export default function MapView() {
@@ -47,7 +51,10 @@ export default function MapView() {
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
           setPosition(position);
-          sendLocationUpdate(position.coords.latitude, position.coords.longitude);
+          sendLocationUpdate(
+            position.coords.latitude,
+            position.coords.longitude,
+          );
         },
         (error) => {
           console.error("Error watching position:", error);
