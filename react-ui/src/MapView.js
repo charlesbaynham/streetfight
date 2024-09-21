@@ -70,9 +70,7 @@ export default function MapView() {
     }
   }, []);
 
-  const hideMap = position === null;
-
-  // FIXME: Better view for a map with no location
+  const unknownLocation = position === null;
 
   const x =
     (position?.coords.latitude - map_top_left.lat) /
@@ -84,8 +82,9 @@ export default function MapView() {
   return (
     <>
       <div className={styles.mapContainer}>
+        {unknownLocation ? <div className={styles.mapOverlay}></div> : null }
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        {hideMap ? null : <Dot x={x} y={y} />}
+        {unknownLocation ? null : <Dot x={x} y={y} />}
       </div>
     </>
   );
