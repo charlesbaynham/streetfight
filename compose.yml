@@ -19,6 +19,7 @@ services:
     environment:
     - DATABASE_URL=${DATABASE_URL:-sqlite:////data/db/data.db}
     - MAKE_DEBUG_ENTRIES
+    - RESET_DATABASE
     - SECRET_KEY
     - WEBSITE_URL
     - LOG_LEVEL
