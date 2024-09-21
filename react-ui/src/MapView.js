@@ -6,26 +6,39 @@ import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
 
-const map_top_left = {
-  lat: 51.79323378424228,
-  long: -2.7384925628606496,
-};
-const map_bottom_right = {
-  lat: 51.79136033583688,
-  long: -2.733293938485373,
+const map_bottom_left = {
+  long: -2.742,
+  lat: 51.787,
 };
 
-function Dot({ x, y }) {
+const map_top_right = {
+  long: -2.730,
+  lat: 51.796,
+};
+
+
+function Dot({ x, y, color = null }) {
   return (
-    <img
-      className={styles.mapDot}
-      src={dotSrc}
-      alt=""
-      style={{
-        left: 100 * x + "%",
-        bottom: 100 * y + "%",
-      }}
-    />
+    color === null ? (
+      <img
+        className={styles.mapDotSelf}
+        src={dotSrc}
+        alt=""
+        style={{
+          left: 100 * x + "%",
+          bottom: 100 * y + "%",
+        }}
+      />
+    ) : (
+      <div
+        className={styles.mapDotGeneric}
+        style={{
+          left: 100 * x + "%",
+          bottom: 100 * y + "%",
+          backgroundColor: color,
+        }}
+      />
+    )
   );
 }
 
@@ -41,26 +54,27 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapView({ grayedOut = false, ownPosition = null, other_positions_and_colors=[
-  // { position: { coords: { latitude: 51.792, longitude: -2.735 } }, color: "red" },
-  // { position: { coords: { latitude: 51.791, longitude: -2.736 } }, color: "blue" },
-  // { position: { coords: { latitude: 51.792, longitude: -2.737 } }, color: "green" },
-  // { position: { coords: { latitude: 51.791, longitude: -2.738 } }, color: "yellow" },
-  // { position: { coords: { latitude: 51.792, longitude: -2.739 } }, color: "purple" },
-  // { position: { coords: { latitude: 51.791, longitude: -2.740 } }, color: "orange" },
-  // { position: { coords: { latitude: 51.792, longitude: -2.741 } }, color: "pink" },
-  // { position: { coords: { latitude: 51.791, longitude: -2.742 } }, color: "cyan" },
-  // { position: { coords: { latitude: 51.792, longitude: -2.743 } }, color: "brown" },
-  // { position: { coords: { latitude: 51.791, longitude: -2.744 } }, color: "black" },
+function MapView({ grayedOut = false, ownPosition = null, other_positions_and_colors = [
+  { position: { coords: { latitude: 51.787, longitude: -2.731 } }, color: "brown" },
+  { position: { coords: { latitude: 51.788, longitude: -2.733 } }, color: "black" },
+  { position: { coords: { latitude: 51.789, longitude: -2.735 } }, color: "red" },
+  { position: { coords: { latitude: 51.790, longitude: -2.736 } }, color: "blue" },
+  { position: { coords: { latitude: 51.791, longitude: -2.737 } }, color: "green" },
+  { position: { coords: { latitude: 51.792, longitude: -2.738 } }, color: "yellow" },
+  { position: { coords: { latitude: 51.793, longitude: -2.739 } }, color: "purple" },
+  { position: { coords: { latitude: 51.794, longitude: -2.740 } }, color: "orange" },
+  { position: { coords: { latitude: 51.793, longitude: -2.741 } }, color: "pink" },
+  { position: { coords: { latitude: 51.792, longitude: -2.742 } }, color: "cyan" },
+
   // FIXME
 ] }) {
   const posToXY = useCallback((pos) => {
     const x =
-      (pos?.coords.latitude - map_top_left.lat) /
-      (map_bottom_right.lat - map_top_left.lat);
-    const y =
-      (pos?.coords.longitude - map_top_left.long) /
-      (map_bottom_right.long - map_top_left.long);
+    (pos?.coords.longitude - map_bottom_left.long) /
+    (map_top_right.long - map_bottom_left.long);
+
+    const y =(pos?.coords.latitude - map_bottom_left.lat) /
+    (map_top_right.lat - map_bottom_left.lat);
     return { x, y };
   }, []);
 
