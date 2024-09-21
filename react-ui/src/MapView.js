@@ -16,6 +16,8 @@ const map_top_right = {
   lat: 51.796,
 };
 
+const MAP_POLL_TIME = 5 * 1000;
+
 function Dot({ x, y, color = null }) {
   return color === null ? (
     <img
@@ -164,8 +166,10 @@ export function MapViewAdmin() {
   }, []);
 
   useEffect(() => {
+    const handle = setInterval(updateLocations, MAP_POLL_TIME);
     updateLocations();
-  }, [updateLocations]); // FIXME: Needs to repeat
+    return () => {clearInterval(handle)}
+  }, [updateLocations]);
 
   return <MapView
   other_positions_and_colors={locationWithColors}
