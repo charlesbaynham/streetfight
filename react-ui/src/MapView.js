@@ -96,8 +96,8 @@ function MapView({
   );
 
   const mapContainerRef = useRef(null);
-  const [mapWidth, setMapWidth] = useState(0);
-  const [mapHeight, setMapHeight] = useState(0);
+  const [mapWidthPx, setMapWidth] = useState(0);
+  const [mapHeightPx, setMapHeight] = useState(0);
 
 
   // Measure the width and height of the map container so that we can scale the
@@ -120,6 +120,29 @@ function MapView({
     };
   }, [mapContainerRef]);
 
+  const coordsToPixels = useCallback(
+    (lat, long) => {
+      const x_km = (long - map_bottom_left.long) / degreesLongitudePerKm;
+      const y_km = (lat - map_bottom_left.lat) / degreesLatitudePerKm;
+
+      const x_px = x_km / MAP_WIDTH_KM * mapWidthPx;
+      const y_px = y_km / MAP_HEIGHT_KM * mapHeightPx;
+
+      // FIXME this is completely wrong
+
+      console.log(x_px, y_px);
+
+      return [x_px, y_px ];
+    },
+    [mapWidthPx, mapHeightPx],
+  );
+
+  const [map_x0, map_y0]= coordsToPixels(map_bottom_left.lat, map_bottom_left.long);
+
+  console.log(map_x0, map_y0);
+
+  console.log(`left ${map_x0}px bottom ${map_y0}px`);
+
 
   return (
     <>
@@ -134,9 +157,9 @@ function MapView({
           alt="Map"
           style={{
             backgroundImage: `url(${mapSrc})`,
-            backgroundPosition: "100% 100%",
+            backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
             backgroundRepeat: "no-repeat",
-            backgroundSize: MAP_WIDTH_KM / CORNER_BOX_WIDTH_KM * 100 + "% " + MAP_HEIGHT_KM / CORNER_BOX_WIDTH_KM * 100 + "%",
+            // backgroundSize: MAP_WIDTH_KM / CORNER_BOX_WIDTH_KM * 100 + "% " + MAP_HEIGHT_KM / CORNER_BOX_WIDTH_KM * 100 + "%",
           }}
         />
         {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
