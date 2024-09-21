@@ -52,35 +52,23 @@ export default function MapView() {
   }, []);
 
 
-  if (!position) return <p>Unknown</p>;
+  const hideMap = position === null;
+
+  // FIXME: Better view for a map with no location
 
   const x =
-    (position.coords.latitude - map_top_left.lat) /
+    (position?.coords.latitude - map_top_left.lat) /
     (map_bottom_right.lat - map_top_left.lat);
   const y =
-    (position.coords.longitude - map_top_left.long) /
+    (position?.coords.longitude - map_top_left.long) /
     (map_bottom_right.long - map_top_left.long);
 
-  const out = (
-    <>
-      <p>Timestamp: {position.timestamp},</p>
-      <p>Latitude: {position.coords.latitude},</p>
-      <p>Longitude: {position.coords.longitude},</p>
-      <p>Accuracy: {position.coords.accuracy}</p>
-      <p>x = {x}</p>
-      <p>y = {y}</p>
-    </>
-  );
 
   return (
     <>
-      <h3>Details:</h3>
-      {out}
-
-      <h3>Map:</h3>
       <div className={styles.mapContainer}>
         <img className={styles.mapImage} src={mapSrc} alt="Map" />
-        <Dot x={x} y={y} />
+        {hideMap ? null : <Dot x={x} y={y}  />}
       </div>
     </>
   );
