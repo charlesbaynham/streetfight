@@ -247,6 +247,43 @@ class TickerEntry(Base):
     message = Column(String, nullable=False)
 
 
+class UserPosition(Base):
+    """
+    Hold a record of the position of users
+
+    These will get overridden so we don't keep a history, but can know
+    everyone's location at any point. This table will get regularly updated by
+    the frontend so methods that write to it need to be quick and non-blocking.
+    """
+
+    __tablename__ = "user_positions"
+
+    id = Column(Integer, primary_key=True)
+    time_created = Column(DateTime, server_default=func.now())
+
+    user_id = Column(UUIDType, ForeignKey("users.id"), index=True, nullable=False)
+    user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=user_id,
+    )
+
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+
+
+class UserPotitionModel(pydantic.BaseModel):
+    id: int
+    time_created: datetime.datetime
+    user_id: UUID
+    latitude: float
+    longitude: float
+
+    class Config:
+        orm_mode = True
+        extra = "forbid"
+
+
 class Item(Base):
     """
     An item that has been collected by a user. Items are stored in the real world (probably as signed QR codes): these can be validated and, if validated, are stored in this table to prevent duplicate pickups.
