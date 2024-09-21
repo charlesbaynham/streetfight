@@ -320,7 +320,11 @@ class AdminInterface:
         return encoded_item
 
     @db_scoped
-    def get_locations(self, game_id: UUID):
+    def get_locations(self, game_id: UUID = None):
+        # If game_id is not provided, get the game_id of the first game
+        if not game_id:
+            game_id = self._session.query(Game.id).first()[0]
+
         teams = self._session.query(Team).filter_by(game_id=game_id).all()
         locations = []
         for team in teams:

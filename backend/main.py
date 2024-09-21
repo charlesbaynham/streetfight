@@ -284,7 +284,12 @@ async def admin_mark_shot_checked(shot_id):
 
 
 @router.get("/admin_get_locations")
-async def admin_get_locations(game_id):
+async def admin_get_locations(game_id=None):
+    """
+    Get the locations of all users in a game
+
+    :param game_id: The game to get locations for. If None, use the first game.
+    """
     return AdminInterface().get_locations(game_id=game_id)
 
 
