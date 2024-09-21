@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/art/medkit.png";
@@ -41,13 +41,18 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapView({ grayedOut = false, ownPosition = null }) {
-  const x =
-    (ownPosition?.coords.latitude - map_top_left.lat) /
-    (map_bottom_right.lat - map_top_left.lat);
-  const y =
-    (ownPosition?.coords.longitude - map_top_left.long) /
-    (map_bottom_right.long - map_top_left.long);
+function MapView({ grayedOut = false, ownPosition = null, other_positions=null }) {
+  const posToXY = useCallback((pos) => {
+    const x =
+      (pos?.coords.latitude - map_top_left.lat) /
+      (map_bottom_right.lat - map_top_left.lat);
+    const y =
+      (pos?.coords.longitude - map_top_left.long) /
+      (map_bottom_right.long - map_top_left.long);
+    return { x, y };
+  }, []);
+
+  const { x, y } = posToXY(ownPosition);
 
   return (
     <>
