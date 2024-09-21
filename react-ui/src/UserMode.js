@@ -15,7 +15,6 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
 
-
 const isGameRunning = (user) => Boolean(user && user.active);
 
 function GetView({ user }) {
