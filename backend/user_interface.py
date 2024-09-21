@@ -381,7 +381,7 @@ class UserInterface:
 
         self.award_ammo(bullet_refunds)
 
-    def record_location(self, latitute: float, longitude: float):
+    def set_location(self, latitute: float, longitude: float):
         """
         Record the location of the user
 

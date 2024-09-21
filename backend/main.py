@@ -215,6 +215,17 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
     return AdminInterface().get_scoreboard(game_id)
 
 
+@router.post("/set_location")
+async def set_location(
+    latitude: float,
+    longitude: float,
+    user_id=Depends(get_user_id),
+):
+    logger.info("Setting location for user %s to %f, %f", user_id, latitude, longitude)
+    with UserInterface(user_id) as ui:
+        ui.set_location(latitude, longitude)
+
+
 ######## ADMIN ###########
 @router.post("/admin_create_game")
 async def admin_create_game() -> UUID:
