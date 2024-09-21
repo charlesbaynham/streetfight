@@ -54,50 +54,7 @@ function sendLocationUpdate(lat, long) {
 function MapView({
   grayedOut = false,
   ownPosition = null,
-  other_positions_and_colors = [
-    {
-      position: { coords: { latitude: 51.787, longitude: -2.731 } },
-      color: "brown",
-    },
-    {
-      position: { coords: { latitude: 51.788, longitude: -2.733 } },
-      color: "black",
-    },
-    {
-      position: { coords: { latitude: 51.789, longitude: -2.735 } },
-      color: "red",
-    },
-    {
-      position: { coords: { latitude: 51.79, longitude: -2.736 } },
-      color: "blue",
-    },
-    {
-      position: { coords: { latitude: 51.791, longitude: -2.737 } },
-      color: "green",
-    },
-    {
-      position: { coords: { latitude: 51.792, longitude: -2.738 } },
-      color: "yellow",
-    },
-    {
-      position: { coords: { latitude: 51.793, longitude: -2.739 } },
-      color: "purple",
-    },
-    {
-      position: { coords: { latitude: 51.794, longitude: -2.74 } },
-      color: "orange",
-    },
-    {
-      position: { coords: { latitude: 51.793, longitude: -2.741 } },
-      color: "pink",
-    },
-    {
-      position: { coords: { latitude: 51.792, longitude: -2.742 } },
-      color: "cyan",
-    },
-
-    // FIXME
-  ],
+  other_positions_and_colors = [],
 }) {
   const posToXY = useCallback((pos) => {
     const x =
