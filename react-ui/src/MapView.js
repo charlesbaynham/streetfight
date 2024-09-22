@@ -101,15 +101,19 @@ function MapView({
     };
   }, [mapContainerRef]);
 
+  // Calculate map size based on box size
+  // FIXME: clips if map is wider than tall
+  const box_width_km = expanded ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
+  const box_height_km = (boxHeightPx / boxWidthPx) * box_width_km;
+  const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
+  const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
+
+
   const coordsToPixels = useCallback(
     (lat, long, map_centre_lat, map_centre_long) => {
       // Convert from lat / long to km from the bottom left corner
-      const box_height_km = (boxHeightPx / boxWidthPx) * CORNER_BOX_WIDTH_KM;
-      const x_km =
-        (long - map_centre_long) / degreesLongitudePerKm +
-        CORNER_BOX_WIDTH_KM / 2;
-      const y_km =
-        (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
+      const x_km = (long - map_centre_long) / degreesLongitudePerKm + box_width_km / 2;
+      const y_km = (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
       // Convert from km to pixels
       const x_px = (x_km / CORNER_BOX_WIDTH_KM) * boxWidthPx;
@@ -117,14 +121,12 @@ function MapView({
 
       return [x_px, y_px];
     },
-    [boxWidthPx, boxHeightPx],
+    [boxWidthPx, boxHeightPx, box_height_km, box_width_km],
   );
 
   const [mapData, setMapData] = useState({
     map_x0: 0,
     map_y0: 0,
-    map_size_x: 0,
-    map_size_y: 0,
     dot_x: 0,
     dot_y: 0,
     otherDots: [],
@@ -140,15 +142,6 @@ function MapView({
       box_centre_lat = (map_bottom_left.lat + map_top_right.lat) / 2;
       box_centre_long = (map_bottom_left.long + map_top_right.long) / 2;
     }
-
-
-    // Calculate map size based on box size
-    // FIXME: clips if map is wider than tall
-    const box_width_km = expanded ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
-    const box_height_km = (boxHeightPx / boxWidthPx) * box_width_km;
-    const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
-    const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
-
 
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
@@ -188,8 +181,6 @@ function MapView({
     setMapData({
       map_x0,
       map_y0,
-      map_size_x,
-      map_size_y,
       dot_x,
       dot_y,
       otherDots,
@@ -203,7 +194,7 @@ function MapView({
     setMapData,
   ]);
 
-  const { map_x0, map_y0, map_size_x, map_size_y, dot_x, dot_y, otherDots } =
+  const { map_x0, map_y0, dot_x, dot_y, otherDots } =
     mapData;
 
   return (
