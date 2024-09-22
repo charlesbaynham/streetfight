@@ -101,13 +101,13 @@ export default function NewItems() {
 
       {ITEM_PARAMS[selectedItemType].map((data_name) => {
         const key = selectedItemType + data_name;
+
         return (
-          <>
+          <div key={key}>
             <span>{data_name}:</span>
             <input
               type="number"
               value={key in selectedItemData ? selectedItemData[key] : ""}
-              key={key}
               onChange={(e) => {
                 // Clone the object to trigger a state update
                 const new_data = { ...selectedItemData };
@@ -115,7 +115,7 @@ export default function NewItems() {
                 setSelectedItemData(new_data);
               }}
             />
-          </>
+          </div>
         );
       })}
 
