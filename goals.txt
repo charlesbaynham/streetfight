@@ -6,12 +6,12 @@ Bugs:
 
 Location:
   Not a priority, but I'm apparently doing it anyway. Classic.
-  - [ ] Plot location on map in corner
+  - [x] Plot location on map in corner
   - [ ] Make ticker messages disappear eventually. Clientside.
   - [ ] Click map - show larger version
   - [ ] Orientation?
-  - [ ] Keep an up-to-date record of everyone's location
-  - [ ] Plot on the admin interface
+  - [x] Keep an up-to-date record of everyone's location
+  - [x] Plot on the admin interface
   - [ ] When a shot happens, record where everyone was so the interface can suggest who was closest
   - [ ] Implement the circle!!
 - [ ] Location implementation old comments:
