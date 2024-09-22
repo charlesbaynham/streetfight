@@ -57,7 +57,7 @@ function sendLocationUpdate(lat, long) {
 function MapView({
   grayedOut = false,
   ownPosition = null,
-  other_positions_and_colors = [],
+  other_positions_and_details = [],
   expanded = false,
 }) {
   const mapContainerRef = useRef(null);
@@ -116,8 +116,8 @@ function MapView({
     otherDots: [],
   });
 
-  const otherPositionsAndColorsString = JSON.stringify(
-    other_positions_and_colors,
+  const otherPositionsAndDetailsString = JSON.stringify(
+    other_positions_and_details,
   );
 
   useEffect(() => {
@@ -150,8 +150,8 @@ function MapView({
       : [0, 0];
 
     // Calculate all the other dots
-    const otherDots = other_positions_and_colors.map(
-      ({ position, color }, index) => {
+    const otherDots = other_positions_and_details.map(
+      ({ position,  color , tooltip}, index) => {
         const [x, y] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
@@ -169,7 +169,14 @@ function MapView({
         console.log("position.timestamp", position.timestamp);
         console.log("dt", dt);
         console.log("alpha", alpha);
-        return <Dot key={index} x={x} y={y} color={color} alpha={alpha} />;
+        return <Dot
+        key={index}
+        x={x}
+        y={y}
+        color={color}
+        alpha={alpha}
+        tooltip={tooltip}
+        />;
       },
     );
 
@@ -186,7 +193,7 @@ function MapView({
     boxWidthPx,
     boxHeightPx,
     ownPosition,
-    otherPositionsAndColorsString,
+    otherPositionsAndDetailsString,
     coordsToPixels,
     setMapData,
   ]);
@@ -260,8 +267,7 @@ export function MapViewSelf() {
 }
 
 export function MapViewAdmin() {
-  // FIXME: Should make dots transparent if out of date
-  const [locationWithColors, setLocationWithColors] = useState([]);
+  const [locationWithDetails, setLocationWithDetails] = useState([]);
 
   const updateLocations = useCallback(() => {
     sendAPIRequest("admin_get_locations").then(async (response) => {
@@ -296,8 +302,9 @@ export function MapViewAdmin() {
           coords: { latitude: user.latitude, longitude: user.longitude },
         },
         color: user.state === "alive" ? teamColors[user.team_id] : "gray",
+        tooltip: `${user.user} - ${user.team}` ,
       }));
-      setLocationWithColors(locs);
+      setLocationWithDetails(locs);
     });
   }, []);
 
@@ -310,6 +317,6 @@ export function MapViewAdmin() {
   }, [updateLocations]);
 
   return (
-    <MapView other_positions_and_colors={locationWithColors} expanded={true} />
+    <MapView other_positions_and_details={locationWithDetails} expanded={true} />
   );
 }
