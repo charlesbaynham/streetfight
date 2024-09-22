@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
-import mapSrc from "./images/art/medkit.png";
+import mapSrc from "./images/mapsample.png";
 import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
