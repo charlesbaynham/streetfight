@@ -132,13 +132,26 @@ function MapView({
   });
 
   useEffect(() => {
+    const centred = true;
+
     // Calculate the centre of the box, using our own position if provided
-    const box_centre_lat = ownPosition
-      ? ownPosition.coords.latitude
-      : (map_bottom_left.lat + map_top_right.lat) / 2;
-    const box_centre_long = ownPosition
-      ? ownPosition.coords.longitude
-      : (map_bottom_left.long + map_top_right.long) / 2;
+    var box_centre_lat, box_centre_long;
+    if (!centred && ownPosition) {
+      box_centre_lat = ownPosition.coords.latitude;
+      box_centre_long = ownPosition.coords.longitude;
+    } else {
+      box_centre_lat = (map_bottom_left.lat + map_top_right.lat) / 2;
+      box_centre_long = (map_bottom_left.long + map_top_right.long) / 2;
+    }
+
+
+    // Calculate map size based on box size
+    // FIXME: clips if map is wider than tall
+    const box_width_km = centred ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
+    const box_height_km = (boxHeightPx / boxWidthPx) * box_width_km;
+    const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
+    const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
+
 
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
@@ -148,19 +161,14 @@ function MapView({
       box_centre_long,
     );
 
-    // Calculate map size based on box size
-    const box_height_km = (boxHeightPx / boxWidthPx) * CORNER_BOX_WIDTH_KM;
-    const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / CORNER_BOX_WIDTH_KM;
-    const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
-
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -214,7 +222,7 @@ function MapView({
           alt="Map"
           style={{
             backgroundImage: `url(${mapSrc})`,
-            backgroundPosition: `left ${-map_x0}px bottom ${-map_y0}px`,
+            backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
             backgroundRepeat: "no-repeat",
             backgroundSize: map_size_x + "px " + map_size_y + "px",
           }}
