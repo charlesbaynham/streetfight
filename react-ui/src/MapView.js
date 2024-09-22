@@ -6,8 +6,6 @@ import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
 
-
-
 // Top squiggly road tip
 const map_bottom_left = {
   long: -2.741752117059972,
@@ -20,11 +18,18 @@ const map_top_right = {
   lat: 51.794378768913234,
 };
 
-const degreesLongitudePerKm = 1 / (111.32 * Math.cos((map_bottom_left.lat + map_top_right.lat) / 2 * (Math.PI / 180)));
+const degreesLongitudePerKm =
+  1 /
+  (111.32 *
+    Math.cos(
+      ((map_bottom_left.lat + map_top_right.lat) / 2) * (Math.PI / 180),
+    ));
 const degreesLatitudePerKm = 1 / 110.574;
 
-const MAP_WIDTH_KM = (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
-const MAP_HEIGHT_KM = (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
+const MAP_WIDTH_KM =
+  (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
+const MAP_HEIGHT_KM =
+  (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
 
 const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
@@ -55,8 +60,6 @@ function Dot({ x, y, color = null }) {
   );
 }
 
-
-
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
     "set_location",
@@ -69,18 +72,15 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-
 function MapView({
   grayedOut = false,
   ownPosition = null,
   other_positions_and_colors = [],
   expanded = false,
 }) {
-
   const mapContainerRef = useRef(null);
   const [boxWidthPx, setMapWidth] = useState(0);
   const [boxHeightPx, setMapHeight] = useState(0);
-
 
   // Measure the width and height of the map container so that we can scale the
   // map image. Tolerate resizes / screen rotations.
@@ -105,13 +105,16 @@ function MapView({
   const coordsToPixels = useCallback(
     (lat, long, map_centre_lat, map_centre_long) => {
       // Convert from lat / long to km from the bottom left corner
-      const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
-      const x_km = (long - map_centre_long) / degreesLongitudePerKm + CORNER_BOX_WIDTH_KM / 2;
-      const y_km = (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
+      const box_height_km = (boxHeightPx / boxWidthPx) * CORNER_BOX_WIDTH_KM;
+      const x_km =
+        (long - map_centre_long) / degreesLongitudePerKm +
+        CORNER_BOX_WIDTH_KM / 2;
+      const y_km =
+        (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
       // Convert from km to pixels
-      const x_px = x_km / CORNER_BOX_WIDTH_KM * boxWidthPx;
-      const y_px = y_km / box_height_km * boxHeightPx;
+      const x_px = (x_km / CORNER_BOX_WIDTH_KM) * boxWidthPx;
+      const y_px = (y_km / box_height_km) * boxHeightPx;
 
       return [x_px, y_px];
     },
@@ -129,38 +132,51 @@ function MapView({
   });
 
   useEffect(() => {
-
     // Calculate the centre of the box, using our own position if provided
-    const box_centre_lat = ownPosition ? ownPosition.coords.latitude : (map_bottom_left.lat + map_top_right.lat) / 2;
-    const box_centre_long = ownPosition ? ownPosition.coords.longitude : (map_bottom_left.long + map_top_right.long) / 2;
+    const box_centre_lat = ownPosition
+      ? ownPosition.coords.latitude
+      : (map_bottom_left.lat + map_top_right.lat) / 2;
+    const box_centre_long = ownPosition
+      ? ownPosition.coords.longitude
+      : (map_bottom_left.long + map_top_right.long) / 2;
 
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
       map_bottom_left.lat,
       map_bottom_left.long,
       box_centre_lat,
-      box_centre_long
+      box_centre_long,
     );
 
     // Calculate map size based on box size
-    const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
-    const map_size_x = MAP_WIDTH_KM * boxWidthPx / CORNER_BOX_WIDTH_KM
-    const map_size_y = MAP_HEIGHT_KM * boxHeightPx / box_height_km;
+    const box_height_km = (boxHeightPx / boxWidthPx) * CORNER_BOX_WIDTH_KM;
+    const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / CORNER_BOX_WIDTH_KM;
+    const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
-      ? coordsToPixels(ownPosition.coords.latitude, ownPosition.coords.longitude, box_centre_lat, box_centre_long)
+      ? coordsToPixels(
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
     const otherDots = other_positions_and_colors.map(
       ({ position, color }, index) => {
-        const { x, y } = coordsToPixels(position.coords.latitude, position.coords.longitude, box_centre_lat, box_centre_long);
+        const { x, y } = coordsToPixels(
+          position.coords.latitude,
+          position.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        );
         return <Dot key={index} x={x} y={y} color={color} />;
       },
     );
 
-    console.log("map pos", map_x0, map_y0);  // FIXME: overzealous updating is happening here
+    console.log("map pos", map_x0, map_y0); // FIXME: overzealous updating is happening here
     console.log(`left ${map_x0}px bottom ${map_y0}px`);
     console.log("dot pos", dot_x, dot_y);
 
@@ -173,18 +189,17 @@ function MapView({
       dot_y,
       otherDots,
     });
-
   }, [
     boxWidthPx,
     boxHeightPx,
     ownPosition,
     // other_positions_and_colors, FIXME this is causing an infinite loop
     coordsToPixels,
-    setMapData
+    setMapData,
   ]);
 
-  const { map_x0, map_y0, map_size_x, map_size_y, dot_x, dot_y, otherDots } = mapData;
-
+  const { map_x0, map_y0, map_size_x, map_size_y, dot_x, dot_y, otherDots } =
+    mapData;
 
   return (
     <>
@@ -204,7 +219,9 @@ function MapView({
             backgroundSize: map_size_x + "px " + map_size_y + "px",
           }}
         />
-        {!grayedOut && ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
+        {!grayedOut && ownPosition !== null ? (
+          <Dot x={dot_x} y={dot_y} />
+        ) : null}
         {otherDots}
       </div>
     </>
