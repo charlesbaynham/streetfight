@@ -6,14 +6,18 @@ import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
 
+
+
+// Top squiggly road tip
 const map_bottom_left = {
-  long: -2.742,
-  lat: 51.787,
+  long: -2.741752117059972,
+  lat: 51.79127318746444,
 };
 
+// the star
 const map_top_right = {
-  long: -2.73,
-  lat: 51.796,
+  long: -2.734091728069985,
+  lat: 51.794378768913234,
 };
 
 const degreesLongitudePerKm = 1 / (111.32 * Math.cos((map_bottom_left.lat + map_top_right.lat) / 2 * (Math.PI / 180)));
@@ -139,8 +143,8 @@ function MapView({
     );
 
     // Calculate map size based on box size
-    const map_size_x = MAP_WIDTH_KM * boxWidthPx / CORNER_BOX_WIDTH_KM
     const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
+    const map_size_x = MAP_WIDTH_KM * boxWidthPx / CORNER_BOX_WIDTH_KM
     const map_size_y = MAP_HEIGHT_KM * boxHeightPx / box_height_km;
 
     // Calculate our own dot
@@ -226,6 +230,7 @@ export function MapViewSelf() {
               position.coords.longitude,
             );
             lastUpdateTime = currentTime;
+            console.log("Sending location update:", position.coords);
           }
         },
 
