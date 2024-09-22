@@ -68,14 +68,12 @@ function MapView({
 
   // Measure the width and height of the map container so that we can scale the
   // map image. Tolerate resizes / screen rotations.
-  const handleResize = useCallback(
-    () => {
-      if (mapContainerRef.current) {
-        setMapWidth(mapContainerRef.current.clientWidth);
-        setMapHeight(mapContainerRef.current.clientHeight);
-      }
-    },
-    [mapContainerRef]);
+  const handleResize = useCallback(() => {
+    if (mapContainerRef.current) {
+      setMapWidth(mapContainerRef.current.clientWidth);
+      setMapHeight(mapContainerRef.current.clientHeight);
+    }
+  }, [mapContainerRef]);
 
   useEffect(() => {
     window.addEventListener("resize", handleResize);
@@ -146,11 +144,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
@@ -206,23 +204,15 @@ function MapView({
 
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
-  const containerClasses = [
-    styles.mapContainer
-  ]
-  if (expanded)
-    containerClasses.push(styles.mapContainerExpanded)
-  else
-    containerClasses.push(styles.mapContainerCorner)
+  const containerClasses = [styles.mapContainer];
+  if (expanded) containerClasses.push(styles.mapContainerExpanded);
+  else containerClasses.push(styles.mapContainerCorner);
 
-  if (poppedOut)
-    containerClasses.push(styles.mapContainerPoppedOut)
+  if (poppedOut) containerClasses.push(styles.mapContainerPoppedOut);
 
   return (
     <>
-      <div
-        className={containerClasses.join(" ")}
-        ref={mapContainerRef}
-      >
+      <div className={containerClasses.join(" ")} ref={mapContainerRef}>
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
         <div
           className={styles.mapImage}
