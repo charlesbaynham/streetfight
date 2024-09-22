@@ -87,9 +87,9 @@ function MapView({
   }, [mapContainerRef, poppedOut, handleResize]);
 
   // Calculate map size based on box size
-  // FIXME: clips if map is wider than tall
-  const box_width_km = expanded ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
-  const box_height_km = (boxHeightPx / boxWidthPx) * box_width_km;
+  const box_aspect_ratio = boxWidthPx / boxHeightPx;
+  const box_width_km = expanded ? (Math.max(MAP_WIDTH_KM, MAP_HEIGHT_KM * box_aspect_ratio)) : CORNER_BOX_WIDTH_KM;
+  const box_height_km = box_width_km / box_aspect_ratio;
   const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
   const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
@@ -144,11 +144,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -235,10 +235,10 @@ function MapView({
             alwaysExpanded
               ? null
               : () => {
-                  console.log("Click!");
-                  setPoppedOut(!poppedOut);
-                  handleResize();
-                }
+                console.log("Click!");
+                setPoppedOut(!poppedOut);
+                handleResize();
+              }
           }
         ></div>
       </div>
