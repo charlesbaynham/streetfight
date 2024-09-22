@@ -36,7 +36,7 @@
     position: absolute;
     width: 2em;
     aspect-ratio: 1;
-    transform: translateX(-50%) translateY(50%);
+    /* Translation is handled in the JS since it's being animated */
 }
 
 .mapDotGeneric {
