@@ -93,6 +93,8 @@ class Shot(Base):
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
 
+    location_context = Column(String, nullable=True)
+
 
 class Team(Base):
     """
@@ -344,6 +346,8 @@ class ShotModel(pydantic.BaseModel):
     target_user_id: Optional[UUID]
 
     shot_damage: int
+
+    location_context: Optional[str]
 
     class Config:
         orm_mode = True

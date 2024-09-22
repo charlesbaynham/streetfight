@@ -34,8 +34,8 @@ db_scoped = AdminScopeWrapper.db_scoped
 
 
 class AdminInterface:
-    def __init__(self) -> None:
-        self._session: Session = None
+    def __init__(self, session=None) -> None:
+        self._session: Session = session
 
     @db_scoped
     def _get_user_orm(self, user_id) -> User:

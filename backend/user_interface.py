@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import time
 from threading import RLock
@@ -223,6 +224,8 @@ class UserInterface:
 
     @db_scoped
     def submit_shot(self, image_base64: str):
+        from .admin_interface import AdminInterface
+
         user: User = self.get_user()
         team = user.team
 
@@ -239,12 +242,17 @@ class UserInterface:
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
+        all_user_locations = AdminInterface(session=self._session).get_locations(
+            game_id=game.id
+        )
+
         shot_entry = Shot(
             user=user,
             team=team,
             game=game,
             image_base64=image_base64,
             shot_damage=user.shot_damage,
+            location_context=json.dumps(all_user_locations, default=str),
         )
         self._session.add(shot_entry)
 
