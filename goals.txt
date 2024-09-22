@@ -28,6 +28,9 @@ Priority:
   - [ ] You should find out if you hit someone (use private tickers)
 
 Polish:
+  - [ ] Put harry's noises in
+    * time splitters 2 ricochet
+    * random selection of western ricochet shots
   - [ ] Show scoreboard in dead mode
   - [ ] Improve admin kill interface
   - [ ] Clicking outside the socre card should exit it
