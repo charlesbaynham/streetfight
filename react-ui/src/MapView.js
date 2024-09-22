@@ -165,7 +165,7 @@ function MapView({
     // Calculate all the other dots
     const otherDots = other_positions_and_colors.map(
       ({ position, color }, index) => {
-        const { x, y } = coordsToPixels(
+        const [ x, y ] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
           box_centre_lat,
@@ -191,7 +191,7 @@ function MapView({
     boxWidthPx,
     boxHeightPx,
     ownPosition,
-    // other_positions_and_colors, FIXME this is causing an infinite loop
+    other_positions_and_colors, //FIXME this is causing an infinite loop
     coordsToPixels,
     setMapData,
   ]);
