@@ -131,11 +131,9 @@ function MapView({
   });
 
   useEffect(() => {
-    const centred = false;
-
     // Calculate the centre of the box, using our own position if provided
     var box_centre_lat, box_centre_long;
-    if (!centred && ownPosition) {
+    if (!expanded && ownPosition) {
       box_centre_lat = ownPosition.coords.latitude;
       box_centre_long = ownPosition.coords.longitude;
     } else {
@@ -146,7 +144,7 @@ function MapView({
 
     // Calculate map size based on box size
     // FIXME: clips if map is wider than tall
-    const box_width_km = centred ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
+    const box_width_km = expanded ? MAP_WIDTH_KM : CORNER_BOX_WIDTH_KM;
     const box_height_km = (boxHeightPx / boxWidthPx) * box_width_km;
     const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
     const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
