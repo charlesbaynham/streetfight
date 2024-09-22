@@ -25,6 +25,7 @@ Polish:
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
   - [ ] Must implement refund for unsure shots
   - [ ] Consider having the UI anticipate events from the server - this would make it more responsive
+  - [ ] Use new QR code API if available (https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API)
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
