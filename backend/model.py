@@ -153,6 +153,10 @@ class User(Base):
     shot_timeout = Column(Float, nullable=False, default=6)
     shot_damage = Column(Integer, nullable=False, default=1)
 
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    location_timestamp = Column(Float, nullable=True)
+
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
 
@@ -235,6 +239,15 @@ class TickerEntry(Base):
         foreign_keys=private_user_id,
     )
 
+    highlight_user_id = Column(
+        UUIDType, ForeignKey("users.id"), index=True, nullable=True
+    )
+    highlight_user = relationship(
+        "User",
+        lazy=True,
+        foreign_keys=highlight_user_id,
+    )
+
     message = Column(String, nullable=False)
 
 
@@ -288,6 +301,10 @@ class UserModel(pydantic.BaseModel):
     shot_timeout: float
     shot_damage: int
     time_of_death: Optional[float]
+
+    latitude: Optional[float]
+    longitude: Optional[float]
+    location_timestamp: Optional[float]
 
     # These are retrieved from the Game associated with the Team this user is in
     game_id: Optional[UUID]

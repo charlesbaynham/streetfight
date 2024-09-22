@@ -89,7 +89,9 @@ def load():
 
     Session = get_wrapped_session
 
-    if not database_exists(engine.url):
+    if not database_exists(engine.url) or (
+        "RESET_DATABASE" in os.environ and bool(os.environ["RESET_DATABASE"])
+    ):
         reset_database(engine=engine)
 
 

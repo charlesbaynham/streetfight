@@ -35,7 +35,7 @@ def test_send_public_ticker_message(mock_session, mock_ticker):
 
     mock_ticker.assert_called_once_with(game_id, user_id=None, session=mock_session)
     mock_ticker().post_message.assert_called_once_with(
-        message="Alice has joined team Red"
+        message="Alice has joined team Red", highlight_user_id=None
     )
 
 
@@ -60,7 +60,9 @@ def test_send_private_user_ticker_message(mock_session, mock_ticker):
 
     mock_ticker.assert_called_once_with(game_id, user_id=user_id, session=mock_session)
     mock_ticker().post_message.assert_called_once_with(
-        message="Alice has joined team Red", private_for_user_id=user_id
+        message="Alice has joined team Red",
+        private_for_user_id=user_id,
+        highlight_user_id=None,
     )
 
 

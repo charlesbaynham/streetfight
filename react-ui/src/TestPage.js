@@ -1,12 +1,17 @@
 import React from "react";
-import SSEComponent from "./SSETest";
+import { MapViewAdmin, MapViewSelf } from "./MapView";
 
 const TestPage = () => {
   return (
     <div>
       <h1>This is a test</h1>
 
-      <SSEComponent />
+      <h3>Your location:</h3>
+
+      {/* <MapViewSelf /> */}
+      <div>
+        <MapViewAdmin />
+      </div>
     </div>
   );
 };

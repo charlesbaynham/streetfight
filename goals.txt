@@ -4,28 +4,43 @@ Goals
 Bugs:
 - The animation for the bullet reload is jerky
 
-Priority:
-  - [ ] Needs a "hit" noise / notification
-  - [ ] You should find out if you hit someone
-
-Polish:
-
-  - [ ] Improve admin kill interface
-  - [ ] Clicking outside the socre card should exit it
-  - [ ] Location implementation:
-    - [ ] Map in corner with own Location
-    - [ ] Location reported to server regularly
+Location:
+  Not a priority, but I'm apparently doing it anyway. Classic.
+  - [x] Plot location on map in corner
+  - [ ] Make ticker messages disappear eventually. Clientside.
+  - [x] Click map - show larger version
+  - [x] Orientation? Not possible it turns out. Geez, turns out this is controversial...
+  - [x] Keep an up-to-date record of everyone's location
+  - [x] Plot on the admin interface
+  - [ ] When a shot happens, record where everyone was so the interface can suggest who was closest
+  - [ ] Implement the circle!!
+- [ ] Location implementation old comments:
+    - [x] Map in corner with own Location
+    - [x] Location reported to server regularly
     - [ ] Locations displayed on admin page
     - [ ] Hand-drawn map with pubs marked
     - [ ] Circles displayed on map, triggered by admins
     - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
     - [ ] "Scanner" item which reveals other teams for x minutes
+
+Priority:
+  - [ ] Needs a "hit" noise / notification
+  - [ ] You should find out if you hit someone (use private tickers)
+
+Polish:
+  - [ ] Put harry's noises in
+    * time splitters 2 ricochet
+    * random selection of western ricochet shots
+  - [ ] Show scoreboard in dead mode
+  - [ ] Improve admin kill interface
+  - [ ] Clicking outside the socre card should exit it
+
   - [ ] Heartbeat animation when knocked out
   - [ ] Handle shooting someone when they are already dead
   - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
   - [ ] Must implement refund for unsure shots
-  - [ ] Should add private ticker entries for e.g. results of shots (different colour)
   - [ ] Consider having the UI anticipate events from the server - this would make it more responsive
+  - [ ] Use new QR code API if available (https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API)
 
 Non-code:
 - [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
