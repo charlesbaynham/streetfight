@@ -18,6 +18,8 @@
           pip
 
           # Runtime
+          # FIXME These should be coming from poetry.lock
+          # Use poetry2nix (or don't bother with poetry)
           python-dotenv
           qrcode
           click
