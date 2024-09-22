@@ -133,6 +133,8 @@ function MapView({
     otherDots: [],
   });
 
+  const otherPositionsAndColorsString = JSON.stringify(other_positions_and_colors);
+
   useEffect(() => {
     // Calculate the centre of the box, using our own position if provided
     var box_centre_lat, box_centre_long;
@@ -186,15 +188,18 @@ function MapView({
       dot_y,
       otherDots,
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     expanded,
     boxWidthPx,
     boxHeightPx,
     ownPosition,
-    other_positions_and_colors, //FIXME this is causing an infinite loop but only on the self view
+    otherPositionsAndColorsString,
     coordsToPixels,
     setMapData,
   ]);
+
+
 
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
