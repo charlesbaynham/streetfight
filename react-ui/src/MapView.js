@@ -2,9 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/mapsample.png";
-import dotSrc from "./images/art/helmet.png";
+
 
 import styles from "./MapView.module.css";
+import Dot from "./Dot";
 
 // Top squiggly road tip to the star
 const map_bottom_left = {
@@ -35,28 +36,6 @@ const RATE_LIMIT_INTERVAL = 1 * 1000;
 
 const CORNER_BOX_WIDTH_KM = 0.1;
 
-function Dot({ x, y, color = null }) {
-  return color === null ? (
-    <img
-      className={styles.mapDotSelf}
-      src={dotSrc}
-      alt=""
-      style={{
-        left: x,
-        bottom: y,
-      }}
-    />
-  ) : (
-    <div
-      className={styles.mapDotGeneric}
-      style={{
-        left: x,
-        bottom: y,
-        backgroundColor: color,
-      }}
-    />
-  );
-}
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
