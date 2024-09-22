@@ -3,7 +3,6 @@ import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/mapsample.png";
 
-
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 
@@ -35,7 +34,6 @@ const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
 
 const CORNER_BOX_WIDTH_KM = 0.1;
-
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
