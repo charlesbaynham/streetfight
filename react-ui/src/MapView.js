@@ -319,7 +319,6 @@ export function MapViewAdmin() {
     <MapView
       other_positions_and_colors={locationWithColors}
       expanded={true}
-      ownPosition={{ coords: { latitude: 51.792, longitude: -2.737 } }} // FIXME hardcoded for testing
     />
   );
 }
