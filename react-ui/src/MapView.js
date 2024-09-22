@@ -177,9 +177,7 @@ function MapView({
       },
     );
 
-    console.log("map pos", map_x0, map_y0); // FIXME: overzealous updating is happening here
-    console.log(`left ${map_x0}px bottom ${map_y0}px`);
-    console.log("dot pos", dot_x, dot_y);
+
 
     setMapData({
       map_x0,
@@ -249,7 +247,6 @@ export function MapViewSelf() {
               position.coords.longitude,
             );
             lastUpdateTime = currentTime;
-            console.log("Sending location update:", position.coords);
           }
         },
 
