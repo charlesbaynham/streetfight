@@ -141,11 +141,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -223,6 +223,12 @@ function MapView({
           <Dot x={dot_x} y={dot_y} />
         ) : null}
         {otherDots}
+        <div
+          className={styles.clickCatcher}
+          onClick={() => {
+            console.log("Click!");
+          }}
+        ></div>
       </div>
     </>
   );
