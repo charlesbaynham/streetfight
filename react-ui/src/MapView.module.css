@@ -43,7 +43,7 @@
     position: absolute;
     border-radius: 50%;
     box-shadow: 0 0 0.3em 0.3em rgba(0, 0, 0, 0.6);
-    width: 2em;
-    height: 2em;
+    width: 1.5em;
+    height: 1.5em;
     transform: translateX(-50%) translateY(50%);
 }

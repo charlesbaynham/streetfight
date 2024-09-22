@@ -33,9 +33,8 @@ const MAP_HEIGHT_KM =
 const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
 
-// After 10 minutes, the dots will be almost completely transparent
-const TIME_UNTIL_TRANSPARENT = 150;
-// const TIME_UNTIL_TRANSPARENT = 10 * 60;
+// After 5 minutes, the dots will be almost completely transparent
+const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
 
 // Width of the map in km when it's in the corner
