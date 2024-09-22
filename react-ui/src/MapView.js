@@ -133,7 +133,9 @@ function MapView({
     otherDots: [],
   });
 
-  const otherPositionsAndColorsString = JSON.stringify(other_positions_and_colors);
+  const otherPositionsAndColorsString = JSON.stringify(
+    other_positions_and_colors,
+  );
 
   useEffect(() => {
     // Calculate the centre of the box, using our own position if provided
@@ -167,7 +169,7 @@ function MapView({
     // Calculate all the other dots
     const otherDots = other_positions_and_colors.map(
       ({ position, color }, index) => {
-        const [ x, y ] = coordsToPixels(
+        const [x, y] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
           box_centre_lat,
@@ -177,8 +179,6 @@ function MapView({
       },
     );
 
-
-
     setMapData({
       map_x0,
       map_y0,
@@ -186,7 +186,7 @@ function MapView({
       dot_y,
       otherDots,
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     expanded,
     boxWidthPx,
@@ -196,8 +196,6 @@ function MapView({
     coordsToPixels,
     setMapData,
   ]);
-
-
 
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
