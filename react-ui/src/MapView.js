@@ -84,7 +84,7 @@ function MapView({
     return () => {
       window.removeEventListener("resize", handleResize);
     };
-  }, [mapContainerRef]);
+  }, [mapContainerRef, poppedOut]);
 
   // Calculate map size based on box size
   // FIXME: clips if map is wider than tall
