@@ -33,6 +33,11 @@ const MAP_HEIGHT_KM =
 const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
 
+// After 10 minutes, the dots will be almost completely transparent
+const TIME_UNTIL_TRANSPARENT = 10 * 60;
+const MIN_ALPHA = 0.1;
+
+// Width of the map in km when it's in the corner
 const CORNER_BOX_WIDTH_KM = 0.1;
 
 function sendLocationUpdate(lat, long) {
@@ -135,11 +140,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -273,14 +278,14 @@ export function MapViewAdmin() {
 
       // Color each location point according to the team
       // FIXME: Should be gray if dead
-      setLocationWithColors(
-        locations.map((user) => ({
-          position: {
-            coords: { latitude: user.latitude, longitude: user.longitude },
-          },
-          color: teamColors[user.team_id],
-        })),
-      );
+      const locs = locations.map((user) => ({
+        position: {
+          timestamp: user.timestamp,
+          coords: { latitude: user.latitude, longitude: user.longitude },
+        },
+        color: teamColors[user.team_id],
+      }));
+      setLocationWithColors(locs);
     });
   }, []);
 
