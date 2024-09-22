@@ -244,6 +244,7 @@ export function MapViewSelf() {
 }
 
 export function MapViewAdmin() {
+  // FIXME: Should make dots transparent if out of date
   const [locationWithColors, setLocationWithColors] = useState([]);
 
   const updateLocations = useCallback(() => {
@@ -256,8 +257,6 @@ export function MapViewAdmin() {
 
       // Assign a color to each unique team
       const colors = [
-        "brown",
-        "black",
         "red",
         "blue",
         "green",
@@ -266,6 +265,8 @@ export function MapViewAdmin() {
         "orange",
         "pink",
         "cyan",
+        "brown",
+        "black",
       ];
       const teamColors = {};
       unique_team_ids.forEach((team_id, index) => {
