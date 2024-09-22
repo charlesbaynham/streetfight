@@ -36,7 +36,6 @@ const RATE_LIMIT_INTERVAL = 1 * 1000;
 
 const CORNER_BOX_WIDTH_KM = 0.5;
 
-// FIXME: needs to be centered in css
 function Dot({ x, y, color = null }) {
   return color === null ? (
     <img
