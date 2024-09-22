@@ -347,6 +347,8 @@ class ShotModel(pydantic.BaseModel):
 
     shot_damage: int
 
+    location_context: Optional[str]
+
     class Config:
         orm_mode = True
         extra = "forbid"
