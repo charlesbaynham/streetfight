@@ -8,8 +8,8 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      <MapViewSelf />
-      {/* <MapViewAdmin /> */}
+      {/* <MapViewSelf /> */}
+      <MapViewAdmin />
     </div>
   );
 };
