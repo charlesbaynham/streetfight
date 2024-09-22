@@ -120,7 +120,7 @@ export default function NewItems() {
       })}
 
       <br />
-      <label for="collected_only_once">collected_only_once</label>
+      <label htmlFor="collected_only_once">collected_only_once</label>
       <input
         id="collected_only_once"
         type="checkbox"
@@ -131,7 +131,7 @@ export default function NewItems() {
       />
 
       <br />
-      <label for="collected_as_team">collected_as_team</label>
+      <label htmlFor="collected_as_team">collected_as_team</label>
       <input
         id="collected_as_team"
         type="checkbox"
