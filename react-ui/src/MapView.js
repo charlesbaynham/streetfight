@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
-
 import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/mapsample.png";
@@ -142,41 +141,43 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
     const otherDots = other_positions_and_details.map(
-      ({ position,  color , tooltip}, index) => {
+      ({ position, color, tooltip }, index) => {
         const [x, y] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
           box_centre_lat,
           box_centre_long,
         );
-        const dt = (1e-3 * Date.now() - position.timestamp);
+        const dt = 1e-3 * Date.now() - position.timestamp;
         const alpha = Math.max(
-          1 - (1 - MIN_ALPHA) * dt / TIME_UNTIL_TRANSPARENT,
+          1 - ((1 - MIN_ALPHA) * dt) / TIME_UNTIL_TRANSPARENT,
           MIN_ALPHA,
         );
-        console.log("***********")
+        console.log("***********");
         console.log("i", index);
         console.log("Data.now()", 1e-3 * Date.now());
         console.log("position.timestamp", position.timestamp);
         console.log("dt", dt);
         console.log("alpha", alpha);
-        return <Dot
-        key={index}
-        x={x}
-        y={y}
-        color={color}
-        alpha={alpha}
-        tooltip={tooltip}
-        />;
+        return (
+          <Dot
+            key={index}
+            x={x}
+            y={y}
+            color={color}
+            alpha={alpha}
+            tooltip={tooltip}
+          />
+        );
       },
     );
 
@@ -302,7 +303,7 @@ export function MapViewAdmin() {
           coords: { latitude: user.latitude, longitude: user.longitude },
         },
         color: user.state === "alive" ? teamColors[user.team_id] : "gray",
-        tooltip: `${user.user} - ${user.team}` ,
+        tooltip: `${user.user} - ${user.team}`,
       }));
       setLocationWithDetails(locs);
     });
@@ -317,6 +318,9 @@ export function MapViewAdmin() {
   }, [updateLocations]);
 
   return (
-    <MapView other_positions_and_details={locationWithDetails} expanded={true} />
+    <MapView
+      other_positions_and_details={locationWithDetails}
+      expanded={true}
+    />
   );
 }
