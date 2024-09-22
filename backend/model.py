@@ -155,6 +155,7 @@ class User(Base):
 
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
+    location_timestamp = Column(Float, nullable=True)
 
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
@@ -300,8 +301,10 @@ class UserModel(pydantic.BaseModel):
     shot_timeout: float
     shot_damage: int
     time_of_death: Optional[float]
+
     latitude: Optional[float]
     longitude: Optional[float]
+    location_timestamp: Optional[float]
 
     # These are retrieved from the Game associated with the Team this user is in
     game_id: Optional[UUID]

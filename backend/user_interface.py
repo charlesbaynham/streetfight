@@ -387,11 +387,14 @@ class UserInterface:
 
         This method should be quick and _does not_ prompt a user update event
         """
+        timestamp = time.time()
+
         # Make our own session, detached from the usual machinery to ensure no update events
         with session_scope() as session:
             user = session.query(User).get(self.user_id)
             user.latitude = latitute
             user.longitude = longitude
+            user.location_timestamp = timestamp
 
     async def generate_updates(self, timeout=None):
         """

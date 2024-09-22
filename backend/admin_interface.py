@@ -329,6 +329,7 @@ class AdminInterface:
         locations = []
         for team in teams:
             for user in team.users:
+                user: User
                 locations.append(
                     {
                         "user_id": user.id,
@@ -338,6 +339,7 @@ class AdminInterface:
                         "latitude": user.latitude,
                         "longitude": user.longitude,
                         "state": user.state,
+                        "timestamp": user.location_timestamp,
                     }
                 )
         return locations
