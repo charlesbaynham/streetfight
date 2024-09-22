@@ -51,23 +51,20 @@ function Dot({ x, y, color = null }) {
   );
 }
 
-let lastUpdateTime = 0;
+
 
 function sendLocationUpdate(lat, long) {
-  const currentTime = Date.now();
-  if (currentTime - lastUpdateTime >= RATE_LIMIT_INTERVAL) {
-    sendAPIRequest(
-      "set_location",
-      {
-        latitude: lat,
-        longitude: long,
-      },
-      "POST",
-      null,
-    );
-    lastUpdateTime = currentTime;
-  }
+  sendAPIRequest(
+    "set_location",
+    {
+      latitude: lat,
+      longitude: long,
+    },
+    "POST",
+    null,
+  );
 }
+
 
 function MapView({
   grayedOut = false,
@@ -75,29 +72,10 @@ function MapView({
   other_positions_and_colors = [],
   expanded = false,
 }) {
-  const posToXY = useCallback((pos) => {
-    const x =
-      (pos?.coords.longitude - map_bottom_left.long) /
-      (map_top_right.long - map_bottom_left.long);
-
-    const y =
-      (pos?.coords.latitude - map_bottom_left.lat) /
-      (map_top_right.lat - map_bottom_left.lat);
-    return { x, y };
-  }, []);
-
-  const { x, y } = posToXY(ownPosition);
-
-  const otherDots = other_positions_and_colors.map(
-    ({ position, color }, index) => {
-      const { x, y } = posToXY(position);
-      return <Dot key={index} x={x} y={y} color={color} />;
-    },
-  );
 
   const mapContainerRef = useRef(null);
-  const [mapWidthPx, setMapWidth] = useState(0);
-  const [mapHeightPx, setMapHeight] = useState(0);
+  const [boxWidthPx, setMapWidth] = useState(0);
+  const [boxHeightPx, setMapHeight] = useState(0);
 
 
   // Measure the width and height of the map container so that we can scale the
@@ -121,27 +99,86 @@ function MapView({
   }, [mapContainerRef]);
 
   const coordsToPixels = useCallback(
-    (lat, long) => {
-      const x_km = (long - map_bottom_left.long) / degreesLongitudePerKm;
-      const y_km = (lat - map_bottom_left.lat) / degreesLatitudePerKm;
+    (lat, long, map_centre_lat, map_centre_long) => {
+      // Convert from lat / long to km from the bottom left corner
+      const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
+      const x_km = (long - map_centre_long) / degreesLongitudePerKm + CORNER_BOX_WIDTH_KM / 2;
+      const y_km = (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
-      const x_px = x_km / MAP_WIDTH_KM * mapWidthPx;
-      const y_px = y_km / MAP_HEIGHT_KM * mapHeightPx;
+      // Convert from km to pixels
+      const x_px = x_km / CORNER_BOX_WIDTH_KM * boxWidthPx;
+      const y_px = y_km / box_height_km * boxHeightPx;
 
-      // FIXME this is completely wrong
-
-      console.log(x_px, y_px);
-
-      return [x_px, y_px ];
+      return [x_px, y_px];
     },
-    [mapWidthPx, mapHeightPx],
+    [boxWidthPx, boxHeightPx],
   );
 
-  const [map_x0, map_y0]= coordsToPixels(map_bottom_left.lat, map_bottom_left.long);
+  const [mapData, setMapData] = useState({
+    map_x0: 0,
+    map_y0: 0,
+    map_size_x: 0,
+    map_size_y: 0,
+    dot_x: 0,
+    dot_y: 0,
+    otherDots: [],
+  });
 
-  console.log(map_x0, map_y0);
+  useEffect(() => {
 
-  console.log(`left ${map_x0}px bottom ${map_y0}px`);
+    // Calculate the centre of the box, using our own position if provided
+    const box_centre_lat = ownPosition ? ownPosition.coords.latitude : (map_bottom_left.lat + map_top_right.lat) / 2;
+    const box_centre_long = ownPosition ? ownPosition.coords.longitude : (map_bottom_left.long + map_top_right.long) / 2;
+
+    // Calculate map position based on box position
+    const [map_x0, map_y0] = coordsToPixels(
+      map_bottom_left.lat,
+      map_bottom_left.long,
+      box_centre_lat,
+      box_centre_long
+    );
+
+    // Calculate map size based on box size
+    const map_size_x = MAP_WIDTH_KM * boxWidthPx / CORNER_BOX_WIDTH_KM
+    const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
+    const map_size_y = box_height_km * boxHeightPx / box_height_km;
+
+    // Calculate our own dot
+    const [dot_x, dot_y] = ownPosition
+      ? coordsToPixels(ownPosition.coords.latitude, ownPosition.coords.longitude, box_centre_lat, box_centre_long)
+      : [0, 0];
+
+    // Calculate all the other dots
+    const otherDots = other_positions_and_colors.map(
+      ({ position, color }, index) => {
+        const { x, y } = coordsToPixels(position.coords.latitude, position.coords.longitude, box_centre_lat, box_centre_long);
+        return <Dot key={index} x={x} y={y} color={color} />;
+      },
+    );
+
+    console.log("map pos", map_x0, map_y0);  // FIXME: overzealous updating is happening here
+    console.log(`left ${map_x0}px bottom ${map_y0}px`);
+
+    setMapData({
+      map_x0,
+      map_y0,
+      map_size_x,
+      map_size_y,
+      dot_x,
+      dot_y,
+      otherDots,
+    });
+
+  }, [
+    boxWidthPx,
+    boxHeightPx,
+    // ownPosition,
+    // other_positions_and_colors,
+    coordsToPixels,
+    setMapData
+  ]);
+
+  const { map_x0, map_y0, map_size_x, map_size_y, dot_x, dot_y, otherDots } = mapData;
 
 
   return (
@@ -159,15 +196,17 @@ function MapView({
             backgroundImage: `url(${mapSrc})`,
             backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
             backgroundRepeat: "no-repeat",
-            // backgroundSize: MAP_WIDTH_KM / CORNER_BOX_WIDTH_KM * 100 + "% " + MAP_HEIGHT_KM / CORNER_BOX_WIDTH_KM * 100 + "%",
+            backgroundSize: map_size_x + "px " + map_size_y + "px",
           }}
         />
-        {!grayedOut && ownPosition !== null ? <Dot x={x} y={y} /> : null}
+        {!grayedOut && ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
         {otherDots}
       </div>
     </>
   );
 }
+
+var lastUpdateTime = 0;
 
 export function MapViewSelf() {
   const [position, setPosition] = useState(null);
@@ -178,12 +217,17 @@ export function MapViewSelf() {
       // This a) updates the location on the map and b) sends the location to the server.
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
-          setPosition(position);
-          sendLocationUpdate(
-            position.coords.latitude,
-            position.coords.longitude,
-          );
+          const currentTime = Date.now();
+          if (currentTime - lastUpdateTime >= RATE_LIMIT_INTERVAL) {
+            setPosition(position);
+            sendLocationUpdate(
+              position.coords.latitude,
+              position.coords.longitude,
+            );
+            lastUpdateTime = currentTime;
+          }
         },
+
         (error) => {
           console.error("Error watching position:", error);
         },
