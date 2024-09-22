@@ -141,7 +141,7 @@ function MapView({
     // Calculate map size based on box size
     const map_size_x = MAP_WIDTH_KM * boxWidthPx / CORNER_BOX_WIDTH_KM
     const box_height_km = boxHeightPx / boxWidthPx * CORNER_BOX_WIDTH_KM;
-    const map_size_y = box_height_km * boxHeightPx / box_height_km;
+    const map_size_y = MAP_HEIGHT_KM * boxHeightPx / box_height_km;
 
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
