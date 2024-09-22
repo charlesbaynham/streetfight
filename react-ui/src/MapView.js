@@ -57,8 +57,11 @@ function MapView({
   grayedOut = false,
   ownPosition = null,
   other_positions_and_details = [],
-  expanded = false,
+  alwaysExpanded = false,
 }) {
+  const [poppedOut, setPoppedOut] = useState(false);
+  const expanded = alwaysExpanded || poppedOut;
+
   const mapContainerRef = useRef(null);
   const [boxWidthPx, setMapWidth] = useState(0);
   const [boxHeightPx, setMapHeight] = useState(0);
@@ -201,10 +204,21 @@ function MapView({
 
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
+  const containerClasses = [
+    styles.mapContainer
+  ]
+  if (expanded)
+    containerClasses.push(styles.mapContainerExpanded)
+  else
+    containerClasses.push(styles.mapContainerCorner)
+
+  if (poppedOut)
+    containerClasses.push(styles.mapContainerPoppedOut)
+
   return (
     <>
       <div
-        className={`${styles.mapContainer} ${expanded ? styles.mapContainerExpanded : styles.mapContainerCorner}`}
+        className={containerClasses.join(" ")}
         ref={mapContainerRef}
       >
         {grayedOut ? <div className={styles.mapOverlay}></div> : null}
@@ -227,6 +241,7 @@ function MapView({
           className={styles.clickCatcher}
           onClick={() => {
             console.log("Click!");
+            setPoppedOut(!poppedOut);
           }}
         ></div>
       </div>
@@ -326,7 +341,7 @@ export function MapViewAdmin() {
   return (
     <MapView
       other_positions_and_details={locationWithDetails}
-      expanded={true}
+      alwaysExpanded={true}
     />
   );
 }

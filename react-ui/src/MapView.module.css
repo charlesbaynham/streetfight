@@ -7,6 +7,15 @@
     /* FIXME remove border */
 }
 
+.mapContainerPoppedOut {
+    position: absolute;
+    z-index: 100;
+    width: 80vw;
+    height: 80vh;
+    left: 10vw;
+    top: 10vh;
+}
+
 .mapContainerCorner {
     width: 10em;
     height: 10em;
