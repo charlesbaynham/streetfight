@@ -34,7 +34,7 @@ const MAP_HEIGHT_KM =
 const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
 
-const CORNER_BOX_WIDTH_KM = 0.5;
+const CORNER_BOX_WIDTH_KM = 0.1;
 
 function Dot({ x, y, color = null }) {
   return color === null ? (
@@ -131,7 +131,7 @@ function MapView({
   });
 
   useEffect(() => {
-    const centred = true;
+    const centred = false;
 
     // Calculate the centre of the box, using our own position if provided
     var box_centre_lat, box_centre_long;
