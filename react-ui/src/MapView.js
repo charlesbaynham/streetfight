@@ -146,11 +146,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -201,10 +201,9 @@ function MapView({
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
   const containerClasses = [styles.mapContainer];
-  if (expanded) containerClasses.push(styles.mapContainerExpanded);
+  if (alwaysExpanded) containerClasses.push(styles.mapContainerExpanded);
+  else if (poppedOut) containerClasses.push(styles.mapContainerPoppedOut);
   else containerClasses.push(styles.mapContainerCorner);
-
-  if (poppedOut) containerClasses.push(styles.mapContainerPoppedOut);
 
   return (
     <>
@@ -231,10 +230,10 @@ function MapView({
             alwaysExpanded
               ? null
               : () => {
-                  console.log("Click!");
-                  setPoppedOut(!poppedOut);
-                  handleResize();
-                }
+                console.log("Click!");
+                setPoppedOut(!poppedOut);
+                handleResize();
+              }
           }
         ></div>
       </div>
