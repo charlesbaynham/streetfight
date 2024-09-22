@@ -5,7 +5,6 @@ import NewItems from "./NewItems";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 
-
 function GameView({ game }) {
   const setGameActive = useCallback(
     (state) => {
