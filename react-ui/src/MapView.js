@@ -35,16 +35,16 @@ function Dot({ x, y, color = null }) {
       src={dotSrc}
       alt=""
       style={{
-        left: 100 * x + "%",
-        bottom: 100 * y + "%",
+        left: x,
+        bottom: y,
       }}
     />
   ) : (
     <div
       className={styles.mapDotGeneric}
       style={{
-        left: 100 * x + "%",
-        bottom: 100 * y + "%",
+        left: x,
+        bottom: y,
         backgroundColor: color,
       }}
     />
@@ -158,6 +158,7 @@ function MapView({
 
     console.log("map pos", map_x0, map_y0);  // FIXME: overzealous updating is happening here
     console.log(`left ${map_x0}px bottom ${map_y0}px`);
+    console.log("dot pos", dot_x, dot_y);
 
     setMapData({
       map_x0,
@@ -173,7 +174,7 @@ function MapView({
     boxWidthPx,
     boxHeightPx,
     ownPosition,
-    // other_positions_and_colors,
+    // other_positions_and_colors, FIXME this is causing an infinite loop
     coordsToPixels,
     setMapData
   ]);
@@ -194,7 +195,7 @@ function MapView({
           alt="Map"
           style={{
             backgroundImage: `url(${mapSrc})`,
-            backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+            backgroundPosition: `left ${-map_x0}px bottom ${-map_y0}px`,
             backgroundRepeat: "no-repeat",
             backgroundSize: map_size_x + "px " + map_size_y + "px",
           }}

@@ -32,6 +32,9 @@
 
 .mapDotSelf {
     position: absolute;
+    width: 2em;
+    aspect-ratio: 1;
+    transform: translateX(-50%) translateY(50%);
 }
 
 .mapDotGeneric {
@@ -39,9 +42,5 @@
     border-radius: 50%;
     width: 10px;
     height: 10px;
-}
-
-.mapDotSelf {
-    width: 2em;
-    aspect-ratio: 1;
+    transform: translateX(-50%) translateY(50%);
 }
