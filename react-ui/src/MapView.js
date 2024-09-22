@@ -68,14 +68,16 @@ function MapView({
 
   // Measure the width and height of the map container so that we can scale the
   // map image. Tolerate resizes / screen rotations.
-  useEffect(() => {
-    const handleResize = () => {
+  const handleResize = useCallback(
+    () => {
       if (mapContainerRef.current) {
         setMapWidth(mapContainerRef.current.clientWidth);
         setMapHeight(mapContainerRef.current.clientHeight);
       }
-    };
+    },
+    [mapContainerRef]);
 
+  useEffect(() => {
     window.addEventListener("resize", handleResize);
 
     // Initial measurement
