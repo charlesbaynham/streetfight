@@ -93,6 +93,8 @@ class Shot(Base):
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
 
+    location_context = Column(String, nullable=True)
+
 
 class Team(Base):
     """
