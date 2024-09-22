@@ -116,7 +116,7 @@ function MapView({
       const y_km = (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
       // Convert from km to pixels
-      const x_px = (x_km / CORNER_BOX_WIDTH_KM) * boxWidthPx;
+      const x_px = (x_km / box_width_km) * boxWidthPx;
       const y_px = (y_km / box_height_km) * boxHeightPx;
 
       return [x_px, y_px];
@@ -316,6 +316,10 @@ export function MapViewAdmin() {
   }, [updateLocations]);
 
   return (
-    <MapView other_positions_and_colors={locationWithColors} expanded={true} />
+    <MapView
+      other_positions_and_colors={locationWithColors}
+      expanded={true}
+      ownPosition={{ coords: { latitude: 51.792, longitude: -2.737 } }} // FIXME hardcoded for testing
+    />
   );
 }
