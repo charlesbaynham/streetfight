@@ -244,6 +244,7 @@ function MapView({
           onClick={() => {
             console.log("Click!");
             setPoppedOut(!poppedOut);
+            handleResize();
           }}
         ></div>
       </div>
