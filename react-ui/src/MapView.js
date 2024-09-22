@@ -231,11 +231,15 @@ function MapView({
         {otherDots}
         <div
           className={styles.clickCatcher}
-          onClick={alwaysExpanded?null:() => {
-            console.log("Click!");
-            setPoppedOut(!poppedOut);
-            handleResize();
-          }}
+          onClick={
+            alwaysExpanded
+              ? null
+              : () => {
+                  console.log("Click!");
+                  setPoppedOut(!poppedOut);
+                  handleResize();
+                }
+          }
         ></div>
       </div>
     </>
