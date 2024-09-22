@@ -3,6 +3,8 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import NewItems from "./NewItems";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
+import { MapViewAdmin } from "./MapView";
+
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -298,6 +300,8 @@ export default function AdminMode() {
       <AllGamesView games={games} />
 
       <NewItems />
+
+      <MapViewAdmin />
     </>
   );
 }

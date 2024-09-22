@@ -9,7 +9,9 @@ const TestPage = () => {
       <h3>Your location:</h3>
 
       {/* <MapViewSelf /> */}
-      <MapViewAdmin />
+      <div>
+        <MapViewAdmin />
+      </div>
     </div>
   );
 };
