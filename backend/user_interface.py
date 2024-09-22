@@ -12,7 +12,6 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
-from .admin_interface import AdminInterface
 from .asyncio_triggers import get_trigger_event
 from .database import session_scope
 from .database_scope_provider import DatabaseScopeProvider
@@ -225,6 +224,8 @@ class UserInterface:
 
     @db_scoped
     def submit_shot(self, image_base64: str):
+        from .admin_interface import AdminInterface
+
         user: User = self.get_user()
         team = user.team
 
