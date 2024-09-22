@@ -34,8 +34,9 @@ const MAP_POLL_TIME = 5 * 1000;
 const RATE_LIMIT_INTERVAL = 1 * 1000;
 
 // After 10 minutes, the dots will be almost completely transparent
-const TIME_UNTIL_TRANSPARENT = 10 * 60;
-const MIN_ALPHA = 0.1;
+const TIME_UNTIL_TRANSPARENT = 150;
+// const TIME_UNTIL_TRANSPARENT = 10 * 60;
+const MIN_ALPHA = 0.5;
 
 // Width of the map in km when it's in the corner
 const CORNER_BOX_WIDTH_KM = 0.1;
@@ -156,7 +157,18 @@ function MapView({
           box_centre_lat,
           box_centre_long,
         );
-        return <Dot key={index} x={x} y={y} color={color} />;
+        const dt = (1e-3*Date.now() - position.timestamp);
+        const alpha = Math.max(
+          1 - (1-MIN_ALPHA)*dt / TIME_UNTIL_TRANSPARENT,
+          MIN_ALPHA,
+        );
+        console.log("***********")
+        console.log("i", index);
+        console.log("Data.now()", 1e-3*Date.now());
+        console.log("position.timestamp", position.timestamp);
+        console.log("dt", dt);
+        console.log("alpha", alpha);
+        return <Dot key={index} x={x} y={y} color={color} alpha={alpha} />;
       },
     );
 

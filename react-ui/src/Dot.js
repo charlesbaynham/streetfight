@@ -3,7 +3,7 @@ import styles from "./MapView.module.css";
 
 import { motion } from "framer-motion";
 
-export default function Dot({ x, y, color = null }) {
+export default function Dot({ x, y, color = null, alpha=1 }) {
   return color === null ? (
     <motion.img
       animate={{
@@ -18,6 +18,7 @@ export default function Dot({ x, y, color = null }) {
       style={{
         left: x,
         bottom: y,
+        opacity: alpha,
       }}
     />
   ) : (
@@ -27,6 +28,7 @@ export default function Dot({ x, y, color = null }) {
         left: x,
         bottom: y,
         backgroundColor: color,
+        opacity: alpha,
       }}
     />
   );
