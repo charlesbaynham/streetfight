@@ -316,9 +316,6 @@ export function MapViewAdmin() {
   }, [updateLocations]);
 
   return (
-    <MapView
-      other_positions_and_colors={locationWithColors}
-      expanded={true}
-    />
+    <MapView other_positions_and_colors={locationWithColors} expanded={true} />
   );
 }
