@@ -186,6 +186,7 @@ function MapView({
       otherDots,
     });
   }, [
+    expanded,
     boxWidthPx,
     boxHeightPx,
     ownPosition,
