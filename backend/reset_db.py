@@ -2,10 +2,8 @@ import logging
 import os
 from uuid import UUID
 
-from dotenv import find_dotenv
-from dotenv import load_dotenv
-
 from .database import engine as db_engine
+from .dotenv import load_env_vars
 from .model import Base
 from .model import Game
 from .model import Team
@@ -29,7 +27,6 @@ def reset_database(engine):
 
     logger.warning("Resetting database")
 
-    load_dotenv(find_dotenv())
     if "MAKE_DEBUG_ENTRIES" in os.environ:
         from . import database
 
@@ -37,6 +34,7 @@ def reset_database(engine):
 
         session = database.Session()
         g = Game(id=SAMPLE_GAME_ID)
+        g.active = True
         session.add(g)
         for team_id, team_name in SAMPLE_TEAMS:
             session.add(Team(id=team_id, game=g, name=team_name))
@@ -45,4 +43,5 @@ def reset_database(engine):
 
 
 if __name__ == "__main__":
+    load_env_vars()
     reset_database(engine=db_engine)

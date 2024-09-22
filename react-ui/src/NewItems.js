@@ -101,13 +101,13 @@ export default function NewItems() {
 
       {ITEM_PARAMS[selectedItemType].map((data_name) => {
         const key = selectedItemType + data_name;
+
         return (
-          <>
+          <div key={key}>
             <span>{data_name}:</span>
             <input
               type="number"
               value={key in selectedItemData ? selectedItemData[key] : ""}
-              key={key}
               onChange={(e) => {
                 // Clone the object to trigger a state update
                 const new_data = { ...selectedItemData };
@@ -115,28 +115,28 @@ export default function NewItems() {
                 setSelectedItemData(new_data);
               }}
             />
-          </>
+          </div>
         );
       })}
 
       <br />
-      <label for="collected_only_once">collected_only_once</label>
+      <label htmlFor="collected_only_once">collected_only_once</label>
       <input
         id="collected_only_once"
         type="checkbox"
         checked={collected_only_once}
-        onClick={(_) => {
+        onChange={(_) => {
           set_collected_only_once(!collected_only_once);
         }}
       />
 
       <br />
-      <label for="collected_as_team">collected_as_team</label>
+      <label htmlFor="collected_as_team">collected_as_team</label>
       <input
         id="collected_as_team"
         type="checkbox"
         checked={collected_as_team}
-        onClick={(_) => {
+        onChange={(_) => {
           set_collected_as_team(!collected_as_team);
         }}
       />

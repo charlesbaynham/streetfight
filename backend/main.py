@@ -215,6 +215,17 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
     return AdminInterface().get_scoreboard(game_id)
 
 
+@router.post("/set_location")
+async def set_location(
+    latitude: float,
+    longitude: float,
+    user_id=Depends(get_user_id),
+):
+    logger.info("Setting location for user %s to %f, %f", user_id, latitude, longitude)
+    with UserInterface(user_id) as ui:
+        ui.set_location(latitude, longitude)
+
+
 ######## ADMIN ###########
 @router.post("/admin_create_game")
 async def admin_create_game() -> UUID:
@@ -270,6 +281,16 @@ async def admin_give_ammo(user_id, num: int = 1):
 @router.post("/admin_mark_shot_checked")
 async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
+
+
+@router.get("/admin_get_locations")
+async def admin_get_locations(game_id=None):
+    """
+    Get the locations of all users in a game
+
+    :param game_id: The game to get locations for. If None, use the first game.
+    """
+    return AdminInterface().get_locations(game_id=game_id)
 
 
 def _add_params_to_url(url: str, params: Dict):

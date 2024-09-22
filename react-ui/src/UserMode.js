@@ -13,6 +13,7 @@ import TickerView from "./TickerView";
 import styles from "./UserMode.module.css";
 import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
+import { MapViewSelf } from "./MapView";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
@@ -33,7 +34,10 @@ function GetView({ user }) {
     <>
       <div className={styles.monitorsContainer}>
         {isAlive ? <BulletCount user={user} /> : <div></div>}
-        <TickerView />
+        <div className={styles.mapAndTickerContainer}>
+          <MapViewSelf />
+          <TickerView />
+        </div>
       </div>
 
       <WebcamView trigger={triggerShot} isDead={!isAlive} />

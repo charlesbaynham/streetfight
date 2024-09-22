@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
+from .database import session_scope
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
 from .item_actions import do_item_actions
@@ -379,6 +380,21 @@ class UserInterface:
             bullet_refunds += 1
 
         self.award_ammo(bullet_refunds)
+
+    def set_location(self, latitute: float, longitude: float):
+        """
+        Record the location of the user
+
+        This method should be quick and _does not_ prompt a user update event
+        """
+        timestamp = time.time()
+
+        # Make our own session, detached from the usual machinery to ensure no update events
+        with session_scope() as session:
+            user = session.query(User).get(self.user_id)
+            user.latitude = latitute
+            user.longitude = longitude
+            user.location_timestamp = timestamp
 
     async def generate_updates(self, timeout=None):
         """
