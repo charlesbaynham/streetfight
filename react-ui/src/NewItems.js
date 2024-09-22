@@ -125,7 +125,7 @@ export default function NewItems() {
         id="collected_only_once"
         type="checkbox"
         checked={collected_only_once}
-        onClick={(_) => {
+        onChange={(_) => {
           set_collected_only_once(!collected_only_once);
         }}
       />
@@ -136,7 +136,7 @@ export default function NewItems() {
         id="collected_as_team"
         type="checkbox"
         checked={collected_as_team}
-        onClick={(_) => {
+        onChange={(_) => {
           set_collected_as_team(!collected_as_team);
         }}
       />
