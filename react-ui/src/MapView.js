@@ -108,12 +108,13 @@ function MapView({
   const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
   const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
-
   const coordsToPixels = useCallback(
     (lat, long, map_centre_lat, map_centre_long) => {
       // Convert from lat / long to km from the bottom left corner
-      const x_km = (long - map_centre_long) / degreesLongitudePerKm + box_width_km / 2;
-      const y_km = (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
+      const x_km =
+        (long - map_centre_long) / degreesLongitudePerKm + box_width_km / 2;
+      const y_km =
+        (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
       // Convert from km to pixels
       const x_px = (x_km / box_width_km) * boxWidthPx;
@@ -154,11 +155,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
@@ -195,8 +196,7 @@ function MapView({
     setMapData,
   ]);
 
-  const { map_x0, map_y0, dot_x, dot_y, otherDots } =
-    mapData;
+  const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
   return (
     <>
