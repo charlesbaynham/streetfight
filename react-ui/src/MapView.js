@@ -277,13 +277,12 @@ export function MapViewAdmin() {
       });
 
       // Color each location point according to the team
-      // FIXME: Should be gray if dead
       const locs = locations.map((user) => ({
         position: {
           timestamp: user.timestamp,
           coords: { latitude: user.latitude, longitude: user.longitude },
         },
-        color: teamColors[user.team_id],
+        color: user.state === "alive" ? teamColors[user.team_id] : "gray",
       }));
       setLocationWithColors(locs);
     });
