@@ -6,13 +6,12 @@ import dotSrc from "./images/art/helmet.png";
 
 import styles from "./MapView.module.css";
 
-// Top squiggly road tip
+// Top squiggly road tip to the star
 const map_bottom_left = {
   long: -2.741752117059972,
   lat: 51.79127318746444,
 };
 
-// the star
 const map_top_right = {
   long: -2.734091728069985,
   lat: 51.794378768913234,
