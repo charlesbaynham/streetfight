@@ -165,12 +165,6 @@ function MapView({
           1 - ((1 - MIN_ALPHA) * dt) / TIME_UNTIL_TRANSPARENT,
           MIN_ALPHA,
         );
-        console.log("***********");
-        console.log("i", index);
-        console.log("Data.now()", 1e-3 * Date.now());
-        console.log("position.timestamp", position.timestamp);
-        console.log("dt", dt);
-        console.log("alpha", alpha);
         return (
           <Dot
             key={index}
