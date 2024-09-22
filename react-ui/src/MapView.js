@@ -191,7 +191,7 @@ function MapView({
     boxWidthPx,
     boxHeightPx,
     ownPosition,
-    other_positions_and_colors, //FIXME this is causing an infinite loop
+    other_positions_and_colors, //FIXME this is causing an infinite loop but only on the self view
     coordsToPixels,
     setMapData,
   ]);
