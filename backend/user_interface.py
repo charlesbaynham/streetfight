@@ -252,7 +252,7 @@ class UserInterface:
             game=game,
             image_base64=image_base64,
             shot_damage=user.shot_damage,
-            location_context=json.dumps(all_user_locations),
+            location_context=json.dumps(all_user_locations, default=str),
         )
         self._session.add(shot_entry)
 
