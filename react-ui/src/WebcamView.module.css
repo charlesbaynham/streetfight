@@ -3,5 +3,5 @@
 }
 
 .webcamVideo.dead {
-  filter: grayscale(1);
+  filter: grayscale(1) brightness(30%);
 }
