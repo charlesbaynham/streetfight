@@ -172,7 +172,7 @@ function MapView({
   }, [
     boxWidthPx,
     boxHeightPx,
-    // ownPosition,
+    ownPosition,
     // other_positions_and_colors,
     coordsToPixels,
     setMapData
