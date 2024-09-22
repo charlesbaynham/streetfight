@@ -5,12 +5,14 @@ import dotSrc from "./images/art/helmet.png";
 import styles from "./MapView.module.css";
 
 import { motion } from "framer-motion";
+import { useState } from 'react';
 
-export default function Dot({ x, y, color = null, alpha=1 }) {
+export default function Dot({ x, y, color = null, alpha = 1, tooltip =null}) {
+  const randomNumber = useState(Math.floor(Math.random() * 100))[0];
+  const tooltipID = "tooltip-" + randomNumber
+
   return color === null ? (
     <motion.img
-      data-tooltip-id="my-tooltip"
-      data-tooltip-content="Hello to you too!"
       animate={{
         scale: [1, 1.2, 1],
         x: ["-50%", "-50%"], // I'm out of energy to care about this hack
@@ -27,7 +29,11 @@ export default function Dot({ x, y, color = null, alpha=1 }) {
       }}
     />
   ) : (
+    <>
+    {tooltip ? <Tooltip id={tooltipID} /> : null }
     <div
+      data-tooltip-id={tooltipID}
+      data-tooltip-content={tooltip}
       className={styles.mapDotGeneric}
       style={{
         left: x,
@@ -36,5 +42,6 @@ export default function Dot({ x, y, color = null, alpha=1 }) {
         opacity: alpha,
       }}
     />
+    </>
   );
 }
