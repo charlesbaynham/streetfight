@@ -1,5 +1,5 @@
 import React from "react";
-import { MapViewSelf } from "./MapView";
+import { MapViewAdmin } from "./MapView";
 
 const TestPage = () => {
   return (
@@ -8,7 +8,7 @@ const TestPage = () => {
 
       <h3>Your location:</h3>
 
-      <MapViewSelf />
+      <MapViewAdmin />
     </div>
   );
 };
