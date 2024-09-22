@@ -1,3 +1,6 @@
+import { Tooltip } from 'react-tooltip'
+
+
 import dotSrc from "./images/art/helmet.png";
 import styles from "./MapView.module.css";
 
@@ -6,6 +9,8 @@ import { motion } from "framer-motion";
 export default function Dot({ x, y, color = null, alpha=1 }) {
   return color === null ? (
     <motion.img
+      data-tooltip-id="my-tooltip"
+      data-tooltip-content="Hello to you too!"
       animate={{
         scale: [1, 1.2, 1],
         x: ["-50%", "-50%"], // I'm out of energy to care about this hack

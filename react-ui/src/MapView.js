@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+
+
 import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/mapsample.png";
@@ -156,14 +158,14 @@ function MapView({
           box_centre_lat,
           box_centre_long,
         );
-        const dt = (1e-3*Date.now() - position.timestamp);
+        const dt = (1e-3 * Date.now() - position.timestamp);
         const alpha = Math.max(
-          1 - (1-MIN_ALPHA)*dt / TIME_UNTIL_TRANSPARENT,
+          1 - (1 - MIN_ALPHA) * dt / TIME_UNTIL_TRANSPARENT,
           MIN_ALPHA,
         );
         console.log("***********")
         console.log("i", index);
-        console.log("Data.now()", 1e-3*Date.now());
+        console.log("Data.now()", 1e-3 * Date.now());
         console.log("position.timestamp", position.timestamp);
         console.log("dt", dt);
         console.log("alpha", alpha);
