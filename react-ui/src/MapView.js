@@ -57,7 +57,8 @@ const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
 
 // Width of the map in km when it's in the corner
-const CORNER_BOX_WIDTH_KM = 0.1;
+// const CORNER_BOX_WIDTH_KM = 0.1;
+const CORNER_BOX_WIDTH_KM = 8;  // TODO: Put this back to something reasonable
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
