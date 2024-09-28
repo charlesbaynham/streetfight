@@ -17,12 +17,10 @@ import Dot from "./Dot";
 
 // const long_per_width_px = (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
 // const lat_per_height_px = (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
-
 // const map_bottom_left = {
 //   long: ref_1_lat_long[1] - ref_1_xy[0] * long_per_width_px,
 //   lat: ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
 // };
-
 // const map_top_right = {
 //   long: ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
 //   lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
@@ -166,11 +164,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -250,10 +248,10 @@ function MapView({
             alwaysExpanded
               ? null
               : () => {
-                  console.log("Click!");
-                  setPoppedOut(!poppedOut);
-                  handleResize();
-                }
+                console.log("Click!");
+                setPoppedOut(!poppedOut);
+                handleResize();
+              }
           }
         ></div>
       </div>
