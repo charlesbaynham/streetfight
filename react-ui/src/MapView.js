@@ -28,20 +28,15 @@ import Dot from "./Dot";
 //   lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
 // };
 
-
 const map_bottom_left = {
   lat: 51.39086326418569,
-  long: -0.32774517566164785
+  long: -0.32774517566164785,
 };
 
 const map_top_right = {
-
   lat: 51.57437959599135,
   long: -0.001323774970900953,
-
 };
-
-
 
 const degreesLongitudePerKm =
   1 /
@@ -171,11 +166,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
@@ -255,10 +250,10 @@ function MapView({
             alwaysExpanded
               ? null
               : () => {
-                console.log("Click!");
-                setPoppedOut(!poppedOut);
-                handleResize();
-              }
+                  console.log("Click!");
+                  setPoppedOut(!poppedOut);
+                  handleResize();
+                }
           }
         ></div>
       </div>
