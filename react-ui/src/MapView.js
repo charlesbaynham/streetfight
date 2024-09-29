@@ -15,14 +15,18 @@ const ref_1_xy = [294.098, 963.464];
 const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
 const ref_2_xy = [825.823, 212.722];
 
-const long_per_width_px = (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
-const lat_per_height_px = (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
+const long_per_width_px =
+  (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
+const lat_per_height_px =
+  (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
 const map_bottom_left = {
   long: ref_1_lat_long[1] - ref_1_xy[0] * long_per_width_px,
-  lat: ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
+  lat:
+    ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
 };
 const map_top_right = {
-  long: ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
+  long:
+    ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
   lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
 };
 
@@ -58,7 +62,7 @@ const MIN_ALPHA = 0.5;
 
 // Width of the map in km when it's in the corner
 // const CORNER_BOX_WIDTH_KM = 0.1;
-const CORNER_BOX_WIDTH_KM = 8;  // TODO: Put this back to something reasonable
+const CORNER_BOX_WIDTH_KM = 8; // TODO: Put this back to something reasonable
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
