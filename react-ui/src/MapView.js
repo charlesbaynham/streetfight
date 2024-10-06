@@ -32,13 +32,13 @@ import Dot from "./Dot";
 
 // FIXME
 const map_bottom_left = {
- lat: 51.39086326418569,
- long: -0.32774517566164785,
+  lat: 51.39086326418569,
+  long: -0.32774517566164785,
 };
 
 const map_top_right = {
- lat: 51.57437959599135,
- long: -0.001323774970900953,
+  lat: 51.57437959599135,
+  long: -0.001323774970900953,
 };
 
 const degreesLongitudePerKm =
