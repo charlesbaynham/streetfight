@@ -2,19 +2,24 @@ Goals
 -----
 
 Bugs:
-- The animation for the bullet reload is jerky
+- [ ] The animation for the bullet reload is jerky
+- [ ] iPhone location does not work
+- [ ] Location permission should be requested on start screen
+
 
 Location:
   Not a priority, but I'm apparently doing it anyway. Classic.
   - [x] When a shot happens, record where everyone was so the interface can suggest who was closest
-  - [ ] Hand-drawn map with pubs marked
+  - [x] Hand-drawn map with pubs marked
   - [ ] Circles displayed on map, triggered by admins
   - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
   - [ ] "Scanner" item which reveals other teams for x minutes
 
 Priority:
+  - [ ] You should be stuck on the home screen until the appropriate permissions are given
   - [ ] Needs a "hit" noise / notification
   - [ ] You should find out if you hit someone (use private tickers)
+  - [ ] Need to be able to change your name... People will be silly
 
 Polish:
   - [ ] Make ticker messages disappear eventually. Clientside.
