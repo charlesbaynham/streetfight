@@ -8,37 +8,38 @@ import styles from "./MapView.module.css";
 import Dot from "./Dot";
 
 // Based on calculations and markup in "map alignment.svg"
-const ref_map_width_px = 1188.5;
-const ref_map_height_px = 1233.5;
-const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
-const ref_1_xy = [294.098, 963.464];
-const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
-const ref_2_xy = [825.823, 212.722];
+// const ref_map_width_px = 1188.5;
+// const ref_map_height_px = 1233.5;
+// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+// const ref_1_xy = [294.098, 963.464];
+// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+// const ref_2_xy = [825.823, 212.722];
 
-const long_per_width_px =
-  (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
-const lat_per_height_px =
-  (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
+// const long_per_width_px =
+//   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
+// const lat_per_height_px =
+//   (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
+// const map_bottom_left = {
+//   long: ref_1_lat_long[1] - ref_1_xy[0] * long_per_width_px,
+//   lat:
+//     ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
+// };
+// const map_top_right = {
+//   long:
+//     ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
+//   lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
+// };
+
+// FIXME
 const map_bottom_left = {
-  long: ref_1_lat_long[1] - ref_1_xy[0] * long_per_width_px,
-  lat:
-    ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
+ lat: 51.39086326418569,
+ long: -0.32774517566164785,
 };
+
 const map_top_right = {
-  long:
-    ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
-  lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
+ lat: 51.57437959599135,
+ long: -0.001323774970900953,
 };
-
-//const map_bottom_left = {
-//  lat: 51.39086326418569,
-//  long: -0.32774517566164785,
-//};
-
-//const map_top_right = {
-//  lat: 51.57437959599135,
-//  long: -0.001323774970900953,
-//};
 
 const degreesLongitudePerKm =
   1 /
