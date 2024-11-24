@@ -344,7 +344,7 @@ async def admin_make_new_item(
         "itype": item_type,
         "item_data": item_data,
         "encoded_item": encoded_item,
-        "encoded_url": _add_params_to_url(
+        "encoded_url": _add_params_to_url(  # FIME this is a bug! This URL should be in the generated grids too
             os.environ["WEBSITE_URL"], {"d": encoded_item}
         ),
     }
