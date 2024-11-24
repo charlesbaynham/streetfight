@@ -339,11 +339,7 @@ class AdminInterface:
         logger.info("Made new item: %s => %s", item, encoded_item)
 
         # Encode this into a URL
-        encoded_url = (
-            add_params_to_url(  # FIME this is a bug! This URL should be in the generated grids too
-                os.environ["WEBSITE_URL"], {"d": encoded_item}
-            ),
-        )
+        encoded_url = add_params_to_url(os.environ["WEBSITE_URL"], {"d": encoded_item})
 
         return encoded_url
 
