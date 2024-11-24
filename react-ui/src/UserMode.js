@@ -15,7 +15,10 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
 
-import { isLocationPermissionGranted, isCameraPermissionGranted } from "./utils";
+import {
+  isLocationPermissionGranted,
+  isCameraPermissionGranted,
+} from "./utils";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
@@ -27,11 +30,12 @@ function GetView({ user }) {
 
   // Check if all the required permissions are granted
   useEffect(() => {
-    Promise.all([isLocationPermissionGranted(), isCameraPermissionGranted()]).then(
-      ([locationGranted, cameraGranted]) => {
-        setPermissionsGranted(locationGranted && cameraGranted);
-      }
-    );
+    Promise.all([
+      isLocationPermissionGranted(),
+      isCameraPermissionGranted(),
+    ]).then(([locationGranted, cameraGranted]) => {
+      setPermissionsGranted(locationGranted && cameraGranted);
+    });
   }, [triggerPermissionsRecheck, user]);
 
   // Trigger a recheck of permissions every 5s or when the user's state changes

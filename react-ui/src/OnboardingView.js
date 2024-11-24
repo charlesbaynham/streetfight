@@ -7,7 +7,10 @@ import returnIcon from "./images/return.svg";
 import actionNotDone from "./images/hand-pointer-solid.svg";
 import actionDone from "./images/check-solid.svg";
 import logo from "./images/art/logo.png";
-import { isLocationPermissionGranted, isCameraPermissionGranted } from "./utils";
+import {
+  isLocationPermissionGranted,
+  isCameraPermissionGranted,
+} from "./utils";
 
 import styles from "./OnboardingView.module.css";
 
@@ -80,10 +83,10 @@ function requestWebcamAccess(callbackCompleted) {
     });
 }
 
-
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
-  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] =
+    useState(false);
 
   // Check if permissions have already been granted on load
   useEffect(() => {
@@ -97,7 +100,6 @@ function OnboardingView({ user }) {
       setLocationPermissionGranted(result);
     });
   }, []);
-
 
   function getActionItems() {
     const hasName = user.name;
