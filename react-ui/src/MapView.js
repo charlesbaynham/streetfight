@@ -78,7 +78,7 @@ function MapView({
   const expanded = alwaysExpanded || poppedOut;
 
   const mapContainerRef = useRef(null);
-  const   mapImageRef = useRef(null);
+  const mapImageRef = useRef(null);
 
   const [boxWidthPx, setMapWidth] = useState(0);
   const [boxHeightPx, setMapHeight] = useState(0);
@@ -96,8 +96,7 @@ function MapView({
     window.addEventListener("resize", handleResize);
 
     // Setup panzoom
-    if (mapImageRef.current)
-      panzoom(mapImageRef.current);  // FIXME: WIP - this kinda make the SVG pannable and zoomable but clicks don't work etc
+    if (mapImageRef.current) panzoom(mapImageRef.current); // FIXME: WIP - this kinda make the SVG pannable and zoomable but clicks don't work etc
 
     // Initial measurement
     handleResize();
