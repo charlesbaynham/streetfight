@@ -80,16 +80,14 @@ function requestWebcamAccess(callbackCompleted) {
 }
 
 export async function isLocationPermissionGranted() {
-  navigator.permissions.query({ name: "geolocation" }).then((result) => {
-    return (result.state === "granted");
-  });
+  const result = await navigator.permissions.query({ name: "geolocation" });
+  return (result.state === "granted");
 }
 
 
 export async function isCameraPermissionGranted() {
-  navigator.permissions.query({ name: "camera" }).then((result) => {
-    return (result.state === "granted");
-  });
+  const result = await navigator.permissions.query({ name: "camera" });
+  return (result.state === "granted");
 }
 
 
