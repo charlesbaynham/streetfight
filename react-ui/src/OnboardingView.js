@@ -79,11 +79,7 @@ function requestWebcamAccess(callbackCompleted) {
     });
 }
 
-function requestLocationAccess(callbackCompleted) {
-  navigator.geolocation.getCurrentPosition(() => {
-    callbackCompleted();
-  });
-}
+
 
 
 function OnboardingView({ user }) {
@@ -93,6 +89,7 @@ function OnboardingView({ user }) {
   // Check if location permission has already been granted
   useEffect(() => {
     navigator.permissions.query({ name: "geolocation" }).then((result) => {
+      console.log("result.state = ", result.state);
       if (result.state === "granted") {
         setLocationPermissionGranted(true);
       }
@@ -125,13 +122,13 @@ function OnboardingView({ user }) {
       actionItems.push(
         <ActionItem
           text={
-            !teamName
+            !locationPermissionGranted
               ? "Grant location permission:"
-              : `Location permission granted`
+              : "Location permission granted"
           }
           done={locationPermissionGranted}
           onClick={() => {
-            requestLocationAccess(() => {
+            navigator.geolocation.getCurrentPosition(() => {
               setLocationPermissionGranted(true);
             });
           }}
