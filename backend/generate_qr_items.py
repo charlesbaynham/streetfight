@@ -9,6 +9,7 @@ from PIL import Image
 from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
+from .items import ItemModel
 from .model import ItemType
 
 logger = logging.getLogger(__name__)
@@ -16,6 +17,8 @@ logger = logging.getLogger(__name__)
 # A4 dimensions in pixels (approximately)
 A4_HEIGHT = 2480
 A4_WIDTH = 3508
+
+QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 
 ITEM_TYPES = [i.value for i in ItemType]
 
@@ -102,6 +105,13 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
         "Existing files will be overwritten."
     ),
 )
+@click.option(
+    "--log",
+    default=True,
+    help=(
+        "If true, keep a record of the QR codes generated in a file called `qr_codes.csv`"
+    ),
+)
 def generate(
     type: str,
     x: int,
@@ -110,6 +120,7 @@ def generate(
     outdir: str,
     outfile: Optional[str],
     damage: int,
+    log: bool,
     timeout: float,
 ):
     """
@@ -142,6 +153,12 @@ def generate(
         for _ in range(x * y)
     )
     make_qr_grid(qr_data, outfile, x, y)
+
+    if log:
+        with open(QR_LOGFILE, "a") as f:
+            for data in qr_data:
+                item = ItemModel.from_base64(data)  # FIXME: WIP
+                f.write(data + "\n")
 
 
 if __name__ == "__main__":

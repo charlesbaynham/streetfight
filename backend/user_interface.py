@@ -1,14 +1,11 @@
 import asyncio
 import json
 import logging
-import re
 import time
 from threading import RLock
 from typing import List
 from typing import Tuple
 from typing import Union
-from urllib.parse import parse_qs
-from urllib.parse import urlparse
 from uuid import UUID
 
 from fastapi import HTTPException
@@ -273,12 +270,6 @@ class UserInterface:
             encoded_item (str): The item to collect, encoded as a base64 string.
             Optionally can be a URL with the item as a query parameter "d".
         """
-
-        # Parse from URL if present
-        if re.match(r"http", encoded_item):
-            parsed_url = urlparse(encoded_item)
-            query_params = parse_qs(parsed_url.query)
-            encoded_item = query_params["d"][0]
 
         item = ItemModel.from_base64(encoded_item)
 
