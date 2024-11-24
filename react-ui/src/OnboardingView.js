@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -7,6 +7,10 @@ import returnIcon from "./images/return.svg";
 import actionNotDone from "./images/hand-pointer-solid.svg";
 import actionDone from "./images/check-solid.svg";
 import logo from "./images/art/logo.png";
+import {
+  isLocationPermissionGranted,
+  isCameraPermissionGranted,
+} from "./utils";
 
 import styles from "./OnboardingView.module.css";
 
@@ -80,7 +84,22 @@ function requestWebcamAccess(callbackCompleted) {
 }
 
 function OnboardingView({ user }) {
-  const [webcamAvailable, setWebcamAvailable] = useState(false);
+  const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] =
+    useState(false);
+
+  // Check if permissions have already been granted on load
+  useEffect(() => {
+    isCameraPermissionGranted().then((result) => {
+      setWebcamPermissionGranted(result);
+    });
+  }, []);
+
+  useEffect(() => {
+    isLocationPermissionGranted().then((result) => {
+      setLocationPermissionGranted(result);
+    });
+  }, []);
 
   function getActionItems() {
     const hasName = user.name;
@@ -93,10 +112,10 @@ function OnboardingView({ user }) {
       actionItems.push(
         <ActionItem
           text="Grant webcam permission:"
-          done={webcamAvailable}
+          done={webcamPermissionGranted}
           onClick={() => {
             requestWebcamAccess(() => {
-              setWebcamAvailable(true);
+              setWebcamPermissionGranted(true);
             });
           }}
           key={"webcam"}
@@ -104,7 +123,22 @@ function OnboardingView({ user }) {
       );
     else return actionItems;
 
-    if (webcamAvailable)
+    if (webcamPermissionGranted)
+      actionItems.push(
+        <ActionItem
+          text={"Grant location permission:"}
+          done={locationPermissionGranted}
+          onClick={() => {
+            navigator.geolocation.getCurrentPosition(() => {
+              setLocationPermissionGranted(true);
+            });
+          }}
+          key={"location"}
+        />,
+      );
+    else return actionItems;
+
+    if (locationPermissionGranted)
       actionItems.push(
         <ActionItem
           text={
