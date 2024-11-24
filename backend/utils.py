@@ -47,3 +47,7 @@ def add_params_to_url(url: str, params: Dict) -> str:
             parsed_url.fragment,
         )
     )
+
+
+def slugify_string(input: str):
+    return input.lower().replace(" ", "-")

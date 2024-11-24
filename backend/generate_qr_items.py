@@ -11,6 +11,7 @@ from PIL import ImageDraw
 from .admin_interface import AdminInterface
 from .items import ItemModel
 from .model import ItemType
+from .utils import slugify_string
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +24,9 @@ QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 ITEM_TYPES = [i.value for i in ItemType]
 
 
-def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
+def make_qr_grid(
+    qr_data: Iterable, output_file_path: str, num_x=4, num_y=2, tag: str = ""
+):
     # Create an eighth-sized image
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
@@ -53,6 +56,9 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
             qr_offset = (box_offset[0] + qr_offset_sz, box_offset[1] + qr_offset_sz)
 
             im.paste(qr, qr_offset)
+
+        # Add a text tag to the bottom right corner
+        draw.text((A4_WIDTH - 10, A4_HEIGHT - 10), tag, fill="black")
 
         # show
         im.save(output_file_path, "PNG")
@@ -106,6 +112,11 @@ def make_qr_grid(qr_data: Iterable, output_file_path: str, num_x=4, num_y=2):
     ),
 )
 @click.option(
+    "--tag",
+    default=None,
+    help=("Pass a tag to be included in the filename and image"),
+)
+@click.option(
     "--log",
     default=True,
     help=(
@@ -122,6 +133,7 @@ def generate(
     damage: int,
     log: bool,
     timeout: float,
+    tag: str,
 ):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
@@ -134,9 +146,13 @@ def generate(
         characters = string.ascii_letters + string.digits
         return "".join(random.choice(characters) for _ in range(length))
 
+    if not tag:
+        tag = generate_random_string(6)
+
+    tag = slugify_string(tag)
+
     if not outfile:
-        rand_chars = generate_random_string(6)
-        filename = f"qrcodes_{rand_chars}_{type}_{num}.png"
+        filename = f"qrcodes_{tag}_{type}_{num}.png"
         outfile = Path(outdir, filename)
 
     logger.debug("Outputting to %s", outfile)
@@ -152,13 +168,13 @@ def generate(
         )
         for _ in range(x * y)
     ]
-    make_qr_grid(iter(qr_data), outfile, x, y)
+    make_qr_grid(iter(qr_data), outfile, x, y, tag=tag)
 
     if log:
         with open(QR_LOGFILE, "a") as f:
-            for encoded_url in qr_data:
+            for i, encoded_url in enumerate(qr_data):
                 item = ItemModel.from_base64(encoded_url)
-                f.write(f"{item.id},{item.itype},{num},{damage},{timeout}\n")
+                f.write(f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout}\n")
 
 
 if __name__ == "__main__":
