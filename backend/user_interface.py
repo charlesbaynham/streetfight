@@ -285,7 +285,7 @@ class UserInterface:
         item_validation_error = item.validate_signature()
         if item_validation_error:
             raise HTTPException(
-                404, f"The scanned item is invalid - error {item_validation_error}"
+                403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
         user: User = self.get_user()
