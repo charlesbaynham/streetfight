@@ -1,6 +1,5 @@
 import logging
 import os
-import re
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict
@@ -165,17 +164,9 @@ async def collect_item(
     encoded_item: _EncodedItem,
     user_id=Depends(get_user_id),
 ):
-    # Clean off URL prefix if present
-    if re.match(r"http", encoded_item.data):
-        parsed_url = urlparse(encoded_item.data)
-        query_params = parse_qs(parsed_url.query)
-        data = query_params["d"][0]
-    else:
-        data = encoded_item.data
-
     try:
         with UserInterface(user_id) as ui:
-            return ui.collect_item(data)
+            return ui.collect_item(encoded_item.data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
