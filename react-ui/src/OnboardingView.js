@@ -83,15 +83,20 @@ function requestWebcamAccess(callbackCompleted) {
 
 
 function OnboardingView({ user }) {
-  const [webcamAvailable, setWebcamAvailable] = useState(false);
+  const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
-  // Check if location permission has already been granted
+  // Check if permissions have already been granted
   useEffect(() => {
     navigator.permissions.query({ name: "geolocation" }).then((result) => {
-      console.log("result.state = ", result.state);
       if (result.state === "granted") {
         setLocationPermissionGranted(true);
+      }
+    });
+
+    navigator.permissions.query({ name: "camera" }).then((result) => {
+      if (result.state === "granted") {
+        setWebcamPermissionGranted(true);
       }
     });
   }, []);
@@ -107,10 +112,10 @@ function OnboardingView({ user }) {
       actionItems.push(
         <ActionItem
           text="Grant webcam permission:"
-          done={webcamAvailable}
+          done={webcamPermissionGranted}
           onClick={() => {
             requestWebcamAccess(() => {
-              setWebcamAvailable(true);
+              setWebcamPermissionGranted(true);
             });
           }}
           key={"webcam"}
@@ -118,14 +123,10 @@ function OnboardingView({ user }) {
       );
     else return actionItems;
 
-    if (webcamAvailable)
+    if (webcamPermissionGranted)
       actionItems.push(
         <ActionItem
-          text={
-            !locationPermissionGranted
-              ? "Grant location permission:"
-              : "Location permission granted"
-          }
+          text={"Grant location permission:"}
           done={locationPermissionGranted}
           onClick={() => {
             navigator.geolocation.getCurrentPosition(() => {
