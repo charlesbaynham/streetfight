@@ -79,6 +79,18 @@ function requestWebcamAccess(callbackCompleted) {
     });
 }
 
+export async function isLocationPermissionGranted() {
+  navigator.permissions.query({ name: "geolocation" }).then((result) => {
+    return (result.state === "granted");
+  });
+}
+
+
+export async function isCameraPermissionGranted() {
+  navigator.permissions.query({ name: "camera" }).then((result) => {
+    return (result.state === "granted");
+  });
+}
 
 
 
@@ -86,20 +98,19 @@ function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
 
-  // Check if permissions have already been granted
+  // Check if permissions have already been granted on load
   useEffect(() => {
-    navigator.permissions.query({ name: "geolocation" }).then((result) => {
-      if (result.state === "granted") {
-        setLocationPermissionGranted(true);
-      }
-    });
-
-    navigator.permissions.query({ name: "camera" }).then((result) => {
-      if (result.state === "granted") {
-        setWebcamPermissionGranted(true);
-      }
+    isCameraPermissionGranted().then((result) => {
+      setWebcamPermissionGranted(result);
     });
   }, []);
+
+  useEffect(() => {
+    isLocationPermissionGranted().then((result) => {
+      setLocationPermissionGranted(result);
+    });
+  }, []);
+
 
   function getActionItems() {
     const hasName = user.name;
