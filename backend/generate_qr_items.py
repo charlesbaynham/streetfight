@@ -156,9 +156,9 @@ def generate(
 
     if log:
         with open(QR_LOGFILE, "a") as f:
-            for data in qr_data:
-                item = ItemModel.from_base64(data)  # FIXME: WIP
-                f.write(data + "\n")
+            for encoded_url in qr_data:
+                item = ItemModel.from_base64(encoded_url)
+                f.write(f"{item.id},{item.itype},{num},{damage},{timeout}\n")
 
 
 if __name__ == "__main__":
