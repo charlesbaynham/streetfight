@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
@@ -79,19 +79,25 @@ function requestWebcamAccess(callbackCompleted) {
     });
 }
 
-
-async function locationPermissionGranted() {  // FIXME: WIP
-  navigator.permissions.query({ name: "geolocation" }).then((result) => {
-    if (result.state === "granted") {
-      return true;
-    } else {
-      return false;
-    }
+function requestLocationAccess(callbackCompleted) {
+  navigator.geolocation.getCurrentPosition(() => {
+    callbackCompleted();
   });
 }
 
+
 function OnboardingView({ user }) {
   const [webcamAvailable, setWebcamAvailable] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState(false);
+
+  // Check if location permission has already been granted
+  useEffect(() => {
+    navigator.permissions.query({ name: "geolocation" }).then((result) => {
+      if (result.state === "granted") {
+        setLocationPermissionGranted(true);
+      }
+    });
+  }, []);
 
   function getActionItems() {
     const hasName = user.name;
@@ -116,6 +122,25 @@ function OnboardingView({ user }) {
     else return actionItems;
 
     if (webcamAvailable)
+      actionItems.push(
+        <ActionItem
+          text={
+            !teamName
+              ? "Grant location permission:"
+              : `Location permission granted`
+          }
+          done={locationPermissionGranted}
+          onClick={() => {
+            requestLocationAccess(() => {
+              setLocationPermissionGranted(true);
+            });
+          }}
+          key={"location"}
+        />,
+      );
+    else return actionItems;
+
+    if (locationPermissionGranted)
       actionItems.push(
         <ActionItem
           text={
