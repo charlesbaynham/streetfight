@@ -57,8 +57,8 @@ def make_qr_grid(
 
             im.paste(qr, qr_offset)
 
-        # Add a text tag to the bottom right corner
-        draw.text((A4_WIDTH - 10, A4_HEIGHT - 10), tag, fill="black")
+        # Add a text tag
+        draw.text((10, 10), tag, fill="black")
 
         # show
         im.save(output_file_path, "PNG")
