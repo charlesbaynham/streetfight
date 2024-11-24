@@ -7,6 +7,7 @@ import returnIcon from "./images/return.svg";
 import actionNotDone from "./images/hand-pointer-solid.svg";
 import actionDone from "./images/check-solid.svg";
 import logo from "./images/art/logo.png";
+import { isLocationPermissionGranted, isCameraPermissionGranted } from "./utils";
 
 import styles from "./OnboardingView.module.css";
 
@@ -78,18 +79,6 @@ function requestWebcamAccess(callbackCompleted) {
       callbackCompleted();
     });
 }
-
-export async function isLocationPermissionGranted() {
-  const result = await navigator.permissions.query({ name: "geolocation" });
-  return (result.state === "granted");
-}
-
-
-export async function isCameraPermissionGranted() {
-  const result = await navigator.permissions.query({ name: "camera" });
-  return (result.state === "granted");
-}
-
 
 
 function OnboardingView({ user }) {
