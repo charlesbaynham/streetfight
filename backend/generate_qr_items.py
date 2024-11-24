@@ -141,7 +141,7 @@ def generate(
 
     logger.debug("Outputting to %s", outfile)
 
-    qr_data = (
+    qr_data = [
         AdminInterface().make_new_item(
             type,
             {
@@ -151,8 +151,8 @@ def generate(
             },
         )
         for _ in range(x * y)
-    )
-    make_qr_grid(qr_data, outfile, x, y)
+    ]
+    make_qr_grid(iter(qr_data), outfile, x, y)
 
     if log:
         with open(QR_LOGFILE, "a") as f:
