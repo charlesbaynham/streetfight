@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from typing import List
 from typing import Tuple
 from uuid import UUID
@@ -25,6 +26,7 @@ from .model import User
 from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
+from .utils import add_params_to_url
 
 logger = logging.getLogger(__name__)
 
@@ -296,6 +298,25 @@ class AdminInterface:
         collected_only_once=True,
         collected_as_team=False,
     ) -> str:
+        """Makes a new item with the given settings and encodes it into a URL
+
+        Encoded items can be collected by visiting the URL. The item data itself
+        is stored in a query parameter "d" - collecting the item via
+        :meth:`UserInterface.collect_item` using this data directly also works.
+
+        Items are signed using the SECRET_KEY environment variable. The URL
+        domain is not part of the signature, so it's possible in theory to alter
+        this in URLs, but might be annoying to do so, so better to make sure
+        that `WEBSITE_URL` is set correctly in the .env file before generating QR
+        codes.
+
+
+        Args:
+            item_type (str): The type of item to create
+            item_data (dict): The data for the item - a dict that depends on the item type
+            collected_only_once (bool, optional): Whether the item can only be collected once. Defaults to True. Otherwise can be collected by other users / teams even after first collection.
+            collected_as_team (bool, optional): Whether the item is collected as a team. Defaults to False.
+        """
         logger.info("make_new_item item_type=%s, item_data=%s", item_type, item_data)
         try:
             item_type = ItemType(item_type)
@@ -317,7 +338,14 @@ class AdminInterface:
         encoded_item = item.to_base64()
         logger.info("Made new item: %s => %s", item, encoded_item)
 
-        return encoded_item
+        # Encode this into a URL
+        encoded_url = (
+            add_params_to_url(  # FIME this is a bug! This URL should be in the generated grids too
+                os.environ["WEBSITE_URL"], {"d": encoded_item}
+            ),
+        )
+
+        return encoded_url
 
     @db_scoped
     def get_locations(self, game_id: UUID = None):

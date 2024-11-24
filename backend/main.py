@@ -4,10 +4,6 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict
 from typing import List
-from urllib.parse import parse_qs
-from urllib.parse import urlencode
-from urllib.parse import urlparse
-from urllib.parse import urlunparse
 from uuid import UUID
 
 import pydantic
@@ -284,35 +280,6 @@ async def admin_get_locations(game_id=None):
     return AdminInterface().get_locations(game_id=game_id)
 
 
-def _add_params_to_url(url: str, params: Dict):
-    """
-    A chatGPT special to add parameters to a URL
-    """
-
-    parsed_url = urlparse(url)
-
-    # Extract the query parameters as a dictionary
-    query_params = parse_qs(parsed_url.query)
-
-    # Add or update query parameters
-    query_params = params
-
-    # Encode the modified query parameters
-    encoded_query = urlencode(query_params, doseq=True)
-
-    # Reconstruct the URL with the modified query parameters
-    return urlunparse(
-        (
-            parsed_url.scheme,
-            parsed_url.netloc,
-            parsed_url.path,
-            parsed_url.params,
-            encoded_query,
-            parsed_url.fragment,
-        )
-    )
-
-
 @router.post("/admin_make_new_item")
 async def admin_make_new_item(
     item_type: str,
@@ -322,7 +289,7 @@ async def admin_make_new_item(
 ):
     logger.info("admin_make_new_item")
     try:
-        encoded_item = AdminInterface().make_new_item(
+        encoded_url = AdminInterface().make_new_item(
             item_type,
             item_data,
             collected_only_once=collected_only_once,
@@ -334,10 +301,8 @@ async def admin_make_new_item(
     return {
         "itype": item_type,
         "item_data": item_data,
-        "encoded_item": encoded_item,
-        "encoded_url": _add_params_to_url(  # FIME this is a bug! This URL should be in the generated grids too
-            os.environ["WEBSITE_URL"], {"d": encoded_item}
-        ),
+        "encoded_item": encoded_url,
+        "encoded_url": encoded_url,
     }
 
 
