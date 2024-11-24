@@ -79,6 +79,17 @@ function requestWebcamAccess(callbackCompleted) {
     });
 }
 
+
+async function locationPermissionGranted() {  // FIXME: WIP
+  navigator.permissions.query({ name: "geolocation" }).then((result) => {
+    if (result.state === "granted") {
+      return true;
+    } else {
+      return false;
+    }
+  });
+}
+
 function OnboardingView({ user }) {
   const [webcamAvailable, setWebcamAvailable] = useState(false);
 

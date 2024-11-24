@@ -12,6 +12,7 @@ Location:
   - [x] When a shot happens, record where everyone was so the interface can suggest who was closest
   - [x] Hand-drawn map with pubs marked
   - [ ] Circles displayed on map, triggered by admins
+  - [ ] Disable pubs when outside circle
   - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
   - [ ] "Scanner" item which reveals other teams for x minutes
 
