@@ -117,6 +117,16 @@ def make_qr_grid(
     help=("Pass a tag to be included in the filename and image"),
 )
 @click.option(
+    "--onceonly",
+    default=True,
+    help=("If true, the item can only be collected once"),
+)
+@click.option(
+    "--asteam",
+    default=False,
+    help=("If true, the item is awarded to everyone in the team"),
+)
+@click.option(
     "--log",
     default=True,
     help=(
@@ -134,6 +144,8 @@ def generate(
     log: bool,
     timeout: float,
     tag: str,
+    onceonly: bool,
+    asteam: bool,
 ):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
@@ -165,6 +177,8 @@ def generate(
                 "shot_damage": damage,
                 "shot_timeout": timeout,
             },
+            collected_only_once=onceonly,
+            collected_as_team=asteam,
         )
         for _ in range(x * y)
     ]
@@ -174,7 +188,9 @@ def generate(
         with open(QR_LOGFILE, "a") as f:
             for i, encoded_url in enumerate(qr_data):
                 item = ItemModel.from_base64(encoded_url)
-                f.write(f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout}\n")
+                f.write(
+                    f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
+                )
 
 
 if __name__ == "__main__":
