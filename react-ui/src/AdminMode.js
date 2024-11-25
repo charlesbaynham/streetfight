@@ -269,6 +269,57 @@ function AllGamesView({ games }) {
   ));
 }
 
+
+function UserRenaming() {
+  const renameUser = useCallback((user_id, new_name) => {
+    sendAPIRequest(
+      "admin_set_user_name",
+      {
+        user_id: user_id,
+        name: new_name,
+      },
+      "POST",
+    );
+  }, []);
+
+  const [users, setUsers] = useState([]);
+
+  const ref_user = useRef(null);
+  const ref_new_name = useRef(null);
+
+  useEffect(() => {
+    sendAPIRequest("get_users", {}, "GET", (users) => {
+      setUsers(users);
+    });
+  }, []);
+
+  return (
+    <>
+      <label htmlFor="user">Rename user</label>
+      <select name="user" ref={ref_user}>
+        {users.map((user, idx_user) => (
+          <option key={idx_user} value={user.id}>
+            {user.name ? user.name : user.id}
+          </option>
+        ))}
+      </select>
+      <label htmlFor="newName">Name:</label>
+      <input name="newName" ref={ref_new_name} />
+
+      <button
+        onClick={() => {
+          renameUser(
+            ref_user.current.value,
+            ref_new_name.current.value,
+          );
+        }}
+      >
+        Submit
+      </button>
+    </>
+  );
+}
+
 export default function AdminMode() {
   const [games, setGames] = useState([]);
   const [knownTickerHash, setKnownTickerHash] = useState(0);
@@ -299,6 +350,8 @@ export default function AdminMode() {
       <AllGamesView games={games} />
 
       <NewItems />
+
+      <UserRenaming />
 
       <MapViewAdmin />
     </>
