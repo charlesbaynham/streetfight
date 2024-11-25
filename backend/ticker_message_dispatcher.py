@@ -125,6 +125,9 @@ def send_ticker_message(
         team_id (Optional[UUID]): The ID of the team to send the message to.
         game_id (Optional[UUID]): The ID of the game to send the message to.
         session (Optional[Session]): The database session to use.
+        highlight_user_id (UUID, optional):
+                            If provided, the message will be
+                            highlighted for this user id. Defaults to None
     """
 
     # Get the target and message format string for the message type

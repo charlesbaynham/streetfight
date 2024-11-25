@@ -312,6 +312,12 @@ async def admin_set_game_active(game_id: UUID, active: bool):
     AdminInterface().set_game_active(game_id, active)
 
 
+@router.post("/admin_set_user_name")
+async def admin_set_user_name(user_id: UUID, name: str):
+    logger.info("admin_set_user_name")
+    AdminInterface().set_user_name(user_id=user_id, name=name)
+
+
 @router.get("/sse_updates")
 async def sse_updates(
     user_id=Depends(get_user_id),
