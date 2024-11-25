@@ -282,6 +282,14 @@ class AdminInterface:
         with UserInterface(user_id) as ui:
             ui.set_name(name)
 
+            # Bump the game this user is in
+            try:
+                game_id = ui.get_user().team.game_id
+                trigger_update_event("ticker", game_id)
+            except AttributeError:
+                # User is not in a team. Meh
+                pass
+
     @db_scoped
     def mark_shot_checked(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
