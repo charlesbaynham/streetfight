@@ -2,7 +2,6 @@ Goals
 -----
 
 Bugs:
-- [ ] The animation for the bullet reload is jerky
 - [ ] iPhone location does not work - maybe fixed, ask Rob
 - [x] Location permission should be requested on start screen
 
@@ -24,6 +23,7 @@ Priority:
 
 Polish:
   - [ ] Make ticker messages disappear eventually. Clientside.
+  - [ ] The animation for the bullet reload is jerky
   - [ ] Put harry's noises in
     * time splitters 2 ricochet
     * random selection of western ricochet shots
