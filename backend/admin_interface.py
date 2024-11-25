@@ -278,6 +278,10 @@ class AdminInterface:
                 session=ui.get_session(),
             )
 
+    def set_user_name(self, user_id, name: str):
+        with UserInterface(user_id) as ui:
+            ui.set_name(name)
+
     @db_scoped
     def mark_shot_checked(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
