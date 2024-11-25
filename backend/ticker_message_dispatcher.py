@@ -87,11 +87,11 @@ TICKER_MESSAGES = {
     ),
     TickerMessageType.USER_GOT_HIT: (
         TickerTarget.PRIVATE_USER,
-        "You were hit by {target}!",
+        "You were hit by {user}!",
     ),
     TickerMessageType.USER_GOT_KNOCKED_OUT: (
         TickerTarget.PRIVATE_USER,
-        "You were knocked out by {target}!",
+        "You were knocked out by {user}!",
     ),
     TickerMessageType.ADMIN_GAVE_ARMOUR: (
         TickerTarget.PRIVATE_USER,

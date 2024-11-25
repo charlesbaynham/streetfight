@@ -236,8 +236,9 @@ class AdminInterface:
 
         tk.send_ticker_message(
             message_type_private,
-            {"user": u_to.name, "target": u_from.name, "num": shot.shot_damage},
+            {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
             game_id=u_from.team.game_id,
+            user_id=u_to.id,
             session=self._session,
         )
 
