@@ -3,7 +3,7 @@ Goals
 
 Bugs:
 - [ ] The animation for the bullet reload is jerky
-- [ ] iPhone location does not work
+- [ ] iPhone location does not work - maybe fixed, ask Rob
 - [x] Location permission should be requested on start screen
 
 
@@ -19,7 +19,7 @@ Location:
 Priority:
   - [x] You should be stuck on the home screen until the appropriate permissions are given
   - [ ] Needs a "hit" noise / notification
-  - [ ] You should find out if you hit someone (use private tickers)
+  - [x] You should find out if you hit someone (use private tickers)
   - [ ] Need to be able to change your name... People will be silly
 
 Polish:
