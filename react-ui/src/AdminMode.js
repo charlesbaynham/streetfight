@@ -269,7 +269,6 @@ function AllGamesView({ games }) {
   ));
 }
 
-
 function UserRenaming() {
   const renameUser = useCallback((user_id, new_name) => {
     sendAPIRequest(
@@ -308,10 +307,7 @@ function UserRenaming() {
 
       <button
         onClick={() => {
-          renameUser(
-            ref_user.current.value,
-            ref_new_name.current.value,
-          );
+          renameUser(ref_user.current.value, ref_new_name.current.value);
         }}
       >
         Submit
