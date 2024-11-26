@@ -3,7 +3,6 @@ Goals
 
 Bugs:
 - [ ] iPhone location does not work - maybe fixed, ask Rob
-- [x] Location permission should be requested on start screen
 
 
 Location:
