@@ -4,8 +4,11 @@ import hashlib
 import json
 import logging
 import os
+import re
 from typing import Dict
 from typing import Optional
+from urllib.parse import parse_qs
+from urllib.parse import urlparse
 from uuid import UUID
 
 import pydantic
@@ -67,6 +70,12 @@ class ItemModel(pydantic.BaseModel):
         assert isinstance(encoded_string, str)
 
         logger.debug("Decoding item %s", encoded_string)
+
+        # Parse from URL if present
+        if re.match(r"http", encoded_string):
+            parsed_url = urlparse(encoded_string)
+            query_params = parse_qs(parsed_url.query)
+            encoded_string = query_params["d"][0]
 
         try:
             # Decode the base64 string

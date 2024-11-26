@@ -15,10 +15,40 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
 
+import {
+  isLocationPermissionGranted,
+  isCameraPermissionGranted,
+} from "./utils";
+
 const isGameRunning = (user) => Boolean(user && user.active);
 
 function GetView({ user }) {
   const [triggerShot, setTriggerShot] = useState(0);
+  const [triggerPermissionsRecheck, setTriggerPermissionsRecheck] = useState(0);
+
+  const [permissionsGranted, setPermissionsGranted] = useState(false);
+
+  // Check if all the required permissions are granted
+  useEffect(() => {
+    Promise.all([
+      isLocationPermissionGranted(),
+      isCameraPermissionGranted(),
+    ]).then(([locationGranted, cameraGranted]) => {
+      setPermissionsGranted(locationGranted && cameraGranted);
+    });
+  }, [triggerPermissionsRecheck, user]);
+
+  // Trigger a recheck of permissions every 5s or when the user's state changes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      console.log("Rechecking permissions");
+      setTriggerPermissionsRecheck((prev) => prev + 1);
+    }, 5000);
+
+    return () => {
+      clearInterval(interval);
+    };
+  }, []);
 
   if (user === null) {
     return <p>Loading...</p>;
@@ -26,7 +56,9 @@ function GetView({ user }) {
 
   const isAlive = user ? user.state === "alive" : false;
 
-  if (user.name === null || !isGameRunning(user)) {
+  // Show the user the onboarding view if they haven't set their name, the game
+  // isn't running, or if permissions aren't granted properly
+  if (user.name === null || !isGameRunning(user) || !permissionsGranted) {
     return <OnboardingView user={user} />;
   }
 

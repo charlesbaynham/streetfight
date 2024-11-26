@@ -77,3 +77,13 @@ export function getGunImgFromUser(user) {
 
   return GUN_IMGS[gun_name];
 }
+
+export async function isLocationPermissionGranted() {
+  const result = await navigator.permissions.query({ name: "geolocation" });
+  return result.state === "granted";
+}
+
+export async function isCameraPermissionGranted() {
+  const result = await navigator.permissions.query({ name: "camera" });
+  return result.state === "granted";
+}

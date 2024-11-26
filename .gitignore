@@ -6,6 +6,8 @@
 .vscode
 node_modules
 result
+*.png
+*.csv
 
 
 # Created by https://www.toptal.com/developers/gitignore/api/python

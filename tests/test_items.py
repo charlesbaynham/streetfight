@@ -423,7 +423,7 @@ def test_collect_team_item_twice(two_users_in_different_teams, user_factory):
     ],
 )
 def test_user_collect_url(api_client, team_factory, url):
-    from backend.main import _add_params_to_url
+    from backend.utils import add_params_to_url
 
     user_id = api_client.get(
         "/api/my_id",
@@ -436,7 +436,7 @@ def test_user_collect_url(api_client, team_factory, url):
     item.sign()
     valid_encoded_ammo = item.to_base64()
 
-    sample_url = _add_params_to_url(url, {"d": valid_encoded_ammo})
+    sample_url = add_params_to_url(url, {"d": valid_encoded_ammo})
 
     assert UserInterface(user_id).get_user_model().num_bullets == 0
 
