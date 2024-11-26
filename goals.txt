@@ -2,9 +2,8 @@ Goals
 -----
 
 Bugs:
-- [ ] The animation for the bullet reload is jerky
-- [ ] iPhone location does not work
-- [ ] Location permission should be requested on start screen
+- [ ] iPhone location does not work - maybe fixed, ask Rob
+- [x] Location permission should be requested on start screen
 
 
 Location:
@@ -17,13 +16,14 @@ Location:
   - [ ] "Scanner" item which reveals other teams for x minutes
 
 Priority:
-  - [ ] You should be stuck on the home screen until the appropriate permissions are given
+  - [x] You should be stuck on the home screen until the appropriate permissions are given
   - [ ] Needs a "hit" noise / notification
-  - [ ] You should find out if you hit someone (use private tickers)
-  - [ ] Need to be able to change your name... People will be silly
+  - [x] You should find out if you hit someone (use private tickers)
+  - [x] Need to be able to change your name... People will be silly
 
 Polish:
   - [ ] Make ticker messages disappear eventually. Clientside.
+  - [ ] The animation for the bullet reload is jerky
   - [ ] Put harry's noises in
     * time splitters 2 ricochet
     * random selection of western ricochet shots
