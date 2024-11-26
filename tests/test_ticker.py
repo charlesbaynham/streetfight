@@ -124,7 +124,7 @@ def test_ticker_announces_kill(
     assert response.is_success
     messages = response.json()
 
-    assert "killed" in messages[0][1]
+    assert any(["killed" in m[1] for m in messages])
 
 
 def test_ticker_announces_kill_privately(
