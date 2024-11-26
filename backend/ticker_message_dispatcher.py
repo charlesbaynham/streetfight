@@ -22,6 +22,8 @@ class TickerMessageType(Enum):
     USER_COLLECTED_ARMOUR = auto()
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
+    USER_GOT_HIT = auto()
+    USER_GOT_KNOCKED_OUT = auto()
     ADMIN_HIT_USER = auto()
     ADMIN_HIT_AND_KNOCKED_OUT_USER = auto()
     ADMIN_HIT_AND_KILLED_USER = auto()
@@ -83,6 +85,14 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "{user} killed {target}!",
     ),
+    TickerMessageType.USER_GOT_HIT: (
+        TickerTarget.PRIVATE_USER,
+        "You were hit by {user}!",
+    ),
+    TickerMessageType.USER_GOT_KNOCKED_OUT: (
+        TickerTarget.PRIVATE_USER,
+        "You were knocked out by {user}!",
+    ),
     TickerMessageType.ADMIN_GAVE_ARMOUR: (
         TickerTarget.PRIVATE_USER,
         "You were given a level {num} armour!",
@@ -125,6 +135,9 @@ def send_ticker_message(
         team_id (Optional[UUID]): The ID of the team to send the message to.
         game_id (Optional[UUID]): The ID of the game to send the message to.
         session (Optional[Session]): The database session to use.
+        highlight_user_id (UUID, optional):
+                            If provided, the message will be
+                            highlighted for this user id. Defaults to None
     """
 
     # Get the target and message format string for the message type

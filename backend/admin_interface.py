@@ -218,18 +218,28 @@ class AdminInterface:
         u_to = self._get_user_orm(target_user_id)
 
         if u_to.hit_points > 0:
-            message_type = tk.TickerMessageType.HIT_AND_DAMAGE
+            message_type_public = tk.TickerMessageType.HIT_AND_DAMAGE
+            message_type_private = tk.TickerMessageType.USER_GOT_HIT
 
         else:
-            message_type = tk.TickerMessageType.HIT_AND_KNOCKOUT
+            message_type_public = tk.TickerMessageType.HIT_AND_KNOCKOUT
+            message_type_private = tk.TickerMessageType.USER_GOT_KNOCKED_OUT
             ui_target.clear_unchecked_shots()
 
         tk.send_ticker_message(
-            message_type,
+            message_type_public,
             {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
             game_id=u_from.team.game_id,
             session=self._session,
             highlight_user_id=u_from.id,
+        )
+
+        tk.send_ticker_message(
+            message_type_private,
+            {"user": u_from.name, "target": u_to.name, "num": shot.shot_damage},
+            game_id=u_from.team.game_id,
+            user_id=u_to.id,
+            session=self._session,
         )
 
         try:
@@ -277,6 +287,18 @@ class AdminInterface:
                 team_id=user_model.team_id,
                 session=ui.get_session(),
             )
+
+    def set_user_name(self, user_id, name: str):
+        with UserInterface(user_id) as ui:
+            ui.set_name(name)
+
+            # Bump the game this user is in
+            try:
+                game_id = ui.get_user().team.game_id
+                trigger_update_event("ticker", game_id)
+            except AttributeError:
+                # User is not in a team. Meh
+                pass
 
     @db_scoped
     def mark_shot_checked(self, shot_id):

@@ -76,12 +76,12 @@ def load():
         def log_close():
             global session_counter
 
+            session_counter -= 1
             logger.debug(
                 "Garbage collecting session hash %d (%d exist)",
                 session_hash,
                 session_counter,
             )
-            session_counter -= 1
 
         weakref.finalize(session, log_close)
 
