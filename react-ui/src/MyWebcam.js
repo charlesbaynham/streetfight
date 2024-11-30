@@ -3,13 +3,13 @@
 import { useEffect, useRef, useCallback } from "react";
 
 
-
-const videoConstraints = {
+const constraints = {
     audio: false,
-    video: true,
-    width: { ideal: 2048 },
-    height: { ideal: 1080 },
-    facingMode: "environment",
+    video: {
+        facingMode: 'environment',
+        width: { ideal: 2048 },
+        height: { ideal: 1080 },
+    }
 };
 
 export function MyWebcam() {
@@ -64,7 +64,7 @@ export function MyWebcam() {
 
         async function init() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 handleSuccess(stream);
             } catch (e) {
                 console.error('navigator.getUserMedia error:', e);
