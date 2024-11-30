@@ -50,14 +50,15 @@ function WebcamCapture({ trigger, isDead }) {
     }, 1000);
   }, [setHackyHideWebcam]);
 
-  const id = useEffect(() => {  // FIXME: Hacky test
+  const id = useEffect(() => {
+    // FIXME: Hacky test
     setInterval(() => {
       toggleWebcam();
     }, 5000);
 
     return () => {
       clearInterval(id);
-    }
+    };
   }, [toggleWebcam, orientation]);
 
   // Call the capture callback when the 'trigger' prop changes
