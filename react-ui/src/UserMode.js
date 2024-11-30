@@ -76,7 +76,8 @@ function GetView({ user }) {
       <WebcamView trigger={triggerShot} isDead={!isAlive} />
 
       {isAlive ? (
-        <CrosshairImage />
+        // <CrosshairImage />  FIXME
+        null  // FIXME
       ) : user.state === "knocked out" ? (
         <KnockedOutView user={user} />
       ) : (

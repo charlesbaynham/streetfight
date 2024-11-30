@@ -15,6 +15,8 @@ const constraints = {
 export function MyWebcam({ trigger, className = "" }) {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
+    const emergencyRef = useRef(null);  // FIXME
+
 
     // Define a function that will take a shot and upload it to the server
     const capture = useCallback(() => {
@@ -55,35 +57,38 @@ export function MyWebcam({ trigger, className = "" }) {
             capture();
     }, [trigger, capture]);
 
+    const init = useCallback(async () => {
+
+        const video = videoRef.current;
+
+        function handleSuccess(stream) {
+            video.srcObject = stream;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            handleSuccess(stream);
+        } catch (e) {
+            console.error('navigator.getUserMedia error:', e);
+        }
+    }, []);
+
     // Connect the webcam to the <video> element
     useEffect(() => {
         if (videoRef.current === null) {
             return;
         }
 
-        const video = videoRef.current;
-
-        async function init() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
-                handleSuccess(stream);
-            } catch (e) {
-                console.error('navigator.getUserMedia error:', e);
-            }
-        }
-
-        function handleSuccess(stream) {
-            video.srcObject = stream;
-        }
-
         init();
 
-        if (video)
-            return () => {
-                // Close down the camera streams when the component is unmounted
-                video?.srcObject?.getTracks().forEach(track => track.stop());
-            }
-    }, [canvasRef, videoRef, capture]);
+        const video = videoRef.current;
+
+        return () => {
+            // Close down the camera streams when the component is unmounted
+            video.srcObject?.getTracks().forEach(track => track.stop());
+            video.srcObject = null;
+        }
+    }, [canvasRef, videoRef, capture, init]);
 
     return (
         <div className={className}>
@@ -100,6 +105,29 @@ export function MyWebcam({ trigger, className = "" }) {
                 ref={canvasRef}
                 style={{ display: "none" }}
             ></canvas>
-        </div>
+
+            <button
+                ref={emergencyRef}
+                style={{ position: "absolute", top: "50%", right: 0, zIndex: 100000 }}
+                onClick={() => {
+                    videoRef.current?.srcObject?.getTracks().forEach(track => track.stop());
+                    videoRef.current.srcObject = null;
+
+                    setTimeout(init, 1000);
+
+
+
+
+                }}
+            >ARRRRRRGGGHHH</button>
+
+            <p
+                style={{ position: "absolute", top: "50%", right: 0, zIndex: 100000 }}
+            >
+                videoRef: {String(videoRef.current)}
+                <br />
+                srcObject: {String(videoRef.current?.srcObject)}
+            </p>
+        </div >
     );
 }
