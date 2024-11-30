@@ -20,6 +20,9 @@ logger = logging.getLogger(__name__)
 A4_HEIGHT = 2480
 A4_WIDTH = 3508
 
+# Space between images
+IMAGE_GUTTER = 100
+
 QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 
@@ -51,9 +54,40 @@ def make_qr_grid(
     else:
         base_image_loaded = None
 
+    # Make the boxes
+    sub_images = []
+    for i in range(num_x * num_y):
+        # Make a new image for this box
+        sub_img = Image.new("RGBA", (box_width, box_height), "white")
+        draw_subimg = ImageDraw.Draw(sub_img)
+
+        # Generate the next QR code
+        qr = qrcode.make(next(qr_data))
+        qr_size = int(0.75 * min(box_width, box_height))
+        qr = qr.resize((qr_size, qr_size))
+
+        # Paste the QR code
+        qr_x_offset = box_width // 2 - qr_size // 2
+        qr_y_offset = box_height // 2 - qr_size // 2
+        qr_offset_sz = min(qr_x_offset, qr_y_offset)
+        qr_offset = (qr_offset_sz, qr_offset_sz)
+        sub_img.paste(qr, qr_offset)
+
+        # Paste the base image if it exists
+        if base_image_loaded:
+            sub_img.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
+
+        # Add a text tag
+        draw_subimg.text((10, 10), tag + f"{i}", fill="black")
+
+        # Add the sub-image to the list
+        sub_images.append(sub_img)
+
+    # Make the main output image
     with Image.new("RGBA", (A4_WIDTH, A4_HEIGHT), "white") as im:
         draw = ImageDraw.Draw(im)
 
+        # Build a grid
         for i in range(1, num_y):
             draw.line(
                 (0, i * A4_HEIGHT // num_y) + (A4_WIDTH, i * A4_HEIGHT // num_y),
@@ -62,41 +96,19 @@ def make_qr_grid(
         for i in range(1, num_x):
             draw.line((box_width * i, 0, box_width * i, A4_HEIGHT), fill=128)
 
-        sub_images = []
-        for i in range(num_x * num_y):
-            # Make a new image for this box
-            sub_img = Image.new("RGBA", (box_width, box_height), "white")
-            draw_subimg = ImageDraw.Draw(sub_img)
-
-            # Generate the next QR code
-            qr = qrcode.make(next(qr_data))
-            qr_size = int(0.75 * min(box_width, box_height))
-            qr = qr.resize((qr_size, qr_size))
-
-            # Paste the QR code
-            qr_x_offset = box_width // 2 - qr_size // 2
-            qr_y_offset = box_height // 2 - qr_size // 2
-            qr_offset_sz = min(qr_x_offset, qr_y_offset)
-            qr_offset = (qr_offset_sz, qr_offset_sz)
-            sub_img.paste(qr, qr_offset)
-
-            # Paste the base image if it exists
-            if base_image_loaded:
-                sub_img.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
-
-            # Add a text tag
-            draw_subimg.text((10, 10), tag + f"{i}", fill="black")
-
-            # Add the sub-image to the list
-            sub_images.append(sub_img)
-
-        # Paste the sub-images into the main image
+        # Paste the sub-images
         for i in range(num_x * num_y):
             sub_img = sub_images[i]
 
             # Calculate the position of this box
-            img_offset = ((i % num_x) * box_width, (i // num_x) * box_height)
-            im.paste(sub_img, img_offset)
+            img_offset = (
+                (i % num_x) * box_width + round(IMAGE_GUTTER / 2),
+                (i // num_x) * box_height + round(IMAGE_GUTTER / 2),
+            )
+            new_width = box_width - round(IMAGE_GUTTER)
+            new_height = box_height - round(IMAGE_GUTTER)
+
+            im.paste(sub_img.resize((new_width, new_height)), img_offset)
 
         # show
         im.save(output_file_path, "PNG")
