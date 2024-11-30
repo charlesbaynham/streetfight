@@ -62,7 +62,7 @@ def make_qr_grid(
         ImageDraw.Draw(sub_img)
 
         # Generate the next QR code
-        qr = qrcode.make(next(qr_data))
+        qr = qrcode.make(next(qr_data), error_correction=qrcode.ERROR_CORRECT_M)
         qr_size = int(0.75 * min(box_width, box_height))
         qr = qr.resize((qr_size, qr_size))
 
