@@ -42,7 +42,7 @@ async def require_admin_auth(
 
 
 def mark_admin_authed(request: Request, password: str) -> None:
-    if "password" not in os.environ:
+    if "ADMIN_PASSWORD" not in os.environ:
         logger.warning("No password set in environment - using default")
 
     correct_password = os.getenv("ADMIN_PASSWORD", "password")
