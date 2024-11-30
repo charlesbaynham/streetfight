@@ -44,30 +44,52 @@ export const MyWebcam = forwardRef(
     const mediaStream = useRef(null);
 
     // Return the current frame as a base64-encoded image
-    const capture = useCallback(() => {
-      if (videoRef.current === null || canvasRef.current === null) {
+    const capture = useCallback(async () => {
+      if (videoRef.current === null || canvasRef.current === null || mediaStream.current === null) {
         return;
       }
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
 
-      let w = video.videoWidth;
-      let h = video.videoHeight;
-      canvas.width = w;
-      canvas.height = h;
+      // Use the ImageCapture API if available
+      if (typeof ImageCapture !== 'undefined') {
+        const track = mediaStream.current.getVideoTracks()[0];
+        const imageCapture = new ImageCapture(track);
 
-      let ctx = canvas.getContext("2d");
+        // https://stackoverflow.com/questions/23150333/html5-javascript-dataurl-to-blob-blob-to-dataurl
+        function blobToDataURL(blob) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = _e => resolve(reader.result);
+            reader.onerror = _e => reject(reader.error);
+            reader.onabort = _e => reject(new Error("Read aborted"));
+            reader.readAsDataURL(blob);
+          });
+        }
 
-      ctx.drawImage(video, 0, 0, w, h);
+        const img = await imageCapture.takePhoto();
+        console.log("Took photo:", img);
 
-      const imageSrc = canvas.toDataURL("image/jpeg");
+        return await blobToDataURL(img);
+      } else {
+        // Fallback to usual canvas method
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
 
-      return imageSrc;
+        let w = video.videoWidth;
+        let h = video.videoHeight;
+        canvas.width = w;
+        canvas.height = h;
+
+        let ctx = canvas.getContext("2d");
+
+        ctx.drawImage(video, 0, 0, w, h);
+
+        return canvas.toDataURL("image/jpeg");;
+      }
     }, [videoRef, canvasRef]);
 
     // Take a shot and upload it when trigger changes
-    const captureAndUpload = useCallback(() => {
-      const imageSrc = capture();
+    const captureAndUpload = useCallback(async () => {
+      const imageSrc = await capture();
       const query = JSON.stringify({
         photo: imageSrc,
       });
@@ -77,9 +99,8 @@ export const MyWebcam = forwardRef(
         headers: { "Content-Type": "application/json" },
         body: query,
       };
-      fetch("/api/submit_shot", requestOptions)
-        .then((response) => response.json())
-        .then((data) => console.log(`Response: ${data}`));
+      const r = await fetch("/api/submit_shot", requestOptions);
+      console.log(`Response: ${await r.json()}`);
     }, [capture]);
 
     // Expose the capture function to the parent component
@@ -101,6 +122,7 @@ export const MyWebcam = forwardRef(
         video.srcObject = stream;
         await video.play(); // This line is critical for making the camera resume from standby in Safari, and wasting an entire Saturday
         mediaStream.current = stream;
+        window.mediaStream = stream;  // FIXME for debug
       } catch (e) {
         console.error("navigator.getUserMedia error:", e);
       }
