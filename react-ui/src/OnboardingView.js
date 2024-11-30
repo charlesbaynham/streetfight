@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { sendAPIRequest } from "./utils";
+import {
+  requestGeolocationPermission,
+  requestWebcamAccess,
+  sendAPIRequest,
+} from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -70,19 +74,6 @@ function NameEntry({ user }) {
   );
 }
 
-function requestWebcamAccess(callbackCompleted) {
-  navigator.mediaDevices
-    .getUserMedia({ video: true })
-    .then((stream) => {
-      stream.getTracks().forEach(function (track) {
-        track.stop();
-      });
-    })
-    .then(() => {
-      callbackCompleted();
-    });
-}
-
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
@@ -128,10 +119,10 @@ function OnboardingView({ user }) {
         <ActionItem
           text={"Grant location permission:"}
           done={locationPermissionGranted}
-          onClick={() => {
-            navigator.geolocation.getCurrentPosition(() => {
-              setLocationPermissionGranted(true);
-            });
+          onClick={async () => {
+            console.log("Requesting location permission from OnboardingView");
+            const success = await requestGeolocationPermission();
+            setLocationPermissionGranted(success);
           }}
           key={"location"}
         />,
