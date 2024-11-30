@@ -65,7 +65,7 @@ export function MyWebcam({ trigger, className = "" }) {
 
         function handleSuccess(stream) {
             video.srcObject = stream;
-            video.play();
+            // video.play();
             setMediaStream(stream);
         }
 
