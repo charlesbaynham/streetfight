@@ -13,6 +13,24 @@ def test_read_main(api_client):
     assert response.json() == {"msg": "Hello world!"}
 
 
+def test_auth_default_to_false(api_client):
+    response = api_client.get("/api/admin_is_authed")
+    assert response.status_code == 200
+    assert response.json() == False
+
+
+def test_auth_denies_admin(api_client):
+    response = api_client.get("/api/admin_list_games")
+    assert response.status_code == 403
+
+
+def test_auth_can_login(api_client):
+    response = api_client.post("/api/admin_authenticate")
+    assert response.status_code == 200
+    response = api_client.get("/api/admin_list_games")
+    assert response.status_code == 200
+
+
 def test_user_info(api_client):
     response = api_client.get("/api/user_info")
 
