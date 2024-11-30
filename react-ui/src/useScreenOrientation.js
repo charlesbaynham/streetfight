@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 
-const getOrientation = () => window.screen.orientation.type;
+const getOrientation = () => {
+  const state = window.screen?.orientation?.type;
+  if (state === null)
+    return "unknown";
+  return state;
+}
 
 const useScreenOrientation = () => {
   const [orientation, setOrientation] = useState(getOrientation());
