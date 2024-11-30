@@ -7,7 +7,16 @@ from backend.main import app
 from backend.model import UserModel
 from backend.user_interface import UserInterface
 
-admin_routes = [route.path for route in app.routes if "admin" in route.path]
+# Routes that should require authentication
+admin_routes = [
+    route
+    for route in app.routes
+    if (
+        "admin" in route.path
+        and "admin_authenticate" not in route.path
+        and "admin_is_authed" not in route.path
+    )
+]
 
 
 def test_read_main(api_client):
@@ -22,9 +31,9 @@ def test_auth_default_to_false(api_client):
     assert response.json() == False
 
 
-@pytest.mark.parametrize("route", admin_routes)
+@pytest.mark.parametrize("route", admin_routes, ids=lambda route: route.path)
 def test_auth_denies_admin(api_client, route):
-    response = api_client.get(route)
+    response = api_client.get(route.path)
     assert response.status_code == 403
 
 
