@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { sendAPIRequest } from "./utils";
+import { requestGeolocationPermission, sendAPIRequest } from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -128,10 +128,9 @@ function OnboardingView({ user }) {
         <ActionItem
           text={"Grant location permission:"}
           done={locationPermissionGranted}
-          onClick={() => {
-            navigator.geolocation.getCurrentPosition(() => {
-              setLocationPermissionGranted(true);
-            });
+          onClick={async () => {
+            const success = await requestGeolocationPermission();
+            setLocationPermissionGranted(success);
           }}
           key={"location"}
         />,
