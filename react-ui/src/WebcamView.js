@@ -11,8 +11,6 @@ export default function WebcamView({ trigger, isDead }) {
   // Get a reference to the webcam element
   const webcamRef = useRef(null);
 
-
-
   return (
     <>
       <MyWebcam
