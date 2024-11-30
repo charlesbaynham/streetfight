@@ -64,16 +64,16 @@ def make_qr_grid(
             # Calculate the position of this box
             box_offset = ((i % num_x) * box_width, (i // num_x) * box_height)
 
+            # Paste the base image if it exists
+            if base_image_loaded:
+                im.paste(base_image_loaded, box_offset)
+
             # Paste the QR code
             qr_x_offset = box_width // 2 - qr_size // 2
             qr_y_offset = box_height // 2 - qr_size // 2
             qr_offset_sz = min(qr_x_offset, qr_y_offset)
             qr_offset = (box_offset[0] + qr_offset_sz, box_offset[1] + qr_offset_sz)
             im.paste(qr, qr_offset)
-
-            # Paste the base image if it exists
-            if base_image_loaded:
-                im.paste(base_image_loaded, box_offset)
 
         # Add a text tag
         draw.text((10, 10), tag, fill="black")
