@@ -1,3 +1,5 @@
+import os
+
 import pytest
 from fastapi import HTTPException
 
@@ -60,5 +62,5 @@ async def test_require_admin_auth(mock_request, mock_websocket):
 
 def test_mark_admin_authed(mock_request):
     request = mock_request({})
-    mark_admin_authed(request)
+    mark_admin_authed(request, os.getenv("ADMIN_PASSWORD", "password"))
     assert request.session["admin_authed"] == "true"

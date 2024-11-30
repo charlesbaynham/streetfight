@@ -1,3 +1,4 @@
+import os
 from uuid import UUID
 
 import pytest
@@ -38,7 +39,8 @@ def test_auth_denies_admin(api_client, route):
 
 
 def test_auth_can_login(api_client):
-    response = api_client.post("/api/admin_authenticate")
+    password = os.getenv("ADMIN_PASSWORD", "password")
+    response = api_client.post(f"/api/admin_authenticate?password={password}")
     assert response.status_code == 200
     response = api_client.get("/api/admin_list_games")
     assert response.status_code == 200
