@@ -63,7 +63,7 @@ def make_qr_grid(
             draw.line((box_width * i, 0, box_width * i, A4_HEIGHT), fill=128)
 
         for i in range(num_x * num_y):
-            # Generate a random QR code
+            # Generate the next QR code
             qr = qrcode.make(next(qr_data))
             qr_size = int(0.75 * min(box_width, box_height))
             qr = qr.resize((qr_size, qr_size))
