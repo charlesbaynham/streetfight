@@ -82,8 +82,10 @@ def make_qr_grid(
             if base_image_loaded:
                 im.paste(base_image_loaded, box_offset, mask=base_image_loaded)
 
-        # Add a text tag
-        draw.text((10, 10), tag, fill="black")
+            # Add a text tag
+            draw.text(
+                (10 + box_offset[0], 10 + box_offset[1]), tag + f"{i}", fill="black"
+            )
 
         # show
         im.save(output_file_path, "PNG")
