@@ -1,6 +1,8 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
 import { useEffect, useRef, useCallback, useState } from "react";
+import useScreenOrientation from "./useScreenOrientation";
+
 
 
 const constraints = {
@@ -86,14 +88,14 @@ export function MyWebcam({ trigger, className = "" }) {
 
         startCamera();
 
-        const video = videoRef.current;
-
         return () => {
             // Close down the camera streams when the component is unmounted
             stopCamera();
         };
-    }, [canvasRef, videoRef, capture, startCamera]);
+    }, [canvasRef, videoRef, capture, startCamera, stopCamera]);
 
+
+    // Bugfix for Safari: Reinitialize the camera when the tab is hidden and then shown again
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
             if (
@@ -107,6 +109,16 @@ export function MyWebcam({ trigger, className = "" }) {
             }
         }
     });
+
+    // Bugfix for Firefox: Reinitialize the camera when the screen orientation changes
+    const orientation = useScreenOrientation();
+    useEffect(() => {
+        if (!navigator.userAgent.toLowerCase().includes('firefox')) return;
+        if (mediaStream.current) {
+            stopCamera();
+            startCamera();
+        }
+    }, [orientation, mediaStream, startCamera, stopCamera]);
 
     return (
         <div className={className}>
