@@ -129,6 +129,7 @@ function OnboardingView({ user }) {
           text={"Grant location permission:"}
           done={locationPermissionGranted}
           onClick={async () => {
+            console.log("Requesting location permission from OnboardingView");
             const success = await requestGeolocationPermission();
             setLocationPermissionGranted(success);
           }}

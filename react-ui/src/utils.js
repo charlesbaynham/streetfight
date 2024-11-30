@@ -99,17 +99,21 @@ export async function isCameraPermissionGranted() {
 
 
 function getPosition() {
-  return new Promise((resolve, reject) =>
-    navigator.geolocation.getCurrentPosition(resolve, reject)
+  return new Promise((resolve, reject) => {
+    console.log("Requesting geolocation");
+    return navigator.geolocation.getCurrentPosition(resolve, reject);
+  }
   );
 }
 
 export async function requestGeolocationPermission() {
   try {
     await getPosition();
+    console.log("Geolocation permission granted");
     geolocation_granted = true;
     return true;
   } catch (err) {
+    console.log("Geolocation permission denied", err);
     geolocation_granted = false;
     return false;
   }
