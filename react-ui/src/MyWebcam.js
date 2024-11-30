@@ -135,7 +135,7 @@ export function MyWebcam({ trigger, className = "" }) {
   return (
     <div className={className}>
       <video
-        playsinline
+        playsInline
         muted // Needed for autoplay
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
         ref={videoRef}
