@@ -276,7 +276,7 @@ async def admin_list_games() -> List[GameModel]:
     return AdminInterface().get_games()
 
 
-@admin_method("//admin_get_shots", method="GET")
+@admin_method("/admin_get_shots", method="GET")
 async def admin_get_shots(limit=5):
     num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(limit=limit)
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
@@ -307,7 +307,7 @@ async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
 
-@admin_method("//admin_get_locations", method="GET")
+@admin_method("/admin_get_locations", method="GET")
 async def admin_get_locations(game_id=None):
     """
     Get the locations of all users in a game
@@ -369,7 +369,7 @@ async def sse_updates(
     )
 
 
-@admin_method("//sse_admin_updates", method="GET")
+@admin_method("/sse_admin_updates", method="GET")
 async def sse_admin_updates():
     return StreamingResponse(
         sse_event_streams.admin_updates_generator(),
