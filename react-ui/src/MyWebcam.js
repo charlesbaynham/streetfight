@@ -55,7 +55,7 @@ export function MyWebcam({ trigger, className = "" }) {
             capture();
     }, [trigger, capture]);
 
-
+    // Connect the webcam to the <video> element
     useEffect(() => {
         if (videoRef.current === null) {
             return;
@@ -77,6 +77,12 @@ export function MyWebcam({ trigger, className = "" }) {
         }
 
         init();
+
+        if (video)
+            return () => {
+                // Close down the camera streams when the component is unmounted
+                video?.srcObject?.getTracks().forEach(track => track.stop());
+            }
     }, [canvasRef, videoRef, capture]);
 
     return (
