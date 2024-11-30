@@ -95,7 +95,7 @@ def make_qr_grid(
 @click.option(
     "--num",
     "-n",
-    default=1,
+    prompt="Number of item",
     help="If relevant for this item, the number that should be awarded per QR scan",
 )
 @click.option(
@@ -182,7 +182,11 @@ def generate(
     tag = slugify_string(tag)
 
     # Get path to base image if one exists
-    path_to_base_image = Path(IMAGES_DIR, f"{type}_{num}.png")
+    if type == "weapon":
+        path_to_base_image = Path(IMAGES_DIR, f"{type}_{damage}.png")
+    else:
+        path_to_base_image = Path(IMAGES_DIR, f"{type}_{num}.png")
+
     if not path_to_base_image.exists():
         logger.warning("No base image found for %s", type)
         path_to_base_image = None
