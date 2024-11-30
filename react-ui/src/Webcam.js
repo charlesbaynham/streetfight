@@ -48,8 +48,10 @@ export function MyWebcam() {
         const canvas = canvasRef.current;
 
         const captureButton = document.getElementById('capture-btn');
+        const startButton = document.getElementById('start-btn');
 
         const constraints = {
+            audio: false,
             video: true
         };
 
@@ -62,7 +64,12 @@ export function MyWebcam() {
             }
         }
 
+
         function handleSuccess(stream) {
+            const videoTracks = stream.getVideoTracks();
+            console.log('Got stream with constraints:', constraints);
+            console.log(`Using video device: ${videoTracks[0].label}`);
+            window.stream = stream; // make variable available to browser console
             video.srcObject = stream;
 
             captureButton.onclick = function () {
@@ -72,19 +79,29 @@ export function MyWebcam() {
             };
         }
 
-        init();
+
+
+        startButton.onclick = init;
     }, [canvasRef, videoRef]);
 
     return (
         <>
             <label>Video Stream</label>
-            <video autoplay id="video" width="640" height="480" ref={videoRef}></video>
+            <video
+                autoplay="autoplay"
+                playsinline
+                muted  // Needed for autoplay
+                width="640"
+                height="480"
+                ref={videoRef}
+            ></video>
 
 
             <label>Screenshot (base 64 dataURL)</label>
             <canvas id="canvas" width="640" height="480" ref={canvasRef}></canvas>
 
             <button id="capture-btn">Capture!</button>
+            <button id="start-btn">Start</button>
         </>
     );
 }
