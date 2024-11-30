@@ -97,14 +97,11 @@ export async function isCameraPermissionGranted() {
   return webcam_granted || result.state === "granted";
 }
 
-
-
 function getPosition() {
   return new Promise((resolve, reject) => {
     console.log("Requesting geolocation");
     return navigator.geolocation.getCurrentPosition(resolve, reject);
-  }
-  );
+  });
 }
 
 export async function requestGeolocationPermission() {
@@ -119,7 +116,6 @@ export async function requestGeolocationPermission() {
     return false;
   }
 }
-
 
 export function requestWebcamAccess(callbackCompleted) {
   navigator.mediaDevices
