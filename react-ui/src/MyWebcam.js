@@ -4,10 +4,9 @@ import { useEffect, useRef, useCallback } from "react";
 
 
 
-
-import styles from "./MyWebcam.module.css";
-
 const videoConstraints = {
+    audio: false,
+    video: true,
     width: { ideal: 2048 },
     height: { ideal: 1080 },
     facingMode: "environment",
@@ -37,21 +36,20 @@ export function MyWebcam() {
 
         ctx.drawImage(video, 0, 0, w, h);
 
-        console.log(canvas.toDataURL("image/jpeg"));
+        const imageSrc = canvas.toDataURL("image/jpeg");
 
+        const query = JSON.stringify({
+            photo: imageSrc,
+        });
 
-        // const query = JSON.stringify({
-        //     photo: imageSrc,
-        // });
-
-        // const requestOptions = {
-        //     method: "POST",
-        //     headers: { "Content-Type": "application/json" },
-        //     body: query,
-        // };
-        // fetch("/api/submit_shot", requestOptions)
-        //     .then((response) => response.json())
-        //     .then((data) => console.log(`Response: ${data}`));
+        const requestOptions = {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: query,
+        };
+        fetch("/api/submit_shot", requestOptions)
+            .then((response) => response.json())
+            .then((data) => console.log(`Response: ${data}`));
     }, []);
 
 
@@ -62,14 +60,11 @@ export function MyWebcam() {
 
         const video = videoRef.current;
 
-        const constraints = {
-            audio: false,
-            video: true
-        };
+
 
         async function init() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const stream = await navigator.mediaDevices.getUserMedia(videoConstraints);
                 handleSuccess(stream);
             } catch (e) {
                 console.error('navigator.getUserMedia error:', e);
@@ -95,8 +90,6 @@ export function MyWebcam() {
                 height="480"
                 ref={videoRef}
             ></video>
-
-
 
             <canvas
                 ref={canvasRef}
