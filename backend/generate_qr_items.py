@@ -2,6 +2,7 @@ import logging
 from pathlib import Path
 from typing import Iterable
 from typing import Optional
+from typing import Union
 
 import click
 import qrcode
@@ -20,16 +21,28 @@ A4_HEIGHT = 2480
 A4_WIDTH = 3508
 
 QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
+IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 
 ITEM_TYPES = [i.value for i in ItemType]
 
 
 def make_qr_grid(
-    qr_data: Iterable, output_file_path: str, num_x=4, num_y=2, tag: str = ""
+    qr_data: Iterable,
+    output_file_path: str,
+    num_x=4,
+    num_y=2,
+    tag: str = "",
+    base_image: Union[str, Path] = None,
 ):
     # Create an eighth-sized image
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
+
+    if base_image:
+        base_image_loaded = Image.open(base_image)
+        base_image_loaded = base_image_loaded.resize((box_width, box_height))
+    else:
+        base_image_loaded = None
 
     with Image.new("RGB", (A4_WIDTH, A4_HEIGHT), "white") as im:
         draw = ImageDraw.Draw(im)
@@ -48,14 +61,19 @@ def make_qr_grid(
             qr_size = int(0.75 * min(box_width, box_height))
             qr = qr.resize((qr_size, qr_size))
 
+            # Calculate the position of this box
             box_offset = ((i % num_x) * box_width, (i // num_x) * box_height)
 
-            x_offset = box_width // 2 - qr_size // 2
-            y_offset = box_height // 2 - qr_size // 2
-            qr_offset_sz = min(x_offset, y_offset)
+            # Paste the QR code
+            qr_x_offset = box_width // 2 - qr_size // 2
+            qr_y_offset = box_height // 2 - qr_size // 2
+            qr_offset_sz = min(qr_x_offset, qr_y_offset)
             qr_offset = (box_offset[0] + qr_offset_sz, box_offset[1] + qr_offset_sz)
-
             im.paste(qr, qr_offset)
+
+            # Paste the base image if it exists
+            if base_image_loaded:
+                im.paste(base_image_loaded, box_offset)
 
         # Add a text tag
         draw.text((10, 10), tag, fill="black")
