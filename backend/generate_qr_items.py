@@ -181,6 +181,12 @@ def generate(
 
     tag = slugify_string(tag)
 
+    # Get path to base image if one exists
+    path_to_base_image = Path(IMAGES_DIR, f"{type}_{num}.png")
+    if not path_to_base_image.exists():
+        logger.warning("No base image found for %s", type)
+        path_to_base_image = None
+
     if not outfile:
         filename = f"qrcodes_{tag}_{type}_{num}.png"
         outfile = Path(outdir, filename)
@@ -200,7 +206,7 @@ def generate(
         )
         for _ in range(x * y)
     ]
-    make_qr_grid(iter(qr_data), outfile, x, y, tag=tag)
+    make_qr_grid(iter(qr_data), outfile, x, y, tag=tag, base_image=path_to_base_image)
 
     if log:
         with open(QR_LOGFILE, "a") as f:
