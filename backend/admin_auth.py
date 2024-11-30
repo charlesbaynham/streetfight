@@ -53,4 +53,4 @@ def mark_admin_authed(request: Request, password: str) -> None:
         return True
     else:
         request.session["admin_authed"] = "false"
-        return False
+        raise HTTPException(403, "Wrong password")
