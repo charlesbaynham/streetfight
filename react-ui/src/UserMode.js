@@ -35,7 +35,6 @@ function GetView({ user }) {
       isCameraPermissionGranted(),
     ]).then(([locationGranted, cameraGranted]) => {
       setPermissionsGranted(locationGranted && cameraGranted);
-      // alert("Location permission granted: " + locationGranted + "\nCamera permission granted: " + cameraGranted);  FIXME
     });
   }, [triggerPermissionsRecheck, user]);
 
@@ -76,8 +75,7 @@ function GetView({ user }) {
       <WebcamView trigger={triggerShot} isDead={!isAlive} />
 
       {isAlive ? (
-        // <CrosshairImage />  FIXME
-        null  // FIXME
+        <CrosshairImage />
       ) : user.state === "knocked out" ? (
         <KnockedOutView user={user} />
       ) : (

@@ -16,7 +16,6 @@ const constraints = {
 export function MyWebcam({ trigger, className = "" }) {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
-    const emergencyRef = useRef(null);  // FIXME
 
     const [mediaStream, setMediaStream] = useState(null);
 
@@ -124,28 +123,6 @@ export function MyWebcam({ trigger, className = "" }) {
                 ref={canvasRef}
                 style={{ display: "none" }}
             ></canvas>
-
-            <button
-                ref={emergencyRef}
-                style={{ position: "absolute", top: "50%", right: 0, zIndex: 100000 }}
-                onClick={() => {
-                    videoRef.current?.srcObject?.getTracks().forEach(track => track.stop());
-                    videoRef.current.srcObject = null;
-
-                    requestWebcamAccess();
-
-                    setTimeout(startCamera, 1000);
-                    // Please, for the love of god, FIXME
-                }}
-            >ARRRRRRGGGHHH</button>  {/* FIXME */}
-
-            <p
-                style={{ position: "absolute", top: "50%", right: 0, zIndex: 100000 }}
-            >
-                videoRef: {String(videoRef.current)}
-                <br />
-                srcObject: {String(videoRef.current?.srcObject)}
-            </p>
         </div >
     );
 }
