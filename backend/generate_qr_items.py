@@ -59,7 +59,7 @@ def make_qr_grid(
     for i in range(num_x * num_y):
         # Make a new image for this box
         sub_img = Image.new("RGBA", (box_width, box_height), "white")
-        draw_subimg = ImageDraw.Draw(sub_img)
+        ImageDraw.Draw(sub_img)
 
         # Generate the next QR code
         qr = qrcode.make(next(qr_data))
@@ -76,9 +76,6 @@ def make_qr_grid(
         # Paste the base image if it exists
         if base_image_loaded:
             sub_img.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
-
-        # Add a text tag
-        draw_subimg.text((10, 10), tag + f"{i}", fill="black")
 
         # Add the sub-image to the list
         sub_images.append(sub_img)
@@ -101,14 +98,22 @@ def make_qr_grid(
             sub_img = sub_images[i]
 
             # Calculate the position of this box
-            img_offset = (
-                (i % num_x) * box_width + round(IMAGE_GUTTER / 2),
-                (i // num_x) * box_height + round(IMAGE_GUTTER / 2),
-            )
+            box_x = (i % num_x) * box_width
+            box_y = (i // num_x) * box_height
+
             new_width = box_width - round(IMAGE_GUTTER)
             new_height = box_height - round(IMAGE_GUTTER)
 
-            im.paste(sub_img.resize((new_width, new_height)), img_offset)
+            im.paste(
+                sub_img.resize((new_width, new_height)),
+                (
+                    box_x + round(IMAGE_GUTTER / 2),
+                    box_y + round(IMAGE_GUTTER / 2),
+                ),
+            )
+
+            # Add a text tag
+            draw.text((box_x + 10, box_y + 10), tag + f"{i}", fill="black")
 
         # show
         im.save(output_file_path, "PNG")
