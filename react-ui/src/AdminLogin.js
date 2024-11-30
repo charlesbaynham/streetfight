@@ -1,9 +1,10 @@
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 
 
 export default function AdminLogin() {
+  const [status, setStatus] = useState("ready");
 
   const login = useCallback((password) => {
     sendAPIRequest(
@@ -12,7 +13,13 @@ export default function AdminLogin() {
         password: password,
       },
       "POST",
-    );
+    ).then((response) => {
+      if (response.ok) {
+        setStatus("success");
+      } else {
+        setStatus("failure");
+      }
+    });
   }, []);
 
 
@@ -31,6 +38,7 @@ export default function AdminLogin() {
       >
         Submit
       </button>
+      Status: {status}
     </>
   );
 }
