@@ -91,6 +91,37 @@ export function MyWebcam({ trigger, className = "" }) {
         }
     }, [canvasRef, videoRef, capture, init]);
 
+    let mediaStream = null;
+
+    async function startCamera() {
+        try {
+            mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            videoRef.current.srcObject = mediaStream;
+            videoRef.current.play();
+        } catch (error) {
+            console.error("Error accessing the camera:", error);
+        }
+    }
+
+    function stopCamera() {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            mediaStream = null;
+        }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            if (!mediaStream || mediaStream.getVideoTracks().length === 0 || videoRef.current.readyState === 0) {
+                console.log("Reinitializing camera...");
+                stopCamera();
+                startCamera();
+            }
+        }
+    });
+
+
+
     return (
         <div className={className}>
             <video
