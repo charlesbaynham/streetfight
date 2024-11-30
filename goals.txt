@@ -9,6 +9,7 @@ Bugs:
       it's white until a refresh. This breaks the PWA. Seems to be the fault of react
       webcam, I can use it fine on a normal HTML5 demo site. Guess I'm coding my own
       webcam widget... Urghq
+- [ ] Somewhere in the giant iOS clusterfuck, the Permissions API for proper browsers got messed up
 
 
 Location:
