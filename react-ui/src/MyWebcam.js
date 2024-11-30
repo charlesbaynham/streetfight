@@ -63,7 +63,7 @@ export const MyWebcam = forwardRef(
       const imageSrc = canvas.toDataURL("image/jpeg");
 
       return imageSrc;
-    }, []);
+    }, [videoRef, canvasRef]);
 
     // Take a shot and upload it when trigger changes
     const captureAndUpload = useCallback(() => {
