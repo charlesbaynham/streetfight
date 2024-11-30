@@ -1,5 +1,6 @@
 import logging
 import os
+from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict
@@ -11,6 +12,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
@@ -73,6 +75,9 @@ load_env_vars()
 setup_logging()
 
 from . import sse_event_streams
+from .admin_auth import is_admin_authed
+from .admin_auth import mark_admin_authed
+from .admin_auth import require_admin_auth
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
@@ -84,9 +89,13 @@ app = FastAPI()
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+if "SECRET_KEY" not in os.environ:
+    logger.warning("No SECRET_KEY found in environment, using default value")
+    os.environ["SECRET_KEY"] = "none"
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key="james will never understand the prostitute",
+    secret_key=os.environ["SECRET_KEY"],
     max_age=60 * 60 * 24 * 365 * 10,
 )
 
@@ -214,63 +223,91 @@ async def set_location(
 
 
 ######## ADMIN ###########
-@router.post("/admin_create_game")
+
+
+def admin_method(path: str, method: str = "POST"):
+    def decorator(func):
+        target = router.get if method == "GET" else router.post
+
+        @target(path, dependencies=[Depends(require_admin_auth)])
+        @wraps(func)
+        async def wrapper(*args, **kwargs):
+            return await func(*args, **kwargs)
+
+        return wrapper
+
+    return decorator
+
+
+@router.get("/admin_is_authed")
+async def admin_is_authed(
+    is_admin_authed=Depends(is_admin_authed),
+) -> bool:
+    return is_admin_authed
+
+
+@router.post("/admin_authenticate")
+async def admin_authenticate(request: Request, password: str) -> bool:
+    return mark_admin_authed(request, password)
+
+
+@admin_method(path="/admin_create_game", method="POST")
 async def admin_create_game() -> UUID:
     game_id = AdminInterface().create_game()
     logger.info("Created new game with id = %s", game_id)
     return game_id
 
 
-@router.post("/admin_create_team")
+@admin_method(path="/admin_create_team", method="POST")
 async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
     logger.info("Creating new team '%s' for game %s", team_name, game_id)
     return AdminInterface().create_team(game_id, team_name)
 
 
-@router.post("/admin_add_user_to_team")
+@admin_method(path="/admin_add_user_to_team", method="POST")
 async def admin_add_user_to_team(user_id: UUID, team_id: UUID) -> None:
     logger.info("Adding user %s to team %s", user_id, team_id)
     return AdminInterface().add_user_to_team(user_id, team_id)
 
 
-@router.get("/admin_list_games")
+@admin_method("/admin_list_games", method="GET")
 async def admin_list_games() -> List[GameModel]:
     logger.info("admin_list_games")
     return AdminInterface().get_games()
 
 
-@router.get("/admin_get_shots")
+@admin_method("/admin_get_shots", method="GET")
 async def admin_get_shots(limit=5):
     num_in_queue, filtered_shots = AdminInterface().get_unchecked_shots(limit=limit)
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
-@router.post("/admin_shot_hit_user")
+@admin_method(path="/admin_shot_hit_user", method="POST")
 async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
 
 
-@router.post("/admin_set_hp")
+@admin_method(path="/admin_set_hp", method="POST")
 async def admin_set_hp(user_id, num: int = 1):
     AdminInterface().set_user_HP(user_id, num=num)
 
 
-@router.post("/admin_hit_user")
+@admin_method(path="/admin_hit_user", method="POST")
 async def admin_hit_user(user_id, num: int = 1):
     AdminInterface().hit_user_by_admin(user_id, num=num)
 
 
-@router.post("/admin_give_ammo")
+@admin_method(path="/admin_give_ammo", method="POST")
 async def admin_give_ammo(user_id, num: int = 1):
     AdminInterface().award_user_ammo(user_id, num=num)
 
 
-@router.post("/admin_mark_shot_checked")
+@admin_method(path="/admin_mark_shot_checked", method="POST")
 async def admin_mark_shot_checked(shot_id):
     AdminInterface().mark_shot_checked(shot_id)
 
 
-@router.get("/admin_get_locations")
+@admin_method("/admin_get_locations", method="GET")
 async def admin_get_locations(game_id=None):
     """
     Get the locations of all users in a game
@@ -280,7 +317,7 @@ async def admin_get_locations(game_id=None):
     return AdminInterface().get_locations(game_id=game_id)
 
 
-@router.post("/admin_make_new_item")
+@admin_method(path="/admin_make_new_item", method="POST")
 async def admin_make_new_item(
     item_type: str,
     item_data: Dict,
@@ -306,13 +343,13 @@ async def admin_make_new_item(
     }
 
 
-@router.post("/admin_set_game_active")
+@admin_method(path="/admin_set_game_active", method="POST")
 async def admin_set_game_active(game_id: UUID, active: bool):
     logger.info("admin_set_game_active")
     AdminInterface().set_game_active(game_id, active)
 
 
-@router.post("/admin_set_user_name")
+@admin_method(path="/admin_set_user_name", method="POST")
 async def admin_set_user_name(user_id: UUID, name: str):
     logger.info("admin_set_user_name")
     AdminInterface().set_user_name(user_id=user_id, name=name)
@@ -332,7 +369,7 @@ async def sse_updates(
     )
 
 
-@router.get("/sse_admin_updates")
+@admin_method("/sse_admin_updates", method="GET")
 async def sse_admin_updates():
     return StreamingResponse(
         sse_event_streams.admin_updates_generator(),

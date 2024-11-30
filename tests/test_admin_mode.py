@@ -30,7 +30,7 @@ def test_making_item_fail():
 
 @pytest.fixture
 def old_shot_prep(
-    api_client, db_session, user_factory, team_factory, test_image_string
+    admin_api_client, db_session, user_factory, team_factory, test_image_string
 ):
     team_a = team_factory()
     team_b = team_factory()
@@ -53,7 +53,7 @@ def old_shot_prep(
     shot_b = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
 
     # The admin checks user A and awards the shot to them
-    response = api_client.post(
+    response = admin_api_client.post(
         f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={user_b}"
     )
     assert response.is_success

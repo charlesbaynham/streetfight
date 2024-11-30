@@ -197,6 +197,17 @@ def api_client(api_client_factory):
 
 
 @pytest.fixture
+def admin_api_client(api_client):
+    """
+    Get a FastAPI TestClient pointing at the app with a clean database session
+    and admin rights
+    """
+    password = os.getenv("ADMIN_PASSWORD", "password")
+    api_client.post(f"/api/admin_authenticate?password={password}")
+    return api_client
+
+
+@pytest.fixture
 def api_client_factory(db_session):
     """
     Get a factory for FastAPI TestClients pointing at the app with a clean database session

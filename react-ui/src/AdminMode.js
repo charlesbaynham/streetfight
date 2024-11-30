@@ -126,6 +126,13 @@ function UserControls({ user }) {
       </button>
       <button
         onClick={() => {
+          set_health(1);
+        }}
+      >
+        Lv. 0
+      </button>
+      <button
+        onClick={() => {
           set_health(2);
         }}
       >

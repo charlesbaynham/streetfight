@@ -57,7 +57,7 @@ Checks:
 Backburner:
 
 - [x] Admin interface UI should also auto-update
-- [ ]: The admin interface should have a password
+- [x]: The admin interface should have a password
 - [ ]: Users should be able to send items to other users (on their team? only bullets?)
 - [x] Fixed by moving to SSE: Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
 - [ ] QR code interface for joining team
