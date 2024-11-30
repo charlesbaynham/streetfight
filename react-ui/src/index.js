@@ -9,6 +9,7 @@ import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
 
 import "./index.css";
+import AdminLogin from "./AdminLogin";
 
 const router = createBrowserRouter([
   {
@@ -18,6 +19,10 @@ const router = createBrowserRouter([
   {
     path: "admin",
     element: <AdminMode />,
+  },
+  {
+    path: "admin/login",
+    element: <AdminLogin />,
   },
   {
     path: "admin/shots",
