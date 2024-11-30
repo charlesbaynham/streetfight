@@ -45,9 +45,14 @@ function WebcamCapture({ trigger, isDead }) {
 
   useEffect(() => {
     setHackyHideWebcam(true);
-    setTimeout(() => {
+
+    const timeoutHandle = setTimeout(() => {
       setHackyHideWebcam(false);
     }, 500);
+
+    return () => {
+      clearTimeout(timeoutHandle);
+    }
   }, [setHackyHideWebcam, orientation]);
 
   // Call the capture callback when the 'trigger' prop changes
