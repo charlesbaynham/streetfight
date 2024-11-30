@@ -232,8 +232,8 @@ async def admin_is_authed(
 
 
 @router.post("/admin_authenticate")
-async def admin_authenticate(request: Request) -> None:
-    mark_admin_authed(request)
+async def admin_authenticate(request: Request, password: str) -> bool:
+    return mark_admin_authed(request, password)
 
 
 @router.post("/admin_create_game")

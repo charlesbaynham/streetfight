@@ -1,4 +1,5 @@
 import logging
+import os
 from threading import RLock
 from uuid import UUID
 
@@ -40,6 +41,16 @@ async def require_admin_auth(
     return True
 
 
-def mark_admin_authed(request: Request) -> None:
-    logger.info("Marking admin as authed")
-    request.session["admin_authed"] = "true"
+def mark_admin_authed(request: Request, password: str) -> None:
+    if "password" not in os.environ:
+        logger.warning("No password set in environment - using default")
+
+    correct_password = os.getenv("ADMIN_PASSWORD", "password")
+
+    if password == correct_password:
+        logger.info("Admin authenticated")
+        request.session["admin_authed"] = "true"
+        return True
+    else:
+        request.session["admin_authed"] = "false"
+        return False
