@@ -35,6 +35,7 @@ function GetView({ user }) {
       isCameraPermissionGranted(),
     ]).then(([locationGranted, cameraGranted]) => {
       setPermissionsGranted(locationGranted && cameraGranted);
+      // alert("Location permission granted: " + locationGranted + "\nCamera permission granted: " + cameraGranted);  FIXME
     });
   }, [triggerPermissionsRecheck, user]);
 

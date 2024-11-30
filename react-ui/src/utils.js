@@ -7,6 +7,7 @@ import gun_36 from "./images/art/gun_36.png";
 // API. I'll assume that permission is not granted until I've seen a successful
 // geolocation request, then set this variable to true.
 var geolocation_granted = false;
+var webcam_granted = false;
 
 export function makeAPIURL(endpoint, query_params = null) {
   const url = new URL(`/api/${endpoint}`, window.location.origin);
@@ -93,7 +94,7 @@ export async function isLocationPermissionGranted() {
 
 export async function isCameraPermissionGranted() {
   const result = await navigator.permissions.query({ name: "camera" });
-  return result.state === "granted";
+  return webcam_granted || result.state === "granted";
 }
 
 
@@ -117,4 +118,19 @@ export async function requestGeolocationPermission() {
     geolocation_granted = false;
     return false;
   }
+}
+
+
+export function requestWebcamAccess(callbackCompleted) {
+  navigator.mediaDevices
+    .getUserMedia({ video: true })
+    .then((stream) => {
+      stream.getTracks().forEach(function (track) {
+        track.stop();
+      });
+    })
+    .then(() => {
+      webcam_granted = true;
+      callbackCompleted();
+    });
 }
