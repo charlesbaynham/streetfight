@@ -1,8 +1,25 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useCallback } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 
+const firefox = navigator.userAgent.toLowerCase().includes('firefox');
+
+
+function isIosSafari() {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+
+    // Check for iOS (iPhone, iPad, iPod)
+    const isIosDevice = /iPad|iPhone|iPod/.test(userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+    // Check for Safari (and not Chrome or other browsers)
+    const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
+
+    return isIosDevice && isSafari;
+}
+
+const safari = isIosSafari();
 
 
 const constraints = {
@@ -96,18 +113,20 @@ export function MyWebcam({ trigger, className = "" }) {
 
 
     // Bugfix for Safari: Reinitialize the camera when the tab is hidden and then shown again
-    document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-            console.log("Reinitializing camera...");
-            stopCamera();
-            startCamera();
-        }
-    });
+    if (safari) {
+        document.addEventListener("visibilitychange", () => {
+            if (document.visibilityState === "visible") {
+                console.log("Reinitializing camera...");
+                stopCamera();
+                startCamera();
+            }
+        });
+    }
 
     // Bugfix for Firefox: Reinitialize the camera when the screen orientation changes
     const orientation = useScreenOrientation();
     useEffect(() => {
-        if (!navigator.userAgent.toLowerCase().includes('firefox')) return;
+        if (!firefox) return;
         if (mediaStream.current) {
             stopCamera();
             startCamera();
