@@ -5,7 +5,7 @@ Bugs:
 - [ ] iPhone location does not work - maybe fixed, ask Rob
 - [x] Location permission should be requested on start screen
 
-- [ ] The camera doesn't work properly on safari! When I reconnect from standby
+- [x] The camera doesn't work properly on safari! When I reconnect from standby
       it's white until a refresh. This breaks the PWA. Seems to be the fault of react
       webcam, I can use it fine on a normal HTML5 demo site. Guess I'm coding my own
       webcam widget... Urghq
