@@ -1,5 +1,5 @@
 import React from "react";
-import { MyWebcam } from "./Webcam";
+import { MyWebcam } from "./MyWebcam";
 
 
 const TestPage = () => {

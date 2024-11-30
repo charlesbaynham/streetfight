@@ -1,8 +1,11 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
-import { useEffect, useRef, useCallback, useState } from "react";
-import useScreenOrientation from "./useScreenOrientation";
+import { useEffect, useRef, useCallback } from "react";
 
+
+
+
+import styles from "./MyWebcam.module.css";
 
 const videoConstraints = {
     width: { ideal: 2048 },
@@ -94,8 +97,11 @@ export function MyWebcam() {
             ></video>
 
 
-            <label>Screenshot (base 64 dataURL)</label>
-            <canvas id="canvas" width="640" height="480" ref={canvasRef}></canvas>
+
+            <canvas
+                ref={canvasRef}
+                style={{ display: "none" }}
+            ></canvas>
 
             <button ref={captureButtonRef}>Capture!</button>
         </>
