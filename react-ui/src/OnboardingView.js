@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { requestGeolocationPermission, requestWebcamAccess, sendAPIRequest } from "./utils";
+import {
+  requestGeolocationPermission,
+  requestWebcamAccess,
+  sendAPIRequest,
+} from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -69,7 +73,6 @@ function NameEntry({ user }) {
     </motion.div>
   );
 }
-
 
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
