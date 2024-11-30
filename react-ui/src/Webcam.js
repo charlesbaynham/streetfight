@@ -13,6 +13,7 @@ const videoConstraints = {
 export function MyWebcam() {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
+    const captureButtonRef = useRef(null);
 
 
     // Define a function that will take a shot (useCallback just avoids
@@ -40,15 +41,14 @@ export function MyWebcam() {
     const orientation = useScreenOrientation();
 
     useEffect(() => {
-        if (videoRef.current === null || canvasRef.current === null) {
+        if (videoRef.current === null || canvasRef.current === null || captureButtonRef.current === null) {
             return;
         }
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
 
-        const captureButton = document.getElementById('capture-btn');
-        const startButton = document.getElementById('start-btn');
+
 
         const constraints = {
             audio: false,
@@ -72,7 +72,7 @@ export function MyWebcam() {
             window.stream = stream; // make variable available to browser console
             video.srcObject = stream;
 
-            captureButton.onclick = function () {
+            captureButtonRef.current.onclick = function () {
                 canvas.width = video.videoWidth;
                 canvas.height = video.videoHeight;
                 canvas.getContext('2d').drawImage(video, 0, 0);
@@ -81,8 +81,8 @@ export function MyWebcam() {
 
 
 
-        startButton.onclick = init;
-    }, [canvasRef, videoRef]);
+        init();
+    }, [canvasRef, videoRef, captureButtonRef]);
 
     return (
         <>
@@ -100,8 +100,7 @@ export function MyWebcam() {
             <label>Screenshot (base 64 dataURL)</label>
             <canvas id="canvas" width="640" height="480" ref={canvasRef}></canvas>
 
-            <button id="capture-btn">Capture!</button>
-            <button id="start-btn">Start</button>
+            <button ref={captureButtonRef}>Capture!</button>
         </>
     );
 }
