@@ -18,7 +18,7 @@ export function MyWebcam({ trigger, className = "" }) {
     const videoRef = useRef(null);
     const emergencyRef = useRef(null);  // FIXME
 
-    const [mediaStream, setMediaStream] = useState(null);
+    const mediaStream = useRef(null);
 
     // Define a function that will take a shot and upload it to the server
     const capture = useCallback(() => {
@@ -63,10 +63,14 @@ export function MyWebcam({ trigger, className = "" }) {
     const startCamera = useCallback(async () => {
         const video = videoRef.current;
 
+        if (mediaStream.current)
+            // The camera is already running
+            return;
+
         function handleSuccess(stream) {
             video.srcObject = stream;
             video.play();  // This line is critical for making the camera resume from standby in Safari, and wasting an entire Saturday
-            setMediaStream(stream);
+            mediaStream.current = stream;
         }
 
         try {
@@ -75,15 +79,15 @@ export function MyWebcam({ trigger, className = "" }) {
         } catch (e) {
             console.error('navigator.getUserMedia error:', e);
         }
-    }, []);
+    }, [mediaStream]);
 
     // Stop the camera
     const stopCamera = useCallback(() => {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            setMediaStream(null);
+        if (mediaStream.current) {
+            mediaStream.current.getTracks().forEach(track => track.stop());
+            mediaStream.current = null;
         }
-    }, [mediaStream, setMediaStream]);
+    }, [mediaStream]);
 
     // Connect the webcam to the <video> element on startup
     useEffect(() => {
@@ -93,17 +97,15 @@ export function MyWebcam({ trigger, className = "" }) {
 
         startCamera();
 
-        const video = videoRef.current;
-
         return () => {
             // Close down the camera streams when the component is unmounted
             stopCamera();
         }
-    }, [canvasRef, videoRef, capture, startCamera]);
+    }, [canvasRef, videoRef, capture, startCamera, stopCamera]);
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
-            if (!mediaStream || mediaStream.getVideoTracks().length === 0 || videoRef.current.readyState === 0) {
+            if (!mediaStream.current || mediaStream.current.getVideoTracks().length === 0 || videoRef.current.readyState === 0) {
                 console.log("Reinitializing camera...");
                 stopCamera();
                 startCamera();
