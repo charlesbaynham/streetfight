@@ -84,9 +84,13 @@ app = FastAPI()
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+if "SECRET_KEY" not in os.environ:
+    logger.warning("No SECRET_KEY found in environment, using default value")
+    os.environ["SECRET_KEY"] = "none"
+
 app.add_middleware(
     SessionMiddleware,
-    secret_key="james will never understand the prostitute",
+    secret_key=os.environ["SECRET_KEY"],
     max_age=60 * 60 * 24 * 365 * 10,
 )
 
