@@ -1,7 +1,6 @@
 import React from "react";
 import { MyWebcam } from "./MyWebcam";
 
-
 const TestPage = () => {
   return (
     <div>

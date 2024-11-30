@@ -127,7 +127,6 @@ export function requestWebcamAccess(callbackCompleted = null) {
     })
     .then(() => {
       webcam_granted = true;
-      if (callbackCompleted)
-        callbackCompleted();
+      if (callbackCompleted) callbackCompleted();
     });
 }
