@@ -12,7 +12,7 @@ const constraints = {
     }
 };
 
-export function MyWebcam({ trigger }) {
+export function MyWebcam({ trigger, className = "" }) {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
 
@@ -80,13 +80,13 @@ export function MyWebcam({ trigger }) {
     }, [canvasRef, videoRef, capture]);
 
     return (
-        <>
+        <div className={className}>
             <video
                 autoplay="autoplay"
                 playsinline
                 muted  // Needed for autoplay
-                width="640"
-                height="480"
+                style={{ width: "100%", height: "100%", objectFit: "cover" }}
+
                 ref={videoRef}
             ></video>
 
@@ -94,6 +94,6 @@ export function MyWebcam({ trigger }) {
                 ref={canvasRef}
                 style={{ display: "none" }}
             ></canvas>
-        </>
+        </div>
     );
 }
