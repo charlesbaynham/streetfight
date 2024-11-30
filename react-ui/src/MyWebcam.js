@@ -1,6 +1,6 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import { requestWebcamAccess } from "./utils";
 
 
@@ -18,6 +18,7 @@ export function MyWebcam({ trigger, className = "" }) {
     const videoRef = useRef(null);
     const emergencyRef = useRef(null);  // FIXME
 
+    const [mediaStream, setMediaStream] = useState(null);
 
     // Define a function that will take a shot and upload it to the server
     const capture = useCallback(() => {
@@ -58,12 +59,14 @@ export function MyWebcam({ trigger, className = "" }) {
             capture();
     }, [trigger, capture]);
 
-    const init = useCallback(async () => {
-
+    // Start the camera and bind it to the <video> element
+    const startCamera = useCallback(async () => {
         const video = videoRef.current;
 
         function handleSuccess(stream) {
             video.srcObject = stream;
+            video.play();
+            setMediaStream(stream);
         }
 
         try {
@@ -74,13 +77,21 @@ export function MyWebcam({ trigger, className = "" }) {
         }
     }, []);
 
-    // Connect the webcam to the <video> element
+    // Stop the camera
+    const stopCamera = useCallback(() => {
+        if (mediaStream) {
+            mediaStream.getTracks().forEach(track => track.stop());
+            setMediaStream(null);
+        }
+    }, [mediaStream, setMediaStream]);
+
+    // Connect the webcam to the <video> element on startup
     useEffect(() => {
         if (videoRef.current === null) {
             return;
         }
 
-        init();
+        startCamera();
 
         const video = videoRef.current;
 
@@ -89,26 +100,7 @@ export function MyWebcam({ trigger, className = "" }) {
             video.srcObject?.getTracks().forEach(track => track.stop());
             video.srcObject = null;
         }
-    }, [canvasRef, videoRef, capture, init]);
-
-    let mediaStream = null;
-
-    async function startCamera() {
-        try {
-            mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            videoRef.current.srcObject = mediaStream;
-            videoRef.current.play();
-        } catch (error) {
-            console.error("Error accessing the camera:", error);
-        }
-    }
-
-    function stopCamera() {
-        if (mediaStream) {
-            mediaStream.getTracks().forEach(track => track.stop());
-            mediaStream = null;
-        }
-    }
+    }, [canvasRef, videoRef, capture, startCamera]);
 
     document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') {
@@ -147,7 +139,7 @@ export function MyWebcam({ trigger, className = "" }) {
 
                     requestWebcamAccess();
 
-                    setTimeout(init, 1000);
+                    setTimeout(startCamera, 1000);
                     // Please, for the love of god, FIXME
                 }}
             >ARRRRRRGGGHHH</button>  {/* FIXME */}
