@@ -124,14 +124,15 @@ export function MyWebcam({ trigger, className = "" }) {
     }
 
     // Bugfix for Firefox: Reinitialize the camera when the screen orientation changes
-    const orientation = useScreenOrientation();
-    useEffect(() => {
-        if (!firefox) return;
-        if (mediaStream.current) {
-            stopCamera();
-            startCamera();
-        }
-    }, [orientation, mediaStream, startCamera, stopCamera]);
+    // TODO: this isn't enough - I need to also rotate the camera apparently. See src for react-webcam I guess, or just don't bother
+    // const orientation = useScreenOrientation();
+    // useEffect(() => {
+    //     if (!firefox) return;
+    //     if (mediaStream.current) {
+    //         stopCamera();
+    //         startCamera();
+    //     }
+    // }, [orientation, mediaStream, startCamera, stopCamera]);
 
     return (
         <div className={className}>
