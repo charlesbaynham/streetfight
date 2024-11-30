@@ -18,7 +18,7 @@ export function MyWebcam({ trigger, className = "" }) {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
 
-    const mediaStream = useRef(null);
+    const [mediaStream, setMediaStream] = useState(null);
 
     // Define a function that will take a shot and upload it to the server
     const capture = useCallback(() => {
@@ -66,7 +66,7 @@ export function MyWebcam({ trigger, className = "" }) {
             const stream = await navigator.mediaDevices.getUserMedia(constraints);
             video.srcObject = stream;
             await video.play(); // This line is critical for making the camera resume from standby in Safari, and wasting an entire Saturday
-            mediaStream.current = stream;
+            setMediaStream(stream);
         } catch (e) {
             console.error("navigator.getUserMedia error:", e);
         }
@@ -74,11 +74,11 @@ export function MyWebcam({ trigger, className = "" }) {
 
     // Stop the camera
     const stopCamera = useCallback(() => {
-        if (mediaStream.current) {
-            mediaStream.current.getTracks().forEach((track) => track.stop());
-            mediaStream.current = null;
+        if (mediaStream) {
+            mediaStream.getTracks().forEach((track) => track.stop());
+            setMediaStream(null);
         }
-    }, [mediaStream]);
+    }, [mediaStream, setMediaStream]);
 
     // Connect the webcam to the <video> element on startup
     useEffect(() => {
@@ -99,8 +99,8 @@ export function MyWebcam({ trigger, className = "" }) {
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
             if (
-                !mediaStream.current ||
-                mediaStream.current.getVideoTracks().length === 0 ||
+                !mediaStream ||
+                mediaStream.getVideoTracks().length === 0 ||
                 videoRef.current.readyState === 0
             ) {
                 console.log("Reinitializing camera...");
