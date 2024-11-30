@@ -11,7 +11,7 @@ import { MyWebcam } from "./MyWebcam";
 
 
 
-function WebcamCapture({ trigger, isDead }) {
+export default function WebcamView({ trigger, isDead }) {
   // Get a reference to the webcam element
   const webcamRef = useRef(null);
 
@@ -20,15 +20,15 @@ function WebcamCapture({ trigger, isDead }) {
   const orientation = useScreenOrientation();
 
 
-  useEffect(() => {
-    // Toggle the webcam on screen rotation to force a reload
-    setHackyHideWebcam(true);
-    const id = setTimeout(() => {
-      setHackyHideWebcam(false);
-    }, 500);
+  // useEffect(() => {
+  //   // Toggle the webcam on screen rotation to force a reload
+  //   setHackyHideWebcam(true);
+  //   const id = setTimeout(() => {
+  //     setHackyHideWebcam(false);
+  //   }, 500);
 
-    return () => { clearTimeout(id); }
-  }, [setHackyHideWebcam, orientation]);
+  //   return () => { clearTimeout(id); }
+  // }, [setHackyHideWebcam, orientation]);
 
   return (
     <>
@@ -45,14 +45,6 @@ function WebcamCapture({ trigger, isDead }) {
         />
       ) : null}
       <QRParser webcamRef={webcamRef} />
-    </>
-  );
-}
-
-export default function WebcamView({ trigger, isDead }) {
-  return (
-    <>
-      <WebcamCapture trigger={trigger} isDead={isDead} />
     </>
   );
 }
