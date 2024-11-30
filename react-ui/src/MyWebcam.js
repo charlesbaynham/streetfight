@@ -92,21 +92,15 @@ export function MyWebcam({ trigger, className = "" }) {
             // Close down the camera streams when the component is unmounted
             stopCamera();
         };
-    }, [canvasRef, videoRef, capture, startCamera]);
+    }, [canvasRef, videoRef, capture, startCamera, stopCamera]);
 
 
     // Bugfix for Safari: Reinitialize the camera when the tab is hidden and then shown again
     document.addEventListener("visibilitychange", () => {
         if (document.visibilityState === "visible") {
-            if (
-                !mediaStream.current ||
-                mediaStream.current.getVideoTracks().length === 0 ||
-                videoRef.current.readyState === 0
-            ) {
-                console.log("Reinitializing camera...");
-                stopCamera();
-                startCamera();
-            }
+            console.log("Reinitializing camera...");
+            stopCamera();
+            startCamera();
         }
     });
 
