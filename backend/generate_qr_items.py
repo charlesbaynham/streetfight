@@ -65,7 +65,8 @@ def make_qr_grid(
         sub_images = []
         for i in range(num_x * num_y):
             # Make a new image for this box
-            img = Image.new("RGBA", (box_width, box_height), "white")
+            sub_img = Image.new("RGBA", (box_width, box_height), "white")
+            draw_subimg = ImageDraw.Draw(sub_img)
 
             # Generate the next QR code
             qr = qrcode.make(next(qr_data))
@@ -77,25 +78,25 @@ def make_qr_grid(
             qr_y_offset = box_height // 2 - qr_size // 2
             qr_offset_sz = min(qr_x_offset, qr_y_offset)
             qr_offset = (qr_offset_sz, qr_offset_sz)
-            im.paste(qr, qr_offset)
+            sub_img.paste(qr, qr_offset)
 
             # Paste the base image if it exists
             if base_image_loaded:
-                im.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
+                sub_img.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
 
             # Add a text tag
-            draw.text((10, 10), tag + f"{i}", fill="black")
+            draw_subimg.text((10, 10), tag + f"{i}", fill="black")
 
             # Add the sub-image to the list
-            sub_images.append(img)
+            sub_images.append(sub_img)
 
         # Paste the sub-images into the main image
         for i in range(num_x * num_y):
-            img = sub_images[i]
+            sub_img = sub_images[i]
 
             # Calculate the position of this box
             img_offset = ((i % num_x) * box_width, (i // num_x) * box_height)
-            im.paste(img, img_offset)
+            im.paste(sub_img, img_offset)
 
         # show
         im.save(output_file_path, "PNG")
