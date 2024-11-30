@@ -117,7 +117,7 @@ export async function requestGeolocationPermission() {
   }
 }
 
-export function requestWebcamAccess(callbackCompleted) {
+export function requestWebcamAccess(callbackCompleted = null) {
   navigator.mediaDevices
     .getUserMedia({ video: true })
     .then((stream) => {
@@ -127,6 +127,7 @@ export function requestWebcamAccess(callbackCompleted) {
     })
     .then(() => {
       webcam_granted = true;
-      callbackCompleted();
+      if (callbackCompleted)
+        callbackCompleted();
     });
 }

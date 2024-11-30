@@ -1,6 +1,7 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
 import { useEffect, useRef, useCallback } from "react";
+import { requestWebcamAccess } from "./utils";
 
 
 const constraints = {
@@ -113,13 +114,12 @@ export function MyWebcam({ trigger, className = "" }) {
                     videoRef.current?.srcObject?.getTracks().forEach(track => track.stop());
                     videoRef.current.srcObject = null;
 
+                    requestWebcamAccess();
+
                     setTimeout(init, 1000);
-
-
-
-
+                    // Please, for the love of god, FIXME
                 }}
-            >ARRRRRRGGGHHH</button>
+            >ARRRRRRGGGHHH</button>  {/* FIXME */}
 
             <p
                 style={{ position: "absolute", top: "50%", right: 0, zIndex: 100000 }}
