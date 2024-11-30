@@ -1,8 +1,6 @@
 import React, { useCallback, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
-
-
 export default function AdminLogin() {
   const [status, setStatus] = useState("ready");
 
@@ -21,9 +19,6 @@ export default function AdminLogin() {
       }
     });
   }, []);
-
-
-
 
   const passwordInput = useRef(null);
 
