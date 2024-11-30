@@ -53,12 +53,11 @@ export function MyWebcam() {
 
 
     useEffect(() => {
-        if (videoRef.current === null || canvasRef.current === null || captureButtonRef.current === null) {
+        if (videoRef.current === null || captureButtonRef.current === null) {
             return;
         }
 
         const video = videoRef.current;
-        const canvas = canvasRef.current;
 
         const constraints = {
             audio: false,
@@ -74,14 +73,8 @@ export function MyWebcam() {
             }
         }
 
-
         function handleSuccess(stream) {
-            const videoTracks = stream.getVideoTracks();
-            console.log('Got stream with constraints:', constraints);
-            console.log(`Using video device: ${videoTracks[0].label}`);
-            window.stream = stream; // make variable available to browser console
             video.srcObject = stream;
-
             captureButtonRef.current.onclick = capture;
         }
 
