@@ -97,8 +97,7 @@ export function MyWebcam({ trigger, className = "" }) {
 
         return () => {
             // Close down the camera streams when the component is unmounted
-            video.srcObject?.getTracks().forEach(track => track.stop());
-            video.srcObject = null;
+            stopCamera();
         }
     }, [canvasRef, videoRef, capture, startCamera]);
 
