@@ -1,6 +1,6 @@
 // Make my own replacement for react-webcam because it's broken on iOS. Argh!!
 
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 
 const firefox = navigator.userAgent.toLowerCase().includes("firefox");
@@ -30,7 +30,7 @@ const constraints = {
   },
 };
 
-export function MyWebcam({ trigger, className = "" }) {
+export const MyWebcam = forwardRef(({ trigger, className = "" }, refFromParent) => {
   const canvasRef = useRef(null);
   const videoRef = useRef(null);
 
@@ -68,6 +68,11 @@ export function MyWebcam({ trigger, className = "" }) {
       .then((response) => response.json())
       .then((data) => console.log(`Response: ${data}`));
   }, []);
+
+  // Expose the capture function to the parent component
+  useImperativeHandle(refFromParent, () => ({
+    capture: capture,
+  }));
 
   // Trigger the capture function when `trigger` changes
   useEffect(() => {
@@ -144,4 +149,4 @@ export function MyWebcam({ trigger, className = "" }) {
       <canvas ref={canvasRef} style={{ display: "none" }}></canvas>
     </div>
   );
-}
+});
