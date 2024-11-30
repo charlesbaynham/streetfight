@@ -43,17 +43,22 @@ function WebcamCapture({ trigger, isDead }) {
 
   const orientation = useScreenOrientation();
 
-  useEffect(() => {
+  const toggleWebcam = useCallback(() => {
     setHackyHideWebcam(true);
-
-    const timeoutHandle = setTimeout(() => {
+    setTimeout(() => {
       setHackyHideWebcam(false);
-    }, 500);
+    }, 1000);
+  }, [setHackyHideWebcam]);
+
+  const id = useEffect(() => {  // FIXME: Hacky test
+    setInterval(() => {
+      toggleWebcam();
+    }, 5000);
 
     return () => {
-      clearTimeout(timeoutHandle);
+      clearInterval(id);
     }
-  }, [setHackyHideWebcam, orientation]);
+  }, [toggleWebcam, orientation]);
 
   // Call the capture callback when the 'trigger' prop changes
   useEffect(() => {
