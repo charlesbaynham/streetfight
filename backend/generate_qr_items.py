@@ -40,6 +40,13 @@ def make_qr_grid(
 
     if base_image:
         base_image_loaded = Image.open(base_image)
+
+        # Crop the base image to remove all transparent borders
+        bbox = base_image_loaded.getbbox()
+        if bbox:
+            base_image_loaded = base_image_loaded.crop(bbox)
+
+        # Resize it to fill the box
         base_image_loaded = base_image_loaded.resize((box_width, box_height))
     else:
         base_image_loaded = None
