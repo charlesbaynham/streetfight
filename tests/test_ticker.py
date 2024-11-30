@@ -108,14 +108,19 @@ def test_api_query_ticker_messages(api_client, ticker_for_user_in_game):
 
 
 def test_ticker_announces_kill(
-    db_session, api_client, api_user_id, team_factory, test_image_string
+    db_session,
+    api_client,
+    admin_api_client,
+    api_user_id,
+    team_factory,
+    test_image_string,
 ):
     UserInterface(api_user_id).join_team(team_factory())
     UserInterface(api_user_id).award_ammo(1)
     UserInterface(api_user_id).submit_shot(test_image_string)
     shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
     # Let's say the user shot themselves:
-    response = api_client.post(
+    response = admin_api_client.post(
         f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={api_user_id}"
     )
     assert response.is_success
@@ -124,7 +129,32 @@ def test_ticker_announces_kill(
     assert response.is_success
     messages = response.json()
 
-    assert "killed" in messages[0][1]
+    assert any(["killed" in m[1] for m in messages])
+
+
+def test_ticker_announces_kill_privately(
+    db_session,
+    api_client,
+    admin_api_client,
+    api_user_id,
+    team_factory,
+    test_image_string,
+):
+    UserInterface(api_user_id).join_team(team_factory())
+    UserInterface(api_user_id).award_ammo(1)
+    UserInterface(api_user_id).submit_shot(test_image_string)
+    shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
+    # Let's say the user shot themselves:
+    response = admin_api_client.post(
+        f"/api/admin_shot_hit_user?shot_id={shot_a}&target_user_id={api_user_id}"
+    )
+    assert response.is_success
+
+    response = api_client.get("/api/ticker_messages")
+    assert response.is_success
+    messages = response.json()
+
+    assert "You were knocked out" in messages[0][1]
 
 
 def test_get_messages_empty(ticker):

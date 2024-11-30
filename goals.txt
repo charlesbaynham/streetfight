@@ -2,22 +2,34 @@ Goals
 -----
 
 Bugs:
-- The animation for the bullet reload is jerky
+- [x] iPhone location does not work - maybe fixed, ask Rob
+- [x] Location permission should be requested on start screen
+
+- [x] The camera doesn't work properly on safari! When I reconnect from standby
+      it's white until a refresh. This breaks the PWA. Seems to be the fault of react
+      webcam, I can use it fine on a normal HTML5 demo site. Guess I'm coding my own
+      webcam widget... Urghq
+- [ ] Somewhere in the giant iOS clusterfuck, the Permissions API for proper browsers got messed up - actually I think maybe it never worked properly for firefox + geolocation
+
 
 Location:
   Not a priority, but I'm apparently doing it anyway. Classic.
   - [x] When a shot happens, record where everyone was so the interface can suggest who was closest
-  - [ ] Hand-drawn map with pubs marked
+  - [x] Hand-drawn map with pubs marked
   - [ ] Circles displayed on map, triggered by admins
+  - [ ] Disable pubs when outside circle
   - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
   - [ ] "Scanner" item which reveals other teams for x minutes
 
 Priority:
-  - [ ] Needs a "hit" noise / notification
-  - [ ] You should find out if you hit someone (use private tickers)
+  - [x] You should be stuck on the home screen until the appropriate permissions are given
+  - [x] Needs a "hit" noise / notification
+  - [x] You should find out if you hit someone (use private tickers)
+  - [x] Need to be able to change your name... People will be silly
 
 Polish:
   - [ ] Make ticker messages disappear eventually. Clientside.
+  - [ ] The animation for the bullet reload is jerky
   - [ ] Put harry's noises in
     * time splitters 2 ricochet
     * random selection of western ricochet shots
@@ -51,7 +63,7 @@ Checks:
 Backburner:
 
 - [x] Admin interface UI should also auto-update
-- [ ]: The admin interface should have a password
+- [x]: The admin interface should have a password
 - [ ]: Users should be able to send items to other users (on their team? only bullets?)
 - [x] Fixed by moving to SSE: Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
 - [ ] QR code interface for joining team

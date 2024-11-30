@@ -263,14 +263,20 @@ class UserInterface:
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
-        """Add the scanned item into a user's inventory"""
+        """
+        Add the scanned item into a user's inventory
+
+        Args:
+            encoded_item (str): The item to collect, encoded as a base64 string.
+            Optionally can be a URL with the item as a query parameter "d".
+        """
 
         item = ItemModel.from_base64(encoded_item)
 
         item_validation_error = item.validate_signature()
         if item_validation_error:
             raise HTTPException(
-                404, f"The scanned item is invalid - error {item_validation_error}"
+                403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
         user: User = self.get_user()

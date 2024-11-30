@@ -39,7 +39,7 @@ async def get_user_id(*, request: Request = None, websocket: WebSocket = None) -
         except ValueError:
             parsed_uuid = assign_new_ID(request_or_ws, temporary_id)
             logging.error(
-                "Error parsing UUID %s from tempID %s. Reassiging as %s",
+                "Error parsing UUID %s from tempID %s. Reassigning as %s",
                 session_UUID,
                 temporary_id,
                 parsed_uuid,

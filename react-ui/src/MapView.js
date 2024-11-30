@@ -30,16 +30,6 @@ const map_top_right = {
   lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
 };
 
-//const map_bottom_left = {
-//  lat: 51.39086326418569,
-//  long: -0.32774517566164785,
-//};
-
-//const map_top_right = {
-//  lat: 51.57437959599135,
-//  long: -0.001323774970900953,
-//};
-
 const degreesLongitudePerKm =
   1 /
   (111.32 *
@@ -61,8 +51,8 @@ const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
 
 // Width of the map in km when it's in the corner
-// const CORNER_BOX_WIDTH_KM = 0.1;
-const CORNER_BOX_WIDTH_KM = 8; // TODO: Put this back to something reasonable
+// 10% of the map in view
+const CORNER_BOX_WIDTH_KM = 0.1 * MAP_WIDTH_KM;
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(

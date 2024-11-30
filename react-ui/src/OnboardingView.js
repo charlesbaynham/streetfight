@@ -1,5 +1,9 @@
-import { useCallback, useState } from "react";
-import { sendAPIRequest } from "./utils";
+import { useCallback, useEffect, useState } from "react";
+import {
+  requestGeolocationPermission,
+  requestWebcamAccess,
+  sendAPIRequest,
+} from "./utils";
 
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -7,6 +11,10 @@ import returnIcon from "./images/return.svg";
 import actionNotDone from "./images/hand-pointer-solid.svg";
 import actionDone from "./images/check-solid.svg";
 import logo from "./images/art/logo.png";
+import {
+  isLocationPermissionGranted,
+  isCameraPermissionGranted,
+} from "./utils";
 
 import styles from "./OnboardingView.module.css";
 
@@ -66,21 +74,23 @@ function NameEntry({ user }) {
   );
 }
 
-function requestWebcamAccess(callbackCompleted) {
-  navigator.mediaDevices
-    .getUserMedia({ video: true })
-    .then((stream) => {
-      stream.getTracks().forEach(function (track) {
-        track.stop();
-      });
-    })
-    .then(() => {
-      callbackCompleted();
-    });
-}
-
 function OnboardingView({ user }) {
-  const [webcamAvailable, setWebcamAvailable] = useState(false);
+  const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
+  const [locationPermissionGranted, setLocationPermissionGranted] =
+    useState(false);
+
+  // Check if permissions have already been granted on load
+  useEffect(() => {
+    isCameraPermissionGranted().then((result) => {
+      setWebcamPermissionGranted(result);
+    });
+  }, []);
+
+  useEffect(() => {
+    isLocationPermissionGranted().then((result) => {
+      setLocationPermissionGranted(result);
+    });
+  }, []);
 
   function getActionItems() {
     const hasName = user.name;
@@ -93,10 +103,10 @@ function OnboardingView({ user }) {
       actionItems.push(
         <ActionItem
           text="Grant webcam permission:"
-          done={webcamAvailable}
+          done={webcamPermissionGranted}
           onClick={() => {
             requestWebcamAccess(() => {
-              setWebcamAvailable(true);
+              setWebcamPermissionGranted(true);
             });
           }}
           key={"webcam"}
@@ -104,7 +114,22 @@ function OnboardingView({ user }) {
       );
     else return actionItems;
 
-    if (webcamAvailable)
+    if (webcamPermissionGranted)
+      actionItems.push(
+        <ActionItem
+          text={"Grant location permission:"}
+          done={locationPermissionGranted}
+          onClick={async () => {
+            console.log("Requesting location permission from OnboardingView");
+            const success = await requestGeolocationPermission();
+            setLocationPermissionGranted(success);
+          }}
+          key={"location"}
+        />,
+      );
+    else return actionItems;
+
+    if (locationPermissionGranted)
       actionItems.push(
         <ActionItem
           text={
