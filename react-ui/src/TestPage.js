@@ -1,17 +1,13 @@
 import React from "react";
-import { MapViewAdmin, MapViewSelf } from "./MapView";
+import { MyWebcam } from "./Webcam";
+
 
 const TestPage = () => {
   return (
     <div>
       <h1>This is a test</h1>
 
-      <h3>Your location:</h3>
-
-      {/* <MapViewSelf /> */}
-      <div>
-        <MapViewAdmin />
-      </div>
+      <MyWebcam />
     </div>
   );
 };
