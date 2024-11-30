@@ -11,6 +11,7 @@ from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
+from fastapi import Request
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
@@ -73,6 +74,9 @@ load_env_vars()
 setup_logging()
 
 from . import sse_event_streams
+from .admin_auth import is_admin_authed
+from .admin_auth import mark_admin_authed
+from .admin_auth import require_admin_auth
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
@@ -218,6 +222,20 @@ async def set_location(
 
 
 ######## ADMIN ###########
+
+
+@router.get("/admin_is_authed")
+async def admin_is_authed(
+    is_admin_authed=Depends(is_admin_authed),
+) -> bool:
+    return is_admin_authed
+
+
+@router.post("/admin_authenticate")
+async def admin_authenticate(request: Request) -> None:
+    mark_admin_authed(request)
+
+
 @router.post("/admin_create_game")
 async def admin_create_game() -> UUID:
     game_id = AdminInterface().create_game()
@@ -237,7 +255,7 @@ async def admin_add_user_to_team(user_id: UUID, team_id: UUID) -> None:
     return AdminInterface().add_user_to_team(user_id, team_id)
 
 
-@router.get("/admin_list_games")
+@router.get("/admin_list_games", dependencies=[Depends(require_admin_auth)])
 async def admin_list_games() -> List[GameModel]:
     logger.info("admin_list_games")
     return AdminInterface().get_games()
