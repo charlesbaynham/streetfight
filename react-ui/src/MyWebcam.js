@@ -67,11 +67,15 @@ export function MyWebcam({ trigger, className = "" }) {
             // The camera is already running
             return;
 
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        function handleSuccess(stream) {
             video.srcObject = stream;
             video.play();  // This line is critical for making the camera resume from standby in Safari, and wasting an entire Saturday
             mediaStream.current = stream;
+        }
+
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            handleSuccess(stream);
         } catch (e) {
             console.error('navigator.getUserMedia error:', e);
         }
