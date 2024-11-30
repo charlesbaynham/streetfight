@@ -19,10 +19,23 @@ export function MyWebcam() {
     // Define a function that will take a shot (useCallback just avoids
     // redefining the function when renders happen)
     const capture = useCallback(() => {
-        // FIXME implement this
-        // if (!webcamRef) return;
+        if (videoRef.current === null || canvasRef.current === null) {
+            return;
+        }
+        const video = videoRef.current;
+        const canvas = canvasRef.current;
 
-        // const imageSrc = webcamRef.current.getScreenshot();
+        let w = video.videoWidth;
+        let h = video.videoHeight;
+        canvas.width = w;
+        canvas.height = h;
+
+        let ctx = canvas.getContext('2d');
+
+        ctx.drawImage(video, 0, 0, w, h);
+
+        console.log(canvas.toDataURL("image/jpeg"));
+
 
         // const query = JSON.stringify({
         //     photo: imageSrc,
@@ -38,7 +51,6 @@ export function MyWebcam() {
         //     .then((data) => console.log(`Response: ${data}`));
     }, []);
 
-    const orientation = useScreenOrientation();
 
     useEffect(() => {
         if (videoRef.current === null || canvasRef.current === null || captureButtonRef.current === null) {
@@ -47,8 +59,6 @@ export function MyWebcam() {
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-
-
 
         const constraints = {
             audio: false,
@@ -72,17 +82,11 @@ export function MyWebcam() {
             window.stream = stream; // make variable available to browser console
             video.srcObject = stream;
 
-            captureButtonRef.current.onclick = function () {
-                canvas.width = video.videoWidth;
-                canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-            };
+            captureButtonRef.current.onclick = capture;
         }
 
-
-
         init();
-    }, [canvasRef, videoRef, captureButtonRef]);
+    }, [canvasRef, videoRef, captureButtonRef, capture]);
 
     return (
         <>
