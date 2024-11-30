@@ -3,8 +3,11 @@ from uuid import UUID
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.main import app
 from backend.model import UserModel
 from backend.user_interface import UserInterface
+
+admin_routes = [route.path for route in app.routes if "admin" in route.path]
 
 
 def test_read_main(api_client):
@@ -19,8 +22,9 @@ def test_auth_default_to_false(api_client):
     assert response.json() == False
 
 
-def test_auth_denies_admin(api_client):
-    response = api_client.get("/api/admin_list_games")
+@pytest.mark.parametrize("route", admin_routes)
+def test_auth_denies_admin(api_client, route):
+    response = api_client.get(route)
     assert response.status_code == 403
 
 
