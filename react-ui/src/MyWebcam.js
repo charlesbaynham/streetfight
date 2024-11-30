@@ -12,14 +12,11 @@ const constraints = {
     }
 };
 
-export function MyWebcam() {
+export function MyWebcam({ trigger }) {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
-    const captureButtonRef = useRef(null);
 
-
-    // Define a function that will take a shot (useCallback just avoids
-    // redefining the function when renders happen)
+    // Define a function that will take a shot and upload it to the server
     const capture = useCallback(() => {
         if (videoRef.current === null || canvasRef.current === null) {
             return;
@@ -52,15 +49,19 @@ export function MyWebcam() {
             .then((data) => console.log(`Response: ${data}`));
     }, []);
 
+    // Trigger the capture function when `trigger` changes
+    useEffect(() => {
+        if (trigger)
+            capture();
+    }, [trigger, capture]);
+
 
     useEffect(() => {
-        if (videoRef.current === null || captureButtonRef.current === null) {
+        if (videoRef.current === null) {
             return;
         }
 
         const video = videoRef.current;
-
-
 
         async function init() {
             try {
@@ -73,15 +74,13 @@ export function MyWebcam() {
 
         function handleSuccess(stream) {
             video.srcObject = stream;
-            captureButtonRef.current.onclick = capture;
         }
 
         init();
-    }, [canvasRef, videoRef, captureButtonRef, capture]);
+    }, [canvasRef, videoRef, capture]);
 
     return (
         <>
-            <label>Video Stream</label>
             <video
                 autoplay="autoplay"
                 playsinline
@@ -95,8 +94,6 @@ export function MyWebcam() {
                 ref={canvasRef}
                 style={{ display: "none" }}
             ></canvas>
-
-            <button ref={captureButtonRef}>Capture!</button>
         </>
     );
 }

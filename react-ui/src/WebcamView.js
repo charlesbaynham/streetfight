@@ -1,45 +1,21 @@
-import { useEffect, useRef, useCallback, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import Webcam from "react-webcam";
+
 
 import QRParser from "./QRParser";
 
 import screenfillStyles from "./ScreenFillStyles.module.css";
 import styles from "./WebcamView.module.css";
 import useScreenOrientation from "./useScreenOrientation";
+import { MyWebcam } from "./MyWebcam";
 
-const videoConstraints = {
-  width: { ideal: 2048 },
-  height: { ideal: 1080 },
-  facingMode: "environment",
-};
+
 
 function WebcamCapture({ trigger, isDead }) {
   // Get a reference to the webcam element
   const webcamRef = useRef(null);
 
   const [hackyHideWebcam, setHackyHideWebcam] = useState(false);
-
-  // Define a function that will take a shot (useCallback just avoids
-  // redefining the function when renders happen)
-  const capture = useCallback(() => {
-    if (!webcamRef) return;
-
-    const imageSrc = webcamRef.current.getScreenshot();
-
-    const query = JSON.stringify({
-      photo: imageSrc,
-    });
-
-    const requestOptions = {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: query,
-    };
-    fetch("/api/submit_shot", requestOptions)
-      .then((response) => response.json())
-      .then((data) => console.log(`Response: ${data}`));
-  }, [webcamRef]);
 
   const orientation = useScreenOrientation();
 
@@ -54,22 +30,12 @@ function WebcamCapture({ trigger, isDead }) {
     return () => { clearTimeout(id); }
   }, [setHackyHideWebcam, orientation]);
 
-  // Call the capture callback when the 'trigger' prop changes
-  useEffect(() => {
-    if (trigger) capture();
-  }, [trigger, capture]);
-
   return (
     <>
       {!hackyHideWebcam ? (
-        <Webcam
+        <MyWebcam
           ref={webcamRef}
-          audio={false}
-          screenshotFormat="image/jpg"
-          videoConstraints={videoConstraints}
-          forceScreenshotSourceSize
-          height="360"
-          width="640"
+          trigger={trigger}
           className={
             screenfillStyles.screenFill +
             " " +
