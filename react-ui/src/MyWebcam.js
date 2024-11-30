@@ -65,7 +65,7 @@ export function MyWebcam({ trigger, className = "" }) {
 
         function handleSuccess(stream) {
             video.srcObject = stream;
-            video.play();
+            video.play();  // This line is critical for making the camera resume from standby in Safari, and wasting an entire Saturday
             setMediaStream(stream);
         }
 
