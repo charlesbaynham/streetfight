@@ -26,7 +26,7 @@ async function capture(webcamRef, scannedCallback) {
   if (!webcamRef.current) return;
 
   // Get an image from the webcam ref
-  const imageSrc = webcamRef.current.getScreenshot();
+  const imageSrc = webcamRef.current.capture();
 
   if (imageSrc === null) return;
 

@@ -36,7 +36,7 @@ export const MyWebcam = forwardRef(({ trigger, className = "" }, refFromParent) 
 
   const mediaStream = useRef(null);
 
-  // Define a function that will take a shot and upload it to the server
+  // Return the current frame as a base64-encoded image
   const capture = useCallback(() => {
     if (videoRef.current === null || canvasRef.current === null) {
       return;
@@ -55,6 +55,12 @@ export const MyWebcam = forwardRef(({ trigger, className = "" }, refFromParent) 
 
     const imageSrc = canvas.toDataURL("image/jpeg");
 
+    return imageSrc;
+  }, []);
+
+  // Take a shot and upload it when trigger changes
+  const captureAndUpload = useCallback(() => {
+    const imageSrc = capture();
     const query = JSON.stringify({
       photo: imageSrc,
     });
@@ -67,17 +73,17 @@ export const MyWebcam = forwardRef(({ trigger, className = "" }, refFromParent) 
     fetch("/api/submit_shot", requestOptions)
       .then((response) => response.json())
       .then((data) => console.log(`Response: ${data}`));
-  }, []);
+  }, [capture]);
 
   // Expose the capture function to the parent component
   useImperativeHandle(refFromParent, () => ({
     capture: capture,
   }));
 
-  // Trigger the capture function when `trigger` changes
+  // Trigger the captureAndUpload function when `trigger` changes
   useEffect(() => {
-    if (trigger) capture();
-  }, [trigger, capture]);
+    if (trigger) captureAndUpload();
+  }, [trigger, captureAndUpload]);
 
   // Start the camera and bind it to the <video> element
   const startCamera = useCallback(async () => {
