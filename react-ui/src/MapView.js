@@ -223,7 +223,9 @@ function MapView({
   else containerClasses.push(styles.mapContainerCorner);
 
   return (
-    <TransformWrapper className="hello">
+    <TransformWrapper
+      disabled={!poppedOut}  // Disable zoom / pan if the map is in the corner
+    >
       <div className={containerClasses.join(" ")} ref={mapContainerRef}>
         <TransformComponent
           wrapperClass={styles.transformWrapper}
