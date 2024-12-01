@@ -213,7 +213,15 @@ async def admin_updates_generator():
     update_admin = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "admin"})
     )
+    update_circle = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "circle"})
+    )
+
     yield update_admin
+    yield update_circle
+
     async for _ in AdminInterface().generate_any_ticker_updates():
         logger.debug("(admin_updates_generator) Update received - sending")
+        # Lazily update both circle and admin stats each time
         yield update_admin
+        yield update_circle

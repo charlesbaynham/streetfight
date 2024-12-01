@@ -505,17 +505,18 @@ class AdminInterface:
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
-        An async iterator that yields None every time any ticker is updated in any
+        An async iterator that yields None every time any ticker or circle is updated in any
         game, or at most after timeout seconds
         """
         while True:
             game_ids = self._get_all_game_ids()
 
-            # Lookup / make an event for each game's ticker
+            # Lookup / make an event for each game's ticker and circle
             events = []
             for game_id in game_ids:
-                logger.debug("(AdminInterface) Getting event for game %s", game_id[0])
+                logger.debug("(AdminInterface) Getting events for game %s", game_id[0])
                 events.append(get_trigger_event("ticker", game_id[0]))
+                events.append(get_trigger_event("circle", game_id[0]))
 
             # make futures for waiting for all these events
             futures = [
