@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 
@@ -10,10 +11,13 @@ import Dot from "./Dot";
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
-const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  FIXME put back
 const ref_1_xy = [294.098, 963.464];
-const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  FIXME put back
 const ref_2_xy = [825.823, 212.722];
+
+const ref_1_lat_long = [51.35, -0.35];
+const ref_2_lat_long = [51.45, -0.25];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
@@ -72,7 +76,7 @@ function MapView({
   other_positions_and_details = [],
   alwaysExpanded = false,
 }) {
-  const [poppedOut, setPoppedOut] = useState(false);
+  const [poppedOut, setPoppedOut] = useState(true);  // FIXME
   const expanded = alwaysExpanded || poppedOut;
 
   const mapContainerRef = useRef(null);
@@ -159,11 +163,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -219,38 +223,43 @@ function MapView({
   else containerClasses.push(styles.mapContainerCorner);
 
   return (
-    <>
+    <TransformWrapper className="hello">
       <div className={containerClasses.join(" ")} ref={mapContainerRef}>
-        {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-        <div
-          className={styles.mapImage}
-          src={mapSrc}
-          alt="Map"
-          style={{
-            backgroundImage: `url(${mapSrc})`,
-            backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
-            backgroundRepeat: "no-repeat",
-            backgroundSize: map_size_x + "px " + map_size_y + "px",
-          }}
-        />
-        {!grayedOut && ownPosition !== null ? (
-          <Dot x={dot_x} y={dot_y} />
-        ) : null}
-        {otherDots}
-        <div
+        <TransformComponent
+          wrapperClass={styles.transformWrapper}
+          contentClass={styles.transformComponent}
+        >
+          {grayedOut ? <div className={styles.mapOverlay}></div> : null}
+          <div
+            className={styles.mapImage}
+            src={mapSrc}
+            alt="Map"
+            style={{
+              backgroundImage: `url(${mapSrc})`,
+              backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+              backgroundRepeat: "no-repeat",
+              backgroundSize: map_size_x + "px " + map_size_y + "px",
+            }}
+          />
+          {!grayedOut && ownPosition !== null ? (
+            <Dot x={dot_x} y={dot_y} />
+          ) : null}
+          {otherDots}
+        </TransformComponent>
+        {/* <div
           className={styles.clickCatcher}
           onClick={
             alwaysExpanded
               ? null
               : () => {
-                  console.log("Click!");
-                  setPoppedOut(!poppedOut);
-                  handleResize();
-                }
+                console.log("Click!");
+                setPoppedOut(!poppedOut);
+                handleResize();
+              }
           }
-        ></div>
+        ></div> FIXME click catcher */}
       </div>
-    </>
+    </TransformWrapper >
   );
 }
 
