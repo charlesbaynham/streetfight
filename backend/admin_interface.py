@@ -127,6 +127,13 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+        elif name == "both":
+            game.exclusion_circle_lat = lat
+            game.exclusion_circle_long = long
+            game.exclusion_circle_radius = radius
+            game.next_circle_lat = lat
+            game.next_circle_long = long
+            game.next_circle_radius = radius
         else:
             raise HTTPException(400, f"Invalid circle name {name}")
 
