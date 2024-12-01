@@ -363,6 +363,16 @@ async def admin_set_user_name(user_id: UUID, name: str):
     AdminInterface().set_user_name(user_id=user_id, name=name)
 
 
+@admin_method(path="/admin_set_circles", method="POST")
+def admin_set_circles(
+    game_id: UUID, name: str, lat: float, long: float, radius_km: float
+):
+    logger.info("admin_set_circles - %s", locals())
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
+    )
+
+
 @router.get("/sse_updates")
 async def sse_updates(
     user_id=Depends(get_user_id),
