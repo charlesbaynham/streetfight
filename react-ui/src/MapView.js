@@ -290,11 +290,6 @@ function MapView({
             wrapperStyle={{ height: "100%", width: "100%" }}
             contentStyle={{ height: "100%", width: "100%" }}
           >
-            <MapCircles calculators={{
-              coordsToKm: coordsToKm,
-              kmToPixels: kmToPixels,
-              coordsToPixels: coordsToPixels,
-            }} />
             <div
               className={styles.mapImage}
               src={mapSrc}
@@ -310,6 +305,14 @@ function MapView({
               <Dot x={dot_x} y={dot_y} />
             ) : null}
             {otherDots}
+            <MapCircles
+              calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
+              circles={[
+                [51.4, 0.0, 1.0],
+                [51.6, 0.0, 2.0],
+                [51.8, 0.0, 3.0],
+              ]}
+            />
             <div
               className={styles.clickCatcher}
               onClick={
