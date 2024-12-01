@@ -3,6 +3,9 @@ Goals
 
 TODO:
  - [ ] Generic text messages from admin
+ - [ ] Fix pickup of level 1 gun
+ - [ ] Drop location
+ - [ ] Admin names
 
 Bugs:
 - [ ] There's a big memory leak in the events... Try debugging with "LOG_OVERRIDES=backend.sse_event_streams:DEBUG" and refresh the admin page a few times
