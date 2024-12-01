@@ -78,6 +78,22 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
+// Draw the exclusion zone and next target zone on the map, if they exist. This
+// component is responsible for calculating the position of the circles and also
+// for querying them from the server. It uses an UpdateListener to listen for
+// "circle" events and change the drawn circles appropriately.
+function MapCirclesFromAPI({ calculators }) {
+  return (
+    <MapCircles
+      calculators={calculators}
+      exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
+      nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
+    />
+  );
+}
+
+// This component is responsible for drawing the circles on the map. It just
+// draws - querying the circles' position is out of scope
 function MapCircles({
   calculators,
   exclusionCircle = null,
@@ -343,13 +359,11 @@ function MapView({
               {otherDots}
 
               {/* Circles */}
-              <MapCircles
+              <MapCirclesFromAPI
                 // Note how the coordinate calculators are passed down to the
                 // circles so they can handle their own positioning. It would be
                 // better to do this for other elements too.
                 calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-                exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
-                nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
               />
 
               {/* A box that intercepts clicks - transparent and at the top z-order */}
