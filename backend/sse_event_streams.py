@@ -14,7 +14,8 @@ from .admin_interface import AdminInterface
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
-SSE_KEEPALIVE_TIMEOUT = 15
+SSE_KEEPALIVE_TIMEOUT = 1
+# SSE_KEEPALIVE_TIMEOUT = 15  # FIXME
 
 logger = logging.getLogger(__name__)
 
@@ -50,12 +51,19 @@ async def updates_generator(user_id):
     # A function that logs a message every time an async generator yields
     async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
         async for data in generator:
+            logger.debug(
+                'feed_generator_to_queue - Received message "%s" from %s', data, message
+            )
             await queue.put((message, data))
 
     # A function that yields from the queue as soon as items arrive
     async def yield_from_queue() -> AsyncGenerator:
         while True:
-            yield await asyncio.wait_for(queue.get(), timeout=None)
+            msg = await asyncio.wait_for(queue.get(), timeout=None)
+            logger.debug(
+                "yield_from_queue (UID %s) - Yielding message %s", user_id, msg
+            )
+            yield msg
 
     # Keep track of the asyncio tasks we start for producers
     producers = []
@@ -114,10 +122,13 @@ async def updates_generator(user_id):
 
     # Also add a keepalive producer
     async def keepalive_timer():
+        logger.debug("Starting keepalive timer")
+
         i = 0
 
         while True:
             await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
+            logger.debug("Sending keepalive message %s", i)
             yield i
             i += 1
 
