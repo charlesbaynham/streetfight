@@ -163,11 +163,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+          box_centre_lat,
+          box_centre_long,
+        )
       : [0, 0];
 
     // Calculate all the other dots
@@ -224,7 +224,7 @@ function MapView({
 
   return (
     <TransformWrapper
-      disabled={!poppedOut}  // Disable zoom / pan if the map is in the corner
+      disabled={!poppedOut} // Disable zoom / pan if the map is in the corner
     >
       {({ resetTransform }) => (
         <div className={containerClasses.join(" ")} ref={mapContainerRef}>
@@ -254,18 +254,17 @@ function MapView({
                 alwaysExpanded
                   ? null
                   : () => {
-                    console.log("Click!");
-                    setPoppedOut(!poppedOut);
-                    resetTransform();
-                    handleResize();
-                  }
+                      console.log("Click!");
+                      setPoppedOut(!poppedOut);
+                      resetTransform();
+                      handleResize();
+                    }
               }
             ></div>
           </TransformComponent>
-
         </div>
       )}
-    </TransformWrapper >
+    </TransformWrapper>
   );
 }
 
