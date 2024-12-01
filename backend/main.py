@@ -398,6 +398,18 @@ async def admin_set_circle(
     )
 
 
+@admin_method(path="/admin_clear_circle", method="POST")
+async def admin_set_circle(
+    game_id: UUID,
+    name: str,
+):
+    logger.info("admin_clear_circle - %s", locals())
+
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=None, long=None, radius=None
+    )
+
+
 @router.get("/sse_updates")
 async def sse_updates(
     user_id=Depends(get_user_id),
