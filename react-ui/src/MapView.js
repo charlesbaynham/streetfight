@@ -95,7 +95,9 @@ function MapCirclesFromAPI({ calculators }) {
 
     const circles = await response.json();
 
-    console.log("Got new circles:", circles); // FIXME WIP
+    console.log("Got new circles:", circles);
+
+    setCirclesData(circles);
   }, []);
 
   useEffect(() => {
@@ -111,7 +113,7 @@ function MapCirclesFromAPI({ calculators }) {
       console.log("Deregistering circle update listener");
       deregisterListener(CIRCLE_UPDATE_TYPE, handle);
     };
-  }, []);
+  }, [getCircles]);
 
   return (
     <MapCircles
@@ -125,7 +127,15 @@ function MapCirclesFromAPI({ calculators }) {
             ]
           : null
       }
-      nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
+      nextCircle={
+        circlesData
+          ? [
+              circlesData["next_circle_lat"],
+              circlesData["next_circle_long"],
+              circlesData["next_circle_radius"],
+            ]
+          : null
+      }
     />
   );
 }
@@ -164,22 +174,24 @@ function MapCircles({
 
   if (exclusionCircle) {
     const [lat, long, radiusKM] = exclusionCircle;
-    circles.push(
-      <div
-        className={styles.exclusionCircle}
-        style={calculateCircleStyles(lat, long, radiusKM)}
-      />
-    );
+    if (lat && long && radiusKM)
+      circles.push(
+        <div
+          className={styles.exclusionCircle}
+          style={calculateCircleStyles(lat, long, radiusKM)}
+        />
+      );
   }
 
   if (nextCircle) {
     const [lat, long, radiusKM] = nextCircle;
-    circles.push(
-      <div
-        className={styles.nextCircle}
-        style={calculateCircleStyles(lat, long, radiusKM)}
-      />
-    );
+    if (lat && long && radiusKM)
+      circles.push(
+        <div
+          className={styles.nextCircle}
+          style={calculateCircleStyles(lat, long, radiusKM)}
+        />
+      );
   }
 
   return (
