@@ -11,6 +11,7 @@ def trigger_circle_update(game_id):
     """
     Trigger an update event for the circles in this game
     """
+    logger.debug("Triggering circle update for game %s", game_id)
     trigger_update_event("circle", game_id)
 
 
@@ -26,14 +27,14 @@ async def generate_circle_updates(game_id, timeout=None):
         event = get_trigger_event("circle", game_id)
 
         try:
-            logger.info(
+            logger.debug(
                 "(Circle %s) Subscribing to event %s",
                 game_id,
                 event,
             )
             await asyncio.wait_for(event.wait(), timeout=timeout)
-            logger.info("(Circle %s) Event received", game_id)
+            logger.debug("(Circle %s) Event received", game_id)
             yield
         except asyncio.TimeoutError:
-            logger.info("(Circle %s) Event timeout", game_id)
+            logger.debug("(Circle %s) Event timeout", game_id)
             yield
