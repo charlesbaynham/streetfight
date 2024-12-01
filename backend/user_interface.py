@@ -170,6 +170,13 @@ class UserInterface:
         return self.get_user().team_id
 
     @db_scoped
+    def get_game_id(self) -> UUID:
+        team = self.get_user().team
+        if team is None:
+            return None
+        return team.game_id
+
+    @db_scoped
     def get_team_model(self) -> TeamModel:
         team = self.get_user().team
         return TeamModel.from_orm(team) if team else None
