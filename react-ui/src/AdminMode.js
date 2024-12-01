@@ -4,6 +4,7 @@ import { sendAPIRequest } from "./utils";
 import NewItems from "./NewItems";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
+import CircleControl from "./CircleControl";
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -14,10 +15,10 @@ function GameView({ game }) {
           game_id: game.id,
           active: state,
         },
-        "POST",
+        "POST"
       );
     },
-    [game],
+    [game]
   );
 
   return (
@@ -65,10 +66,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   const hit_user = useCallback(
@@ -79,10 +80,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   const give_n_ammo = useCallback(
@@ -93,10 +94,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   return (
@@ -193,7 +194,7 @@ function CreateNewTeam({ game_id }) {
         game_id: game_id,
         team_name: team_name,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -221,7 +222,7 @@ function AddUserToTeam({ teams }) {
         user_id: user_id,
         team_id: team_id,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -258,7 +259,7 @@ function AddUserToTeam({ teams }) {
         onClick={() => {
           addUserToTeam(
             ref_add_user_to_team_user.current.value,
-            ref_add_user_to_team_team.current.value,
+            ref_add_user_to_team_team.current.value
           );
         }}
       >
@@ -284,7 +285,7 @@ function UserRenaming() {
         user_id: user_id,
         name: new_name,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -357,6 +358,9 @@ export default function AdminMode() {
       <UserRenaming />
 
       <MapViewAdmin />
+
+      <h2>Circle Control</h2>
+      <CircleControl />
     </>
   );
 }
