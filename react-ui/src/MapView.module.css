@@ -45,11 +45,18 @@
     background-color: rgba(128, 128, 128, 0.5);
 }
 
-.mapImage {
+.mapImage,
+.mapCircles {
     position: absolute;
     width: 100%;
     height: 100%;
 }
+
+.mapCircles {
+    background-color: green;
+    /* FIXME */
+}
+
 
 .mapDotSelf {
     position: absolute;

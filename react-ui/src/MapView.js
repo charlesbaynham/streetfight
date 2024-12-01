@@ -70,6 +70,14 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
+function MapCircles() {
+  return (
+    <div className={styles.mapCircles}>
+      Circles!
+    </div>
+  );
+}
+
 function MapView({
   ownPosition = null,
   other_positions_and_details = [],
@@ -231,7 +239,7 @@ function MapView({
             wrapperStyle={{ height: "100%", width: "100%" }}
             contentStyle={{ height: "100%", width: "100%" }}
           >
-
+            <MapCircles />
             <div
               className={styles.mapImage}
               src={mapSrc}
