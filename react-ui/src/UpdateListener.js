@@ -141,7 +141,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     // Register a watcher to restart the connection if we haven't heard anything in x seconds
     keepalive_interval_handle = setInterval(
       restartIfTimeout,
-      TIMEOUT_CHECK_INTERVAL
+      TIMEOUT_CHECK_INTERVAL,
     );
 
     return cleanup;
