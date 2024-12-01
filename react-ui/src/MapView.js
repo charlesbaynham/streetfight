@@ -163,11 +163,11 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+        box_centre_lat,
+        box_centre_long,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -229,8 +229,8 @@ function MapView({
       {({ resetTransform }) => (
         <div className={containerClasses.join(" ")} ref={mapContainerRef}>
           <TransformComponent
-            wrapperClass={styles.transformWrapper}
-            contentClass={styles.transformComponent}
+            wrapperStyle={{ height: "100%", width: "100%" }}
+            contentStyle={{ height: "100%", width: "100%" }}
           >
             {grayedOut ? <div className={styles.mapOverlay}></div> : null}
             <div
@@ -254,11 +254,11 @@ function MapView({
                 alwaysExpanded
                   ? null
                   : () => {
-                      console.log("Click!");
-                      setPoppedOut(!poppedOut);
-                      resetTransform();
-                      handleResize();
-                    }
+                    console.log("Click!");
+                    setPoppedOut(!poppedOut);
+                    resetTransform();
+                    handleResize();
+                  }
               }
             ></div>
           </TransformComponent>
