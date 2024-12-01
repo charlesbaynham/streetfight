@@ -380,9 +380,11 @@ class UserInterface:
         """
 
         with self:
-            game_id = self.get_user().team_id
+            team_id = self.get_user().team_id
+            if team_id:
+                game_id = self.get_user().team.game_id
 
-        if game_id is None:
+        if team_id is None:
             raise ValueError("User is not in a game")
 
         ticker = Ticker(

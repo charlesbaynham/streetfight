@@ -112,7 +112,7 @@ async def updates_generator(user_id):
 
         # Then yield from the ticker
         async for x in ui.generate_ticker_updates():
-            logger.debug(
+            logger.error(  # FIXME
                 "updates_generator - Forwarding ticker event for user %s", user_id
             )
             yield x
