@@ -43,6 +43,34 @@ def test_user_info(api_client):
     assert UserModel(**response.json())
 
 
+def test_get_circles_not_in_game(api_client):
+    response = api_client.get("/api/get_circles")
+    assert response.json() is None
+
+
+def test_get_circles_in_game_no_circle(api_client, api_user_id, one_team):
+    UserInterface(api_user_id).join_team(one_team)
+
+    response = api_client.get("/api/get_circles").json()
+    assert response is not None
+    for key in [
+        "exclusion_circle_x",
+        "exclusion_circle_y",
+        "exclusion_circle_radius",
+        "next_circle_x",
+        "next_circle_y",
+        "next_circle_radius",
+    ]:
+        assert key in response
+        assert response[key] is None
+
+    # game_id = UserInterface(api_user_id).get_user_model().game_id
+
+    # AdminInterface().set_circle(
+    #     game_id, name="exclusion", lat=51.0, long=0.0, radius=1.0
+    # )
+
+
 def test_make_game(admin_api_client):
     response = admin_api_client.post("/api/admin_create_game")
 
