@@ -20,7 +20,9 @@ logger = logging.getLogger(__name__)
 
 
 def make_sse_update_message(m):
-    return f"data: {m}\n\n"
+    out = f"data: {m}\n\n"
+    logger.debug('make_sse_update_message - "%s"', out)
+    return out
 
 
 async def updates_generator(user_id):
@@ -50,12 +52,22 @@ async def updates_generator(user_id):
     # A function that logs a message every time an async generator yields
     async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
         async for data in generator:
+            logger.debug(
+                'feed_generator_to_queue (UID %s) - Received message "%s" from %s',
+                user_id,
+                data,
+                message,
+            )
             await queue.put((message, data))
 
     # A function that yields from the queue as soon as items arrive
     async def yield_from_queue() -> AsyncGenerator:
         while True:
-            yield await asyncio.wait_for(queue.get(), timeout=None)
+            msg = await asyncio.wait_for(queue.get(), timeout=None)
+            logger.debug(
+                "yield_from_queue (UID %s) - Yielding message %s", user_id, msg
+            )
+            yield msg
 
     # Keep track of the asyncio tasks we start for producers
     producers = []
@@ -64,7 +76,7 @@ async def updates_generator(user_id):
 
     # Start a producer for user events:
     with UserInterface(user_id) as ui:
-        user_event_generator = ui.generate_updates()
+        user_event_generator = ui.generate_user_updates()
 
     producers.append(
         asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
@@ -89,7 +101,7 @@ async def updates_generator(user_id):
 
             # generate_updates does not interact with the database session, so
             # will not block other database requests
-            await anext(ui.generate_updates())
+            await anext(ui.generate_user_updates())
 
         logger.debug(
             "updates_generator - User is in game, mounting to game ticker for user %s",
@@ -99,7 +111,7 @@ async def updates_generator(user_id):
         yield None
 
         # Then yield from the ticker
-        async for x in ui.generate_updates():
+        async for x in ui.generate_ticker_updates():
             logger.debug(
                 "updates_generator - Forwarding ticker event for user %s", user_id
             )
@@ -114,10 +126,13 @@ async def updates_generator(user_id):
 
     # Also add a keepalive producer
     async def keepalive_timer():
+        logger.debug("Starting keepalive timer")
+
         i = 0
 
         while True:
             await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
+            logger.debug("Sending keepalive message %s", i)
             yield i
             i += 1
 
@@ -128,6 +143,12 @@ async def updates_generator(user_id):
     # Iterate through the consumer:
     try:
         async for target, data in yield_from_queue():
+            logger.debug(
+                'updates_generator (UID%s) - Received message from queue: target "%s", data "%s"',
+                user_id,
+                target,
+                data,
+            )
             if target == "user":
                 yield update_user
             elif target == "ticker":

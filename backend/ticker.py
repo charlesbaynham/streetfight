@@ -16,10 +16,15 @@ from .model import TickerEntry
 logger = logging.getLogger(__name__)
 
 
+def trigger_ticker_update_event(ticker: "Ticker"):
+    logger.debug("Triggering update for game ticker %s", ticker.game_id)
+    trigger_update_event("ticker", ticker.game_id)
+
+
 TickerScopeWrapper = DatabaseScopeProvider(
     "ticker",
     precommit_method=lambda ticker: ticker.touch_game_ticker_tag(),
-    postcommit_method=lambda ticker: trigger_update_event("ticker", ticker.game_id),
+    postcommit_method=trigger_ticker_update_event,
 )
 
 
