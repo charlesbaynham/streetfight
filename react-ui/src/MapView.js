@@ -70,17 +70,32 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapCircles({ circles = [[51.5, 0.0, 1.0]] }) {
+function MapCircles({ calculators, circles = [[51.5, 0.0, 1.0]] }) {
+
+  const { coordsToKm, coordsToPixels, kmToPixels } = calculators;
 
   return (
     <div className={styles.mapCircles}>
       Circles!
-      <ul>
+      <div>
         {
           circles.map(([lat, long, radius], index) =>
-            <li>I'm a circle at {lat}, {long} with radius {radius}</li>
+            // <li>I'm a circle at {lat}, {long} with radius {radius}</li>
+            <div
+              key={index}
+              style={{
+                position: "absolute",
+                left: `${coordsToPixels(lat, long, 0, 0)[0] - radius}px`,
+                top: `${coordsToPixels(lat, long, 0, 0)[1] - radius}px`,
+                width: `${2 * radius}px`,
+                height: `${2 * radius}px`,
+                borderRadius: "50%",
+                border: "2px solid red",
+              }}
+            />
+
           )}
-      </ul>
+      </div>
     </div>
   );
 }
@@ -126,13 +141,18 @@ function MapView({
   const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
   const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
+  // For the map position, we need to know where its centre should be. This will
+  // change every time we move, so hold it in a ref to prevent rerendering
+  const mapCentreLatRef = useRef((map_bottom_left.lat + map_top_right.lat) / 2);
+  const mapCentreLongRef = useRef((map_bottom_left.long + map_top_right.long) / 2);
+
   const coordsToKm = useCallback(
-    (lat, long, map_centre_lat, map_centre_long) => {
+    (lat, long) => {
       // Convert from lat / long to km from the bottom left corner
       const x_km =
-        (long - map_centre_long) / degreesLongitudePerKm + box_width_km / 2;
+        (long - mapCentreLongRef.current) / degreesLongitudePerKm + box_width_km / 2;
       const y_km =
-        (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
+        (lat - mapCentreLatRef.current) / degreesLatitudePerKm + box_height_km / 2;
 
       return [x_km, y_km];
     },
@@ -151,8 +171,8 @@ function MapView({
   );
 
   const coordsToPixels = useCallback(
-    (lat, long, map_centre_lat, map_centre_long) => {
-      const [x_km, y_km] = coordsToKm(lat, long, map_centre_lat, map_centre_long);
+    (lat, long) => {
+      const [x_km, y_km] = coordsToKm(lat, long);
       return kmToPixels(x_km, y_km);
     },
     [coordsToKm, kmToPixels],
@@ -170,8 +190,8 @@ function MapView({
     other_positions_and_details,
   );
 
-  useEffect(() => {
-    // Calculate the centre of the box, using our own position if provided
+  // Calculate the centre of the box, using our own position if provided
+  const recalculateMapCentre = useCallback(() => {
     var box_centre_lat, box_centre_long;
     if (!expanded && ownPosition) {
       box_centre_lat = ownPosition.coords.latitude;
@@ -180,13 +200,18 @@ function MapView({
       box_centre_lat = (map_bottom_left.lat + map_top_right.lat) / 2;
       box_centre_long = (map_bottom_left.long + map_top_right.long) / 2;
     }
+    mapCentreLatRef.current = box_centre_lat;
+    mapCentreLongRef.current = box_centre_long;
+  }, [expanded, ownPosition]);
+
+  useEffect(() => {
+    // Update the map coordinate functions
+    recalculateMapCentre();
 
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
       map_bottom_left.lat,
       map_bottom_left.long,
-      box_centre_lat,
-      box_centre_long,
     );
 
     // Calculate our own dot
@@ -194,8 +219,6 @@ function MapView({
       ? coordsToPixels(
         ownPosition.coords.latitude,
         ownPosition.coords.longitude,
-        box_centre_lat,
-        box_centre_long,
       )
       : [0, 0];
 
@@ -205,8 +228,6 @@ function MapView({
         const [x, y] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
         );
         const dt = 1e-3 * Date.now() - position.timestamp;
         const alpha = Math.max(
@@ -236,6 +257,7 @@ function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     expanded,
+    recalculateMapCentre,
     boxWidthPx,
     boxHeightPx,
     ownPosition,
@@ -261,7 +283,11 @@ function MapView({
             wrapperStyle={{ height: "100%", width: "100%" }}
             contentStyle={{ height: "100%", width: "100%" }}
           >
-            <MapCircles />
+            <MapCircles calculators={{
+              coordsToKm: coordsToKm,
+              kmToPixels: kmToPixels,
+              coordsToPixels: coordsToPixels,
+            }} />
             <div
               className={styles.mapImage}
               src={mapSrc}
