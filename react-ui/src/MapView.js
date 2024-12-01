@@ -89,11 +89,15 @@ function MapCirclesFromAPI({ calculators }) {
   }, []);
 
   useEffect(() => {
-    // On mount, register a listener for circle updates
+    // On mount, register a listener for circle updates and run one update
     console.log("Registering circle update listener");
+
     const handle = registerListener(CIRCLE_UPDATE_TYPE, () => {
       getCircles();
     });
+
+    console.log("Initial circle update");
+    getCircles();
 
     return () => {
       // On unmount, deregister the listener
