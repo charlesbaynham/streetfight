@@ -37,7 +37,7 @@ export default function CircleControl({ game_id }) {
           e.preventDefault();
           const circle_type = circleTypeInput.current.value;
           const location = locationInput.current.value;
-          const radius_km = radiusInput.current.value;
+          const radius_km = parseFloat(radiusInput.current.value);
           setCircle(circle_type, location, radius_km);
         }}
       >
@@ -55,7 +55,7 @@ export default function CircleControl({ game_id }) {
         </label>
         <label>
           Radius (km):
-          <input type="number" ref={radiusInput} required />
+          <input type="number" step="0.01" ref={radiusInput} required />
         </label>
         <button type="submit">Set Circle</button>
       </form>
