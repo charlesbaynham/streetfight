@@ -18,6 +18,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
 from .dotenv import load_env_vars
+from .locations import LANDMARK_LOCATIONS
 
 
 def setup_logging():
@@ -368,6 +369,21 @@ async def admin_set_circle(
     game_id: UUID, name: str, lat: float, long: float, radius_km: float
 ):
     logger.info("admin_set_circle - %s", locals())
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
+    )
+
+
+@admin_method(path="/admin_set_circle_by_location", method="POST")
+async def admin_set_circle(game_id: UUID, name: str, location: str, radius_km: float):
+    logger.info("admin_set_circle_by_location - %s", locals())
+
+    location = location.upper().replace(" ", "_")
+    try:
+        lat, long = LANDMARK_LOCATIONS[location]
+    except KeyError:
+        raise HTTPException(404, f"Unknown location {location}")
+
     AdminInterface().set_circles(
         game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
     )

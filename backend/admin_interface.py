@@ -29,14 +29,6 @@ from .ticker import Ticker
 from .user_interface import UserInterface
 from .utils import add_params_to_url
 
-# Some important landmarks
-SPOONS = [51.411374997955264, -0.3007246028148721]
-THE_ALBION = [51.409136523603394, -0.29792437645324277]
-THE_FIGHTING_COCKS = [51.410615468068926, -0.2982569703905028]
-THE_BISHOP = [51.410287561454254, -0.30802021153922127]
-THE_GREY_HORSE = [51.41423566875311, -0.300628043344843]
-
-
 logger = logging.getLogger(__name__)
 
 
