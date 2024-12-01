@@ -1,6 +1,9 @@
 Goals
 -----
 
+TODO:
+ - [ ] Generic text messages from admin
+
 Bugs:
 - [x] iPhone location does not work - maybe fixed, ask Rob
 - [x] Location permission should be requested on start screen
