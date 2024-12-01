@@ -4,6 +4,7 @@ import { sendAPIRequest } from "./utils";
 import NewItems from "./NewItems";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
+import CircleControl from "./CircleControl";
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -357,6 +358,13 @@ export default function AdminMode() {
       <UserRenaming />
 
       <MapViewAdmin />
+
+      <h2>Circle Control</h2>
+      {games.length > 0 ? (
+        <CircleControl game_id={games[0].id} />
+      ) : (
+        "Loading..."
+      )}
     </>
   );
 }
