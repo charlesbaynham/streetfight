@@ -40,9 +40,13 @@ async def updates_generator(user_id):
     update_ticker = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "ticker"})
     )
+    update_circles = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "circle"})
+    )
 
     yield update_user
     yield update_ticker
+    yield update_circles
 
     # An asyncio queue to pass to the generators
     queue = asyncio.Queue()

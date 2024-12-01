@@ -124,6 +124,11 @@ function MapCircles({
       const [x_px, y_px] = kmToPixels(x_km, y_km);
       const radius_px = kmToPixels(radiusKM, 0)[0];
 
+      // if any of the values are nan, don't render the circle
+      if (isNaN(x_px) || isNaN(y_px) || isNaN(radius_px)) {
+        return { display: "none" };
+      }
+
       return {
         left: x_px - radius_px,
         bottom: y_px - radius_px,
@@ -156,7 +161,13 @@ function MapCircles({
     );
   }
 
-  return <div className={styles.mapCirclesContainer}>{circles}</div>;
+  return (
+    <div className={styles.mapCirclesContainer}>
+      {circles.map((circle, index) =>
+        React.cloneElement(circle, { key: index })
+      )}
+    </div>
+  );
 }
 
 function MapView({
