@@ -234,6 +234,8 @@ function MapView({
     mapCentreLongRef.current = box_centre_long;
   }, [expanded, ownPosition]);
 
+  // Recalculate things that move when things move. Except circles: those
+  // calculate themselves, like these things ought to.
   useEffect(() => {
     // Update the map coordinate functions
     recalculateMapCentre();
@@ -304,48 +306,69 @@ function MapView({
   else containerClasses.push(styles.mapContainerCorner);
 
   return (
+    // This wrapper allows you to zoom / scale the whole of its contents.
+    // "pixels" in the map coordinates therefore refer to unscaled pixels.: the
+    // map is not aware of scaling, it's done purely in CSS
     <TransformWrapper
       disabled={!poppedOut} // Disable zoom / pan if the map is in the corner
     >
-      {({ resetTransform }) => (
-        <div className={containerClasses.join(" ")} ref={mapContainerRef}>
-          <TransformComponent
-            wrapperStyle={{ height: "100%", width: "100%" }}
-            contentStyle={{ height: "100%", width: "100%" }}
-          >
-            <div
-              className={styles.mapImage}
-              src={mapSrc}
-              alt="Map"
-              style={{
-                backgroundImage: `url(${mapSrc})`,
-                backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
-                backgroundRepeat: "no-repeat",
-                backgroundSize: map_size_x + "px " + map_size_y + "px",
-              }}
-            />
-            {ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
-            {otherDots}
-            <MapCircles
-              calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
-              nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
-            />
-            <div
-              className={styles.clickCatcher}
-              onClick={
-                alwaysExpanded
-                  ? null
-                  : () => {
-                      setPoppedOut(!poppedOut);
-                      resetTransform();
-                      handleResize();
-                    }
-              }
-            ></div>
-          </TransformComponent>
-        </div>
-      )}
+      {
+        // This interface allows you to request functions related to the scaling,
+        // e.g. imperative methods like "resetTransform". There are plenty more
+        // available:
+        ({ resetTransform }) => (
+          // Outer container for the map. Could probably be merged with the
+          // TransformComponent
+          <div className={containerClasses.join(" ")} ref={mapContainerRef}>
+            <TransformComponent
+              wrapperStyle={{ height: "100%", width: "100%" }}
+              contentStyle={{ height: "100%", width: "100%" }}
+            >
+              {/* The map itself. Implemented as a div with a background image: the div fills
+              the displayed box, the background is resized appropriately */}
+              <div
+                className={styles.mapImage}
+                src={mapSrc}
+                alt="Map"
+                style={{
+                  backgroundImage: `url(${mapSrc})`,
+                  backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: map_size_x + "px " + map_size_y + "px",
+                }}
+              />
+
+              {/* Dots */}
+              {ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
+              {otherDots}
+
+              {/* Circles */}
+              <MapCircles
+                // Note how the coordinate calculators are passed down to the
+                // circles so they can handle their own positioning. It would be
+                // better to do this for other elements too.
+                calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
+                exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
+                nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
+              />
+
+              {/* A box that intercepts clicks - transparent and at the top z-order */}
+              <div
+                className={styles.clickCatcher}
+                onClick={
+                  alwaysExpanded
+                    ? null
+                    : () => {
+                        setPoppedOut(!poppedOut);
+                        resetTransform();
+                        handleResize();
+                      }
+                }
+              />
+            </TransformComponent>
+          </div>
+        )
+      }
     </TransformWrapper>
   );
 }
