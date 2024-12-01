@@ -1,12 +1,13 @@
 import React from "react";
-import { MyWebcam } from "./MyWebcam";
+
+import SSEComponent from "./SSETest";
 
 const TestPage = () => {
   return (
     <div>
       <h1>This is a test</h1>
 
-      <MyWebcam />
+      <SSEComponent />
     </div>
   );
 };
