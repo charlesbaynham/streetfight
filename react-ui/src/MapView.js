@@ -16,8 +16,9 @@ const ref_1_xy = [294.098, 963.464];
 // const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  TODO put back
 const ref_2_xy = [825.823, 212.722];
 
-const ref_1_lat_long = [51.3, -0.45];
-const ref_2_lat_long = [51.9, 1.5];
+// These are fake, for testing. TODO: Undo
+const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
+const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
