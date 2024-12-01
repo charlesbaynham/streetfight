@@ -70,28 +70,45 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapCircles({ calculators, exclusionCircle = null }) {
+function MapCircles({
+  calculators,
+  exclusionCircle = null,
+  nextCircle = null,
+}) {
 
-  const { coordsToKm, kmToPixels } = calculators;
-
-  const circles = [];
-
-  if (exclusionCircle) {
-    const [lat, long, radiusKM] = exclusionCircle;
+  const calculateCircleStyles = useCallback((lat, long, radiusKM) => {
+    const { coordsToKm, kmToPixels } = calculators;
 
     const [x_km, y_km] = coordsToKm(lat, long);
     const [x_px, y_px] = kmToPixels(x_km, y_km);
     const radius_px = kmToPixels(radiusKM, 0)[0];
 
+    return {
+      left: x_px - radius_px,
+      top: y_px - radius_px,
+      width: radius_px * 2,
+      height: radius_px * 2,
+    };
+  }, [calculators]);
+
+  const circles = [];
+
+  if (exclusionCircle) {
+    const [lat, long, radiusKM] = exclusionCircle;
     circles.push(
       <div
         className={styles.exclusionCircle}
-        style={{
-          left: x_px - radius_px,
-          top: y_px - radius_px,
-          width: radius_px * 2,
-          height: radius_px * 2,
-        }}
+        style={calculateCircleStyles(lat, long, radiusKM)}
+      />
+    );
+  }
+
+  if (nextCircle) {
+    const [lat, long, radiusKM] = nextCircle;
+    circles.push(
+      <div
+        className={styles.nextCircle}
+        style={calculateCircleStyles(lat, long, radiusKM)}
       />
     );
   }
@@ -304,6 +321,7 @@ function MapView({
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
               exclusionCircle={[51.4, 0.0, 30.0]}
+              nextCircle={[51.4, 0.0, 10.0]}
             />
             <div
               className={styles.clickCatcher}
