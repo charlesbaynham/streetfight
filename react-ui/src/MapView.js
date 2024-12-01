@@ -8,17 +8,25 @@ import mapSrc from "./images/map_lowres.png";
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 
+// Some important landmarks
+const SPOONS = [51.411374997955264, -0.3007246028148721];
+const THE_ALBION = [51.409136523603394, -0.29792437645324277];
+const THE_FIGHTING_COCKS = [51.410615468068926, -0.2982569703905028];
+const THE_BISHOP = [51.410287561454254, -0.30802021153922127];
+const THE_GREY_HORSE = [51.41423566875311, -0.300628043344843];
+
+
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
-// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  TODO put back
+const ref_1_lat_long = [51.4076739525208, -0.30754164680355806]; // TODO put back
 const ref_1_xy = [294.098, 963.464];
-// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  TODO put back
+const ref_2_lat_long = [51.41383263398225, -0.30056843291595964]; // TODO put back
 const ref_2_xy = [825.823, 212.722];
 
 // These are fake, for testing. TODO: Undo
-const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
-const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
+// const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
+// const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
@@ -321,8 +329,8 @@ function MapView({
             {otherDots}
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              exclusionCircle={[51.4, 0.0, 30.0]}
-              nextCircle={[51.4, 0.0, 10.0]}
+              exclusionCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.05]}
+              nextCircle={[THE_BISHOP[0], THE_BISHOP[1], 0.1]}
             />
             <div
               className={styles.clickCatcher}
