@@ -109,8 +109,8 @@ async def updates_generator(user_id):
 
         logger.debug("User %s has changed team. Closing connection", user_id)
 
-        while True:
-            yield None
+        yield None
+        await asyncio.sleep(1e10)
 
     # Queue the changed_team_generator
     producers.append(
@@ -123,15 +123,6 @@ async def updates_generator(user_id):
     if UserInterface(user_id).get_team_id() is not None:
 
         async def ticker_generator():
-            logger.debug(
-                "updates_generator - Ticker updates for user %s starting", user_id
-            )
-
-            # Check if the user is in a team
-            while UserInterface(user_id).get_team_id() is None:
-                logger.debug("User %s is not in a game: waiting forever", user_id)
-                await asyncio.sleep(1e10)  # Well, not quite forever
-
             logger.debug(
                 "updates_generator - User is in game, mounting to game ticker for user %s",
                 user_id,
