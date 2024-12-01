@@ -70,32 +70,35 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapCircles({ calculators, circles = [[51.5, 0.0, 1.0]] }) {
+function MapCircles({ calculators, exclusionCircle = null }) {
 
   const { coordsToKm, kmToPixels } = calculators;
 
+  const circles = [];
+
+  if (exclusionCircle) {
+    const [lat, long, radiusKM] = exclusionCircle;
+
+    const [x_km, y_km] = coordsToKm(lat, long);
+    const [x_px, y_px] = kmToPixels(x_km, y_km);
+    const radius_px = kmToPixels(radiusKM, 0)[0];
+
+    circles.push(
+      <div
+        className={styles.exclusionCircle}
+        style={{
+          left: x_px - radius_px,
+          top: y_px - radius_px,
+          width: radius_px * 2,
+          height: radius_px * 2,
+        }}
+      />
+    );
+  }
+
   return (
     <div className={styles.mapCirclesContainer}>
-      {
-        circles.map(([lat, long, radiusKM], index) => {
-          const [x_km, y_km] = coordsToKm(lat, long);
-          const [x_px, y_px] = kmToPixels(x_km, y_km);
-          const radius_px = kmToPixels(radiusKM, 0)[0];
-
-          return (
-            <div
-              key={index}
-              className={styles.mapCircle}
-              style={{
-                left: x_px - radius_px,
-                top: y_px - radius_px,
-                width: radius_px * 2,
-                height: radius_px * 2,
-              }}
-            ></div>
-          );
-        }
-        )}
+      {circles}
     </div>
   );
 }
@@ -300,9 +303,7 @@ function MapView({
             {otherDots}
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              circles={[
-                [51.4, 0.0, 30.0],
-              ]}
+              exclusionCircle={[51.4, 0.0, 30.0]}
             />
             <div
               className={styles.clickCatcher}

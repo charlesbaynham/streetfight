@@ -52,7 +52,7 @@
     height: 100%;
 }
 
-.mapCircle {
+.exclusionCircle {
     position: absolute;
     border-radius: 50%;
     background-color: transparent;
