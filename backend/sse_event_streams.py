@@ -11,6 +11,7 @@ import logging
 from typing import AsyncGenerator
 
 from .admin_interface import AdminInterface
+from .circles import generate_circle_updates
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
@@ -35,6 +36,9 @@ async def updates_generator(user_id):
     source for this user (including global announcements) and include keepalive
     events.
     """
+
+    team_id = UserInterface(user_id).get_team_id()
+    game_id = UserInterface(user_id).get_game_id()
 
     update_user = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "user"})
@@ -120,7 +124,7 @@ async def updates_generator(user_id):
     )
 
     # Watch the user ticker if they're in a team
-    if UserInterface(user_id).get_team_id() is not None:
+    if team_id is not None:
 
         async def ticker_generator():
             logger.debug(
@@ -158,12 +162,15 @@ async def updates_generator(user_id):
         asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
     )
 
-    # FIXME Stop sending circles automatically
-    producers.append(
-        asyncio.create_task(
-            feed_generator_to_queue(keepalive_timer(timeout=10), "circle")
+    # Watch for circle updates if the user is in a game
+    if game_id:
+        producers.append(
+            asyncio.create_task(
+                feed_generator_to_queue(
+                    generate_circle_updates(game_id=game_id), "circle"
+                )
+            )
         )
-    )
 
     # Iterate through the consumer:
     try:
