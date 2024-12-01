@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
+import { TransformWrapper, TransformComponent, useControls } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 
@@ -226,41 +226,45 @@ function MapView({
     <TransformWrapper
       disabled={!poppedOut}  // Disable zoom / pan if the map is in the corner
     >
-      <div className={containerClasses.join(" ")} ref={mapContainerRef}>
-        <TransformComponent
-          wrapperClass={styles.transformWrapper}
-          contentClass={styles.transformComponent}
-        >
-          {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-          <div
-            className={styles.mapImage}
-            src={mapSrc}
-            alt="Map"
-            style={{
-              backgroundImage: `url(${mapSrc})`,
-              backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
-              backgroundRepeat: "no-repeat",
-              backgroundSize: map_size_x + "px " + map_size_y + "px",
-            }}
-          />
-          {!grayedOut && ownPosition !== null ? (
-            <Dot x={dot_x} y={dot_y} />
-          ) : null}
-          {otherDots}
-        </TransformComponent>
-        {/* <div
-          className={styles.clickCatcher}
-          onClick={
-            alwaysExpanded
-              ? null
-              : () => {
-                console.log("Click!");
-                setPoppedOut(!poppedOut);
-                handleResize();
+      {({ resetTransform }) => (
+        <div className={containerClasses.join(" ")} ref={mapContainerRef}>
+          <TransformComponent
+            wrapperClass={styles.transformWrapper}
+            contentClass={styles.transformComponent}
+          >
+            {grayedOut ? <div className={styles.mapOverlay}></div> : null}
+            <div
+              className={styles.mapImage}
+              src={mapSrc}
+              alt="Map"
+              style={{
+                backgroundImage: `url(${mapSrc})`,
+                backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+                backgroundRepeat: "no-repeat",
+                backgroundSize: map_size_x + "px " + map_size_y + "px",
+              }}
+            />
+            {!grayedOut && ownPosition !== null ? (
+              <Dot x={dot_x} y={dot_y} />
+            ) : null}
+            {otherDots}
+            <div
+              className={styles.clickCatcher}
+              onClick={
+                alwaysExpanded
+                  ? null
+                  : () => {
+                    console.log("Click!");
+                    setPoppedOut(!poppedOut);
+                    resetTransform();
+                    handleResize();
+                  }
               }
-          }
-        ></div> FIXME click catcher */}
-      </div>
+            ></div>
+          </TransformComponent>
+
+        </div>
+      )}
     </TransformWrapper >
   );
 }
