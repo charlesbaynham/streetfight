@@ -349,10 +349,27 @@ class UserInterface:
             user_id=self.user_id if private else None,
         ).get_messages(num_messages=num, newest_first=newest_first)
 
-    def generate_updates(self, timeout=None):
+    def generate_user_updates(self, timeout=None):
         """
         An async generator that yields None every time an update is available
         for this user
+
+        Note that this does not hold a database session open, so it can be used
+        in parallel with other database operations
+
+        Args:
+            timeout (int, optional): Maximum number of seconds to wait for an
+            update. Defaults to no timeout.
+        """
+
+        # For now, just cheat and assume that any relevant updates for this user
+        # will come with a ticker message
+        return self.generate_ticker_updates(timeout=timeout)
+
+    def generate_ticker_updates(self, timeout=None):
+        """
+        An async generator that yields None every time an update is available
+        for this user's ticker
 
         Note that this does not hold a database session open, so it can be used
         in parallel with other database operations
@@ -410,7 +427,7 @@ class UserInterface:
             user.longitude = longitude
             user.location_timestamp = timestamp
 
-    async def generate_updates(self, timeout=None):
+    async def generate_user_updates(self, timeout=None):
         """
         A generator that yields None every time an update is available for this
         user, or at most after timeout seconds

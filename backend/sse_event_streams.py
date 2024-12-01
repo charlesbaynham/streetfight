@@ -64,7 +64,7 @@ async def updates_generator(user_id):
 
     # Start a producer for user events:
     with UserInterface(user_id) as ui:
-        user_event_generator = ui.generate_updates()
+        user_event_generator = ui.generate_user_updates()
 
     producers.append(
         asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
@@ -89,7 +89,7 @@ async def updates_generator(user_id):
 
             # generate_updates does not interact with the database session, so
             # will not block other database requests
-            await anext(ui.generate_updates())
+            await anext(ui.generate_user_updates())
 
         logger.debug(
             "updates_generator - User is in game, mounting to game ticker for user %s",
@@ -99,7 +99,7 @@ async def updates_generator(user_id):
         yield None
 
         # Then yield from the ticker
-        async for x in ui.generate_updates():
+        async for x in ui.generate_ticker_updates():
             logger.debug(
                 "updates_generator - Forwarding ticker event for user %s", user_id
             )
