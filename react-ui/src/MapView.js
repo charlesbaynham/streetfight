@@ -247,9 +247,9 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-          ownPosition.coords.latitude,
-          ownPosition.coords.longitude,
-        )
+        ownPosition.coords.latitude,
+        ownPosition.coords.longitude,
+      )
       : [0, 0];
 
     // Calculate all the other dots
@@ -337,11 +337,10 @@ function MapView({
                 alwaysExpanded
                   ? null
                   : () => {
-                      console.log("Click!");
-                      setPoppedOut(!poppedOut);
-                      resetTransform();
-                      handleResize();
-                    }
+                    setPoppedOut(!poppedOut);
+                    resetTransform();
+                    handleResize();
+                  }
               }
             ></div>
           </TransformComponent>
