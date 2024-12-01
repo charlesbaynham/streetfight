@@ -53,11 +53,11 @@
 }
 
 .mapCircle {
-    background-color: rgb(105, 9, 22);
-    /* FIXME */
     position: absolute;
     border-radius: 50%;
-
+    background-color: transparent;
+    /* This radius is "very large" so it will just fill the rest of the map */
+    box-shadow: 0 0 0 10000px rgba(105, 9, 22, 0.5);
 }
 
 

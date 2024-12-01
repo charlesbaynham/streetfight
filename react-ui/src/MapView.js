@@ -301,9 +301,7 @@ function MapView({
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
               circles={[
-                [51.4, 0.0, 1.0],
-                [51.6, 0.5, 2.0],
-                [51.8, 0.0, 3.0],
+                [51.4, 0.0, 30.0],
               ]}
             />
             <div
