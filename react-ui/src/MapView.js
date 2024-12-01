@@ -7,6 +7,7 @@ import mapSrc from "./images/map_lowres.png";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
+import { deregisterListener, registerListener } from "./UpdateListener";
 
 // Some important landmarks
 const SPOONS = [51.411374997955264, -0.3007246028148721];
@@ -83,6 +84,22 @@ function sendLocationUpdate(lat, long) {
 // for querying them from the server. It uses an UpdateListener to listen for
 // "circle" events and change the drawn circles appropriately.
 function MapCirclesFromAPI({ calculators }) {
+  const CIRCLE_UPDATE_TYPE = "circle";
+
+  useEffect(() => {
+    // On mount, register a listener for circle updates
+    console.log("Registering circle update listener");
+    const handle = registerListener(CIRCLE_UPDATE_TYPE, () => {
+      console.log("A circle update happened");
+    });
+
+    return () => {
+      // On unmount, deregister the listener
+      console.log("Deregistering circle update listener");
+      deregisterListener(CIRCLE_UPDATE_TYPE, handle);
+    };
+  }, []);
+
   return (
     <MapCircles
       calculators={calculators}

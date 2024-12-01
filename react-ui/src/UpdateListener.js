@@ -28,6 +28,9 @@ function getTimestamp() {
   return new Date().getTime();
 }
 
+// Register a listener for a given type of update. The callback will be called
+// when an update arrives from the SSE stream. This function returns a handle:
+// call deregisterListener with the same handle to stop listening.
 export function registerListener(type, callback) {
   if (!listeners.has(type)) {
     listeners.set(type, new Map());
@@ -39,6 +42,7 @@ export function registerListener(type, callback) {
   return handle;
 }
 
+// Deregister a listener for a given type of update. See registerListener.
 export function deregisterListener(type, handle) {
   listeners.get(type).delete(handle);
 }
@@ -137,7 +141,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     // Register a watcher to restart the connection if we haven't heard anything in x seconds
     keepalive_interval_handle = setInterval(
       restartIfTimeout,
-      TIMEOUT_CHECK_INTERVAL,
+      TIMEOUT_CHECK_INTERVAL
     );
 
     return cleanup;
@@ -146,6 +150,9 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
   return null;
 }
 
+// Component to automatically handle registering / deregistering listeners. You
+// could just use registerListener and deregisterListener directly if you
+// prefer.
 export default function UpdateListener({ update_type, callback }) {
   useEffect(() => {
     const handle = registerListener(update_type, callback);
