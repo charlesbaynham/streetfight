@@ -26,4 +26,50 @@ export default function CircleControl() {
   const circleTypeInput = useRef(null);
   const locationInput = useRef(null);
   const radiusInput = useRef(null);
+
+  return (
+    <div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const game_id = e.target.elements.game_id.value;
+          const circle_type = circleTypeInput.current.value;
+          const location = locationInput.current.value;
+          const radius_km = radiusInput.current.value;
+          setCircle(game_id, circle_type, location, radius_km);
+        }}
+      >
+        <div>
+          <label>
+            Game ID:
+            <input type="text" name="game_id" required />
+          </label>
+        </div>
+        <div>
+          <label>
+            Circle Type:
+            <select ref={circleTypeInput} required>
+              <option value="EXCLUSION">EXCLUSION</option>
+              <option value="NEXT">NEXT</option>
+              <option value="BOTH">BOTH</option>
+            </select>
+          </label>
+        </div>
+        <div>
+          <label>
+            Location:
+            <input type="text" ref={locationInput} required />
+          </label>
+        </div>
+        <div>
+          <label>
+            Radius (km):
+            <input type="number" ref={radiusInput} required />
+          </label>
+        </div>
+        <button type="submit">Set Circle</button>
+      </form>
+      <div>Status: {status}</div>
+    </div>
+  );
 }
