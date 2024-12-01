@@ -1,5 +1,6 @@
 import logging
 import os
+from enum import Enum
 from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -374,11 +375,19 @@ async def admin_set_circle(
     )
 
 
+Landmark = Enum("Landmark", {k: k for k in LANDMARK_LOCATIONS.keys()})
+
+
 @admin_method(path="/admin_set_circle_by_location", method="POST")
-async def admin_set_circle(game_id: UUID, name: str, location: str, radius_km: float):
+async def admin_set_circle(
+    game_id: UUID,
+    name: str,
+    location: Landmark,  # type: ignore
+    radius_km: float,
+):
     logger.info("admin_set_circle_by_location - %s", locals())
 
-    location = location.upper().replace(" ", "_")
+    location = str(location.value).upper().replace(" ", "_")
     try:
         lat, long = LANDMARK_LOCATIONS[location]
     except KeyError:
