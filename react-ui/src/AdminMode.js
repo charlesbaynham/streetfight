@@ -360,7 +360,11 @@ export default function AdminMode() {
       <MapViewAdmin />
 
       <h2>Circle Control</h2>
-      <CircleControl />
+      {games.length > 0 ? (
+        <CircleControl game_id={games[0].id} />
+      ) : (
+        "Loading..."
+      )}
     </>
   );
 }
