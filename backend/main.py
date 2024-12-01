@@ -364,7 +364,7 @@ async def admin_set_user_name(user_id: UUID, name: str):
 
 
 @admin_method(path="/admin_set_circle", method="POST")
-def admin_set_circle(
+async def admin_set_circle(
     game_id: UUID, name: str, lat: float, long: float, radius_km: float
 ):
     logger.info("admin_set_circle - %s", locals())
