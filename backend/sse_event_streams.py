@@ -129,19 +129,26 @@ async def updates_generator(user_id):
     )
 
     # Also add a keepalive producer
-    async def keepalive_timer():
+    async def keepalive_timer(timeout=SSE_KEEPALIVE_TIMEOUT):
         logger.debug("Starting keepalive timer")
 
         i = 0
 
         while True:
-            await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
+            await asyncio.sleep(timeout)
             logger.debug("Sending keepalive message %s", i)
             yield i
             i += 1
 
     producers.append(
         asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
+    )
+
+    # FIXME Stop sending circles automatically
+    producers.append(
+        asyncio.create_task(
+            feed_generator_to_queue(keepalive_timer(timeout=2), "circle")
+        )
     )
 
     # Iterate through the consumer:
@@ -157,12 +164,14 @@ async def updates_generator(user_id):
                 yield update_user
             elif target == "ticker":
                 yield update_ticker
+            elif target == "circle":
+                yield update_circles
             elif target == "keepalive":
                 yield make_sse_update_message(
                     json.dumps({"handler": "keepalive", "data": data})
                 )
             else:
-                logger.error('Unknown update targer "%s"', target)
+                logger.error('Unknown update target "%s"', target)
     finally:
         for task in producers:
             task.cancel()
