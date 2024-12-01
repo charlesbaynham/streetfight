@@ -13,6 +13,7 @@
 .tickerview span,
 .tickerview li {
   font-family: inherit;
+  text-align: right;
 }
 
 .tickerview li {
