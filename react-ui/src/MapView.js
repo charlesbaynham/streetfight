@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 
@@ -10,10 +11,13 @@ import Dot from "./Dot";
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
-const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  TODO put back
 const ref_1_xy = [294.098, 963.464];
-const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  TODO put back
 const ref_2_xy = [825.823, 212.722];
+
+const ref_1_lat_long = [51.3, -0.45];
+const ref_2_lat_long = [51.9, 1.5];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
@@ -219,38 +223,48 @@ function MapView({
   else containerClasses.push(styles.mapContainerCorner);
 
   return (
-    <>
-      <div className={containerClasses.join(" ")} ref={mapContainerRef}>
-        {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-        <div
-          className={styles.mapImage}
-          src={mapSrc}
-          alt="Map"
-          style={{
-            backgroundImage: `url(${mapSrc})`,
-            backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
-            backgroundRepeat: "no-repeat",
-            backgroundSize: map_size_x + "px " + map_size_y + "px",
-          }}
-        />
-        {!grayedOut && ownPosition !== null ? (
-          <Dot x={dot_x} y={dot_y} />
-        ) : null}
-        {otherDots}
-        <div
-          className={styles.clickCatcher}
-          onClick={
-            alwaysExpanded
-              ? null
-              : () => {
-                  console.log("Click!");
-                  setPoppedOut(!poppedOut);
-                  handleResize();
-                }
-          }
-        ></div>
-      </div>
-    </>
+    <TransformWrapper
+      disabled={!poppedOut} // Disable zoom / pan if the map is in the corner
+    >
+      {({ resetTransform }) => (
+        <div className={containerClasses.join(" ")} ref={mapContainerRef}>
+          <TransformComponent
+            wrapperClass={styles.transformWrapper}
+            contentClass={styles.transformComponent}
+          >
+            {grayedOut ? <div className={styles.mapOverlay}></div> : null}
+            <div
+              className={styles.mapImage}
+              src={mapSrc}
+              alt="Map"
+              style={{
+                backgroundImage: `url(${mapSrc})`,
+                backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+                backgroundRepeat: "no-repeat",
+                backgroundSize: map_size_x + "px " + map_size_y + "px",
+              }}
+            />
+            {!grayedOut && ownPosition !== null ? (
+              <Dot x={dot_x} y={dot_y} />
+            ) : null}
+            {otherDots}
+            <div
+              className={styles.clickCatcher}
+              onClick={
+                alwaysExpanded
+                  ? null
+                  : () => {
+                      console.log("Click!");
+                      setPoppedOut(!poppedOut);
+                      resetTransform();
+                      handleResize();
+                    }
+              }
+            ></div>
+          </TransformComponent>
+        </div>
+      )}
+    </TransformWrapper>
   );
 }
 
