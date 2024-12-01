@@ -94,7 +94,7 @@ function MapCircles({
 
     return {
       left: x_px - radius_px,
-      top: y_px - radius_px,
+      bottom: y_px - radius_px,
       width: radius_px * 2,
       height: radius_px * 2,
     };
@@ -329,8 +329,8 @@ function MapView({
             {otherDots}
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              exclusionCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.05]}
-              nextCircle={[THE_BISHOP[0], THE_BISHOP[1], 0.1]}
+              exclusionCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.1]}
+              nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.05]}
             />
             <div
               className={styles.clickCatcher}
