@@ -106,6 +106,29 @@ class AdminInterface:
         return g.id
 
     @db_scoped
+    def set_circles(self, game_id, name, lat, long, radius):
+        logger.info("AdminInterface - set_circles")
+        game = self._get_game_orm(game_id)
+
+        if name == "exclusion":
+            game.exclusion_circle_x = lat
+            game.exclusion_circle_y = long
+            game.exclusion_circle_radius = radius
+        elif name == "next":
+            game.next_circle_x = lat
+            game.next_circle_y = long
+            game.next_circle_radius = radius
+        else:
+            raise HTTPException(400, f"Invalid circle name {name}")
+
+        self._session.commit()
+
+        # Ping the ticker for this game
+        self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
+
+        # FIXME Need to trigger circle events here
+
+    @db_scoped
     def create_team(self, game_id: UUID, name: str) -> UUID:
         logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)

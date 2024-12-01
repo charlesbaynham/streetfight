@@ -70,7 +70,7 @@ def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_t
     UserInterface(api_user_id).join_team(one_team)
 
     game_id = UserInterface(api_user_id).get_user_model().game_id
-    AdminInterface().set_circle(
+    AdminInterface().set_circles(
         game_id, name="exclusion", lat=51.0, long=0.0, radius=1.0
     )
 
@@ -88,7 +88,7 @@ def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
     UserInterface(api_user_id).join_team(one_team)
 
     game_id = UserInterface(api_user_id).get_user_model().game_id
-    AdminInterface().set_circle(game_id, name="next", lat=51.0, long=0.0, radius=1.0)
+    AdminInterface().set_circles(game_id, name="next", lat=51.0, long=0.0, radius=1.0)
 
     response = api_client.get("/api/get_circles").json()
     assert response is not None
