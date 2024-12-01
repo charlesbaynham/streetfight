@@ -1,3 +1,4 @@
+import logging
 from enum import Enum
 from enum import auto
 from typing import Dict
@@ -13,6 +14,9 @@ A centralized location to coordinate messages sent to tickers. This module is
 the only place where ticker messages are sent, and so decides who gets them and
 what they say.
 """
+
+
+logger = logging.getLogger(__name__)
 
 
 class TickerMessageType(Enum):
@@ -139,6 +143,14 @@ def send_ticker_message(
                             If provided, the message will be
                             highlighted for this user id. Defaults to None
     """
+
+    logger.debug(
+        "Sending ticker message %s to game %s, user %s, team %s",
+        message_type,
+        game_id,
+        user_id,
+        team_id,
+    )
 
     # Get the target and message format string for the message type
     target, message_format_str = TICKER_MESSAGES[message_type]
