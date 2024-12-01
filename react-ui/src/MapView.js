@@ -72,37 +72,30 @@ function sendLocationUpdate(lat, long) {
 
 function MapCircles({ calculators, circles = [[51.5, 0.0, 1.0]] }) {
 
-  const { coordsToKm, coordsToPixels, kmToPixels } = calculators;
-
-
+  const { coordsToKm, kmToPixels } = calculators;
 
   return (
     <div className={styles.mapCirclesContainer}>
-      Circles!
-      <div>
-        {
-          circles.map(([lat, long, radiusKM], index) => {
-            const [x_km, y_km] = coordsToKm(lat, long);
-            const [x_px, y_px] = kmToPixels(x_km, y_km);
-            const radius_px = kmToPixels(radiusKM, 0)[0];
+      {
+        circles.map(([lat, long, radiusKM], index) => {
+          const [x_km, y_km] = coordsToKm(lat, long);
+          const [x_px, y_px] = kmToPixels(x_km, y_km);
+          const radius_px = kmToPixels(radiusKM, 0)[0];
 
-            return (
-              <div
-                key={index}
-                className={styles.mapCircle}
-                style={{
-                  left: x_px - radius_px,
-                  top: y_px - radius_px,
-                  width: radius_px * 2,
-                  height: radius_px * 2,
-                }}
-              ></div>
-            );
-          }
-
-
-          )}
-      </div>
+          return (
+            <div
+              key={index}
+              className={styles.mapCircle}
+              style={{
+                left: x_px - radius_px,
+                top: y_px - radius_px,
+                width: radius_px * 2,
+                height: radius_px * 2,
+              }}
+            ></div>
+          );
+        }
+        )}
     </div>
   );
 }
@@ -309,7 +302,7 @@ function MapView({
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
               circles={[
                 [51.4, 0.0, 1.0],
-                [51.6, 0.0, 2.0],
+                [51.6, 0.5, 2.0],
                 [51.8, 0.0, 3.0],
               ]}
             />

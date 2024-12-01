@@ -56,6 +56,8 @@
     background-color: rgb(105, 9, 22);
     /* FIXME */
     position: absolute;
+    border-radius: 50%;
+
 }
 
 
