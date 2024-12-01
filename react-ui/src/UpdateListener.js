@@ -86,7 +86,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
 
     function processKeepaliveMessage(message) {
       const newKeepaliveCount = message.data;
-      // console.debug("Keepalive count:", newKeepaliveCount, keepaliveCount)
+      console.log("Keepalive count:", newKeepaliveCount, keepaliveCount);
       if (keepaliveCount === null || newKeepaliveCount === keepaliveCount + 1)
         keepaliveCount = newKeepaliveCount;
       else {
