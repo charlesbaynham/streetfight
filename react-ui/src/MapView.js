@@ -71,7 +71,6 @@ function sendLocationUpdate(lat, long) {
 }
 
 function MapView({
-  grayedOut = false,
   ownPosition = null,
   other_positions_and_details = [],
   alwaysExpanded = false,
@@ -232,7 +231,7 @@ function MapView({
             wrapperStyle={{ height: "100%", width: "100%" }}
             contentStyle={{ height: "100%", width: "100%" }}
           >
-            {grayedOut ? <div className={styles.mapOverlay}></div> : null}
+
             <div
               className={styles.mapImage}
               src={mapSrc}
@@ -244,7 +243,7 @@ function MapView({
                 backgroundSize: map_size_x + "px " + map_size_y + "px",
               }}
             />
-            {!grayedOut && ownPosition !== null ? (
+            {ownPosition !== null ? (
               <Dot x={dot_x} y={dot_y} />
             ) : null}
             {otherDots}
