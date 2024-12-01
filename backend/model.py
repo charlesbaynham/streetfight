@@ -45,6 +45,14 @@ class Game(Base):
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
 
+    exclusion_circle_x = Column(Float, nullable=True)
+    exclusion_circle_y = Column(Float, nullable=True)
+    exclusion_circle_radius = Column(Float, nullable=True)
+
+    next_circle_x = Column(Float, nullable=True)
+    next_circle_y = Column(Float, nullable=True)
+    next_circle_radius = Column(Float, nullable=True)
+
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
@@ -286,6 +294,14 @@ class GameModel(pydantic.BaseModel):
     teams: List["TeamModel"]
     ticker_update_tag: int
     active: bool
+
+    exclusion_circle_x: Optional[float]
+    exclusion_circle_y: Optional[float]
+    exclusion_circle_radius: Optional[float]
+
+    next_circle_x: Optional[float]
+    next_circle_y: Optional[float]
+    next_circle_radius: Optional[float]
 
     class Config:
         orm_mode = True
