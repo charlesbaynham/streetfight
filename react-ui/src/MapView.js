@@ -90,13 +90,8 @@ function MapCirclesFromAPI({ calculators }) {
 
   const getCircles = useCallback(async () => {
     const response = await sendAPIRequest("get_circles");
-
     if (!response.ok) return;
-
     const circles = await response.json();
-
-    console.log("Got new circles:", circles);
-
     setCirclesData(circles);
   }, []);
 
@@ -104,7 +99,6 @@ function MapCirclesFromAPI({ calculators }) {
     // On mount, register a listener for circle updates
     console.log("Registering circle update listener");
     const handle = registerListener(CIRCLE_UPDATE_TYPE, () => {
-      console.log("A circle update happened");
       getCircles();
     });
 
