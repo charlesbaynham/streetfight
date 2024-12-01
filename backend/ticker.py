@@ -118,11 +118,12 @@ class Ticker:
                             If provided, the message will be
                             highlighted for this user id. Defaults to None.
         """
-        logger.debug(
-            '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s',
+        logger.info(
+            '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s, highlight = %s',
             self.game_id,
             message,
             private_for_user_id,
+            highlight_user_id,
         )
 
         self._session.add(
