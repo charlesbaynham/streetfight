@@ -14,7 +14,7 @@ from .admin_interface import AdminInterface
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
-SSE_KEEPALIVE_TIMEOUT = 5  # FIXME
+SSE_KEEPALIVE_TIMEOUT = 15
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ async def updates_generator(user_id):
 
         # Then yield from the ticker
         async for x in ui.generate_ticker_updates():
-            logger.error(  # FIXME
+            logger.debug(
                 "updates_generator - Forwarding ticker event for user %s", user_id
             )
             yield x
