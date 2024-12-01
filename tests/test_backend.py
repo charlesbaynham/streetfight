@@ -55,11 +55,11 @@ def test_get_circles_in_game_no_circle(api_client, api_user_id, one_team):
     response = api_client.get("/api/get_circles").json()
     assert response is not None
     for key in [
-        "exclusion_circle_x",
-        "exclusion_circle_y",
+        "exclusion_circle_lat",
+        "exclusion_circle_long",
         "exclusion_circle_radius",
-        "next_circle_x",
-        "next_circle_y",
+        "next_circle_lat",
+        "next_circle_long",
         "next_circle_radius",
     ]:
         assert key in response
@@ -76,11 +76,11 @@ def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_t
 
     response = api_client.get("/api/get_circles").json()
     assert response is not None
-    assert response["exclusion_circle_x"] == 51.0
-    assert response["exclusion_circle_y"] == 0.0
+    assert response["exclusion_circle_lat"] == 51.0
+    assert response["exclusion_circle_long"] == 0.0
     assert response["exclusion_circle_radius"] == 1.0
-    assert response["next_circle_x"] is None
-    assert response["next_circle_y"] is None
+    assert response["next_circle_lat"] is None
+    assert response["next_circle_long"] is None
     assert response["next_circle_radius"] is None
 
 
@@ -92,11 +92,11 @@ def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
 
     response = api_client.get("/api/get_circles").json()
     assert response is not None
-    assert response["exclusion_circle_x"] is None
-    assert response["exclusion_circle_y"] is None
+    assert response["exclusion_circle_lat"] is None
+    assert response["exclusion_circle_long"] is None
     assert response["exclusion_circle_radius"] is None
-    assert response["next_circle_x"] == 51.0
-    assert response["next_circle_y"] == 0.0
+    assert response["next_circle_lat"] == 51.0
+    assert response["next_circle_long"] == 0.0
     assert response["next_circle_radius"] == 1.0
 
 

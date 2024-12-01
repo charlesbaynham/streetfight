@@ -341,11 +341,11 @@ class UserInterface:
             return None
 
         return {
-            "exclusion_circle_x": game_model.exclusion_circle_x,
-            "exclusion_circle_y": game_model.exclusion_circle_y,
+            "exclusion_circle_lat": game_model.exclusion_circle_lat,
+            "exclusion_circle_long": game_model.exclusion_circle_long,
             "exclusion_circle_radius": game_model.exclusion_circle_radius,
-            "next_circle_x": game_model.next_circle_x,
-            "next_circle_y": game_model.next_circle_y,
+            "next_circle_lat": game_model.next_circle_lat,
+            "next_circle_long": game_model.next_circle_long,
             "next_circle_radius": game_model.next_circle_radius,
         }
 

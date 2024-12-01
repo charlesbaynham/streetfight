@@ -86,6 +86,8 @@ function sendLocationUpdate(lat, long) {
 function MapCirclesFromAPI({ calculators }) {
   const CIRCLE_UPDATE_TYPE = "circle";
 
+  const [circlesData, setCirclesData] = useState(null);
+
   const getCircles = useCallback(async () => {
     const response = await sendAPIRequest("get_circles");
 
@@ -114,7 +116,15 @@ function MapCirclesFromAPI({ calculators }) {
   return (
     <MapCircles
       calculators={calculators}
-      exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
+      exclusionCircle={
+        circlesData
+          ? [
+              circlesData["exclusion_circle_lat"],
+              circlesData["exclusion_circle_long"],
+              circlesData["exclusion_circle_radius"],
+            ]
+          : null
+      }
       nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
     />
   );

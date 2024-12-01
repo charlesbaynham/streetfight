@@ -108,15 +108,15 @@ class AdminInterface:
     @db_scoped
     def set_circles(self, game_id, name, lat, long, radius):
         logger.info("AdminInterface - set_circles")
-        game = self._get_game_orm(game_id)
+        game: Game = self._get_game_orm(game_id)
 
         if name == "exclusion":
-            game.exclusion_circle_x = lat
-            game.exclusion_circle_y = long
+            game.exclusion_circle_lat = lat
+            game.exclusion_circle_long = long
             game.exclusion_circle_radius = radius
         elif name == "next":
-            game.next_circle_x = lat
-            game.next_circle_y = long
+            game.next_circle_lat = lat
+            game.next_circle_long = long
             game.next_circle_radius = radius
         else:
             raise HTTPException(400, f"Invalid circle name {name}")
