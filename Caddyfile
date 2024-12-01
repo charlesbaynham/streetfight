@@ -6,7 +6,8 @@ http://, https://localhost {
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}
 
-	handle /docs/* {
+	handle_path /docs/* {
+		rewrite * /docs{uri}
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}
 
