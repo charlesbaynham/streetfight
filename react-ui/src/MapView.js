@@ -329,8 +329,8 @@ function MapView({
             {otherDots}
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              exclusionCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.1]}
-              nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.05]}
+              exclusionCircle={[SPOONS[0], SPOONS[1], 0.7]}
+              nextCircle={[THE_GREY_HORSE[0], THE_GREY_HORSE[1], 0.3]}
             />
             <div
               className={styles.clickCatcher}
