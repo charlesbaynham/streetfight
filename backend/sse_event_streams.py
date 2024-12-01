@@ -14,7 +14,7 @@ from .admin_interface import AdminInterface
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
-SSE_KEEPALIVE_TIMEOUT = 15
+SSE_KEEPALIVE_TIMEOUT = 5  # FIXME
 
 logger = logging.getLogger(__name__)
 

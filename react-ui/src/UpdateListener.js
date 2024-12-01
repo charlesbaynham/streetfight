@@ -86,7 +86,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
 
     function processKeepaliveMessage(message) {
       const newKeepaliveCount = message.data;
-      // console.debug("Keepalive count:", newKeepaliveCount, keepaliveCount)
+      console.log("Keepalive count:", newKeepaliveCount, keepaliveCount);
       if (keepaliveCount === null || newKeepaliveCount === keepaliveCount + 1)
         keepaliveCount = newKeepaliveCount;
       else {
@@ -125,7 +125,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     // Register a watcher to restart the connection if we haven't heard anything in x seconds
     keepalive_interval_handle = setInterval(
       restartIfTimeout,
-      TIMEOUT_CHECK_INTERVAL,
+      TIMEOUT_CHECK_INTERVAL
     );
 
     return cleanup;

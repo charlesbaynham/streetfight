@@ -28,16 +28,6 @@ const TestPage = () => {
     };
   }, []);
 
-  useEffect(() => {
-    const handle = registerListener("keepalive", () => {
-      setMessages((messages) => [...messages, "keepalive event received"]);
-    });
-
-    return () => {
-      deregisterListener("keepalive", handle);
-    };
-  }, []);
-
   return (
     <div>
       <h1>This is a test</h1>
