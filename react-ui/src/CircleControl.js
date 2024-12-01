@@ -26,12 +26,32 @@ export default function CircleControl({ game_id }) {
     [game_id]
   );
 
+  const clearCircle = useCallback(
+    (circle_type) => {
+      sendAPIRequest(
+        "admin_clear_circle",
+        {
+          game_id: game_id,
+          name: circle_type,
+        },
+        "POST"
+      ).then((response) => {
+        if (response.ok) {
+          setStatus("success");
+        } else {
+          setStatus("failure");
+        }
+      });
+    },
+    [game_id]
+  );
+
   const circleTypeInput = useRef(null);
   const locationInput = useRef(null);
   const radiusInput = useRef(null);
 
   return (
-    <div>
+    <>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -59,7 +79,9 @@ export default function CircleControl({ game_id }) {
         </label>
         <button type="submit">Set Circle</button>
       </form>
-      <div>Status: {status}</div>
-    </div>
+      <button onClick={() => clearCircle(circleTypeInput.current.value)}>
+        Clear Circle
+      </button>
+    </>
   );
 }
