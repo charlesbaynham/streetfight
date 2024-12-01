@@ -141,3 +141,25 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
 
 def test_hit_user(user_in_team):
     AdminInterface().hit_user_by_admin(user_id=user_in_team)
+
+
+def test_set_circle(admin_api_client, user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+
+    query_params = {
+        "game_id": game_id,
+        "name": "exclusion",
+        "lat": 51.0,
+        "long": 0.0,
+        "radius_km": 1.0,
+    }
+    endpoint = "/api/admin_set_circle"
+
+    # Format query params into the url:
+    endpoint += "?" + "&".join(
+        [f"{key}={value}" for key, value in query_params.items()]
+    )
+
+    response = admin_api_client.post(endpoint)
+
+    assert response.is_success
