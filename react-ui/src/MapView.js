@@ -15,7 +15,6 @@ const THE_FIGHTING_COCKS = [51.410615468068926, -0.2982569703905028];
 const THE_BISHOP = [51.410287561454254, -0.30802021153922127];
 const THE_GREY_HORSE = [51.41423566875311, -0.300628043344843];
 
-
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
@@ -84,21 +83,23 @@ function MapCircles({
   exclusionCircle = null,
   nextCircle = null,
 }) {
+  const calculateCircleStyles = useCallback(
+    (lat, long, radiusKM) => {
+      const { coordsToKm, kmToPixels } = calculators;
 
-  const calculateCircleStyles = useCallback((lat, long, radiusKM) => {
-    const { coordsToKm, kmToPixels } = calculators;
+      const [x_km, y_km] = coordsToKm(lat, long);
+      const [x_px, y_px] = kmToPixels(x_km, y_km);
+      const radius_px = kmToPixels(radiusKM, 0)[0];
 
-    const [x_km, y_km] = coordsToKm(lat, long);
-    const [x_px, y_px] = kmToPixels(x_km, y_km);
-    const radius_px = kmToPixels(radiusKM, 0)[0];
-
-    return {
-      left: x_px - radius_px,
-      bottom: y_px - radius_px,
-      width: radius_px * 2,
-      height: radius_px * 2,
-    };
-  }, [calculators]);
+      return {
+        left: x_px - radius_px,
+        bottom: y_px - radius_px,
+        width: radius_px * 2,
+        height: radius_px * 2,
+      };
+    },
+    [calculators],
+  );
 
   const circles = [];
 
@@ -108,7 +109,7 @@ function MapCircles({
       <div
         className={styles.exclusionCircle}
         style={calculateCircleStyles(lat, long, radiusKM)}
-      />
+      />,
     );
   }
 
@@ -118,15 +119,11 @@ function MapCircles({
       <div
         className={styles.nextCircle}
         style={calculateCircleStyles(lat, long, radiusKM)}
-      />
+      />,
     );
   }
 
-  return (
-    <div className={styles.mapCirclesContainer}>
-      {circles}
-    </div>
-  );
+  return <div className={styles.mapCirclesContainer}>{circles}</div>;
 }
 
 function MapView({
@@ -173,15 +170,19 @@ function MapView({
   // For the map position, we need to know where its centre should be. This will
   // change every time we move, so hold it in a ref to prevent rerendering
   const mapCentreLatRef = useRef((map_bottom_left.lat + map_top_right.lat) / 2);
-  const mapCentreLongRef = useRef((map_bottom_left.long + map_top_right.long) / 2);
+  const mapCentreLongRef = useRef(
+    (map_bottom_left.long + map_top_right.long) / 2,
+  );
 
   const coordsToKm = useCallback(
     (lat, long) => {
       // Convert from lat / long to km from the bottom left corner
       const x_km =
-        (long - mapCentreLongRef.current) / degreesLongitudePerKm + box_width_km / 2;
+        (long - mapCentreLongRef.current) / degreesLongitudePerKm +
+        box_width_km / 2;
       const y_km =
-        (lat - mapCentreLatRef.current) / degreesLatitudePerKm + box_height_km / 2;
+        (lat - mapCentreLatRef.current) / degreesLatitudePerKm +
+        box_height_km / 2;
 
       return [x_km, y_km];
     },
@@ -246,9 +247,9 @@ function MapView({
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
-        ownPosition.coords.latitude,
-        ownPosition.coords.longitude,
-      )
+          ownPosition.coords.latitude,
+          ownPosition.coords.longitude,
+        )
       : [0, 0];
 
     // Calculate all the other dots
@@ -323,9 +324,7 @@ function MapView({
                 backgroundSize: map_size_x + "px " + map_size_y + "px",
               }}
             />
-            {ownPosition !== null ? (
-              <Dot x={dot_x} y={dot_y} />
-            ) : null}
+            {ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
             {otherDots}
             <MapCircles
               calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
@@ -338,11 +337,11 @@ function MapView({
                 alwaysExpanded
                   ? null
                   : () => {
-                    console.log("Click!");
-                    setPoppedOut(!poppedOut);
-                    resetTransform();
-                    handleResize();
-                  }
+                      console.log("Click!");
+                      setPoppedOut(!poppedOut);
+                      resetTransform();
+                      handleResize();
+                    }
               }
             ></div>
           </TransformComponent>
