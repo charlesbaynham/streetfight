@@ -102,7 +102,7 @@ class Ticker:
 
     @db_scoped
     def touch_game_ticker_tag(self):
-        logger.info("(Game Ticker %s) Touching ticker", self.game_id)
+        logger.debug("(Game Ticker %s) Touching ticker", self.game_id)
         self._get_game().touch()
 
     @db_scoped
