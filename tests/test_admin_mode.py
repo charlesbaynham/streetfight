@@ -148,7 +148,7 @@ def test_set_circle(admin_api_client, user_in_team):
 
     query_params = {
         "game_id": game_id,
-        "name": "exclusion",
+        "name": "BOTH",
         "lat": 51.0,
         "long": 0.0,
         "radius_km": 1.0,
