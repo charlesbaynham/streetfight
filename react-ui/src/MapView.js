@@ -1,20 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
-import { makeAPIURL, sendAPIRequest } from "./utils";
+import { sendAPIRequest } from "./utils";
 
 import mapSrc from "./images/map_lowres.png";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 import { deregisterListener, registerListener } from "./UpdateListener";
-
-// Some important landmarks
-const SPOONS = [51.411374997955264, -0.3007246028148721];
-const THE_ALBION = [51.409136523603394, -0.29792437645324277];
-const THE_FIGHTING_COCKS = [51.410615468068926, -0.2982569703905028];
-const THE_BISHOP = [51.410287561454254, -0.30802021153922127];
-const THE_GREY_HORSE = [51.41423566875311, -0.300628043344843];
 
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
+from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
@@ -27,6 +28,14 @@ from .model import UserModel
 from .ticker import Ticker
 from .user_interface import UserInterface
 from .utils import add_params_to_url
+
+# Some important landmarks
+SPOONS = [51.411374997955264, -0.3007246028148721]
+THE_ALBION = [51.409136523603394, -0.29792437645324277]
+THE_FIGHTING_COCKS = [51.410615468068926, -0.2982569703905028]
+THE_BISHOP = [51.410287561454254, -0.30802021153922127]
+THE_GREY_HORSE = [51.41423566875311, -0.300628043344843]
+
 
 logger = logging.getLogger(__name__)
 
@@ -124,9 +133,11 @@ class AdminInterface:
         self._session.commit()
 
         # Ping the ticker for this game
+        # FIXME Should send ticker message
         self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
 
-        # FIXME Need to trigger circle events here
+        # Trigger a circle update
+        trigger_circle_update(game_id)
 
     @db_scoped
     def create_team(self, game_id: UUID, name: str) -> UUID:
