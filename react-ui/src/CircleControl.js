@@ -14,7 +14,7 @@ export default function CircleControl({ game_id }) {
           location: location,
           radius_km: radius_km,
         },
-        "POST"
+        "POST",
       ).then((response) => {
         if (response.ok) {
           setStatus("success");
@@ -23,7 +23,7 @@ export default function CircleControl({ game_id }) {
         }
       });
     },
-    [game_id]
+    [game_id],
   );
 
   const clearCircle = useCallback(
@@ -34,7 +34,7 @@ export default function CircleControl({ game_id }) {
           game_id: game_id,
           name: circle_type,
         },
-        "POST"
+        "POST",
       ).then((response) => {
         if (response.ok) {
           setStatus("success");
@@ -43,7 +43,7 @@ export default function CircleControl({ game_id }) {
         }
       });
     },
-    [game_id]
+    [game_id],
   );
 
   const circleTypeInput = useRef(null);
