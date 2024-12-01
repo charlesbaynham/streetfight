@@ -28,6 +28,16 @@ const TestPage = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handle = registerListener("circle", () => {
+      setMessages((messages) => [...messages, "circle event received"]);
+    });
+
+    return () => {
+      deregisterListener("circle", handle);
+    };
+  }, []);
+
   return (
     <div>
       <h1>This is a test</h1>

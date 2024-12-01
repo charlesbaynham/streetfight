@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from enum import Enum
 from typing import List
 from typing import Tuple
 from uuid import UUID
@@ -13,6 +14,7 @@ from sqlalchemy.orm import Session
 from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
+from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
@@ -33,6 +35,12 @@ logger = logging.getLogger(__name__)
 
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped
+
+
+class CircleTypes(str, Enum):
+    EXCLUSION = "EXCLUSION"
+    NEXT = "NEXT"
+    BOTH = "BOTH"
 
 
 class AdminInterface:
@@ -104,6 +112,47 @@ class AdminInterface:
         self._session.commit()
 
         return g.id
+
+    @db_scoped
+    def set_circles(
+        self, game_id: UUID, name: CircleTypes, lat: float, long: float, radius: float
+    ):
+        logger.info("AdminInterface - set_circles")
+        game: Game = self._get_game_orm(game_id)
+
+        if name == CircleTypes.EXCLUSION:
+            game.exclusion_circle_lat = lat
+            game.exclusion_circle_long = long
+            game.exclusion_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION
+        elif name == CircleTypes.NEXT:
+            game.next_circle_lat = lat
+            game.next_circle_long = long
+            game.next_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT
+        elif name == CircleTypes.BOTH:
+            game.exclusion_circle_lat = lat
+            game.exclusion_circle_long = long
+            game.exclusion_circle_radius = radius
+            game.next_circle_lat = lat
+            game.next_circle_long = long
+            game.next_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH
+        else:
+            raise HTTPException(400, f"Invalid circle name {name}")
+
+        self._session.commit()
+
+        # Announce the circle change
+        tk.send_ticker_message(
+            message_type,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        # Trigger a circle update
+        trigger_circle_update(game_id)
 
     @db_scoped
     def create_team(self, game_id: UUID, name: str) -> UUID:

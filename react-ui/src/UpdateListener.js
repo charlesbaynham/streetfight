@@ -17,12 +17,20 @@ const KEEPALIVE_TIMEOUT = 20000;
 // How often to check if we have timed out:
 const TIMEOUT_CHECK_INTERVAL = 1000;
 
+// A map of listeners to maps of handle to callback. e.g.:
+// {
+//   "ticker": {564738: ticker_callback_1, 7854398: ticker_callback_2},
+//   "user": {345678: user_callback}
+// }
 var listeners = new Map();
 
 function getTimestamp() {
   return new Date().getTime();
 }
 
+// Register a listener for a given type of update. The callback will be called
+// when an update arrives from the SSE stream. This function returns a handle:
+// call deregisterListener with the same handle to stop listening.
 export function registerListener(type, callback) {
   if (!listeners.has(type)) {
     listeners.set(type, new Map());
@@ -34,6 +42,7 @@ export function registerListener(type, callback) {
   return handle;
 }
 
+// Deregister a listener for a given type of update. See registerListener.
 export function deregisterListener(type, handle) {
   listeners.get(type).delete(handle);
 }
@@ -52,6 +61,13 @@ function processUpdateMessage(message) {
 
 var lastTimestamp = 0;
 
+// This UpdateSSEConnection component mounts to an SSE endpoint and listens for
+// updates from it, dispatching them to the appropriate listeners. You can
+// register listeners wherever you want in the frontend code, but there must be
+// one UpdateSSEConnection mounted somewhere otherwise they won't receive
+// updates. I think you could also have multiple UpdateSSEConnection components
+// if you needed multiple SSE endpoints which you still dispatch events
+// appropriately. Untested though.
 export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
   const [bumpCounter, setBumpCounter] = useState(0);
 
@@ -134,6 +150,9 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
   return null;
 }
 
+// Component to automatically handle registering / deregistering listeners. You
+// could just use registerListener and deregisterListener directly if you
+// prefer.
 export default function UpdateListener({ update_type, callback }) {
   useEffect(() => {
     const handle = registerListener(update_type, callback);

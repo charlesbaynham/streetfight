@@ -7,17 +7,19 @@ import mapSrc from "./images/map_lowres.png";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
+import { deregisterListener, registerListener } from "./UpdateListener";
 
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
-// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  TODO put back
+const ref_1_lat_long = [51.4076739525208, -0.30754164680355806]; // TODO put back
 const ref_1_xy = [294.098, 963.464];
-// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  TODO put back
+const ref_2_lat_long = [51.41383263398225, -0.30056843291595964]; // TODO put back
 const ref_2_xy = [825.823, 212.722];
 
-const ref_1_lat_long = [51.3, -0.45];
-const ref_2_lat_long = [51.9, 1.5];
+// These are fake, for testing. TODO: Undo
+// const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
+// const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
@@ -70,8 +72,129 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
+// Draw the exclusion zone and next target zone on the map, if they exist. This
+// component is responsible for calculating the position of the circles and also
+// for querying them from the server. It uses an UpdateListener to listen for
+// "circle" events and change the drawn circles appropriately.
+function MapCirclesFromAPI({ calculators }) {
+  const CIRCLE_UPDATE_TYPE = "circle";
+
+  const [circlesData, setCirclesData] = useState(null);
+
+  const getCircles = useCallback(async () => {
+    const response = await sendAPIRequest("get_circles");
+    if (!response.ok) return;
+    const circles = await response.json();
+    setCirclesData(circles);
+  }, []);
+
+  useEffect(() => {
+    // On mount, register a listener for circle updates and run one update
+    console.log("Registering circle update listener");
+
+    const handle = registerListener(CIRCLE_UPDATE_TYPE, () => {
+      getCircles();
+    });
+
+    console.log("Initial circle update");
+    getCircles();
+
+    return () => {
+      // On unmount, deregister the listener
+      console.log("Deregistering circle update listener");
+      deregisterListener(CIRCLE_UPDATE_TYPE, handle);
+    };
+  }, [getCircles]);
+
+  return (
+    <MapCircles
+      calculators={calculators}
+      exclusionCircle={
+        circlesData
+          ? [
+              circlesData["exclusion_circle_lat"],
+              circlesData["exclusion_circle_long"],
+              circlesData["exclusion_circle_radius"],
+            ]
+          : null
+      }
+      nextCircle={
+        circlesData
+          ? [
+              circlesData["next_circle_lat"],
+              circlesData["next_circle_long"],
+              circlesData["next_circle_radius"],
+            ]
+          : null
+      }
+    />
+  );
+}
+
+// This component is responsible for drawing the circles on the map. It just
+// draws - querying the circles' position is out of scope
+function MapCircles({
+  calculators,
+  exclusionCircle = null,
+  nextCircle = null,
+}) {
+  const calculateCircleStyles = useCallback(
+    (lat, long, radiusKM) => {
+      const { coordsToKm, kmToPixels } = calculators;
+
+      const [x_km, y_km] = coordsToKm(lat, long);
+      const [x_px, y_px] = kmToPixels(x_km, y_km);
+      const radius_px = kmToPixels(radiusKM, 0)[0];
+
+      // if any of the values are nan, don't render the circle
+      if (isNaN(x_px) || isNaN(y_px) || isNaN(radius_px)) {
+        return { display: "none" };
+      }
+
+      return {
+        left: x_px - radius_px,
+        bottom: y_px - radius_px,
+        width: radius_px * 2,
+        height: radius_px * 2,
+      };
+    },
+    [calculators],
+  );
+
+  const circles = [];
+
+  if (exclusionCircle) {
+    const [lat, long, radiusKM] = exclusionCircle;
+    if (lat && long && radiusKM)
+      circles.push(
+        <div
+          className={styles.exclusionCircle}
+          style={calculateCircleStyles(lat, long, radiusKM)}
+        />,
+      );
+  }
+
+  if (nextCircle) {
+    const [lat, long, radiusKM] = nextCircle;
+    if (lat && long && radiusKM)
+      circles.push(
+        <div
+          className={styles.nextCircle}
+          style={calculateCircleStyles(lat, long, radiusKM)}
+        />,
+      );
+  }
+
+  return (
+    <div className={styles.mapCirclesContainer}>
+      {circles.map((circle, index) =>
+        React.cloneElement(circle, { key: index }),
+      )}
+    </div>
+  );
+}
+
 function MapView({
-  grayedOut = false,
   ownPosition = null,
   other_positions_and_details = [],
   alwaysExpanded = false,
@@ -112,14 +235,30 @@ function MapView({
   const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
   const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
-  const coordsToPixels = useCallback(
-    (lat, long, map_centre_lat, map_centre_long) => {
+  // For the map position, we need to know where its centre should be. This will
+  // change every time we move, so hold it in a ref to prevent rerendering
+  const mapCentreLatRef = useRef((map_bottom_left.lat + map_top_right.lat) / 2);
+  const mapCentreLongRef = useRef(
+    (map_bottom_left.long + map_top_right.long) / 2,
+  );
+
+  const coordsToKm = useCallback(
+    (lat, long) => {
       // Convert from lat / long to km from the bottom left corner
       const x_km =
-        (long - map_centre_long) / degreesLongitudePerKm + box_width_km / 2;
+        (long - mapCentreLongRef.current) / degreesLongitudePerKm +
+        box_width_km / 2;
       const y_km =
-        (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
+        (lat - mapCentreLatRef.current) / degreesLatitudePerKm +
+        box_height_km / 2;
 
+      return [x_km, y_km];
+    },
+    [box_height_km, box_width_km],
+  );
+
+  const kmToPixels = useCallback(
+    (x_km, y_km) => {
       // Convert from km to pixels
       const x_px = (x_km / box_width_km) * boxWidthPx;
       const y_px = (y_km / box_height_km) * boxHeightPx;
@@ -127,6 +266,14 @@ function MapView({
       return [x_px, y_px];
     },
     [boxWidthPx, boxHeightPx, box_height_km, box_width_km],
+  );
+
+  const coordsToPixels = useCallback(
+    (lat, long) => {
+      const [x_km, y_km] = coordsToKm(lat, long);
+      return kmToPixels(x_km, y_km);
+    },
+    [coordsToKm, kmToPixels],
   );
 
   const [mapData, setMapData] = useState({
@@ -141,8 +288,8 @@ function MapView({
     other_positions_and_details,
   );
 
-  useEffect(() => {
-    // Calculate the centre of the box, using our own position if provided
+  // Calculate the centre of the box, using our own position if provided
+  const recalculateMapCentre = useCallback(() => {
     var box_centre_lat, box_centre_long;
     if (!expanded && ownPosition) {
       box_centre_lat = ownPosition.coords.latitude;
@@ -151,13 +298,20 @@ function MapView({
       box_centre_lat = (map_bottom_left.lat + map_top_right.lat) / 2;
       box_centre_long = (map_bottom_left.long + map_top_right.long) / 2;
     }
+    mapCentreLatRef.current = box_centre_lat;
+    mapCentreLongRef.current = box_centre_long;
+  }, [expanded, ownPosition]);
+
+  // Recalculate things that move when things move. Except circles: those
+  // calculate themselves, like these things ought to.
+  useEffect(() => {
+    // Update the map coordinate functions
+    recalculateMapCentre();
 
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
       map_bottom_left.lat,
       map_bottom_left.long,
-      box_centre_lat,
-      box_centre_long,
     );
 
     // Calculate our own dot
@@ -165,8 +319,6 @@ function MapView({
       ? coordsToPixels(
           ownPosition.coords.latitude,
           ownPosition.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
         )
       : [0, 0];
 
@@ -176,8 +328,6 @@ function MapView({
         const [x, y] = coordsToPixels(
           position.coords.latitude,
           position.coords.longitude,
-          box_centre_lat,
-          box_centre_long,
         );
         const dt = 1e-3 * Date.now() - position.timestamp;
         const alpha = Math.max(
@@ -207,6 +357,7 @@ function MapView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     expanded,
+    recalculateMapCentre,
     boxWidthPx,
     boxHeightPx,
     ownPosition,
@@ -223,47 +374,67 @@ function MapView({
   else containerClasses.push(styles.mapContainerCorner);
 
   return (
+    // This wrapper allows you to zoom / scale the whole of its contents.
+    // "pixels" in the map coordinates therefore refer to unscaled pixels.: the
+    // map is not aware of scaling, it's done purely in CSS
     <TransformWrapper
       disabled={!poppedOut} // Disable zoom / pan if the map is in the corner
     >
-      {({ resetTransform }) => (
-        <div className={containerClasses.join(" ")} ref={mapContainerRef}>
-          <TransformComponent
-            wrapperStyle={{ height: "100%", width: "100%" }}
-            contentStyle={{ height: "100%", width: "100%" }}
-          >
-            {grayedOut ? <div className={styles.mapOverlay}></div> : null}
-            <div
-              className={styles.mapImage}
-              src={mapSrc}
-              alt="Map"
-              style={{
-                backgroundImage: `url(${mapSrc})`,
-                backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
-                backgroundRepeat: "no-repeat",
-                backgroundSize: map_size_x + "px " + map_size_y + "px",
-              }}
-            />
-            {!grayedOut && ownPosition !== null ? (
-              <Dot x={dot_x} y={dot_y} />
-            ) : null}
-            {otherDots}
-            <div
-              className={styles.clickCatcher}
-              onClick={
-                alwaysExpanded
-                  ? null
-                  : () => {
-                      console.log("Click!");
-                      setPoppedOut(!poppedOut);
-                      resetTransform();
-                      handleResize();
-                    }
-              }
-            ></div>
-          </TransformComponent>
-        </div>
-      )}
+      {
+        // This interface allows you to request functions related to the scaling,
+        // e.g. imperative methods like "resetTransform". There are plenty more
+        // available:
+        ({ resetTransform }) => (
+          // Outer container for the map. Could probably be merged with the
+          // TransformComponent
+          <div className={containerClasses.join(" ")} ref={mapContainerRef}>
+            <TransformComponent
+              wrapperStyle={{ height: "100%", width: "100%" }}
+              contentStyle={{ height: "100%", width: "100%" }}
+            >
+              {/* The map itself. Implemented as a div with a background image: the div fills
+              the displayed box, the background is resized appropriately */}
+              <div
+                className={styles.mapImage}
+                src={mapSrc}
+                alt="Map"
+                style={{
+                  backgroundImage: `url(${mapSrc})`,
+                  backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
+                  backgroundRepeat: "no-repeat",
+                  backgroundSize: map_size_x + "px " + map_size_y + "px",
+                }}
+              />
+
+              {/* Dots */}
+              {ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
+              {otherDots}
+
+              {/* Circles */}
+              <MapCirclesFromAPI
+                // Note how the coordinate calculators are passed down to the
+                // circles so they can handle their own positioning. It would be
+                // better to do this for other elements too.
+                calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
+              />
+
+              {/* A box that intercepts clicks - transparent and at the top z-order */}
+              <div
+                className={styles.clickCatcher}
+                onClick={
+                  alwaysExpanded
+                    ? null
+                    : () => {
+                        setPoppedOut(!poppedOut);
+                        resetTransform();
+                        handleResize();
+                      }
+                }
+              />
+            </TransformComponent>
+          </div>
+        )
+      }
     </TransformWrapper>
   );
 }

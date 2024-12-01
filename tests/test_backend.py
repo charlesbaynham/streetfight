@@ -4,6 +4,7 @@ from uuid import UUID
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.admin_interface import AdminInterface
 from backend.model import UserModel
 from backend.user_interface import UserInterface
 
@@ -41,6 +42,62 @@ def test_user_info(api_client):
 
     assert response.status_code == 200
     assert UserModel(**response.json())
+
+
+def test_get_circles_not_in_game(api_client):
+    response = api_client.get("/api/get_circles")
+    assert response.json() is None
+
+
+def test_get_circles_in_game_no_circle(api_client, api_user_id, one_team):
+    UserInterface(api_user_id).join_team(one_team)
+
+    response = api_client.get("/api/get_circles").json()
+    assert response is not None
+    for key in [
+        "exclusion_circle_lat",
+        "exclusion_circle_long",
+        "exclusion_circle_radius",
+        "next_circle_lat",
+        "next_circle_long",
+        "next_circle_radius",
+    ]:
+        assert key in response
+        assert response[key] is None
+
+
+def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_team):
+    UserInterface(api_user_id).join_team(one_team)
+
+    game_id = UserInterface(api_user_id).get_user_model().game_id
+    AdminInterface().set_circles(
+        game_id, name="EXCLUSION", lat=51.0, long=0.0, radius=1.0
+    )
+
+    response = api_client.get("/api/get_circles").json()
+    assert response is not None
+    assert response["exclusion_circle_lat"] == 51.0
+    assert response["exclusion_circle_long"] == 0.0
+    assert response["exclusion_circle_radius"] == 1.0
+    assert response["next_circle_lat"] is None
+    assert response["next_circle_long"] is None
+    assert response["next_circle_radius"] is None
+
+
+def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
+    UserInterface(api_user_id).join_team(one_team)
+
+    game_id = UserInterface(api_user_id).get_user_model().game_id
+    AdminInterface().set_circles(game_id, name="NEXT", lat=51.0, long=0.0, radius=1.0)
+
+    response = api_client.get("/api/get_circles").json()
+    assert response is not None
+    assert response["exclusion_circle_lat"] is None
+    assert response["exclusion_circle_long"] is None
+    assert response["exclusion_circle_radius"] is None
+    assert response["next_circle_lat"] == 51.0
+    assert response["next_circle_long"] == 0.0
+    assert response["next_circle_radius"] == 1.0
 
 
 def test_make_game(admin_api_client):

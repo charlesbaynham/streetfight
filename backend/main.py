@@ -1,5 +1,6 @@
 import logging
 import os
+from enum import Enum
 from functools import wraps
 from logging.handlers import RotatingFileHandler
 from pathlib import Path
@@ -17,7 +18,9 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
+from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
+from .locations import LANDMARK_LOCATIONS
 
 
 def setup_logging():
@@ -118,6 +121,14 @@ async def get_user_info(
 ):
     with UserInterface(user_id) as ui:
         return ui.get_user_model()
+
+
+@router.get("/get_circles")
+async def get_circles(
+    user_id=Depends(get_user_id),
+):
+    with UserInterface(user_id) as ui:
+        return ui.get_circles()
 
 
 class _Shot(BaseModel):
@@ -353,6 +364,51 @@ async def admin_set_game_active(game_id: UUID, active: bool):
 async def admin_set_user_name(user_id: UUID, name: str):
     logger.info("admin_set_user_name")
     AdminInterface().set_user_name(user_id=user_id, name=name)
+
+
+@admin_method(path="/admin_set_circle", method="POST")
+async def admin_set_circle(
+    game_id: UUID, name: CircleTypes, lat: float, long: float, radius_km: float
+):
+    logger.info("admin_set_circle - %s", locals())
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
+    )
+
+
+Landmark = Enum("Landmark", {k: k for k in LANDMARK_LOCATIONS.keys()})
+
+
+@admin_method(path="/admin_set_circle_by_location", method="POST")
+async def admin_set_circle(
+    game_id: UUID,
+    name: CircleTypes,
+    location: Landmark,  # type: ignore
+    radius_km: float,
+):
+    logger.info("admin_set_circle_by_location - %s", locals())
+
+    location = str(location.value).upper().replace(" ", "_")
+    try:
+        lat, long = LANDMARK_LOCATIONS[location]
+    except KeyError:
+        raise HTTPException(404, f"Unknown location {location}")
+
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
+    )
+
+
+@admin_method(path="/admin_clear_circle", method="POST")
+async def admin_set_circle(
+    game_id: UUID,
+    name: CircleTypes,
+):
+    logger.info("admin_clear_circle - %s", locals())
+
+    AdminInterface().set_circles(
+        game_id=game_id, name=name, lat=None, long=None, radius=None
+    )
 
 
 @router.get("/sse_updates")

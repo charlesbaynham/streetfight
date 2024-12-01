@@ -11,6 +11,7 @@ import logging
 from typing import AsyncGenerator
 
 from .admin_interface import AdminInterface
+from .circles import generate_circle_updates
 from .user_interface import UserInterface
 
 # How often to send keepalive messages
@@ -36,15 +37,22 @@ async def updates_generator(user_id):
     events.
     """
 
+    team_id = UserInterface(user_id).get_team_id()
+    game_id = UserInterface(user_id).get_game_id()
+
     update_user = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "user"})
     )
     update_ticker = make_sse_update_message(
         json.dumps({"handler": "update_prompt", "data": "ticker"})
     )
+    update_circles = make_sse_update_message(
+        json.dumps({"handler": "update_prompt", "data": "circle"})
+    )
 
     yield update_user
     yield update_ticker
+    yield update_circles
 
     # An asyncio queue to pass to the generators
     queue = asyncio.Queue()
@@ -82,56 +90,70 @@ async def updates_generator(user_id):
         asyncio.create_task(feed_generator_to_queue(user_event_generator, "user")),
     )
 
-    # Start a more complicated producer for the ticker. This:
-    #
-    # a) If the user is in a team, attaches to the ticker updates
-    #
-    # b) If the user is not in a team, attaches to the user_updates until the
-    # user is in a team, then attaches to the ticker updates
-    #
-    # TODO: Handle the user changing team while this connection is running
-    async def ticker_generator_with_check_user_logic():
-        logger.debug("updates_generator - Ticker updates for user %s starting", user_id)
+    # Start a producer which will watch for the user changing team / game. If
+    # this happens, it'll close this connection, prompting a reload
+    async def changed_team_generator():
+        logger.debug(
+            "change_team_generator - Watching for change of team for user %s", user_id
+        )
 
         ui = UserInterface(user_id)
 
-        # Check if the user is in a team
-        while ui.get_team_id() is None:
-            logger.debug("User %s is not in a game, waiting", user_id)
+        initial_team_id = ui.get_team_id()  # Might be "none"
 
+        logger.debug(
+            "User %s is in team %s. Waiting for update", user_id, initial_team_id
+        )
+
+        # Check if the user is in a team
+        while ui.get_team_id() == initial_team_id:
             # generate_updates does not interact with the database session, so
             # will not block other database requests
             await anext(ui.generate_user_updates())
 
-        logger.debug(
-            "updates_generator - User is in game, mounting to game ticker for user %s",
-            user_id,
-        )
-        # Yield one update immediately to refresh the ticker
+        logger.debug("User %s has changed team. Closing connection", user_id)
+
         yield None
+        await asyncio.sleep(1e10)
 
-        # Then yield from the ticker
-        async for x in ui.generate_ticker_updates():
-            logger.debug(
-                "updates_generator - Forwarding ticker event for user %s", user_id
-            )
-            yield x
-
-    # Queue the ticker generator
+    # Queue the changed_team_generator
     producers.append(
         asyncio.create_task(
-            feed_generator_to_queue(ticker_generator_with_check_user_logic(), "ticker")
+            feed_generator_to_queue(changed_team_generator(), "changed_team")
         )
     )
 
-    # Also add a keepalive producer
-    async def keepalive_timer():
+    # Watch the user ticker if they're in a team
+    if team_id is not None:
+
+        async def ticker_generator():
+            logger.debug(
+                "updates_generator - User is in game, mounting to game ticker for user %s",
+                user_id,
+            )
+            # Yield one update immediately to refresh the ticker
+            yield None
+
+            # Then yield from the ticker
+            async for x in UserInterface(user_id).generate_ticker_updates():
+                logger.debug(
+                    "updates_generator - Forwarding ticker event for user %s", user_id
+                )
+                yield x
+
+        # Queue the ticker generator
+        producers.append(
+            asyncio.create_task(feed_generator_to_queue(ticker_generator(), "ticker"))
+        )
+
+    # Add a keepalive producer
+    async def keepalive_timer(timeout=SSE_KEEPALIVE_TIMEOUT):
         logger.debug("Starting keepalive timer")
 
         i = 0
 
         while True:
-            await asyncio.sleep(SSE_KEEPALIVE_TIMEOUT)
+            await asyncio.sleep(timeout)
             logger.debug("Sending keepalive message %s", i)
             yield i
             i += 1
@@ -139,6 +161,16 @@ async def updates_generator(user_id):
     producers.append(
         asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
     )
+
+    # Watch for circle updates if the user is in a game
+    if game_id:
+        producers.append(
+            asyncio.create_task(
+                feed_generator_to_queue(
+                    generate_circle_updates(game_id=game_id), "circle"
+                )
+            )
+        )
 
     # Iterate through the consumer:
     try:
@@ -153,12 +185,17 @@ async def updates_generator(user_id):
                 yield update_user
             elif target == "ticker":
                 yield update_ticker
+            elif target == "circle":
+                yield update_circles
+            elif target == "changed_team":
+                # Close the connection to force a reload
+                return
             elif target == "keepalive":
                 yield make_sse_update_message(
                     json.dumps({"handler": "keepalive", "data": data})
                 )
             else:
-                logger.error('Unknown update targer "%s"', target)
+                logger.error('Unknown update target "%s"', target)
     finally:
         for task in producers:
             task.cancel()
