@@ -120,6 +120,14 @@ async def get_user_info(
         return ui.get_user_model()
 
 
+@router.get("/get_circles")
+async def get_circles(
+    user_id=Depends(get_user_id),
+):
+    with UserInterface(user_id) as ui:
+        return ui.get_circles()
+
+
 class _Shot(BaseModel):
     photo: str
 

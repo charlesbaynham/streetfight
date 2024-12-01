@@ -19,6 +19,7 @@ from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
 from .model import Game
+from .model import GameModel
 from .model import Item
 from .model import Shot
 from .model import Team
@@ -169,9 +170,18 @@ class UserInterface:
         return self.get_user().team_id
 
     @db_scoped
-    def get_team_model(self) -> UserModel:
+    def get_team_model(self) -> TeamModel:
         team = self.get_user().team
         return TeamModel.from_orm(team) if team else None
+
+    @db_scoped
+    def get_game_model(self) -> GameModel:
+        team = self.get_user().team
+        if not team:
+            return None
+
+        game = team.game
+        return GameModel.from_orm(game) if game else None
 
     @db_scoped
     def _get_item_from_database(self, item_id: int) -> Item:
@@ -322,6 +332,22 @@ class UserInterface:
                     game=user.team.game,
                 )
             )
+
+    @db_scoped
+    def get_circles(self):
+        game_model: GameModel = self.get_game_model()
+
+        if game_model is None:
+            return None
+
+        return {
+            "exclusion_circle_x": game_model.exclusion_circle_x,
+            "exclusion_circle_y": game_model.exclusion_circle_y,
+            "exclusion_circle_radius": game_model.exclusion_circle_radius,
+            "next_circle_x": game_model.next_circle_x,
+            "next_circle_y": game_model.next_circle_y,
+            "next_circle_radius": game_model.next_circle_radius,
+        }
 
     @db_scoped
     def get_messages(
