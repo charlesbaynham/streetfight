@@ -21,7 +21,9 @@ logger = logging.getLogger(__name__)
 
 
 def make_sse_update_message(m):
-    return f"data: {m}\n\n"
+    out = f"data: {m}\n\n"
+    logger.debug('make_sse_update_message - "%s"', out)
+    return out
 
 
 async def updates_generator(user_id):
@@ -52,7 +54,10 @@ async def updates_generator(user_id):
     async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
         async for data in generator:
             logger.debug(
-                'feed_generator_to_queue - Received message "%s" from %s', data, message
+                'feed_generator_to_queue (UID %s) - Received message "%s" from %s',
+                user_id,
+                data,
+                message,
             )
             await queue.put((message, data))
 
@@ -139,6 +144,12 @@ async def updates_generator(user_id):
     # Iterate through the consumer:
     try:
         async for target, data in yield_from_queue():
+            logger.debug(
+                'updates_generator (UID%s) - Received message from queue: target "%s", data "%s"',
+                user_id,
+                target,
+                data,
+            )
             if target == "user":
                 yield update_user
             elif target == "ticker":
