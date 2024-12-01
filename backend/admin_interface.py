@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+from enum import Enum
 from typing import List
 from typing import Tuple
 from uuid import UUID
@@ -34,6 +35,12 @@ logger = logging.getLogger(__name__)
 
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped
+
+
+class CircleTypes(str, Enum):
+    EXCLUSION = "EXCLUSION"
+    NEXT = "NEXT"
+    BOTH = "BOTH"
 
 
 class AdminInterface:
@@ -107,21 +114,23 @@ class AdminInterface:
         return g.id
 
     @db_scoped
-    def set_circles(self, game_id, name, lat, long, radius):
+    def set_circles(
+        self, game_id: UUID, name: CircleTypes, lat: float, long: float, radius: float
+    ):
         logger.info("AdminInterface - set_circles")
         game: Game = self._get_game_orm(game_id)
 
-        if name == "exclusion":
+        if name == CircleTypes.EXCLUSION:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
             game.exclusion_circle_radius = radius
             message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION
-        elif name == "next":
+        elif name == CircleTypes.NEXT:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
             message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT
-        elif name == "both":
+        elif name == CircleTypes.BOTH:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
             game.exclusion_circle_radius = radius

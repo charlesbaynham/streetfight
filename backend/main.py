@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
+from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
 from .locations import LANDMARK_LOCATIONS
 
@@ -367,7 +368,7 @@ async def admin_set_user_name(user_id: UUID, name: str):
 
 @admin_method(path="/admin_set_circle", method="POST")
 async def admin_set_circle(
-    game_id: UUID, name: str, lat: float, long: float, radius_km: float
+    game_id: UUID, name: CircleTypes, lat: float, long: float, radius_km: float
 ):
     logger.info("admin_set_circle - %s", locals())
     AdminInterface().set_circles(
@@ -381,7 +382,7 @@ Landmark = Enum("Landmark", {k: k for k in LANDMARK_LOCATIONS.keys()})
 @admin_method(path="/admin_set_circle_by_location", method="POST")
 async def admin_set_circle(
     game_id: UUID,
-    name: str,
+    name: CircleTypes,
     location: Landmark,  # type: ignore
     radius_km: float,
 ):
@@ -401,7 +402,7 @@ async def admin_set_circle(
 @admin_method(path="/admin_clear_circle", method="POST")
 async def admin_set_circle(
     game_id: UUID,
-    name: str,
+    name: CircleTypes,
 ):
     logger.info("admin_clear_circle - %s", locals())
 
