@@ -76,7 +76,7 @@ function MapView({
   other_positions_and_details = [],
   alwaysExpanded = false,
 }) {
-  const [poppedOut, setPoppedOut] = useState(true);  // FIXME
+  const [poppedOut, setPoppedOut] = useState(false);
   const expanded = alwaysExpanded || poppedOut;
 
   const mapContainerRef = useRef(null);
