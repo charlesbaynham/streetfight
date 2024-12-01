@@ -11,13 +11,13 @@ import Dot from "./Dot";
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 1188.5;
 const ref_map_height_px = 1233.5;
-// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  FIXME put back
+// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];  TODO put back
 const ref_1_xy = [294.098, 963.464];
-// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  FIXME put back
+// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];  TODO put back
 const ref_2_xy = [825.823, 212.722];
 
-const ref_1_lat_long = [51.35, -0.35];
-const ref_2_lat_long = [51.45, -0.25];
+const ref_1_lat_long = [51.3, -0.45];
+const ref_2_lat_long = [51.9, 1.5];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
