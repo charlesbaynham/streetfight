@@ -115,10 +115,12 @@ class AdminInterface:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
             game.exclusion_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION
         elif name == "next":
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT
         elif name == "both":
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
@@ -126,14 +128,19 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH
         else:
             raise HTTPException(400, f"Invalid circle name {name}")
 
         self._session.commit()
 
-        # Ping the ticker for this game
-        # FIXME Should send ticker message
-        self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
+        # Announce the circle change
+        tk.send_ticker_message(
+            message_type,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
 
         # Trigger a circle update
         trigger_circle_update(game_id)

@@ -36,6 +36,9 @@ class TickerMessageType(Enum):
     ADMIN_GAVE_ARMOUR = auto()
     ADMIN_REVIVED_USER = auto()
     ADMIN_GAVE_AMMO = auto()
+    ADMIN_SET_CIRCLE_NEXT = auto()
+    ADMIN_SET_CIRCLE_EXCLUSION = auto()
+    ADMIN_SET_CIRCLE_BOTH = auto()
 
 
 class TickerTarget(Enum):
@@ -108,6 +111,18 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_GAVE_AMMO: (
         TickerTarget.PRIVATE_USER,
         "You were given {num}x ammo!",
+    ),
+    TickerMessageType.ADMIN_SET_CIRCLE_NEXT: (
+        TickerTarget.PUBLIC,
+        "The next circle has been announced! Check the map...",
+    ),
+    TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION: (
+        TickerTarget.PUBLIC,
+        "The circle has changed - if you're outside, get moving!",
+    ),
+    TickerMessageType.ADMIN_SET_CIRCLE_BOTH: (
+        TickerTarget.PUBLIC,
+        "The circle has changed - if you're outside, get moving!",
     ),
 }
 
