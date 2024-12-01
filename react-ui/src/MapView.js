@@ -70,10 +70,17 @@ function sendLocationUpdate(lat, long) {
   );
 }
 
-function MapCircles() {
+function MapCircles({ circles = [[51.5, 0.0, 1.0]] }) {
+
   return (
     <div className={styles.mapCircles}>
       Circles!
+      <ul>
+        {
+          circles.map(([lat, long, radius], index) =>
+            <li>I'm a circle at {lat}, {long} with radius {radius}</li>
+          )}
+      </ul>
     </div>
   );
 }
@@ -119,7 +126,7 @@ function MapView({
   const map_size_x = (MAP_WIDTH_KM * boxWidthPx) / box_width_km;
   const map_size_y = (MAP_HEIGHT_KM * boxHeightPx) / box_height_km;
 
-  const coordsToPixels = useCallback(
+  const coordsToKm = useCallback(
     (lat, long, map_centre_lat, map_centre_long) => {
       // Convert from lat / long to km from the bottom left corner
       const x_km =
@@ -127,6 +134,13 @@ function MapView({
       const y_km =
         (lat - map_centre_lat) / degreesLatitudePerKm + box_height_km / 2;
 
+      return [x_km, y_km];
+    },
+    [box_height_km, box_width_km],
+  );
+
+  const kmToPixels = useCallback(
+    (x_km, y_km) => {
       // Convert from km to pixels
       const x_px = (x_km / box_width_km) * boxWidthPx;
       const y_px = (y_km / box_height_km) * boxHeightPx;
@@ -134,6 +148,14 @@ function MapView({
       return [x_px, y_px];
     },
     [boxWidthPx, boxHeightPx, box_height_km, box_width_km],
+  );
+
+  const coordsToPixels = useCallback(
+    (lat, long, map_centre_lat, map_centre_long) => {
+      const [x_km, y_km] = coordsToKm(lat, long, map_centre_lat, map_centre_long);
+      return kmToPixels(x_km, y_km);
+    },
+    [coordsToKm, kmToPixels],
   );
 
   const [mapData, setMapData] = useState({
