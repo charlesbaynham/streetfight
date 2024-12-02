@@ -6,7 +6,7 @@ npm run qrgen -- --type ammo --num 1 --tag ammo_b
 npm run qrgen -- --type ammo --num 1 --tag ammo_c
 npm run qrgen -- --type ammo --num 1 --tag ammo_d
 npm run qrgen -- --type ammo --num 1 --tag ammo_e
-npm run qrgen -- --type ammo --num 1 --tag ammo_3f
+npm run qrgen -- --type ammo --num 1 --tag ammo_f
 npm run qrgen -- --type ammo --num 1 --tag ammo_g
 npm run qrgen -- --type ammo --num 1 --tag ammo_h
 npm run qrgen -- --type ammo --num 1 --tag ammo_i

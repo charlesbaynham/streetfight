@@ -14,6 +14,10 @@
           propagatedBuildInputs = [ ];
         };
 
+        texDeps = with pkgs; (texlive.combine {
+          inherit (texlive) scheme-small;
+        });
+
         pythonReqs = with pkgs.python3Packages; [
           pip
 
@@ -42,6 +46,7 @@
         ];
 
         reqs = with pkgs; [
+          texDeps
           pkgs.nodejs
           (pkgs.python3.withPackages (ps: pythonReqs))
           pkgs.pre-commit
