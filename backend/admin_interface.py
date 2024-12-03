@@ -18,12 +18,15 @@ from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
+from .model import Item
 from .model import ItemType
 from .model import Shot
 from .model import ShotModel
 from .model import Team
+from .model import TickerEntry
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
@@ -502,6 +505,48 @@ class AdminInterface:
     @db_scoped
     def _get_all_game_ids(self):
         return self._session.query(Game.id).all()
+
+    @db_scoped
+    def reset_game(self, game_id: UUID):
+        """
+        Reset the game, including all scores, items etc. But not usernames
+        """
+        game: Game = self.get_game()
+
+        # Loop through all the items in this game and delete them all
+        for item in self._session.query(Item).filter_by(game_id=game_id).all():
+            del item
+
+        # Get all the team ids for this game
+        teams = self._session.query(Team).filter_by(game_id=game_id).all()
+
+        # For each, get all the users
+        users = []
+        for team in teams:
+            users += team.users
+
+        # For each user, reset their stats
+        for user in users:
+            user: User
+            user.num_bullets = 0
+            user.hit_points = 1
+            user.shot_damage = 1
+            user.shot_timeout = DEFAULT_SHOT_TIMEOUT
+            user.time_of_death = None
+
+            # Delete their shots
+            for shot in user.shots:
+                del shot
+
+            # And their pickups
+            for item in user.items:
+                del item
+
+        # Wipe the ticker
+        for ticker_entry in (
+            self._session.query(TickerEntry).filter_by(game_id=game_id).all()
+        ):
+            del ticker_entry
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
