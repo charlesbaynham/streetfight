@@ -1,5 +1,5 @@
 import gun_11 from "./images/art/gun_11.png";
-import gun_06 from "./images/art/gun_06.png";
+import gun_06 from "./images/art/gun_06.svg";
 import gun_16 from "./images/art/gun_default.png";
 import gun_26 from "./images/art/gun_26.png";
 import gun_36 from "./images/art/gun_36.png";

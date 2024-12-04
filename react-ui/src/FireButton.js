@@ -13,7 +13,8 @@ import fireButtonImgCooldown from "./images/firebutton_cooldown.svg";
 export default function FireButton({ user, onClick }) {
   const isInTeam = user ? user.team_id !== null : false;
   const hasBullets = user ? user.num_bullets > 0 : false;
-  const userHasAmmo = isInTeam && hasBullets;
+  const hasWeapon = user ? user.shot_damage > 0 : false;
+  const userCanShoot = isInTeam && hasBullets && hasWeapon;
 
   const shotTimeout = user.shot_timeout;
 
@@ -60,19 +61,19 @@ export default function FireButton({ user, onClick }) {
         setOnCooldown(false);
       }, 1000 * shotTimeout);
     },
-    [setAnimationState, setOnCooldown, playBang, onClick, shotTimeout],
+    [setAnimationState, setOnCooldown, playBang, onClick, shotTimeout]
   );
 
   return (
     <>
       <button
         className={styles.fireButton}
-        disabled={!userHasAmmo | onCooldown}
+        disabled={!userCanShoot | onCooldown}
         onClick={fire}
       >
         <img
           src={
-            userHasAmmo
+            userCanShoot
               ? onCooldown
                 ? fireButtonImgCooldown
                 : fireButtonImg
