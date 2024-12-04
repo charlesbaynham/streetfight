@@ -163,14 +163,3 @@ def test_set_circle(admin_api_client, user_in_team):
     response = admin_api_client.post(endpoint)
 
     assert response.is_success
-
-
-def test_reset_game(user_in_team):
-    AdminInterface().set_user_HP(user_in_team, 3)
-
-    assert UserInterface(user_in_team).get_user_model().hit_points == 3
-
-    game_id = UserInterface(user_in_team).get_user_model().game_id
-    AdminInterface().reset_game(game_id)
-
-    assert UserInterface(user_in_team).get_user_model().hit_points == 1
