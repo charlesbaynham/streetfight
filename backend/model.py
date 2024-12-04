@@ -23,6 +23,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
+DEFAULT_SHOT_TIMEOUT = 6
+
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
@@ -160,7 +162,7 @@ class User(Base):
 
     num_bullets = Column(Integer, nullable=False, default=0)
     hit_points = Column(Integer, nullable=False, default=1)
-    shot_timeout = Column(Float, nullable=False, default=6)
+    shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
 
     latitude = Column(Float, nullable=True)

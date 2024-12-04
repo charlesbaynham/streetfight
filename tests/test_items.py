@@ -58,10 +58,19 @@ SAMPLE_AMMO_DATA = {
     "collected_only_once": True,
     "collected_as_team": False,
 }
+
 SAMPLE_WEAPON_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "weapon",
     "data": {"shot_damage": 3, "shot_timeout": 6.0},
+    "collected_only_once": True,
+    "collected_as_team": False,
+}
+
+SAMPLE_LV1_WEAPON_DATA = {
+    "id": UUID("00000000-0000-0000-0000-000000000002"),
+    "itype": "weapon",
+    "data": {"shot_damage": 1, "shot_timeout": 6.0},
     "collected_only_once": True,
     "collected_as_team": False,
 }
@@ -153,6 +162,18 @@ def test_can_sign(valid_encoded_signed_lv1_armour):
 
 def test_collect_item_valid(valid_encoded_signed_lv1_armour, user_in_team):
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
+
+
+def test_collect_lv1_weapon_valid(user_in_team):
+    item = ItemModel(**SAMPLE_LV1_WEAPON_DATA)
+    item.sig = None
+    item.salt = None
+
+    item.sign()
+
+    encoded_item = item.to_base64()
+
+    UserInterface(user_in_team).collect_item(encoded_item)
 
 
 def test_collect_item_invalid_signature(valid_encoded_signed_lv1_armour, user_in_team):

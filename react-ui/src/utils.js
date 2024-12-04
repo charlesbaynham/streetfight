@@ -1,4 +1,5 @@
 import gun_11 from "./images/art/gun_11.png";
+import gun_06 from "./images/art/gun_06.svg";
 import gun_16 from "./images/art/gun_default.png";
 import gun_26 from "./images/art/gun_26.png";
 import gun_36 from "./images/art/gun_36.png";
@@ -63,25 +64,15 @@ export function sendAPIRequest(
 }
 
 export function getGunImgFromUser(user) {
-  let gun_name = null;
+  let image = null;
 
-  if (user.shot_damage === 1 && user.shot_timeout === 6) gun_name = "damage1";
-  else if (user.shot_damage === 2 && user.shot_timeout === 6)
-    gun_name = "damage2";
-  else if (user.shot_damage === 3 && user.shot_timeout === 6)
-    gun_name = "damage3";
-  else if (user.shot_damage === 1 && user.shot_timeout === 1)
-    gun_name = "fast1";
-  else return null;
+  if (user.shot_damage === 0 && user.shot_timeout === 6) image = gun_06;
+  else if (user.shot_damage === 1 && user.shot_timeout === 6) image = gun_16;
+  else if (user.shot_damage === 2 && user.shot_timeout === 6) image = gun_26;
+  else if (user.shot_damage === 3 && user.shot_timeout === 6) image = gun_36;
+  else if (user.shot_damage === 1 && user.shot_timeout === 1) image = gun_11;
 
-  const GUN_IMGS = {
-    damage1: gun_16,
-    damage2: gun_26,
-    damage3: gun_36,
-    fast1: gun_11,
-  };
-
-  return GUN_IMGS[gun_name];
+  return image;
 }
 
 export async function isLocationPermissionGranted() {

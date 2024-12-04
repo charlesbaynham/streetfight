@@ -44,6 +44,10 @@ def old_shot_prep(
     AdminInterface().award_user_ammo(user_a, 1000)
     AdminInterface().award_user_ammo(user_b, 1000)
 
+    # Give both users the basic weapon
+    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_b).set_weapon_data(1, 6)
+
     # User A shoots user B (the admin hasn't checked it yet)
     UserInterface(user_a).submit_shot(test_image_string)
     shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
