@@ -2,7 +2,7 @@ from backend.admin_interface import AdminInterface
 from backend.user_interface import UserInterface
 
 
-def test_reset_game(user_in_team):
+def test_resets_hp(user_in_team):
     AdminInterface().set_user_HP(user_in_team, 3)
 
     assert UserInterface(user_in_team).get_user_model().hit_points == 3
@@ -40,3 +40,19 @@ def test_reset_game_does_not_affect_another(user_factory, game_factory):
     # Make sure that game 2 was not reset
     assert UserInterface(uid1).get_user_model().hit_points == 1
     assert UserInterface(uid2).get_user_model().hit_points == 5
+
+
+def test_resets_ticker(user_in_team):
+    # Generate a ticker message
+    AdminInterface().hit_user_by_admin(user_in_team)
+
+    ticker_messages = UserInterface(user_in_team).get_messages(num=9999)
+
+    game_id = UserInterface(user_in_team).get_user_model().game_id
+    AdminInterface().reset_game(game_id)
+
+    new_ticker_messages = UserInterface(user_in_team).get_messages(num=9999)
+
+    assert new_ticker_messages != ticker_messages
+    assert len(new_ticker_messages) != len(ticker_messages)
+    assert len(new_ticker_messages) == 0
