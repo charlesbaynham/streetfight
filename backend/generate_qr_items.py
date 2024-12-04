@@ -157,12 +157,12 @@ def make_pub_image(
 
         # Generate the next QR code
         qr = qrcode.make(qr_data, error_correction=qrcode.ERROR_CORRECT_M)
-        qr_size = int(0.2 * min(box_width, box_height))
+        qr_size = int(0.23 * min(box_width, box_height))
         qr = qr.resize((qr_size, qr_size))
 
         # Paste the QR code
-        qr_x_offset = round(0.3 * box_width - qr_size // 2)
-        qr_y_offset = round(0.8 * box_height - qr_size // 2)
+        qr_x_offset = round(0.29 * box_width - qr_size // 2)
+        qr_y_offset = round(0.81 * box_height - qr_size // 2)
         qr_offset = (qr_x_offset, qr_y_offset)
         image.paste(qr, qr_offset)
 
