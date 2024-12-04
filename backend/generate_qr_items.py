@@ -133,8 +133,8 @@ def make_pub_image(
     )
 
     # Create an A4 sized image
-    box_width = A4_WIDTH
-    box_height = A4_HEIGHT
+    box_width = A4_HEIGHT
+    box_height = A4_WIDTH
 
     base_image = IMAGES_DIR / "reusable_bullets.png"
 
