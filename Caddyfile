@@ -1,4 +1,4 @@
-http://localhost:3000 {
+http://, https://localhost {
 	handle /api/* {
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}
