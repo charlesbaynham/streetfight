@@ -500,7 +500,7 @@ class AdminInterface:
         return self._session.query(Game.id).all()
 
     @db_scoped
-    def reset_game(self, game_id: UUID):
+    def reset_game(self, game_id: UUID, keep_weapons=True):
         """
         Reset the game, including all scores, items etc. But not usernames
         """
@@ -522,9 +522,11 @@ class AdminInterface:
         for user in users:
             user.num_bullets = 0
             user.hit_points = 1
-            user.shot_damage = 1
-            user.shot_timeout = DEFAULT_SHOT_TIMEOUT
             user.time_of_death = None
+
+            if not keep_weapons:
+                user.shot_damage = 1
+                user.shot_timeout = DEFAULT_SHOT_TIMEOUT
 
             # Delete their shots
             for shot in user.shots:

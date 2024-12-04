@@ -3,6 +3,7 @@ import os
 from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 import pytest
 
@@ -238,14 +239,16 @@ def game_factory(db_session):
 def user_factory(db_session):
     import random
 
-    from backend.model import User
-
     def factory():
-        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
-        user = User(name=name)
+        user_id = get_uuid()
+        ui = UserInterface(user_id=user_id)
+        user = ui.get_user()
 
         db_session.add(user)
         db_session.commit()
+
+        name = "".join(random.choices("abcdefghijklmnopqrstuvwxyz", k=10))
+        ui.set_name(name)
 
         return user.id
 
