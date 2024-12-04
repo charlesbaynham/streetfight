@@ -119,6 +119,62 @@ def make_qr_grid(
         im.save(output_file_path, "PNG")
 
 
+def make_pub_image(
+    output_file_path: str,
+    tag: str = "",
+):
+    qr_data = AdminInterface().make_new_item(
+        "ammo",
+        {
+            "num": 2,
+        },
+        collected_only_once=False,
+        collected_as_team=True,
+    )
+
+    # Create an A4 sized image
+    box_width = A4_WIDTH
+    box_height = A4_HEIGHT
+
+    base_image = IMAGES_DIR / "reusable_bullets.png"
+
+    base_image_loaded = Image.open(base_image)
+
+    # Crop the base image to remove all transparent borders
+    bbox = base_image_loaded.getbbox()
+    if bbox:
+        base_image_loaded = base_image_loaded.crop(bbox)
+
+    # Resize it to fill the box
+    base_image_loaded = base_image_loaded.resize((box_width, box_height))
+
+    # Make an output image
+    with Image.new("RGBA", (box_width, box_height), "white") as image:
+        draw = ImageDraw.Draw(image)
+
+        # Generate the next QR code
+        qr = qrcode.make(qr_data, error_correction=qrcode.ERROR_CORRECT_M)
+        qr_size = int(0.2 * min(box_width, box_height))
+        qr = qr.resize((qr_size, qr_size))
+
+        # Paste the QR code
+        qr_x_offset = round(0.25 * box_width - qr_size // 2)
+        qr_y_offset = round(0.2 * box_height // 2 - qr_size // 2)
+        qr_offset_sz = min(qr_x_offset, qr_y_offset)
+        qr_offset = (qr_offset_sz, qr_offset_sz)
+        image.paste(qr, qr_offset)
+
+        # Paste the base image if it exists
+        if base_image_loaded:
+            image.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
+
+        # Add a text tag
+        draw.text((10, 10), tag, fill="black")
+
+        # show
+        image.save(output_file_path, "PNG")
+
+
 @click.command()
 @click.option(
     "--type",
@@ -188,6 +244,11 @@ def make_qr_grid(
         "If true, keep a record of the QR codes generated in a file called `qr_codes.csv`"
     ),
 )
+@click.option(
+    "--pub",
+    default=False,
+    help=("If true, ignore all other settings and generate one pub QR code instead"),
+)
 def generate(
     type: str,
     x: int,
@@ -201,6 +262,7 @@ def generate(
     tag: str,
     onceonly: bool,
     asteam: bool,
+    pub: bool,
 ):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
@@ -231,6 +293,12 @@ def generate(
     if not outfile:
         filename = f"qrcodes_{tag}_{type}_{num}.png"
         outfile = Path(outdir, filename)
+
+    # If pub is set, ignore all the irrelevant settings and do it. Hack
+    if pub:
+        logger.info("Generating a pub image")
+        make_pub_image(outfile, tag=tag)
+        return
 
     logger.debug("Outputting to %s", outfile)
 
