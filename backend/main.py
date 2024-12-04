@@ -412,12 +412,10 @@ async def admin_set_circle(
 
 
 @admin_method(path="/admin_reset_game", method="POST")
-async def admin_reset_game(
-    game_id: UUID,
-):
+async def admin_reset_game(game_id: UUID, keep_weapons=True):
     logger.info("admin_reset_game - %s", locals())
 
-    AdminInterface().reset_game(game_id=game_id)
+    AdminInterface().reset_game(game_id=game_id, keep_weapons=keep_weapons)
 
 
 @router.get("/sse_updates")
