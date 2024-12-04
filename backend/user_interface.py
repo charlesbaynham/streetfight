@@ -33,6 +33,10 @@ logger = logging.getLogger(__name__)
 # 10 minutes to get to safety
 TIME_KNOCKED_OUT = 10 * 60
 
+# Default weapon settings
+DEFAULT_SHOT_TIMEOUT = 6.0
+DEFAULT_SHOT_DAMAGE = 0
+
 make_user_lock = RLock()
 
 
@@ -104,6 +108,8 @@ class UserInterface:
         """
         user = User(
             id=self.user_id,
+            shot_damage=DEFAULT_SHOT_DAMAGE,
+            shot_timeout=DEFAULT_SHOT_TIMEOUT,
         )
         self._session.add(user)
         self._session.commit()
