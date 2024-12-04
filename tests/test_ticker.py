@@ -117,6 +117,7 @@ def test_ticker_announces_kill(
 ):
     UserInterface(api_user_id).join_team(team_factory())
     UserInterface(api_user_id).award_ammo(1)
+    UserInterface(api_user_id).set_weapon_data(1, 6)
     UserInterface(api_user_id).submit_shot(test_image_string)
     shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
     # Let's say the user shot themselves:
@@ -142,6 +143,7 @@ def test_ticker_announces_kill_privately(
 ):
     UserInterface(api_user_id).join_team(team_factory())
     UserInterface(api_user_id).award_ammo(1)
+    UserInterface(api_user_id).set_weapon_data(1, 6)
     UserInterface(api_user_id).submit_shot(test_image_string)
     shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
     # Let's say the user shot themselves:
