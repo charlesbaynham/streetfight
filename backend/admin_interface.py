@@ -101,12 +101,6 @@ class AdminInterface:
         return [UserModel.from_orm(g) for g in q.all()]
 
     @db_scoped
-    def get_game(self, game_id) -> GameModel:
-        logger.info("AdminInterface - get_game")
-        g = self._get_game_orm(game_id)
-        return GameModel.from_orm(g)
-
-    @db_scoped
     def create_game(self) -> UUID:
         logger.info("AdminInterface - create_game")
         g = Game()
@@ -510,7 +504,7 @@ class AdminInterface:
         """
         Reset the game, including all scores, items etc. But not usernames
         """
-        game: Game = self.get_game(game_id=game_id)
+        game: Game = self._get_game_orm(game_id=game_id)
 
         # Loop through all the items in this game and delete them all
         for item in game.items:
