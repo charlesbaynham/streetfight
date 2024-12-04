@@ -152,21 +152,19 @@ def make_pub_image(
     with Image.new("RGBA", (box_width, box_height), "white") as image:
         draw = ImageDraw.Draw(image)
 
+        # Paste the base image
+        image.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
+
         # Generate the next QR code
         qr = qrcode.make(qr_data, error_correction=qrcode.ERROR_CORRECT_M)
         qr_size = int(0.2 * min(box_width, box_height))
         qr = qr.resize((qr_size, qr_size))
 
         # Paste the QR code
-        qr_x_offset = round(0.25 * box_width - qr_size // 2)
+        qr_x_offset = round(0.5 * box_width - qr_size // 2)
         qr_y_offset = round(0.2 * box_height // 2 - qr_size // 2)
-        qr_offset_sz = min(qr_x_offset, qr_y_offset)
-        qr_offset = (qr_offset_sz, qr_offset_sz)
+        qr_offset = (qr_x_offset, qr_y_offset)
         image.paste(qr, qr_offset)
-
-        # Paste the base image if it exists
-        if base_image_loaded:
-            image.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
 
         # Add a text tag
         draw.text((10, 10), tag, fill="black")
