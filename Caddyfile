@@ -1,5 +1,5 @@
 
-http://, https://localhost:3000 {  # FIXME
+http://localhost:3000 {  # FIXME
 	# encode gzip
 
 	handle /api/* {
