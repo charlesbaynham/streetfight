@@ -18,12 +18,14 @@ from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
 from .model import ItemType
 from .model import Shot
 from .model import ShotModel
 from .model import Team
+from .model import TickerEntry
 from .model import User
 from .model import UserModel
 from .ticker import Ticker
@@ -97,12 +99,6 @@ class AdminInterface:
             q.filter_by(game_id=game_id)
 
         return [UserModel.from_orm(g) for g in q.all()]
-
-    @db_scoped
-    def get_game(self, game_id) -> GameModel:
-        logger.info("AdminInterface - get_game")
-        g = self._get_game_orm(game_id)
-        return GameModel.from_orm(g)
 
     @db_scoped
     def create_game(self) -> UUID:
@@ -502,6 +498,47 @@ class AdminInterface:
     @db_scoped
     def _get_all_game_ids(self):
         return self._session.query(Game.id).all()
+
+    @db_scoped
+    def reset_game(self, game_id: UUID):
+        """
+        Reset the game, including all scores, items etc. But not usernames
+        """
+        game: Game = self._get_game_orm(game_id=game_id)
+
+        # Loop through all the items in this game and delete them all
+        for item in game.items:
+            del item
+
+        # Get all the teams for this game
+        teams: list[Team] = game.teams
+
+        # For each, get all the users
+        users: list[User] = []
+        for team in teams:
+            users += team.users
+
+        # For each user, reset their stats
+        for user in users:
+            user.num_bullets = 0
+            user.hit_points = 1
+            user.shot_damage = 1
+            user.shot_timeout = DEFAULT_SHOT_TIMEOUT
+            user.time_of_death = None
+
+            # Delete their shots
+            for shot in user.shots:
+                self._session.delete(shot)
+
+            # And their pickups
+            for item in user.items:
+                self._session.delete(item)
+
+        # Wipe the ticker
+        for ticker_entry in (
+            self._session.query(TickerEntry).filter_by(game_id=game_id).all()
+        ):
+            self._session.delete(ticker_entry)
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
