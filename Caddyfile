@@ -1,13 +1,14 @@
-
 http://, https://localhost {
-	# encode gzip
-
 	handle /api/* {
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}
 
-	handle /docs/* {
-		reverse_proxy {$API_URL:http://localhost:8000}
+	handle /docs* {
+		reverse_proxy http://localhost:8000
+	}
+
+	handle /openapi.json {
+		reverse_proxy http://localhost:8000
 	}
 
 	handle {
@@ -17,7 +18,7 @@ http://, https://localhost {
 		# templates
 
 		# Compress responses according to Accept-Encoding headers
-		# encode gzip zstd
+		encode gzip zstd
 
 		# Make HTML file extension optional
 		try_files {path} /index.html
