@@ -528,17 +528,17 @@ class AdminInterface:
 
             # Delete their shots
             for shot in user.shots:
-                del shot
+                self._session.delete(shot)
 
             # And their pickups
             for item in user.items:
-                del item
+                self._session.delete(item)
 
         # Wipe the ticker
         for ticker_entry in (
             self._session.query(TickerEntry).filter_by(game_id=game_id).all()
         ):
-            del ticker_entry
+            self._session.delete(ticker_entry)
 
     async def generate_any_ticker_updates(self, timeout=None):
         """
