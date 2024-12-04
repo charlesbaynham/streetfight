@@ -103,11 +103,14 @@ def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
     if (
         (user_model.shot_damage == weapon_data.shot_damage)
         and (user_model.shot_timeout == weapon_data.shot_timeout)
-        and (
-            # Allow collection of level 1 item even if you already have it
-            user_model.shot_damage
-            != 1
-        )
+        # This code was used to allow collection of level 1 guns even if you
+        # already had them so we could train people how to scan QR codes. But
+        # now they start with no weapon and must be given one, so let that
+        # happen instead.
+        # and (
+        #     user_model.shot_damage
+        #     != 1
+        # )
     ):
         raise RuntimeError("You have already got this weapon")
 
