@@ -411,6 +411,15 @@ async def admin_set_circle(
     )
 
 
+@admin_method(path="/admin_reset_game", method="POST")
+async def admin_reset_game(
+    game_id: UUID,
+):
+    logger.info("admin_reset_game - %s", locals())
+
+    AdminInterface().reset_game(game_id=game_id)
+
+
 @router.get("/sse_updates")
 async def sse_updates(
     user_id=Depends(get_user_id),
