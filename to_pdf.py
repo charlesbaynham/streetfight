@@ -3,7 +3,7 @@
 preamble = r"""
 \documentclass{article}
 \usepackage{graphicx}
-\usepackage[a4paper,landscape,margin=0pt]{geometry}
+\usepackage[a4paper,portrait,margin=0pt]{geometry}
 \usepackage{pdfpages}
 
 \begin{document}
@@ -15,7 +15,7 @@ preamble = r"""
 image = """
 \\includegraphics[width=\\paperwidth,height=\\paperheight]{{{image}}}
 \\newpage
-\includepdf[pages=1]{{background.pdf}}
+\includepdf[pages=1]{{background-blank.pdf}}
 """
 
 postamble = r"""
@@ -27,8 +27,14 @@ from pathlib import Path
 
 images = list(Path(__file__, "..").resolve().glob("*.png"))
 
+
 print(preamble)
-for img in images:
-    print(image.format(image=img.name))
+
+n = 4
+NUM = 8
+
+for i, img in enumerate(images):
+    if n * NUM <= i < (n + 1) * NUM:
+        print(image.format(image=img.name))
 
 print(postamble)
