@@ -12,9 +12,10 @@ if TYPE_CHECKING:
 
 WEAPON_NAME_LOOKUP = {
     (1, 1): "Eat-a-bullet",
+    (0, 6): "No weapon",
+    (1, 6): "Pewster",
     (2, 6): "Tracka-Tracka",
     (3, 6): "OMG",
-    (1, 6): "Pewster",
 }
 
 

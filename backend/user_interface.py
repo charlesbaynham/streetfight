@@ -35,7 +35,7 @@ TIME_KNOCKED_OUT = 10 * 60
 
 # Default weapon settings
 DEFAULT_SHOT_TIMEOUT = 6.0
-DEFAULT_SHOT_DAMAGE = 0
+DEFAULT_SHOT_DAMAGE = 1
 
 make_user_lock = RLock()
 
