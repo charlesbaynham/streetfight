@@ -15,7 +15,7 @@ export function makeAPIURL(endpoint, query_params = null) {
 
   if (query_params) {
     Object.keys(query_params).forEach((key) =>
-      url.searchParams.append(key, query_params[key])
+      url.searchParams.append(key, query_params[key]),
     );
   }
 
@@ -27,7 +27,7 @@ export function sendAPIRequest(
   query_params = null,
   method = "GET",
   callback = null,
-  post_object = null
+  post_object = null,
 ) {
   const url = makeAPIURL(endpoint, query_params);
 
