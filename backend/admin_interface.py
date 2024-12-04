@@ -21,7 +21,6 @@ from .items import ItemModel
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
-from .model import Item
 from .model import ItemType
 from .model import Shot
 from .model import ShotModel
@@ -511,23 +510,22 @@ class AdminInterface:
         """
         Reset the game, including all scores, items etc. But not usernames
         """
-        game: Game = self.get_game()
+        game: Game = self.get_game(game_id=game_id)
 
         # Loop through all the items in this game and delete them all
-        for item in self._session.query(Item).filter_by(game_id=game_id).all():
+        for item in game.items:
             del item
 
-        # Get all the team ids for this game
-        teams = self._session.query(Team).filter_by(game_id=game_id).all()
+        # Get all the teams for this game
+        teams: list[Team] = game.teams
 
         # For each, get all the users
-        users = []
+        users: list[User] = []
         for team in teams:
             users += team.users
 
         # For each user, reset their stats
         for user in users:
-            user: User
             user.num_bullets = 0
             user.hit_points = 1
             user.shot_damage = 1
