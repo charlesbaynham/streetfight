@@ -2,10 +2,10 @@ Goals
 -----
 
 TODO:
- - [ ] Generic text messages from admin
- - [ ] Fix pickup of level 1 gun
+ - [x] Generic text messages from admin
+ - [x] Fix pickup of level 1 gun
  - [ ] Drop location
- - [ ] Admin names
+ - [x] Admin names
 
   - [x] Reset should fire all game events
 
