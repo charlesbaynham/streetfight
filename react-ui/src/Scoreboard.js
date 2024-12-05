@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
+
+import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
 
 import styles from "./Scoreboard.module.css";
@@ -54,6 +56,29 @@ function Scoreboard() {
       ) : null}
       {/* Also update scoreboard when the ticker updates */}
       <UpdateListener update_type="ticker" callback={update} />
+    </>
+  );
+}
+
+export function ButtonAndScoreboard() {
+  const [showScores, setShowScores] = useState(false);
+
+  return (
+    <>
+      <p>
+        <button
+          className={styles.showScoresButton}
+          onClick={() => {
+            setShowScores(true);
+          }}
+        >
+          Show scores &gt;&gt;
+        </button>
+      </p>
+
+      <Popup visible={showScores} setVisible={setShowScores}>
+        <Scoreboard />
+      </Popup>
     </>
   );
 }

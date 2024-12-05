@@ -19,6 +19,7 @@ import {
   isLocationPermissionGranted,
   isCameraPermissionGranted,
 } from "./utils";
+import { ButtonAndScoreboard } from "./Scoreboard";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
@@ -65,7 +66,13 @@ function GetView({ user }) {
   return (
     <>
       <div className={styles.monitorsContainer}>
-        {isAlive ? <BulletCount user={user} /> : <div></div>}
+        {isAlive ? (
+          <BulletCount user={user} />
+        ) : (
+          <div>
+            <ButtonAndScoreboard />
+          </div>
+        )}
         <div className={styles.mapAndTickerContainer}>
           <MapViewSelf />
           <TickerView />
