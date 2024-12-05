@@ -9,6 +9,7 @@ TODO:
  - [x] Show scoreboard in dead mode
  - [ ] Improve admin kill interface
  - [x] Admins should have ticker view
+  - [ ] Ticker view should actually update...
 
   - [x] Reset should fire all game events
 

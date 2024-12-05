@@ -294,6 +294,11 @@ async def admin_get_shots(limit=5):
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
+@admin_method("/admin_get_shots_info", method="GET")
+async def admin_get_shots_info():
+    return AdminInterface().get_unchecked_shots_info()
+
+
 @admin_method(path="/admin_shot_hit_user", method="POST")
 async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
