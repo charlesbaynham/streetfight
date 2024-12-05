@@ -9,7 +9,7 @@ function NearestPlayers({ shot_data }) {
 
   // Get user location in context array
   const userIndex = context.findIndex(
-    (location) => location.user_id === shooting_user_id,
+    (location) => location.user_id === shooting_user_id
   );
   console.log("User index in context array:", userIndex);
 
@@ -19,7 +19,7 @@ function NearestPlayers({ shot_data }) {
 
   // Remove the user from the context array
   const otherUsersContext = context.filter(
-    (location) => location.user_id !== shooting_user_id,
+    (location) => location.user_id !== shooting_user_id
   );
   console.log("Updated context array:", otherUsersContext);
 
@@ -60,7 +60,7 @@ function NearestPlayers({ shot_data }) {
         state,
         timestamp,
       };
-    },
+    }
   );
 
   // Sort shooting_users by distance
@@ -80,26 +80,45 @@ function NearestPlayers({ shot_data }) {
   );
 }
 
+async function getShotFromCache(shot_id) {
+  const cachedShot = sessionStorage.getItem(`shot_${shot_id}`);
+  if (cachedShot) {
+    return JSON.parse(cachedShot);
+    // FIXME WIP
+  }
+  localStorage.setItem("lastname", "Smith");
+}
+
 export default function ShotQueue() {
   const [shot, setShot] = useState(null);
-  const [numShots, setNumShots] = useState("");
+  const [shotsInQueue, setShotsInQueue] = useState([]);
+  const [currentShotID, setCurrentShotID] = useState("");
 
+  // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
-    sendAPIRequest("admin_get_shots", { limit: 1 }).then(async (response) => {
+    sendAPIRequest("admin_get_shots_info").then(async (response) => {
       if (!response.ok) return;
-      const data = await response.json();
-      setNumShots(data.numInQueue);
-      if (data.shots.length > 0) {
-        const newShot = data.shots[0];
-        console.log("New shot:");
-        console.dir(newShot);
-        console.log(JSON.parse(newShot.location_context));
-        setShot(newShot);
-      } else {
-        setShot(null);
+      const shot_ids = await response.json();
+
+      setShotsInQueue(shot_ids);
+
+      if (!shot_ids.includes(currentShotID)) {
+        setCurrentShotID(shot_ids[0]);
       }
+
+      // Load shots in background
+      await Promise.all(
+        shot_ids.map(async (shot_id) => await getShotFromCache(shot_id))
+      );
     });
-  }, []);
+  }, [currentShotID]);
+
+  // If current shot ID changes, load the shot from the cache into the state
+  useEffect(() => {
+    getShotFromCache(currentShotID).then((shot) => {
+      setShot(shot);
+    });
+  }, [currentShotID]);
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {
@@ -109,19 +128,19 @@ export default function ShotQueue() {
           shot_id: shot_id,
           target_user_id: target_user_id,
         },
-        "POST",
+        "POST"
       ).then((_) => {
         update();
       });
     },
-    [update],
+    [update]
   );
 
   const dismissShot = useCallback(() => {
     sendAPIRequest(
       "admin_mark_shot_checked",
       { shot_id: shot.id },
-      "POST",
+      "POST"
     ).then((_) => {
       update();
     });
@@ -131,7 +150,7 @@ export default function ShotQueue() {
 
   return (
     <>
-      <h1>Next unchecked shot ({numShots} in queue):</h1>
+      <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
 
       {shot ? (
         <>
