@@ -300,6 +300,11 @@ async def admin_get_shots_info():
     return AdminInterface().get_unchecked_shots_info()
 
 
+@admin_method("/admin_get_shot", method="GET")
+async def admin_get_shot(shot_id: UUID):
+    return AdminInterface().get_shot_model(shot_id=shot_id)
+
+
 @admin_method(path="/admin_shot_hit_user", method="POST")
 async def admin_shot_hit_user(shot_id, target_user_id):
     AdminInterface().hit_user(shot_id, target_user_id)
