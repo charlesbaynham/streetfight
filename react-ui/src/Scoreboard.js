@@ -60,14 +60,17 @@ function Scoreboard() {
   );
 }
 
-export function ButtonAndScoreboard() {
+export function ButtonAndScoreboard({ standalone = false }) {
   const [showScores, setShowScores] = useState(false);
 
   return (
     <>
       <p>
         <button
-          className={styles.showScoresButton}
+          className={
+            styles.showScoresButton +
+            (standalone ? " " + styles.standalone : "")
+          }
           onClick={() => {
             setShowScores(true);
           }}

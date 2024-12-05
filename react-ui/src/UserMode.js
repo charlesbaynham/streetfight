@@ -70,7 +70,7 @@ function GetView({ user }) {
           <BulletCount user={user} />
         ) : (
           <div>
-            <ButtonAndScoreboard />
+            <ButtonAndScoreboard standalone />
           </div>
         )}
         <div className={styles.mapAndTickerContainer}>
