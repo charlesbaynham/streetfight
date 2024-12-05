@@ -5,6 +5,7 @@ import NewItems from "./NewItems";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
+import TickerView from "./TickerView";
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -43,6 +44,10 @@ function GameView({ game }) {
           Pause
         </button>
       </label>
+
+      <h3>Public Ticker</h3>
+
+      <TickerView admin />
 
       <h3>Teams</h3>
 
