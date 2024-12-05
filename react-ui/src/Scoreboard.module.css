@@ -43,7 +43,7 @@
 
 .showScoresButton {
   background: none;
-  color: white;
+  color: inherit;
   border: none;
   padding: 0;
   font: inherit;
@@ -52,4 +52,11 @@
   padding: 0.5em;
   text-align: center;
   width: 100%;
+}
+
+
+.standalone {
+  padding: 2em 1em;
+  background-color: #00000088;
+  color: white;
 }
