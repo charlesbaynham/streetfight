@@ -38,11 +38,10 @@ export default function BulletCount({ user }) {
     if (previousUser) {
       setShowBulletAnim(user.num_bullets > previousUser.num_bullets);
       setShowArmourAnim(
-        user.hit_points > previousUser.hit_points &&
-          previousUser.hit_points > 0,
+        user.hit_points > previousUser.hit_points && previousUser.hit_points > 0
       );
       setShowMedpackAnim(
-        user.hit_points === 1 && previousUser.hit_points === 0,
+        user.hit_points === 1 && previousUser.hit_points === 0
       );
 
       const collectedGun =
@@ -97,6 +96,13 @@ export default function BulletCount({ user }) {
         />
       </p>
 
+      <TemporaryOverlay img={bullet} appear={showBulletAnim} />
+      <TemporaryOverlay img={armour} appear={showArmourAnim} />
+      <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
+      <TemporaryOverlay img={getGunImgFromUser(user)} appear={showGunPickup} />
+
+      <CollectItemFromQueryParam enabled={!anyActive} />
+
       <p>
         <button
           className={styles.showScoresButton}
@@ -107,13 +113,6 @@ export default function BulletCount({ user }) {
           Show scores &gt;&gt;
         </button>
       </p>
-
-      <TemporaryOverlay img={bullet} appear={showBulletAnim} />
-      <TemporaryOverlay img={armour} appear={showArmourAnim} />
-      <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
-      <TemporaryOverlay img={getGunImgFromUser(user)} appear={showGunPickup} />
-
-      <CollectItemFromQueryParam enabled={!anyActive} />
 
       <Popup visible={showScores} setVisible={setShowScores}>
         <Scoreboard />
