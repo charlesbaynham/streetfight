@@ -6,6 +6,9 @@ TODO:
  - [x] Fix pickup of level 1 gun
  - [ ] Drop location
  - [x] Admin names
+ - [ ] Show scoreboard in dead mode
+ - [ ] Improve admin kill interface
+ - [ ] Admins should have ticker view
 
   - [x] Reset should fire all game events
 
@@ -38,12 +41,10 @@ Priority:
 
 Polish:
   - [ ] Make ticker messages disappear eventually. Clientside.
-  - [ ] The animation for the bullet reload is jerky
+  - [x] The animation for the bullet reload is jerky
   - [ ] Put harry's noises in
     * time splitters 2 ricochet
     * random selection of western ricochet shots
-  - [ ] Show scoreboard in dead mode
-  - [ ] Improve admin kill interface
   - [ ] Clicking outside the socre card should exit it
 
   - [ ] Heartbeat animation when knocked out
