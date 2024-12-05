@@ -21,6 +21,7 @@ from starlette.responses import StreamingResponse
 from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
 from .locations import LANDMARK_LOCATIONS
+from .ticker_message_dispatcher import send_generic_message
 
 
 def setup_logging():
@@ -416,6 +417,16 @@ async def admin_reset_game(game_id: UUID, keep_weapons=True):
     logger.info("admin_reset_game - %s", locals())
 
     AdminInterface().reset_game(game_id=game_id, keep_weapons=keep_weapons)
+
+
+@admin_method(path="/admin_send_custom_ticker_message", method="POST")
+async def admin_send_custom_ticker_message(
+    game_id: UUID,
+    message: str,
+):
+    logger.info("admin_send_custom_ticker_message - %s", locals())
+
+    send_generic_message(game_id, message)
 
 
 @router.get("/sse_updates")

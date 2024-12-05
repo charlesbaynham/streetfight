@@ -199,3 +199,17 @@ def send_ticker_message(
         raise NotImplementedError("Private team messages not yet implemented")
     else:
         raise ValueError(f"Unknown ticker target {target}")
+
+
+def send_generic_message(
+    game_id: UUID,
+    message: str,
+    session: Optional[Session] = None,
+):
+    """
+    Sends a generic text message publicly to a game's ticker.
+    """
+
+    Ticker(game_id, user_id=None, session=session).post_message(
+        message=message,
+    )
