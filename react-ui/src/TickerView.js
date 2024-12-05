@@ -5,7 +5,7 @@ import { sendAPIRequest } from "./utils";
 
 import styles from "./TickerView.module.css";
 
-export default function TickerView() {
+export default function TickerView({ admin = false }) {
   const [messages, setMessages] = useState([[]]);
   const [knownTickerHash, setKnownTickerHash] = useState(0);
 
@@ -17,6 +17,8 @@ export default function TickerView() {
 
   useEffect(updateMessages, [updateMessages, knownTickerHash]);
 
+  const styleClass = admin ? styles.adminTickerview : styles.userTickerview;
+
   return (
     <>
       <UpdateListener
@@ -25,7 +27,7 @@ export default function TickerView() {
           setKnownTickerHash(knownTickerHash + 1);
         }}
       />
-      <div className={styles.tickerview}>
+      <div className={styles.tickerview + " " + styleClass}>
         <ul>
           {messages.map((m, i) => (
             <li key={i} className={m[0]}>
