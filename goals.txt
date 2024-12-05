@@ -6,7 +6,7 @@ TODO:
  - [x] Fix pickup of level 1 gun
  - [ ] Drop location
  - [x] Admin names
- - [ ] Show scoreboard in dead mode
+ - [x] Show scoreboard in dead mode
  - [ ] Improve admin kill interface
  - [x] Admins should have ticker view
 
