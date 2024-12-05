@@ -76,7 +76,7 @@ class Shot(Base):
 
     __tablename__ = "shots"
 
-    id = Column(Integer, primary_key=True, nullable=False)
+    id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
     time_created = Column(DateTime, server_default=func.now())
 
     game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
