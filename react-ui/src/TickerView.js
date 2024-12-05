@@ -10,9 +10,16 @@ export default function TickerView({ admin = false }) {
   const [knownTickerHash, setKnownTickerHash] = useState(0);
 
   const updateMessages = useCallback(() => {
-    sendAPIRequest("ticker_messages", null, "GET", (data) => {
-      setMessages(data);
-    });
+    sendAPIRequest(
+      "ticker_messages",
+      {
+        num_messages: 10,
+      },
+      "GET",
+      (data) => {
+        setMessages(data);
+      }
+    );
   }, [setMessages]);
 
   useEffect(updateMessages, [updateMessages, knownTickerHash]);
