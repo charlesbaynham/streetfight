@@ -203,15 +203,15 @@ function MapView({
   const expanded = alwaysExpanded || poppedOut;
 
   const mapContainerRef = useRef(null);
-  const [boxWidthPx, setMapWidth] = useState(0);
-  const [boxHeightPx, setMapHeight] = useState(0);
+  const [boxWidthPx, setBoxWidthPx] = useState(0);
+  const [boxHeightPx, setBoxHeightPx] = useState(0);
 
   // Measure the width and height of the map container so that we can scale the
   // map image. Tolerate resizes / screen rotations.
   const handleResize = useCallback(() => {
     if (mapContainerRef.current) {
-      setMapWidth(mapContainerRef.current.clientWidth);
-      setMapHeight(mapContainerRef.current.clientHeight);
+      setBoxWidthPx(mapContainerRef.current.clientWidth);
+      setBoxHeightPx(mapContainerRef.current.clientHeight);
     }
   }, [mapContainerRef]);
 
@@ -378,7 +378,7 @@ function MapView({
     // "pixels" in the map coordinates therefore refer to unscaled pixels.: the
     // map is not aware of scaling, it's done purely in CSS
     <TransformWrapper
-      disabled={!poppedOut} // Disable zoom / pan if the map is in the corner
+      disabled={!poppedOut && !expanded} // Disable zoom / pan if the map is in the corner
     >
       {
         // This interface allows you to request functions related to the scaling,
