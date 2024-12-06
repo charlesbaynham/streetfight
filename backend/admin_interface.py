@@ -348,12 +348,20 @@ class AdminInterface:
     @db_scoped
     def mark_shot_missed(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
+        user_id = shot.user_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
 
         if shot.checked:
             raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.MISSED_SHOT,
+            {},
+            user_id=user_id,
+            session=self._session,
+        )
 
         shot.checked = True
         self._session.commit()
@@ -371,6 +379,7 @@ class AdminInterface:
             HTTPException: 400 if shot has already been checked
         """
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
+        user_id = shot.user_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
@@ -381,6 +390,13 @@ class AdminInterface:
         user = shot.user
 
         user.num_bullets += 1
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.REFUNDED_SHOT,
+            {},
+            user_id=user_id,
+            session=self._session,
+        )
 
         shot.checked = True
         self._session.commit()
