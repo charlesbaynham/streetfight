@@ -358,6 +358,33 @@ class AdminInterface:
         shot.checked = True
         self._session.commit()
 
+    @db_scoped
+    def refund_shot(self, shot_id: UUID):
+        """
+        Refund a shot and mark it as checked
+
+        Args:
+            shot_id (UUID): Shot id
+
+        Raises:
+            HTTPException: 404 if shot not found
+            HTTPException: 400 if shot has already been checked
+        """
+        shot = self._session.query(Shot).filter_by(id=shot_id).first()
+
+        if not shot:
+            raise HTTPException(404, f"Shot id {shot_id} not found")
+
+        if shot.checked:
+            raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        user = shot.user
+
+        user.num_bullets += 1
+
+        shot.checked = True
+        self._session.commit()
+
     def make_new_item(
         self,
         item_type: str,

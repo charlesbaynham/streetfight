@@ -127,6 +127,14 @@ export default function ShotQueue() {
     });
   }, [shot, update]);
 
+  const refundShot = useCallback(() => {
+    sendAPIRequest("admin_refund_shot", { shot_id: shot.id }, "POST").then(
+      (_) => {
+        update();
+      }
+    );
+  }, [shot, update]);
+
   useEffect(update, [update]);
 
   return (
@@ -163,6 +171,13 @@ export default function ShotQueue() {
             }}
           >
             Missed
+          </button>
+          <button
+            onClick={() => {
+              refundShot();
+            }}
+          >
+            Refund
           </button>
         </>
       ) : null}
