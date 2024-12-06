@@ -2,8 +2,6 @@ import React, { useCallback, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 export default function CircleControl({ game_id }) {
-  const [status, setStatus] = useState("idle");
-
   const setCircle = useCallback(
     (circle_type, location, radius_km) => {
       sendAPIRequest(
@@ -14,16 +12,10 @@ export default function CircleControl({ game_id }) {
           location: location,
           radius_km: radius_km,
         },
-        "POST",
-      ).then((response) => {
-        if (response.ok) {
-          setStatus("success");
-        } else {
-          setStatus("failure");
-        }
-      });
+        "POST"
+      );
     },
-    [game_id],
+    [game_id]
   );
 
   const clearCircle = useCallback(
@@ -34,16 +26,10 @@ export default function CircleControl({ game_id }) {
           game_id: game_id,
           name: circle_type,
         },
-        "POST",
-      ).then((response) => {
-        if (response.ok) {
-          setStatus("success");
-        } else {
-          setStatus("failure");
-        }
-      });
+        "POST"
+      );
     },
-    [game_id],
+    [game_id]
   );
 
   const circleTypeInput = useRef(null);
