@@ -369,6 +369,7 @@ class AdminInterface:
     def mark_shot_missed(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
         user_id = shot.user_id
+        game_id = shot.game_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
@@ -380,6 +381,7 @@ class AdminInterface:
             tk.TickerMessageType.MISSED_SHOT,
             {},
             user_id=user_id,
+            game_id=game_id,
             session=self._session,
         )
 
@@ -400,6 +402,7 @@ class AdminInterface:
         """
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
         user_id = shot.user_id
+        game_id = shot.game_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
@@ -414,6 +417,7 @@ class AdminInterface:
         tk.send_ticker_message(
             tk.TickerMessageType.REFUNDED_SHOT,
             {},
+            game_id=game_id,
             user_id=user_id,
             session=self._session,
         )
