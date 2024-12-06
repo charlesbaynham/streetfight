@@ -1,6 +1,8 @@
 import logging
 import os
+import random
 from uuid import UUID
+from uuid import uuid4
 
 from .database import engine as db_engine
 from .dotenv import load_env_vars
@@ -8,15 +10,27 @@ from .model import Base
 from .model import Game
 from .model import Team
 
+random.seed(0)
+
 logger = logging.getLogger(__name__)
 
 SAMPLE_GAME_ID = UUID("a47c0fcf-67bd-4c91-a83b-1ac6c3d8fd43")
 
-SAMPLE_TEAMS = [
-    (UUID("890e8e0a-575b-4df6-85ee-eb7e6656085d"), "Team A"),
-    (UUID("c6f6f9f9-3a90-469e-a344-54a2cf33f4e7"), "Team B"),
-    (UUID("01f56942-5a4e-48c0-bc9d-b037a0a22653"), "Team C"),
+TEAM_COLOURS = [
+    "Red Team",
+    "Blue Team",
+    "Green Team",
+    "Yellow Team",
+    "Purple Team",
+    "Orange Team",
+    "Pink Team",
+    "Cyan Team",
+    "Brown Team",
+    "Black Team",
 ]
+
+
+SAMPLE_TEAMS = [(uuid4(), team_name) for team_name in TEAM_COLOURS]
 
 
 def reset_database(engine):

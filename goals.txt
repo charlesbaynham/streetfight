@@ -6,8 +6,11 @@ TODO:
  - [x] Fix pickup of level 1 gun
  - [ ] Drop location
  - [x] Admin names
+ - [x] Refund shots
+ - [ ] Update map with all pubs
+ - [ ] Non-pub circle (/ drop) locations, ideally pre-programmed
  - [x] Show scoreboard in dead mode
- - [ ] Improve admin kill interface
+ - [x] Improve admin kill interface
  - [x] Admins should have ticker view
   - [ ] Ticker view should actually update. So should shots view
 
