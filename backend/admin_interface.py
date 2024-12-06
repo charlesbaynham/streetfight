@@ -288,7 +288,7 @@ class AdminInterface:
         )
 
         try:
-            self.mark_shot_checked(shot_id)
+            self.mark_shot_missed(shot_id)
         except HTTPException:
             # Handle the edge case where a user shoots themselves
             pass
@@ -346,14 +346,61 @@ class AdminInterface:
                 pass
 
     @db_scoped
-    def mark_shot_checked(self, shot_id):
+    def mark_shot_missed(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
+        user_id = shot.user_id
+        game_id = shot.game_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
 
         if shot.checked:
             raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.MISSED_SHOT,
+            {},
+            user_id=user_id,
+            game_id=game_id,
+            session=self._session,
+        )
+
+        shot.checked = True
+        self._session.commit()
+
+    @db_scoped
+    def refund_shot(self, shot_id: UUID):
+        """
+        Refund a shot and mark it as checked
+
+        Args:
+            shot_id (UUID): Shot id
+
+        Raises:
+            HTTPException: 404 if shot not found
+            HTTPException: 400 if shot has already been checked
+        """
+        shot = self._session.query(Shot).filter_by(id=shot_id).first()
+        user_id = shot.user_id
+        game_id = shot.game_id
+
+        if not shot:
+            raise HTTPException(404, f"Shot id {shot_id} not found")
+
+        if shot.checked:
+            raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        user = shot.user
+
+        user.num_bullets += 1
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.REFUNDED_SHOT,
+            {},
+            game_id=game_id,
+            user_id=user_id,
+            session=self._session,
+        )
 
         shot.checked = True
         self._session.commit()

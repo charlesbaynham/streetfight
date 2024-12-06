@@ -327,9 +327,14 @@ async def admin_give_ammo(user_id, num: int = 1):
     AdminInterface().award_user_ammo(user_id, num=num)
 
 
-@admin_method(path="/admin_mark_shot_checked", method="POST")
-async def admin_mark_shot_checked(shot_id):
-    AdminInterface().mark_shot_checked(shot_id)
+@admin_method(path="/admin_refund_shot", method="POST")
+async def admin_refund_shot(shot_id):
+    AdminInterface().refund_shot(shot_id)
+
+
+@admin_method(path="/admin_mark_shot_missed", method="POST")
+async def admin_mark_shot_missed(shot_id):
+    AdminInterface().mark_shot_missed(shot_id)
 
 
 @admin_method("/admin_get_locations", method="GET")
