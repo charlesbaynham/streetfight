@@ -100,11 +100,13 @@ export default function ShotQueue() {
       if (!response.ok) return;
       const shot_ids = await response.json();
 
+      console.log("Setting shots in queue to", shot_ids);
       setShotsInQueue(shot_ids);
+
+      console.log("currentShotID is currently", currentShotID);
 
       if (!shot_ids.includes(currentShotID)) {
         console.log("Setting current shot ID to", shot_ids[0]);
-        console.log("currentShotID is currently", currentShotID);
         setCurrentShotID(shot_ids[0]);
       }
 
