@@ -103,6 +103,8 @@ export default function ShotQueue() {
       setShotsInQueue(shot_ids);
 
       if (!shot_ids.includes(currentShotID)) {
+        console.log("Setting current shot ID to", shot_ids[0]);
+        console.log("currentShotID is currently", currentShotID);
         setCurrentShotID(shot_ids[0]);
       }
 
