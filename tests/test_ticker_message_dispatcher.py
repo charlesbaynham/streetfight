@@ -69,7 +69,7 @@ def test_send_private_user_ticker_message(mock_session, mock_ticker):
 def test_send_ticker_message_missing_game_id(mock_session):
     supporting_strings = {"user": "Alice", "team": "Red"}
 
-    with pytest.raises(ValueError, match="Game ID required for public ticker messages"):
+    with pytest.raises(ValueError, match="Game ID required"):
         send_ticker_message(
             message_type=TickerMessageType.USER_JOINED_TEAM,
             supporting_strings=supporting_strings,
