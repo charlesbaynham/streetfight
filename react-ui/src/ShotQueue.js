@@ -13,7 +13,7 @@ function NearestPlayers({ shot_data }) {
 
   // Get user location in context array
   const userIndex = context.findIndex(
-    (location) => location.user_id === shooting_user_id
+    (location) => location.user_id === shooting_user_id,
   );
   console.log("User index in context array:", userIndex);
 
@@ -23,7 +23,7 @@ function NearestPlayers({ shot_data }) {
 
   // Remove the user from the context array
   const otherUsersContext = context.filter(
-    (location) => location.user_id !== shooting_user_id
+    (location) => location.user_id !== shooting_user_id,
   );
   console.log("Updated context array:", otherUsersContext);
 
@@ -64,7 +64,7 @@ function NearestPlayers({ shot_data }) {
         state,
         timestamp,
       };
-    }
+    },
   );
 
   // Sort shooting_users by distance
@@ -108,7 +108,7 @@ export default function ShotQueue() {
         shot_ids.map((id) => {
           console.log("Pre-loading shot", id);
           return getShotFromCache(id);
-        })
+        }),
       );
     });
   }, [currentShotID]);
@@ -129,19 +129,19 @@ export default function ShotQueue() {
           shot_id: shot_id,
           target_user_id: target_user_id,
         },
-        "POST"
+        "POST",
       ).then((_) => {
         update();
       });
     },
-    [update]
+    [update],
   );
 
   const markShotMissed = useCallback(() => {
     sendAPIRequest("admin_mark_shot_missed", { shot_id: shot.id }, "POST").then(
       (_) => {
         update();
-      }
+      },
     );
   }, [shot, update]);
 
@@ -149,7 +149,7 @@ export default function ShotQueue() {
     sendAPIRequest("admin_refund_shot", { shot_id: shot.id }, "POST").then(
       (_) => {
         update();
-      }
+      },
     );
   }, [shot, update]);
 

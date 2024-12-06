@@ -21,9 +21,9 @@ window.addEventListener("activate", (event) => {
             return caches.delete(cacheName);
           }
           return null;
-        })
-      )
-    )
+        }),
+      ),
+    ),
   );
 });
 
