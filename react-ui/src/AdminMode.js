@@ -8,6 +8,7 @@ import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
 import TickerView from "./TickerView";
+import { Col, Container, Row } from "react-bootstrap";
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -18,10 +19,10 @@ function GameView({ game }) {
           game_id: game.id,
           active: state,
         },
-        "POST",
+        "POST"
       );
     },
-    [game],
+    [game]
   );
 
   return (
@@ -73,10 +74,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   const hit_user = useCallback(
@@ -87,10 +88,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   const give_n_ammo = useCallback(
@@ -101,10 +102,10 @@ function UserControls({ user }) {
           user_id: user.id,
           num: n,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   const give_weapon = useCallback(
@@ -115,10 +116,10 @@ function UserControls({ user }) {
           user_id: user.id,
           weapon: weapon,
         },
-        "POST",
+        "POST"
       );
     },
-    [user.id],
+    [user.id]
   );
 
   return (
@@ -244,7 +245,7 @@ function CreateNewTeam({ game_id }) {
         game_id: game_id,
         team_name: team_name,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -272,7 +273,7 @@ function AddUserToTeam({ teams }) {
         user_id: user_id,
         team_id: team_id,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -309,7 +310,7 @@ function AddUserToTeam({ teams }) {
         onClick={() => {
           addUserToTeam(
             ref_add_user_to_team_user.current.value,
-            ref_add_user_to_team_team.current.value,
+            ref_add_user_to_team_team.current.value
           );
         }}
       >
@@ -335,7 +336,7 @@ function UserRenaming() {
         user_id: user_id,
         name: new_name,
       },
-      "POST",
+      "POST"
     );
   }, []);
 
@@ -387,7 +388,7 @@ export default function AdminMode() {
   useEffect(updatePanel, [updatePanel, knownTickerHash]);
 
   return (
-    <>
+    <Container>
       <UpdateSSEConnection endpoint="sse_admin_updates" />
       <UpdateListener
         update_type="admin"
@@ -401,20 +402,30 @@ export default function AdminMode() {
 
       <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
-      <AllGamesView games={games} />
+      <Row>
+        <AllGamesView games={games} />
+      </Row>
 
-      <NewItems />
+      <Row>
+        <Col>
+          <h3>New items</h3>
+          <NewItems />
+        </Col>
+        <Col>
+          <h3>User renaming</h3>
+          <UserRenaming />
+          <h3>Circle Control</h3>
+          {games.length > 0 ? (
+            <CircleControl game_id={games[0].id} />
+          ) : (
+            "Loading..."
+          )}
+        </Col>
+      </Row>
 
-      <UserRenaming />
-
-      <MapViewAdmin />
-
-      <h2>Circle Control</h2>
-      {games.length > 0 ? (
-        <CircleControl game_id={games[0].id} />
-      ) : (
-        "Loading..."
-      )}
-    </>
+      <Row>
+        <MapViewAdmin />
+      </Row>
+    </Container>
   );
 }

@@ -20,14 +20,12 @@ function ItemDisplay({ item }) {
   return (
     <>
       <QRCode value={encoded_url} />
-      <br />
-      Type: {item_type}
-      <br />
-      <>item_data: {JSON.stringify(item_data)}</>
-      <br />
-      Code: {encoded_item}
-      <br />
-      <a href={encoded_url}>Link</a>
+      <p>Type: {item_type}</p>
+      <p>item_data: {JSON.stringify(item_data)}</p>
+      {/* <p>Code: {encoded_item}</p> */}
+      <p>
+        <a href={encoded_url}>Link</a>
+      </p>
     </>
   );
 }
@@ -65,7 +63,7 @@ export default function NewItems() {
       },
       "POST",
       callback,
-      postData,
+      postData
     );
   }, [
     setItem,
