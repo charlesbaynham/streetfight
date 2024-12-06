@@ -230,24 +230,14 @@ class AdminInterface:
         return num_shots, shot_models
 
     @db_scoped
-    def get_unchecked_shots_info(self) -> list[tuple[UUID, str]]:
+    def get_unchecked_shots_info(self) -> list[UUID]:
         query = (
-            self._session.query(Shot.id, Shot.user_id)
+            self._session.query(Shot.id)
             .filter_by(checked=False)
             .order_by(Shot.time_created)
         )
 
-        shot_ids_and_user_ids = query.all()
-
-        shot_ids_and_user_names = []
-
-        for shot_id, user_id in shot_ids_and_user_ids:
-            user_name = (
-                UserInterface(user_id=user_id, session=self._session).get_user().name
-            )
-            shot_ids_and_user_names.append((shot_id, user_name))
-
-        return shot_ids_and_user_names
+        return [shot.id for shot in query.all()]
 
     def hit_user_by_admin(self, user_id, num=1):
         with UserInterface(user_id) as ui:
