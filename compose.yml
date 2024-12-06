@@ -1,0 +1,46 @@
+services:
+  frontend:
+    image: streetfight-frontend
+    environment:
+    - API_URL
+    - WEBSITE_URL
+    - XDG_CONFIG_HOME=/config
+    - XDG_DATA_HOME=/data
+    ports:
+    - 80:80
+    - 443:443
+    volumes:
+    - caddy_data:/data
+    - caddy_config:/config
+    restart: always
+
+  backend:
+    image: streetfight-backend
+    environment:
+    - DATABASE_URL=${DATABASE_URL:-sqlite:////data/db/data.db}
+    - MAKE_DEBUG_ENTRIES
+    - RESET_DATABASE
+    - SECRET_KEY
+    - ADMIN_PASSWORD
+    - WEBSITE_URL
+    - LOG_LEVEL
+    - LOG_OVERRIDES
+    - GUNICORN_WORKERS
+    volumes:
+    - ./logs:/data/logs
+    - database:/data/db
+    restart: always
+
+  cloudflare-ddns:
+    image: oznu/cloudflare-ddns:latest
+    restart: always
+    environment:
+    - API_KEY=${CLOUDFLARE_KEY}
+    - ZONE=${CLOUDFLARE_DOMAIN}
+    - SUBDOMAIN=${CLOUDFLARE_SUBDOMAIN}
+    - PROXIED=false
+
+volumes:
+  database:
+  caddy_data:
+  caddy_config:

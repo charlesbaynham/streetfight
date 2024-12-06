@@ -1,0 +1,7 @@
+.webcamVideo {
+  object-fit: cover;
+}
+
+.webcamVideo.dead {
+  filter: grayscale(1) brightness(30%);
+}

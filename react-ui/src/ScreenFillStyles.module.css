@@ -1,0 +1,9 @@
+.screenFill {
+  position: absolute;
+  height: 100vh;
+  width: 100vw;
+  top: 50vh;
+  left: 50vw;
+  transform: translate(-50%, -50%);
+  z-index: -1;
+}

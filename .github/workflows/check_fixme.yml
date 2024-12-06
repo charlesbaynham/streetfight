@@ -1,0 +1,19 @@
+name: Check for FIXME
+
+on: [push]
+
+jobs:
+  check-fixme:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Search for FIXME
+      run: |
+        if grep -r --exclude-dir=.github/ --exclude-dir=node_modules/ --exclude-dir=.git "FIXME" .; then
+                echo "FIXME found in the repository"
+                exit 1
+        else
+                echo "No FIXME found"
+        fi

@@ -1,0 +1,45 @@
+{
+  "name": "streetfight",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Hacky streetfight app, will probably go nowhere",
+  "scripts": {
+    "start": "concurrently \"npm run frontend\" \"npm run resetdb && uvicorn backend.main:app --host 0.0.0.0\"",
+    "dev_both": "concurrently \"cd react-ui && npm start\" \"npm run backend\"",
+    "dev": "cd react-ui && npm start",
+    "frontend": "node server",
+    "backend": "uvicorn backend.main:app --reload --reload-dir backend",
+    "build": "cd react-ui && npm run build",
+    "install": "cd react-ui/ && npm install",
+    "resetdb": "python -m backend.reset_db",
+    "test": "pytest && cd react-ui && npm test",
+    "clean": "git clean -xdf --exclude venv --exclude node_modules --exclude .env",
+    "browsers": "python -c 'from tests.test_selenium import make_N_drivers; import sys; drvs=make_N_drivers(int(sys.argv[1])); [d.get(sys.argv[2]) for d in drvs]'",
+    "gen_cert": "openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj \"/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname\"",
+    "bootstrap": "npm i && npm run gen_cert && npm run build && cp .env.dev .env",
+    "qrgen": "python -m backend.generate_qr_items"
+  },
+  "cacheDirectories": [
+    "node_modules",
+    "react-ui/node_modules"
+  ],
+  "dependencies": {
+    "concurrently": "^8.2.0",
+    "express": "^4.18.2",
+    "http-proxy-middleware": "^2.0.6"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/charlesbaynham/streetfight.git"
+  },
+  "keywords": [
+    "node",
+    "heroku",
+    "fastapi",
+    "react"
+  ],
+  "license": "None",
+  "devDependencies": {
+    "prettier": "3.3.2"
+  }
+}

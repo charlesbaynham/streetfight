@@ -1,0 +1,25 @@
+.bulletCount {
+  background: rgba(0, 0, 0, 0.5);
+  width: 10em;
+  color: white;
+  padding: 0.1em 1em;
+  line-height: 1em;
+  /* border-radius: 10px; */
+}
+
+.icon {
+  height: 1.5em;
+  vertical-align: middle;
+}
+
+.bulletCount p {
+  font-family: inherit;
+}
+
+.indicator {
+  text-align: right;
+}
+
+.weaponImg {
+  width: 100%;
+}

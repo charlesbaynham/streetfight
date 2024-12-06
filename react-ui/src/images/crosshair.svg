@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+<svg version="1.0" viewBox="0 0 176.13 178.91" xmlns="http://www.w3.org/2000/svg">
+ <g transform="translate(-180.17 -248.48)" stroke="#f00">
+  <g fill="none" stroke-width="2">
+   <path transform="matrix(1.0697 0 0 1.0697 69.611 145.44)" d="m247.25 179.95c0 35.589-27.568 64.439-61.575 64.439s-61.575-28.85-61.575-64.439 27.568-64.439 61.575-64.439 61.575 28.85 61.575 64.439z"/>
+   <path transform="matrix(.76407 0 0 .76407 126.36 200.44)" d="m247.25 179.95c0 35.589-27.568 64.439-61.575 64.439s-61.575-28.85-61.575-64.439 27.568-64.439 61.575-64.439 61.575 28.85 61.575 64.439z"/>
+   <path transform="matrix(.45844 0 0 .45844 183.11 255.44)" d="m247.25 179.95c0 35.589-27.568 64.439-61.575 64.439s-61.575-28.85-61.575-64.439 27.568-64.439 61.575-64.439 61.575 28.85 61.575 64.439z"/>
+  </g>
+  <g fill="#f00">
+   <rect x="267.34" y="249.08" width="1.7837" height="58.784" stroke-linecap="round" stroke-width="1.216"/>
+   <g stroke-width="1.2163">
+    <rect x="267.34" y="368" width="1.7837" height="58.784"/>
+    <rect transform="rotate(90)" x="337.04" y="-355.69" width="1.7837" height="58.784"/>
+    <rect transform="rotate(90)" x="337.04" y="-239.56" width="1.7837" height="58.784"/>
+   </g>
+  </g>
+  <rect x="238.23" y="337.78" width="60" height=".3"/>
+  <rect transform="rotate(90)" x="307.93" y="-268.38" width="60" height=".3"/>
+  <rect x="266.72" y="332.13" width="3" height="1"/>
+  <rect x="266.72" y="314.13" width="3" height="1"/>
+  <rect x="266.72" y="320.13" width="3" height="1"/>
+  <rect x="266.72" y="326.13" width="3" height="1"/>
+  <rect x="266.75" y="360.74" width="3" height="1"/>
+  <rect x="266.75" y="342.74" width="3" height="1"/>
+  <rect x="266.75" y="348.74" width="3" height="1"/>
+  <rect x="266.75" y="354.74" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.42" y="-274.04" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.42" y="-292.04" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.42" y="-286.04" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.42" y="-280.04" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.45" y="-245.43" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.45" y="-263.43" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.45" y="-257.43" width="3" height="1"/>
+  <rect transform="rotate(90)" x="336.45" y="-251.43" width="3" height="1"/>
+ </g>
+</svg>

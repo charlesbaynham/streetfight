@@ -1,0 +1,108 @@
+.outerContainer {
+  background-color: black;
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100%;
+  color: white;
+}
+
+.innerContainer {
+  position: absolute;
+  display: inline-block;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-50%) translateY(-50%);
+}
+
+/* Style for the container of the input and button */
+.stackedItem {
+  position: relative;
+  width: 80vw;
+  max-width: 150mm;
+  height: 24mm;
+  max-height: 8vh;
+  color: white;
+}
+
+.stackedItem p {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  margin: 0;
+  font-size: larger;
+  padding: 0 10mm;
+}
+
+/* Style for the text input */
+.nameInput {
+  border: 1mm solid white;
+  border-radius: 12mm;
+  padding: 10px;
+  box-sizing: border-box;
+  background: none;
+  width: 100%;
+  height: 100%;
+  font-size: larger;
+  padding: 0 10mm;
+  color: white;
+}
+
+.done .nameInput {
+  border-color: green;
+  color: green;
+}
+
+button.stackedItem {
+  background: none;
+  margin: 0;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+/* Style for the circular button */
+
+.actionButton {
+  position: absolute;
+  display: block;
+  top: 50%;
+  right: 3mm;
+  /* Adjust the distance from the input's right edge */
+  transform: translateY(-50%);
+  width: 18mm;
+  height: 18mm;
+  max-height: 6vh;
+  max-width: 6vh;
+  border: none;
+  border-radius: 50%;
+  background: white;
+  cursor: pointer;
+}
+
+.done {
+  color: green;
+}
+
+.done .actionButton {
+  background-color: green;
+}
+
+.actionButton img {
+  width: 60%;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translateX(-55%) translateY(-50%);
+}
+
+.logo {
+  text-align: center;
+  padding-bottom: 1em;
+}
+
+.logo img {
+  max-width: 50vw;
+  max-height: 40vh;
+}

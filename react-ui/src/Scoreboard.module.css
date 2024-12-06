@@ -1,0 +1,62 @@
+.scoretable {
+  font-family: Arial, Helvetica, sans-serif;
+  border-collapse: collapse;
+  width: 100%;
+  color: white;
+}
+
+.scoretable td,
+.scoretable th {
+  /* border: 1px solid #ddd; */
+  padding: 8px;
+}
+
+/* .scoretable tr:nth-child(even) {
+    background-color: #f2f2f2;
+} */
+/*
+.scoretable tr:hover {
+    background-color: #ddd;
+} */
+
+.scoretable th {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  font-weight: bold;
+}
+
+.scoretable .alive {
+  color: white;
+}
+
+.scoretable .knocked_out {
+  color: yellow;
+  font-style: italic;
+}
+
+.scoretable .dead {
+  color: red;
+  font-style: italic;
+}
+
+.showScoresButton {
+  background: none;
+  color: inherit;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+  padding: 0.5em;
+  text-align: center;
+  width: 100%;
+}
+
+
+.standalone {
+  padding: 2em 1em;
+  background-color: #00000088;
+  color: white;
+}

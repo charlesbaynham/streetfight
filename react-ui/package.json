@@ -1,0 +1,60 @@
+{
+  "name": "streetfight",
+  "version": "0.1.0",
+  "homepage": "http://localhost/",
+  "private": true,
+  "dependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
+    "@maplibre/maplibre-react-native": "^10.0.0-alpha.13",
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^13.4.0",
+    "@testing-library/user-event": "^13.5.0",
+    "add-to-homescreen": "github:philfung/add-to-homescreen",
+    "babel-preset-react-app": "^10.0.1",
+    "bootstrap": "^5.3.3",
+    "framer-motion": "^10.16.4",
+    "qr-scanner": "^1.4.2",
+    "react": "^18.2.0",
+    "react-bootstrap": "^2.10.6",
+    "react-dom": "^18.2.0",
+    "react-full-screen": "^1.1.1",
+    "react-qr-code": "^2.0.12",
+    "react-router-dom": "^6.15.0",
+    "react-scripts": "^5.0.1",
+    "react-tooltip": "^5.28.0",
+    "react-zoom-pan-pinch": "^3.6.1",
+    "use-sound": "^4.0.1",
+    "web-vitals": "^2.1.4"
+  },
+  "scripts": {
+    "start": "HTTPS=true react-scripts start",
+    "build": "react-scripts build",
+    "test": "react-scripts test",
+    "eject": "react-scripts eject",
+    "predeploy": "npm run build"
+  },
+  "eslintConfig": {
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "ignorePatterns": [
+      "modernizr.js"
+    ]
+  },
+  "browserslist": {
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
+  },
+  "devDependencies": {
+    "webpack-cli": "^5.1.4"
+  }
+}

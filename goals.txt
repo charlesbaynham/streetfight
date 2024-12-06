@@ -1,0 +1,81 @@
+Goals
+-----
+
+TODO:
+ - [x] Generic text messages from admin
+ - [x] Fix pickup of level 1 gun
+ - [ ] Drop location
+ - [x] Admin names
+ - [x] Show scoreboard in dead mode
+ - [ ] Improve admin kill interface
+ - [x] Admins should have ticker view
+  - [ ] Ticker view should actually update...
+
+  - [x] Reset should fire all game events
+
+Bugs:
+- [ ] There's a big memory leak in the events... Try debugging with "LOG_OVERRIDES=backend.sse_event_streams:DEBUG" and refresh the admin page a few times
+- [x] iPhone location does not work - maybe fixed, ask Rob
+- [x] Location permission should be requested on start screen
+
+- [x] The camera doesn't work properly on safari! When I reconnect from standby
+      it's white until a refresh. This breaks the PWA. Seems to be the fault of react
+      webcam, I can use it fine on a normal HTML5 demo site. Guess I'm coding my own
+      webcam widget... Urghq
+- [ ] Somewhere in the giant iOS clusterfuck, the Permissions API for proper browsers got messed up - actually I think maybe it never worked properly for firefox + geolocation
+
+
+Location:
+  Not a priority, but I'm apparently doing it anyway. Classic.
+  - [x] When a shot happens, record where everyone was so the interface can suggest who was closest
+  - [x] Hand-drawn map with pubs marked
+  - [ ] Circles displayed on map, triggered by admins
+  - [ ] Disable pubs when outside circle
+  - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
+  - [ ] "Scanner" item which reveals other teams for x minutes
+
+Priority:
+  - [x] You should be stuck on the home screen until the appropriate permissions are given
+  - [x] Needs a "hit" noise / notification
+  - [x] You should find out if you hit someone (use private tickers)
+  - [x] Need to be able to change your name... People will be silly
+
+Polish:
+  - [ ] Make ticker messages disappear eventually. Clientside.
+  - [x] The animation for the bullet reload is jerky
+  - [ ] Put harry's noises in
+    * time splitters 2 ricochet
+    * random selection of western ricochet shots
+  - [ ] Clicking outside the socre card should exit it
+
+  - [ ] Heartbeat animation when knocked out
+  - [ ] Handle shooting someone when they are already dead
+  - [ ] Ability to delay decision for a shot while processing others (conflict with ordering)
+  - [ ] Must implement refund for unsure shots
+  - [ ] Consider having the UI anticipate events from the server - this would make it more responsive
+  - [ ] Use new QR code API if available (https://developer.mozilla.org/en-US/docs/Web/API/Barcode_Detection_API)
+
+Non-code:
+- [ ] Medkits are totally manual / admin controlled - only available in the first 60 minutes and only for a team shot in a pub
+- [ ] Need write-up explaining the rules
+    - [ ] Ideally this should be the team sheet which includes the QR code to sign up (useful for testing the app)
+  - [ ] Collections:
+    - Level 3 armour and the best gun only come from crates.
+    - Level 1 armour is fairly common.
+    - Level 2 is rare but on lampposts
+    - Level 2 gun is mediumly rare on lampposts
+    - Quick-shoot gun is very rare and also in crates
+- We will have 4-6 people per team. We will decide the teams in advance
+
+Checks:
+ - [ ] Harry and Gaby were not getting updates. I think this is fixed by the timeout but I should check
+ - [ ] Images are now higher res and lag is reduced - this needs to be checked live
+
+Backburner:
+
+- [x] Admin interface UI should also auto-update
+- [x]: The admin interface should have a password
+- [ ]: Users should be able to send items to other users (on their team? only bullets?)
+- [x] Fixed by moving to SSE: Websockets: Having the game open in multiple tabs, I sometimes hit the browser persistent connections limit
+- [ ] QR code interface for joining team
+- [ ] Flash the torch on shots - probably not, only possible on Android
