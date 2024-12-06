@@ -4,7 +4,7 @@ Goals
 TODO:
  - [x] Generic text messages from admin
  - [x] Fix pickup of level 1 gun
- - [ ] Drop location
+ - [x] Drop location
  - [x] Admin names
  - [x] Do colours for teams
  - [x] Refund shots
