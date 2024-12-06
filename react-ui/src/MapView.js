@@ -40,7 +40,7 @@ const degreesLongitudePerKm =
   1 /
   (111.32 *
     Math.cos(
-      ((map_bottom_left.lat + map_top_right.lat) / 2) * (Math.PI / 180)
+      ((map_bottom_left.lat + map_top_right.lat) / 2) * (Math.PI / 180),
     ));
 const degreesLatitudePerKm = 1 / 110.574;
 
@@ -68,7 +68,7 @@ function sendLocationUpdate(lat, long) {
       longitude: long,
     },
     "POST",
-    null
+    null,
   );
 }
 
@@ -168,7 +168,7 @@ function MapCircles({
         height: radius_px * 2,
       };
     },
-    [calculators]
+    [calculators],
   );
 
   const circles = [];
@@ -180,7 +180,7 @@ function MapCircles({
         <div
           className={styles.exclusionCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
-        />
+        />,
       );
   }
 
@@ -191,7 +191,7 @@ function MapCircles({
         <div
           className={styles.nextCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
-        />
+        />,
       );
   }
 
@@ -202,14 +202,14 @@ function MapCircles({
         <div
           className={styles.dropCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
-        />
+        />,
       );
   }
 
   return (
     <div className={styles.mapCirclesContainer}>
       {circles.map((circle, index) =>
-        React.cloneElement(circle, { key: index })
+        React.cloneElement(circle, { key: index }),
       )}
     </div>
   );
@@ -260,7 +260,7 @@ function MapView({
   // change every time we move, so hold it in a ref to prevent rerendering
   const mapCentreLatRef = useRef((map_bottom_left.lat + map_top_right.lat) / 2);
   const mapCentreLongRef = useRef(
-    (map_bottom_left.long + map_top_right.long) / 2
+    (map_bottom_left.long + map_top_right.long) / 2,
   );
 
   const coordsToKm = useCallback(
@@ -275,7 +275,7 @@ function MapView({
 
       return [x_km, y_km];
     },
-    [box_height_km, box_width_km]
+    [box_height_km, box_width_km],
   );
 
   const kmToPixels = useCallback(
@@ -286,7 +286,7 @@ function MapView({
 
       return [x_px, y_px];
     },
-    [boxWidthPx, boxHeightPx, box_height_km, box_width_km]
+    [boxWidthPx, boxHeightPx, box_height_km, box_width_km],
   );
 
   const coordsToPixels = useCallback(
@@ -294,7 +294,7 @@ function MapView({
       const [x_km, y_km] = coordsToKm(lat, long);
       return kmToPixels(x_km, y_km);
     },
-    [coordsToKm, kmToPixels]
+    [coordsToKm, kmToPixels],
   );
 
   const [mapData, setMapData] = useState({
@@ -306,7 +306,7 @@ function MapView({
   });
 
   const otherPositionsAndDetailsString = JSON.stringify(
-    other_positions_and_details
+    other_positions_and_details,
   );
 
   // Calculate the centre of the box, using our own position if provided
@@ -332,14 +332,14 @@ function MapView({
     // Calculate map position based on box position
     const [map_x0, map_y0] = coordsToPixels(
       map_bottom_left.lat,
-      map_bottom_left.long
+      map_bottom_left.long,
     );
 
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
       ? coordsToPixels(
           ownPosition.coords.latitude,
-          ownPosition.coords.longitude
+          ownPosition.coords.longitude,
         )
       : [0, 0];
 
@@ -348,12 +348,12 @@ function MapView({
       ({ position, color, tooltip }, index) => {
         const [x, y] = coordsToPixels(
           position.coords.latitude,
-          position.coords.longitude
+          position.coords.longitude,
         );
         const dt = 1e-3 * Date.now() - position.timestamp;
         const alpha = Math.max(
           1 - ((1 - MIN_ALPHA) * dt) / TIME_UNTIL_TRANSPARENT,
-          MIN_ALPHA
+          MIN_ALPHA,
         );
         return (
           <Dot
@@ -365,7 +365,7 @@ function MapView({
             tooltip={tooltip}
           />
         );
-      }
+      },
     );
 
     setMapData({
@@ -476,7 +476,7 @@ export function MapViewSelf() {
             setPosition(position);
             sendLocationUpdate(
               position.coords.latitude,
-              position.coords.longitude
+              position.coords.longitude,
             );
             lastUpdateTime = currentTime;
           }
@@ -484,7 +484,7 @@ export function MapViewSelf() {
 
         (error) => {
           console.error("Error watching position:", error);
-        }
+        },
       );
 
       return () => {
