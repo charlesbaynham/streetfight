@@ -196,7 +196,7 @@ def send_ticker_message(
         )
     elif target == TickerTarget.PRIVATE_USER:
         if not game_id:
-            raise ValueError("Game ID required for public ticker messages")
+            raise ValueError("Game ID required")
         if not user_id:
             raise ValueError("User ID required for private user ticker messages")
 
