@@ -55,6 +55,10 @@ class Game(Base):
     next_circle_long = Column(Float, nullable=True)
     next_circle_radius = Column(Float, nullable=True)
 
+    drop_circle_lat = Column(Float, nullable=True)
+    drop_circle_long = Column(Float, nullable=True)
+    drop_circle_radius = Column(Float, nullable=True)
+
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
@@ -304,6 +308,10 @@ class GameModel(pydantic.BaseModel):
     next_circle_lat: Optional[float]
     next_circle_long: Optional[float]
     next_circle_radius: Optional[float]
+
+    drop_circle_lat: Optional[float]
+    drop_circle_long: Optional[float]
+    drop_circle_radius: Optional[float]
 
     class Config:
         orm_mode = True

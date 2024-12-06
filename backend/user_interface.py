@@ -360,6 +360,9 @@ class UserInterface:
             "next_circle_lat": game_model.next_circle_lat,
             "next_circle_long": game_model.next_circle_long,
             "next_circle_radius": game_model.next_circle_radius,
+            "drop_circle_lat": game_model.drop_circle_lat,
+            "drop_circle_long": game_model.drop_circle_long,
+            "drop_circle_radius": game_model.drop_circle_radius,
         }
 
     @db_scoped

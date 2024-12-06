@@ -2,8 +2,6 @@ import React, { useCallback, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 export default function CircleControl({ game_id }) {
-  const [status, setStatus] = useState("idle");
-
   const setCircle = useCallback(
     (circle_type, location, radius_km) => {
       sendAPIRequest(
@@ -15,13 +13,7 @@ export default function CircleControl({ game_id }) {
           radius_km: radius_km,
         },
         "POST",
-      ).then((response) => {
-        if (response.ok) {
-          setStatus("success");
-        } else {
-          setStatus("failure");
-        }
-      });
+      );
     },
     [game_id],
   );
@@ -35,13 +27,7 @@ export default function CircleControl({ game_id }) {
           name: circle_type,
         },
         "POST",
-      ).then((response) => {
-        if (response.ok) {
-          setStatus("success");
-        } else {
-          setStatus("failure");
-        }
-      });
+      );
     },
     [game_id],
   );
@@ -67,6 +53,7 @@ export default function CircleControl({ game_id }) {
             <option value="EXCLUSION">EXCLUSION</option>
             <option value="NEXT">NEXT</option>
             <option value="BOTH">BOTH</option>
+            <option value="DROP">DROP</option>
           </select>
         </label>
         <label>

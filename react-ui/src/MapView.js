@@ -127,6 +127,15 @@ function MapCirclesFromAPI({ calculators }) {
             ]
           : null
       }
+      dropCircle={
+        circlesData
+          ? [
+              circlesData["drop_circle_lat"],
+              circlesData["drop_circle_long"],
+              circlesData["drop_circle_radius"],
+            ]
+          : null
+      }
     />
   );
 }
@@ -137,6 +146,7 @@ function MapCircles({
   calculators,
   exclusionCircle = null,
   nextCircle = null,
+  dropCircle = null,
 }) {
   const calculateCircleStyles = useCallback(
     (lat, long, radiusKM) => {
@@ -180,6 +190,17 @@ function MapCircles({
       circles.push(
         <div
           className={styles.nextCircle}
+          style={calculateCircleStyles(lat, long, radiusKM)}
+        />,
+      );
+  }
+
+  if (dropCircle) {
+    const [lat, long, radiusKM] = dropCircle;
+    if (lat && long && radiusKM)
+      circles.push(
+        <div
+          className={styles.dropCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
         />,
       );

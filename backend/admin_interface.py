@@ -43,6 +43,7 @@ class CircleTypes(str, Enum):
     EXCLUSION = "EXCLUSION"
     NEXT = "NEXT"
     BOTH = "BOTH"
+    DROP = "DROP"
 
 
 class AdminInterface:
@@ -134,6 +135,12 @@ class AdminInterface:
             game.next_circle_long = long
             game.next_circle_radius = radius
             message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH
+        elif name == CircleTypes.DROP:
+            game.drop_circle_lat = lat
+            game.drop_circle_long = long
+            game.drop_circle_radius = radius
+
+            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_DROP
         else:
             raise HTTPException(400, f"Invalid circle name {name}")
 

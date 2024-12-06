@@ -411,7 +411,7 @@ Landmark = Enum("Landmark", {k: k for k in LANDMARK_LOCATIONS.keys()})
 
 
 @admin_method(path="/admin_set_circle_by_location", method="POST")
-async def admin_set_circle(
+async def admin_set_circle_by_location(
     game_id: UUID,
     name: CircleTypes,
     location: Landmark,  # type: ignore

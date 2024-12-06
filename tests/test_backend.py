@@ -61,6 +61,9 @@ def test_get_circles_in_game_no_circle(api_client, api_user_id, one_team):
         "next_circle_lat",
         "next_circle_long",
         "next_circle_radius",
+        "drop_circle_lat",
+        "drop_circle_long",
+        "drop_circle_radius",
     ]:
         assert key in response
         assert response[key] is None
@@ -82,6 +85,9 @@ def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_t
     assert response["next_circle_lat"] is None
     assert response["next_circle_long"] is None
     assert response["next_circle_radius"] is None
+    assert response["drop_circle_lat"] is None
+    assert response["drop_circle_long"] is None
+    assert response["drop_circle_radius"] is None
 
 
 def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
