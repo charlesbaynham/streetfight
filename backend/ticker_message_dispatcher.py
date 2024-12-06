@@ -39,6 +39,8 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_NEXT = auto()
     ADMIN_SET_CIRCLE_EXCLUSION = auto()
     ADMIN_SET_CIRCLE_BOTH = auto()
+    MISSED_SHOT = auto()
+    REFUNDED_SHOT = auto()
 
 
 class TickerTarget(Enum):
@@ -123,6 +125,14 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_SET_CIRCLE_BOTH: (
         TickerTarget.PUBLIC,
         "The circle has changed - if you're outside, get moving!",
+    ),
+    TickerMessageType.MISSED_SHOT: (
+        TickerTarget.PRIVATE_USER,
+        "Your shot missed! Try again...",
+    ),
+    TickerMessageType.REFUNDED_SHOT: (
+        TickerTarget.PRIVATE_USER,
+        "We couldn't read your shot - your ammo was refunded",
     ),
 }
 
