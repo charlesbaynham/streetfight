@@ -116,6 +116,22 @@ def test_make_game(admin_api_client):
     assert UUID(response.json())
 
 
+def test_reset_game(admin_api_client, user_in_team):
+    UserInterface(user_in_team).set_HP(3)
+    game_id = UserInterface(user_in_team).get_user_model().game_id
+
+    response = admin_api_client.post(
+        "/api/admin_reset_game?keep_weapons=true&game_id=" + str(game_id)
+    )
+
+    print(response)
+    print(response.json())
+
+    assert response.status_code == 200
+
+    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+
+
 def test_admin_get_shots_info(admin_api_client):
     response = admin_api_client.get("/api/admin_get_shots_info")
 
