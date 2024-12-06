@@ -63,7 +63,7 @@ export default function NewItems() {
       },
       "POST",
       callback,
-      postData
+      postData,
     );
   }, [
     setItem,
