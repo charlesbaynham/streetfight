@@ -4,15 +4,15 @@ Goals
 TODO:
  - [x] Generic text messages from admin
  - [x] Fix pickup of level 1 gun
- - [ ] Drop location - Blue circle for drop
+ - [ ] Drop location
  - [x] Admin names
- - [ ] Do colours for teams
  - [x] Refund shots
  - [ ] Update map with all pubs
  - [ ] Non-pub circle (/ drop) locations, ideally pre-programmed
  - [x] Show scoreboard in dead mode
  - [x] Improve admin kill interface
  - [x] Admins should have ticker view
+  - [ ] Ticker view should actually update. So should shots view
 
   - [x] Reset should fire all game events
 
@@ -32,7 +32,7 @@ Location:
   Not a priority, but I'm apparently doing it anyway. Classic.
   - [x] When a shot happens, record where everyone was so the interface can suggest who was closest
   - [x] Hand-drawn map with pubs marked
-  - [x] Circles displayed on map, triggered by admins
+  - [ ] Circles displayed on map, triggered by admins
   - [ ] Disable pubs when outside circle
   - [ ] 10-minute warning for out of circle (admins administer deaths every 60 seconds thereafter)
   - [ ] "Scanner" item which reveals other teams for x minutes
