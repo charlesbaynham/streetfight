@@ -7,6 +7,7 @@ from uuid import uuid4 as get_uuid
 
 import pytest
 
+from backend.admin_interface import AdminInterface
 from backend.user_interface import UserInterface
 
 TESTING_DB_URL = "sqlite:///testing.db"
@@ -325,3 +326,13 @@ def api_user_id(api_client):
 @pytest.fixture
 def test_image_string():
     return Path(__file__, "../sample_base64_image.txt").resolve().read_text()
+
+
+@pytest.fixture
+def shot_from_user_in_team(user_in_team, test_image_string):
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    ui.set_weapon_data(1, 6)
+    ui.submit_shot(test_image_string)
+
+    return AdminInterface().get_unchecked_shots_ids()[0]

@@ -1,3 +1,5 @@
+import "bootstrap/dist/css/bootstrap.min.css";
+
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { sendAPIRequest } from "./utils";
@@ -6,6 +8,7 @@ import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
 import TickerView from "./TickerView";
+import { Col, Container, Row } from "react-bootstrap";
 
 function GameView({ game }) {
   const setGameActive = useCallback(
@@ -385,7 +388,7 @@ export default function AdminMode() {
   useEffect(updatePanel, [updatePanel, knownTickerHash]);
 
   return (
-    <>
+    <Container>
       <UpdateSSEConnection endpoint="sse_admin_updates" />
       <UpdateListener
         update_type="admin"
@@ -399,20 +402,30 @@ export default function AdminMode() {
 
       <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
-      <AllGamesView games={games} />
+      <Row>
+        <AllGamesView games={games} />
+      </Row>
 
-      <NewItems />
+      <Row>
+        <Col>
+          <h3>New items</h3>
+          <NewItems />
+        </Col>
+        <Col>
+          <h3>User renaming</h3>
+          <UserRenaming />
+          <h3>Circle Control</h3>
+          {games.length > 0 ? (
+            <CircleControl game_id={games[0].id} />
+          ) : (
+            "Loading..."
+          )}
+        </Col>
+      </Row>
 
-      <UserRenaming />
-
-      <MapViewAdmin />
-
-      <h2>Circle Control</h2>
-      {games.length > 0 ? (
-        <CircleControl game_id={games[0].id} />
-      ) : (
-        "Loading..."
-      )}
-    </>
+      <Row>
+        <MapViewAdmin />
+      </Row>
+    </Container>
   );
 }

@@ -224,10 +224,28 @@ class AdminInterface:
 
         self._session.close()
 
-        for shot_model in shot_models:
-            shot_model.image_base64 = draw_cross_on_image(shot_model.image_base64)
+        for shot in shot_models:
+            shot.image_base64 = draw_cross_on_image(shot.image_base64)
 
         return num_shots, shot_models
+
+    @staticmethod
+    def markup_shot_model(shot_model: ShotModel):
+        new_model = shot_model.copy()
+        new_model.image_base64 = draw_cross_on_image(new_model.image_base64)
+
+        return new_model
+
+    @db_scoped
+    def get_unchecked_shots_ids(self) -> list[UUID]:
+        shot_ids = (
+            self._session.query(Shot.id)
+            .filter_by(checked=False)
+            .order_by(Shot.time_created)
+            .all()
+        )
+
+        return [shot_id[0] for shot_id in shot_ids]
 
     def hit_user_by_admin(self, user_id, num=1):
         with UserInterface(user_id) as ui:
