@@ -53,6 +53,7 @@ export default function CircleControl({ game_id }) {
             <option value="EXCLUSION">EXCLUSION</option>
             <option value="NEXT">NEXT</option>
             <option value="BOTH">BOTH</option>
+            <option value="DROP">DROP</option>
           </select>
         </label>
         <label>

@@ -54,6 +54,7 @@
     height: 100%;
 }
 
+/* FIXME add drop circle */
 .exclusionCircle {
     position: absolute;
     border-radius: 50%;
