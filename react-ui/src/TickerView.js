@@ -5,7 +5,7 @@ import { sendAPIRequest } from "./utils";
 
 import styles from "./TickerView.module.css";
 
-export default function TickerView({ admin = false }) {
+export default function TickerView({ admin = false, num_messages = 3 }) {
   const [messages, setMessages] = useState([[]]);
   const [knownTickerHash, setKnownTickerHash] = useState(0);
 
@@ -13,14 +13,14 @@ export default function TickerView({ admin = false }) {
     sendAPIRequest(
       "ticker_messages",
       {
-        num_messages: 10,
+        num_messages: num_messages,
       },
       "GET",
       (data) => {
         setMessages(data);
-      },
+      }
     );
-  }, [setMessages]);
+  }, [setMessages, num_messages]);
 
   useEffect(updateMessages, [updateMessages, knownTickerHash]);
 
