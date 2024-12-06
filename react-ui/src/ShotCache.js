@@ -20,9 +20,10 @@ window.addEventListener("activate", (event) => {
             console.log("Deleting out of date cache:", cacheName);
             return caches.delete(cacheName);
           }
-        }),
-      ),
-    ),
+          return null;
+        })
+      )
+    )
   );
 });
 
