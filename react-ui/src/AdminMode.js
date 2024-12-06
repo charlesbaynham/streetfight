@@ -105,6 +105,20 @@ function UserControls({ user }) {
     [user.id],
   );
 
+  const give_weapon = useCallback(
+    (weapon) => {
+      sendAPIRequest(
+        "admin_set_weapon",
+        {
+          user_id: user.id,
+          weapon: weapon,
+        },
+        "POST",
+      );
+    },
+    [user.id],
+  );
+
   return (
     <li>
       {user.name} {user.hit_points <= 0 ? <span>&#x1F480;</span> : null} (
@@ -172,6 +186,35 @@ function UserControls({ user }) {
         }}
       >
         -A
+      </button>
+      Weapon:
+      <button
+        onClick={() => {
+          give_weapon("No weapon");
+        }}
+      >
+        No weapon
+      </button>
+      <button
+        onClick={() => {
+          give_weapon("Pewster");
+        }}
+      >
+        Pewster
+      </button>
+      <button
+        onClick={() => {
+          give_weapon("Tracka-Tracka");
+        }}
+      >
+        Tracka-Tracka
+      </button>
+      <button
+        onClick={() => {
+          give_weapon("OMG");
+        }}
+      >
+        OMG
       </button>
     </li>
   );

@@ -20,6 +20,7 @@ from starlette.responses import StreamingResponse
 
 from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
+from .item_actions import WEAPON_NAME_LOOKUP
 from .locations import LANDMARK_LOCATIONS
 from .ticker_message_dispatcher import send_generic_message
 
@@ -302,6 +303,18 @@ async def admin_shot_hit_user(shot_id, target_user_id):
 @admin_method(path="/admin_set_hp", method="POST")
 async def admin_set_hp(user_id, num: int = 1):
     AdminInterface().set_user_HP(user_id, num=num)
+
+
+Weapon = Enum("Weapon", {v: v for k, v in WEAPON_NAME_LOOKUP.items()})
+WEAPON_DATA_LOOKUP = {Weapon(v): k for k, v in WEAPON_NAME_LOOKUP.items()}
+
+
+@admin_method(path="/admin_set_weapon", method="POST")
+async def admin_set_weapon(user_id, weapon: Weapon):  # type: ignore
+    shot_damage, shot_timeout = WEAPON_DATA_LOOKUP[weapon]
+    UserInterface(user_id=user_id).set_weapon_data(
+        damage=shot_damage, fire_delay=shot_timeout
+    )
 
 
 @admin_method(path="/admin_hit_user", method="POST")
