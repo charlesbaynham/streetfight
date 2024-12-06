@@ -136,14 +136,12 @@ export default function ShotQueue() {
     [update]
   );
 
-  const dismissShot = useCallback(() => {
-    sendAPIRequest(
-      "admin_mark_shot_checked",
-      { shot_id: shot.id },
-      "POST"
-    ).then((_) => {
-      update();
-    });
+  const markShotMissed = useCallback(() => {
+    sendAPIRequest("admin_mark_shot_missed", { shot_id: shot.id }, "POST").then(
+      (_) => {
+        update();
+      }
+    );
   }, [shot, update]);
 
   const refundShot = useCallback(() => {
@@ -186,7 +184,7 @@ export default function ShotQueue() {
           ))}
           <button
             onClick={() => {
-              dismissShot();
+              markShotMissed();
             }}
           >
             Missed

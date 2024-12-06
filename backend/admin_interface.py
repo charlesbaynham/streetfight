@@ -308,7 +308,7 @@ class AdminInterface:
         )
 
         try:
-            self.mark_shot_checked(shot_id)
+            self.mark_shot_missed(shot_id)
         except HTTPException:
             # Handle the edge case where a user shoots themselves
             pass
@@ -366,7 +366,7 @@ class AdminInterface:
                 pass
 
     @db_scoped
-    def mark_shot_checked(self, shot_id):
+    def mark_shot_missed(self, shot_id):
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
 
         if not shot:
