@@ -13,7 +13,7 @@ function NearestPlayers({ shot_data }) {
 
   // Get user location in context array
   const userIndex = context.findIndex(
-    (location) => location.user_id === shooting_user_id,
+    (location) => location.user_id === shooting_user_id
   );
   console.log("User index in context array:", userIndex);
 
@@ -23,7 +23,7 @@ function NearestPlayers({ shot_data }) {
 
   // Remove the user from the context array
   const otherUsersContext = context.filter(
-    (location) => location.user_id !== shooting_user_id,
+    (location) => location.user_id !== shooting_user_id
   );
   console.log("Updated context array:", otherUsersContext);
 
@@ -64,7 +64,7 @@ function NearestPlayers({ shot_data }) {
         state,
         timestamp,
       };
-    },
+    }
   );
 
   // Sort shooting_users by distance
@@ -109,7 +109,7 @@ export default function ShotQueue() {
         shot_ids.map((id) => {
           console.log("Pre-loading shot", id);
           return getShotFromCache(id);
-        }),
+        })
       );
     });
   }, [currentShotID]);
@@ -130,78 +130,90 @@ export default function ShotQueue() {
           shot_id: shot_id,
           target_user_id: target_user_id,
         },
-        "POST",
+        "POST"
       ).then((_) => {
         update();
       });
     },
-    [update],
+    [update]
   );
 
-  const dismissShot = useCallback(() => {
-    sendAPIRequest(
-      "admin_mark_shot_checked",
-      { shot_id: shot.id },
-      "POST",
-    ).then((_) => {
-      update();
-    });
+  const markShotMissed = useCallback(() => {
+    sendAPIRequest("admin_mark_shot_missed", { shot_id: shot.id }, "POST").then(
+      (_) => {
+        update();
+      }
+    );
+  }, [shot, update]);
+
+  const refundShot = useCallback(() => {
+    sendAPIRequest("admin_refund_shot", { shot_id: shot.id }, "POST").then(
+      (_) => {
+        update();
+      }
+    );
   }, [shot, update]);
 
   useEffect(update, [update]);
 
   return (
-    <>
-      <Container>
-        <Row>
-          <Col>
-            <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
-          </Col>
-        </Row>
-        <Row>
-          {shot ? (
-            <>
-              <Col>
-                <em>By {shot.user.name}</em>
-                <img
-                  className={styles.shotImg}
-                  alt="The next shot in the queue"
-                  src={shot.image_base64}
-                />
-              </Col>
-              <Col>
-                <NearestPlayers shot_data={shot} />
-                {shot.game.teams.map((team, idx_team) => (
-                  <div key={idx_team}>
-                    <h3>{team.name}</h3>
-                    <ul>
-                      {team.users.map((target_user, idx_target_user) => (
-                        <li key={idx_target_user ** 2 + idx_team ** 3}>
-                          {target_user.name}
-                          <button
-                            onClick={() => {
-                              hitUser(shot.id, target_user.id);
-                            }}
-                          >
-                            Hit
-                          </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-                <button
-                  onClick={() => {
-                    dismissShot();
-                  }}
-                >
-                  Missed
-                </button>
-              </Col>
-            </>
-          ) : null}
-        </Row>
-      </Container>
-    </>
+    <Container>
+      <Row>
+        <Col>
+          <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
+        </Col>
+      </Row>
+      <Row>
+        {shot ? (
+          <>
+            <Col>
+              <em>By {shot.user.name}</em>
+              <img
+                className={styles.shotImg}
+                alt="The next shot in the queue"
+                src={shot.image_base64}
+              />
+            </Col>
+            <Col>
+              <NearestPlayers shot_data={shot} />
+              {shot.game.teams.map((team, idx_team) => (
+                <div key={idx_team}>
+                  <h3>{team.name}</h3>
+                  <ul>
+                    {team.users.map((target_user, idx_target_user) => (
+                      <li key={idx_target_user ** 2 + idx_team ** 3}>
+                        {target_user.name}
+                        <button
+                          onClick={() => {
+                            hitUser(shot.id, target_user.id);
+                          }}
+                        >
+                          Hit
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+
+              <button
+                onClick={() => {
+                  markShotMissed();
+                }}
+              >
+                Missed
+              </button>
+              <button
+                onClick={() => {
+                  refundShot();
+                }}
+              >
+                Refund
+              </button>
+            </Col>
+          </>
+        ) : null}
+      </Row>
+    </Container>
   );
 }
