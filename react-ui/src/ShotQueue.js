@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
+import { getShotFromCache } from "./ShotCache";
+import { Container, Row, Col } from "react-bootstrap";
+
+import styles from "./ShotQueue.module.css";
 
 function NearestPlayers({ shot_data }) {
   if (shot_data === null) return;
@@ -80,26 +84,42 @@ function NearestPlayers({ shot_data }) {
   );
 }
 
+// TODO: Needs to automatically update on new shots
+
 export default function ShotQueue() {
   const [shot, setShot] = useState(null);
-  const [numShots, setNumShots] = useState("");
+  const [shotsInQueue, setShotsInQueue] = useState([]);
+  const [currentShotID, setCurrentShotID] = useState("");
 
+  // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
-    sendAPIRequest("admin_get_shots", { limit: 1 }).then(async (response) => {
+    sendAPIRequest("admin_get_shots_info").then(async (response) => {
       if (!response.ok) return;
-      const data = await response.json();
-      setNumShots(data.numInQueue);
-      if (data.shots.length > 0) {
-        const newShot = data.shots[0];
-        console.log("New shot:");
-        console.dir(newShot);
-        console.log(JSON.parse(newShot.location_context));
-        setShot(newShot);
-      } else {
-        setShot(null);
+      const shot_ids = await response.json();
+
+      setShotsInQueue(shot_ids);
+
+      if (!shot_ids.includes(currentShotID)) {
+        setCurrentShotID(shot_ids[0]);
       }
+
+      // Load shots in background
+      await Promise.all(
+        shot_ids.map((id) => {
+          console.log("Pre-loading shot", id);
+          return getShotFromCache(id);
+        }),
+      );
     });
-  }, []);
+  }, [currentShotID]);
+
+  // If current shot ID changes, load the shot from the cache into the state
+  useEffect(() => {
+    getShotFromCache(currentShotID).then((shot) => {
+      console.log("Setting shot", shot);
+      setShot(shot);
+    });
+  }, [currentShotID]);
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {
@@ -136,49 +156,65 @@ export default function ShotQueue() {
   useEffect(update, [update]);
 
   return (
-    <>
-      <h1>Next unchecked shot ({numShots} in queue):</h1>
+    <Container>
+      <Row>
+        <Col>
+          <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
+        </Col>
+      </Row>
 
       {shot ? (
         <>
-          <em>By {shot.user.name}</em>
-          <img alt="The next shot in the queue" src={shot.image_base64} />
-          <NearestPlayers shot_data={shot} />
-          {shot.game.teams.map((team, idx_team) => (
-            <>
-              <h3>{team.name}</h3>
-              <ul>
-                {team.users.map((target_user, idx_target_user) => (
-                  <li key={idx_target_user ** 2 + idx_team ** 3}>
-                    {target_user.name}
-                    <button
-                      onClick={() => {
-                        hitUser(shot.id, target_user.id);
-                      }}
-                    >
-                      Hit
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </>
-          ))}
-          <button
-            onClick={() => {
-              markShotMissed();
-            }}
-          >
-            Missed
-          </button>
-          <button
-            onClick={() => {
-              refundShot();
-            }}
-          >
-            Refund
-          </button>
+          <Row>
+            <Col>
+              <em>By {shot.user.name}</em>
+              <img
+                className={styles.shotImg}
+                alt="The next shot in the queue"
+                src={shot.image_base64}
+              />
+            </Col>
+            <Col>
+              <NearestPlayers shot_data={shot} />
+              {shot.game.teams.map((team, idx_team) => (
+                <div key={idx_team}>
+                  <h3>{team.name}</h3>
+                  <ul>
+                    {team.users.map((target_user, idx_target_user) => (
+                      <li key={idx_target_user ** 2 + idx_team ** 3}>
+                        {target_user.name}
+                        <button
+                          onClick={() => {
+                            hitUser(shot.id, target_user.id);
+                          }}
+                        >
+                          Hit
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </Col>
+          </Row>
+          <Row>
+            <button
+              onClick={() => {
+                markShotMissed();
+              }}
+            >
+              Missed
+            </button>
+            <button
+              onClick={() => {
+                refundShot();
+              }}
+            >
+              Refund
+            </button>
+          </Row>
         </>
       ) : null}
-    </>
+    </Container>
   );
 }

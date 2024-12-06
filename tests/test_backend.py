@@ -116,6 +116,28 @@ def test_make_game(admin_api_client):
     assert UUID(response.json())
 
 
+def test_admin_get_shots_info(admin_api_client):
+    response = admin_api_client.get("/api/admin_get_shots_info")
+
+    print(response)
+    print(response.json())
+
+    assert response.status_code == 200
+    assert response.json() == []
+
+
+def test_admin_get_shot(admin_api_client, shot_from_user_in_team):
+    response = admin_api_client.get(
+        "/api/admin_get_shot?shot_id=" + str(shot_from_user_in_team)
+    )
+
+    print(response)
+    print(response.json())
+
+    assert response.status_code == 200
+    assert response.json()
+
+
 def test_make_team(admin_api_client):
     response_game = admin_api_client.post("/api/admin_create_game")
 

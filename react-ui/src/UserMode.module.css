@@ -1,6 +1,8 @@
 .monitorsContainer {
   /* flexbox with horizontal boxes, spread out maximally */
   display: flex;
+  /* Don't make them have the same height */
+  align-items: flex-start;
   width: 100%;
   justify-content: space-between;
 }

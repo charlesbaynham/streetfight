@@ -87,6 +87,7 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .model import GameModel
+from .model import ShotModel
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
@@ -295,8 +296,19 @@ async def admin_get_shots(limit=5):
     return {"numInQueue": num_in_queue, "shots": filtered_shots}
 
 
+@admin_method("/admin_get_shots_info", method="GET")
+async def admin_get_shots_info() -> list[UUID]:
+    return AdminInterface().get_unchecked_shots_ids()
+
+
+@admin_method("/admin_get_shot", method="GET")
+async def admin_get_shot(shot_id: UUID) -> ShotModel:
+    shot_model = AdminInterface().get_shot_model(shot_id=shot_id)
+    return AdminInterface.markup_shot_model(shot_model)
+
+
 @admin_method(path="/admin_shot_hit_user", method="POST")
-async def admin_shot_hit_user(shot_id, target_user_id):
+async def admin_shot_hit_user(shot_id: UUID, target_user_id: UUID):
     AdminInterface().hit_user(shot_id, target_user_id)
 
 
