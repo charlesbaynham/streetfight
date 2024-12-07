@@ -9,7 +9,7 @@ TODO:
  - [x] Do colours for teams
  - [x] Refund shots
  - [x] Update map with all pubs
- - [ ] Non-pub circle (/ drop) locations, ideally pre-programmed
+ - [x] Non-pub circle (/ drop) locations, ideally pre-programmed
  - [ ] Admin shots scrolling
  - [ ] Generic ticker on UI
  - [x] Show scoreboard in dead mode
