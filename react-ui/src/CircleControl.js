@@ -1,4 +1,4 @@
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 
 export default function CircleControl({ game_id }) {
@@ -32,6 +32,14 @@ export default function CircleControl({ game_id }) {
     [game_id],
   );
 
+  // On load, get the location strings for the circles
+  const [landmarks, setLandmarks] = useState([]);
+  useEffect(() => {
+    sendAPIRequest("admin_get_landmarks", {}, "GET", (landmarks) => {
+      setLandmarks(landmarks);
+    });
+  }, [setLandmarks]);
+
   const circleTypeInput = useRef(null);
   const locationInput = useRef(null);
   const radiusInput = useRef(null);
@@ -58,7 +66,13 @@ export default function CircleControl({ game_id }) {
         </label>
         <label>
           Location:
-          <input type="text" ref={locationInput} required />
+          <select ref={locationInput} required>
+            {landmarks.map((landmark, idx) => (
+              <option key={idx} value={landmark}>
+                {landmark}
+              </option>
+            ))}
+          </select>
         </label>
         <label>
           Radius (km):
