@@ -12,10 +12,10 @@ export default function CircleControl({ game_id }) {
           location: location,
           radius_km: radius_km,
         },
-        "POST",
+        "POST"
       );
     },
-    [game_id],
+    [game_id]
   );
 
   const clearCircle = useCallback(
@@ -26,10 +26,10 @@ export default function CircleControl({ game_id }) {
           game_id: game_id,
           name: circle_type,
         },
-        "POST",
+        "POST"
       );
     },
-    [game_id],
+    [game_id]
   );
 
   // On load, get the location strings for the circles
@@ -83,6 +83,14 @@ export default function CircleControl({ game_id }) {
       <button onClick={() => clearCircle(circleTypeInput.current.value)}>
         Clear Circle
       </button>
+
+      <h4>Reminders</h4>
+      <ul>
+        <li>Circle 1: 0.70 km</li>
+        <li>Circle 2: 0.42 km</li>
+        <li>Circle 3: 0.18 km</li>
+        <li>Circle 4: 0.05 km</li>
+      </ul>
     </>
   );
 }
