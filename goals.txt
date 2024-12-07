@@ -8,8 +8,10 @@ TODO:
  - [x] Admin names
  - [x] Do colours for teams
  - [x] Refund shots
- - [ ] Update map with all pubs
+ - [x] Update map with all pubs
  - [ ] Non-pub circle (/ drop) locations, ideally pre-programmed
+ - [ ] Admin shots scrolling
+ - [ ] Generic ticker on UI
  - [x] Show scoreboard in dead mode
  - [x] Improve admin kill interface
  - [x] Admins should have ticker view
