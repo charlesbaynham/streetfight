@@ -430,6 +430,12 @@ async def admin_set_circle_by_location(
     )
 
 
+@admin_method(path="/admin_get_landmarks", method="GET")
+async def admin_get_landmarks() -> list[str]:
+    logger.info("admin_get_landmarks - %s", locals())
+    return [k for k in LANDMARK_LOCATIONS.keys()]
+
+
 @admin_method(path="/admin_clear_circle", method="POST")
 async def admin_set_circle(
     game_id: UUID,
