@@ -89,7 +89,7 @@ function NearestPlayers({ shot_data }) {
 export default function ShotQueue() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
-  const [currentShotID, setCurrentShotID] = useState("");
+  const [currentShotIdx, setCurrentShotIdx] = useState(0);
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
@@ -99,8 +99,8 @@ export default function ShotQueue() {
 
       setShotsInQueue(shot_ids);
 
-      if (!shot_ids.includes(currentShotID)) {
-        setCurrentShotID(shot_ids[0]);
+      if (currentShotIdx >= shot_ids.length) {
+        setCurrentShotIdx(shot_ids.length - 1);
       }
 
       // Load shots in background
@@ -111,15 +111,15 @@ export default function ShotQueue() {
         }),
       );
     });
-  }, [currentShotID]);
+  }, [currentShotIdx]);
 
   // If current shot ID changes, load the shot from the cache into the state
   useEffect(() => {
-    getShotFromCache(currentShotID).then((shot) => {
+    getShotFromCache(shotsInQueue[currentShotIdx]).then((shot) => {
       console.log("Setting shot", shot);
       setShot(shot);
     });
-  }, [currentShotID]);
+  }, [currentShotIdx, shotsInQueue]);
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {
@@ -155,12 +155,42 @@ export default function ShotQueue() {
 
   useEffect(update, [update]);
 
+  const nextShot = useCallback(() => {
+    if (currentShotIdx < shotsInQueue.length - 1) {
+      setCurrentShotIdx(currentShotIdx + 1);
+    }
+  }, [currentShotIdx, shotsInQueue]);
+
+  const previousShot = useCallback(() => {
+    if (currentShotIdx > 0) {
+      setCurrentShotIdx(currentShotIdx - 1);
+    }
+  }, [currentShotIdx]);
+
   return (
     <Container>
       <Row>
         <Col>
-          <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
+          <h1>
+            Shot {currentShotIdx + 1} of {shotsInQueue.length}:
+          </h1>
         </Col>
+      </Row>
+      <Row>
+        <button
+          onClick={() => {
+            nextShot();
+          }}
+        >
+          Next
+        </button>
+        <button
+          onClick={() => {
+            previousShot();
+          }}
+        >
+          Previous
+        </button>
       </Row>
 
       {shot ? (
