@@ -90,6 +90,7 @@ export default function CircleControl({ game_id }) {
         <li>Circle 2: 0.42 km</li>
         <li>Circle 3: 0.18 km</li>
         <li>Circle 4: 0.05 km</li>
+        <li>All drops: 0.01 km</li>
       </ul>
     </>
   );
