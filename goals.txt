@@ -10,7 +10,7 @@ TODO:
  - [x] Refund shots
  - [x] Update map with all pubs
  - [x] Non-pub circle (/ drop) locations, ideally pre-programmed
- - [ ] Admin shots scrolling
+ - [x] Admin shots scrolling
  - [ ] Generic ticker on UI
  - [x] Show scoreboard in dead mode
  - [x] Improve admin kill interface

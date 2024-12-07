@@ -13,7 +13,7 @@ function NearestPlayers({ shot_data }) {
 
   // Get user location in context array
   const userIndex = context.findIndex(
-    (location) => location.user_id === shooting_user_id,
+    (location) => location.user_id === shooting_user_id
   );
   console.log("User index in context array:", userIndex);
 
@@ -23,7 +23,7 @@ function NearestPlayers({ shot_data }) {
 
   // Remove the user from the context array
   const otherUsersContext = context.filter(
-    (location) => location.user_id !== shooting_user_id,
+    (location) => location.user_id !== shooting_user_id
   );
   console.log("Updated context array:", otherUsersContext);
 
@@ -64,7 +64,7 @@ function NearestPlayers({ shot_data }) {
         state,
         timestamp,
       };
-    },
+    }
   );
 
   // Sort shooting_users by distance
@@ -89,7 +89,7 @@ function NearestPlayers({ shot_data }) {
 export default function ShotQueue() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
-  const [currentShotID, setCurrentShotID] = useState("");
+  const [currentShotIdx, setCurrentShotIdx] = useState(0);
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
@@ -99,8 +99,8 @@ export default function ShotQueue() {
 
       setShotsInQueue(shot_ids);
 
-      if (!shot_ids.includes(currentShotID)) {
-        setCurrentShotID(shot_ids[0]);
+      if (currentShotIdx >= shot_ids.length) {
+        setCurrentShotIdx(shot_ids.length - 1);
       }
 
       // Load shots in background
@@ -108,18 +108,18 @@ export default function ShotQueue() {
         shot_ids.map((id) => {
           console.log("Pre-loading shot", id);
           return getShotFromCache(id);
-        }),
+        })
       );
     });
-  }, [currentShotID]);
+  }, [currentShotIdx]);
 
   // If current shot ID changes, load the shot from the cache into the state
   useEffect(() => {
-    getShotFromCache(currentShotID).then((shot) => {
+    getShotFromCache(shotsInQueue[currentShotIdx]).then((shot) => {
       console.log("Setting shot", shot);
       setShot(shot);
     });
-  }, [currentShotID]);
+  }, [currentShotIdx, shotsInQueue]);
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {
@@ -129,19 +129,19 @@ export default function ShotQueue() {
           shot_id: shot_id,
           target_user_id: target_user_id,
         },
-        "POST",
+        "POST"
       ).then((_) => {
         update();
       });
     },
-    [update],
+    [update]
   );
 
   const markShotMissed = useCallback(() => {
     sendAPIRequest("admin_mark_shot_missed", { shot_id: shot.id }, "POST").then(
       (_) => {
         update();
-      },
+      }
     );
   }, [shot, update]);
 
@@ -149,18 +149,48 @@ export default function ShotQueue() {
     sendAPIRequest("admin_refund_shot", { shot_id: shot.id }, "POST").then(
       (_) => {
         update();
-      },
+      }
     );
   }, [shot, update]);
 
   useEffect(update, [update]);
 
+  const nextShot = useCallback(() => {
+    if (currentShotIdx < shotsInQueue.length - 1) {
+      setCurrentShotIdx(currentShotIdx + 1);
+    }
+  }, [currentShotIdx, shotsInQueue]);
+
+  const previousShot = useCallback(() => {
+    if (currentShotIdx > 0) {
+      setCurrentShotIdx(currentShotIdx - 1);
+    }
+  }, [currentShotIdx]);
+
   return (
     <Container>
       <Row>
         <Col>
-          <h1>Next unchecked shot ({shotsInQueue.length} in queue):</h1>
+          <h1>
+            Shot {currentShotIdx + 1} of {shotsInQueue.length}:
+          </h1>
         </Col>
+      </Row>
+      <Row>
+        <button
+          onClick={() => {
+            nextShot();
+          }}
+        >
+          Next
+        </button>
+        <button
+          onClick={() => {
+            previousShot();
+          }}
+        >
+          Previous
+        </button>
       </Row>
 
       {shot ? (
