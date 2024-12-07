@@ -3,23 +3,23 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 
-import mapSrc from "./images/map_lowres.png";
+import mapSrc from "./images/map.png";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 import { deregisterListener, registerListener } from "./UpdateListener";
 
 // Based on calculations and markup in "map alignment.svg"
-const ref_map_width_px = 1188.5;
-const ref_map_height_px = 1233.5;
-const ref_1_lat_long = [51.4076739525208, -0.30754164680355806]; // TODO put back
-const ref_1_xy = [294.098, 963.464];
-const ref_2_lat_long = [51.41383263398225, -0.30056843291595964]; // TODO put back
-const ref_2_xy = [825.823, 212.722];
+const ref_map_width_px = 2273.28;
+const ref_map_height_px = 2206.72;
+const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+const ref_1_xy = [695.4, 1745.2];
+const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+const ref_2_xy = [1650.3, 398.9];
 
-// These are fake, for testing. TODO: Undo
-// const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
-// const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
+// These are fake, for testing.
+// const ref_1_lat_long = [51.3, -0.4];
+// const ref_2_lat_long = [51.5, -0.2];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
