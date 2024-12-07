@@ -18,7 +18,7 @@ export default function TickerView({ admin = false, num_messages = 3 }) {
       "GET",
       (data) => {
         setMessages(data);
-      }
+      },
     );
   }, [setMessages, num_messages]);
 
