@@ -18,8 +18,8 @@ const ref_1_xy = [695.4, 1745.2];
 const ref_2_xy = [1650.3, 398.9];
 
 // These are fake, for testing. FIXME: Undo
-const ref_1_lat_long = [51.40277852529075, -0.3123814839484815];
-const ref_2_lat_long = [51.42060545517807, -0.27796337627249573];
+const ref_1_lat_long = [51.3, -0.4];
+const ref_2_lat_long = [51.5, -0.2];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
