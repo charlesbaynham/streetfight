@@ -12,14 +12,14 @@ import { deregisterListener, registerListener } from "./UpdateListener";
 // Based on calculations and markup in "map alignment.svg"
 const ref_map_width_px = 2273.28;
 const ref_map_height_px = 2206.72;
-// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
 const ref_1_xy = [695.4, 1745.2];
-// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
 const ref_2_xy = [1650.3, 398.9];
 
-// These are fake, for testing. FIXME: Undo
-const ref_1_lat_long = [51.3, -0.4];
-const ref_2_lat_long = [51.5, -0.2];
+// These are fake, for testing.
+// const ref_1_lat_long = [51.3, -0.4];
+// const ref_2_lat_long = [51.5, -0.2];
 
 const long_per_width_px =
   (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
