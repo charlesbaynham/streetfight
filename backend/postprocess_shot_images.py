@@ -1,21 +1,10 @@
 import logging
 from pathlib import Path
-from typing import Iterable
-from typing import Optional
-from typing import Union
 
-import click
-import qrcode
-from PIL import Image
-from PIL import ImageDraw
-
-from .model import ShotModel
 
 from .admin_interface import AdminInterface
-from .items import ItemModel
-from .model import ItemType
-from .utils import slugify_string
 from .image_processing import save_image
+from .model import ShotModel
 
 POSTPROCESS_OUTPUT_DIR = Path(__file__, "../../processed_shots").resolve()
 

@@ -1,5 +1,3 @@
-from PIL import ImageFont, ImageDraw, Image
-
 import base64
 import logging
 import time
@@ -10,6 +8,7 @@ from typing import Tuple
 
 from PIL import Image
 from PIL import ImageDraw
+from PIL import ImageFont
 
 logger = logging.getLogger(__name__)
 

@@ -3,7 +3,7 @@ import logging
 import os
 from enum import Enum
 from typing import List
-from typing import Tuple, Generator
+from typing import Tuple
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -16,7 +16,8 @@ from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
-from .image_processing import draw_cross_on_image, annotate_image_with_stats
+from .image_processing import annotate_image_with_stats
+from .image_processing import draw_cross_on_image
 from .items import ItemModel
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
