@@ -1,7 +1,6 @@
 import logging
 from pathlib import Path
 
-
 from .admin_interface import AdminInterface
 from .image_processing import save_image
 from .model import ShotModel
