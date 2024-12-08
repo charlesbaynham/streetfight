@@ -11,4 +11,6 @@ setup(
             "qr_gen = backend.generate_qr_items:generate",
         ],
     },
+    package_data={"": ["*.ttf"]},
+    include_package_data=True,
 )
