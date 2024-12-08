@@ -13,13 +13,6 @@ logger = logging.getLogger(__name__)
 load_env_vars()
 
 
-# @click.option(
-#     "--log",
-#     default=True,
-#     help=(
-#         "If true, keep a record of the QR codes generated in a file called `qr_codes.csv`"
-#     ),
-# )
 def output_images():
     """
     Outputs all shot images with markup
