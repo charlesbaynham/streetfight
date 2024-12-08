@@ -18,8 +18,8 @@ def output_images():
     Outputs all shot images with markup
     """
 
-    for shot_model in AdminInterface().get_all_shots():
-        shot_model: ShotModel
+    for shot_id in AdminInterface().get_all_shot_ids():
+        shot_model: ShotModel = AdminInterface().get_shot_model(shot_id=shot_id)
 
         marked_up_shot = AdminInterface.markup_shot_model(
             shot_model, add_targetting=True, add_annotations=True
