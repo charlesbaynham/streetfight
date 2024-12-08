@@ -17,7 +17,8 @@
     "browsers": "python -c 'from tests.test_selenium import make_N_drivers; import sys; drvs=make_N_drivers(int(sys.argv[1])); [d.get(sys.argv[2]) for d in drvs]'",
     "gen_cert": "openssl req -x509 -newkey rsa:4096 -keyout key.pem -out cert.pem -sha256 -days 3650 -nodes -subj \"/C=XX/ST=StateName/L=CityName/O=CompanyName/OU=CompanySectionName/CN=CommonNameOrHostname\"",
     "bootstrap": "npm i && npm run gen_cert && npm run build && cp .env.dev .env",
-    "qrgen": "python -m backend.generate_qr_items"
+    "qrgen": "python -m backend.generate_qr_items",
+    "annotateShots": "python -m backend.postprocess_shot_images"
   },
   "cacheDirectories": [
     "node_modules",

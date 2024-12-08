@@ -8,22 +8,26 @@ from typing import Tuple
 
 from PIL import Image
 from PIL import ImageDraw
+from PIL import ImageFont
 
 logger = logging.getLogger(__name__)
 
 IMAGE_OUTPUT_DIR = Path("./logs/images").resolve()
 
 
-def save_image(base64_image: str, name: str):
+def save_image(base64_image: str, name: str, output_dir: Path = None):
     """Save this image to the folder, tagged with the time
 
     Args:
         base64_image (str): base 64 image
     """
+    if output_dir is None:
+        output_dir = IMAGE_OUTPUT_DIR
+
     image, _ = load_image(base64_image)
     filename = f"{name}_{time.time()}.png"
-    IMAGE_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
-    image.save(IMAGE_OUTPUT_DIR / filename)
+    output_dir.mkdir(exist_ok=True, parents=True)
+    image.save(output_dir / filename)
 
 
 def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
@@ -38,6 +42,59 @@ def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
     image = Image.open(BytesIO(image_bytes))
 
     return image, split_img
+
+
+def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
+    image, split_img = load_image(base64_image)
+
+    # Get image dimensions
+    width, height = image.size
+
+    # Create a drawing object
+    draw = ImageDraw.Draw(image)
+
+    # Define text color (white in RGB)
+    text_color = (255, 255, 255)
+
+    # Define text size (adjust as needed)
+    text_size = 20
+
+    # Define text position (bottom left corner)
+    text_position = (10, height - text_size * 5)
+
+    # Define text to display
+    text = ""
+    for key, value in stats.items():
+        text += f"{key}: {value}\n"
+
+    # Draw a black box in the bottom left
+    draw.rectangle(
+        [
+            (0, height),
+            (300, height - 6 * text_size),
+        ],
+        fill=(0, 0, 0),
+    )
+
+    # Add text to the image
+    # TODO: Make this less fragile
+    font = ImageFont.truetype(
+        "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf", text_size
+    )
+    draw.text(text_position, text, font=font, fill=text_color, align="left")
+
+    # Convert the image back to base64
+    modified_image_bytes = BytesIO()
+    image.save(modified_image_bytes, format="PNG")
+    modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()
+
+    # Close the image file
+    image.close()
+
+    # Put the metadata back
+    split_img[1] = modified_base64_image
+
+    return ",".join(split_img)
 
 
 def draw_cross_on_image(base64_image: str) -> str:
@@ -98,7 +155,7 @@ def draw_cross_on_image(base64_image: str) -> str:
     # Paste the cropped image back into the original
     image.paste(cropped_with_border, (0, 0))
 
-    # Optionally, you can convert the image back to base64 if needed
+    # Convert the image back to base64
     modified_image_bytes = BytesIO()
     image.save(modified_image_bytes, format="PNG")
     modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()
