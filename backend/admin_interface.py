@@ -217,7 +217,7 @@ class AdminInterface:
             )
 
     @db_scoped
-    def get_all_shots(self) -> Generator[ShotModel]:
+    def get_all_shots(self) -> Generator[ShotModel, None, None]:
         query = self._session.query(Shot).order_by(Shot.time_created)
 
         shots = query.all()

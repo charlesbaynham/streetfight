@@ -14,16 +14,19 @@ logger = logging.getLogger(__name__)
 IMAGE_OUTPUT_DIR = Path("./logs/images").resolve()
 
 
-def save_image(base64_image: str, name: str):
+def save_image(base64_image: str, name: str, output_dir: Path = None):
     """Save this image to the folder, tagged with the time
 
     Args:
         base64_image (str): base 64 image
     """
+    if output_dir is None:
+        output_dir = IMAGE_OUTPUT_DIR
+
     image, _ = load_image(base64_image)
     filename = f"{name}_{time.time()}.png"
-    IMAGE_OUTPUT_DIR.mkdir(exist_ok=True, parents=True)
-    image.save(IMAGE_OUTPUT_DIR / filename)
+    output_dir.mkdir(exist_ok=True, parents=True)
+    image.save(output_dir / filename)
 
 
 def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:

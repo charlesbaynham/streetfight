@@ -15,6 +15,9 @@ from .admin_interface import AdminInterface
 from .items import ItemModel
 from .model import ItemType
 from .utils import slugify_string
+from .image_processing import save_image
+
+POSTPROCESS_OUTPUT_DIR = Path(__file__, "../../processed_shots").resolve()
 
 logger = logging.getLogger(__name__)
 
@@ -34,14 +37,16 @@ def output_images():
     for shot_model in AdminInterface().get_all_shots():
         shot_model: ShotModel
 
-    if log:
-        with open(QR_LOGFILE, "a") as f:
-            for i, encoded_url in enumerate(qr_data):
-                item = ItemModel.from_base64(encoded_url)
-                f.write(
-                    f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
-                )
+        marked_up_shot = AdminInterface.markup_shot_model(
+            shot_model, add_targetting=True, add_annotations=True
+        )
+
+        save_image(
+            base64_image=marked_up_shot.image_base64,
+            name=marked_up_shot.user,
+            output_dir=POSTPROCESS_OUTPUT_DIR,
+        )
 
 
 if __name__ == "__main__":
-    generate()
+    output_images()
