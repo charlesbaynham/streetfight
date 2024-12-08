@@ -16,7 +16,7 @@ from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
 from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
-from .image_processing import draw_cross_on_image
+from .image_processing import draw_cross_on_image, annotate_image_with_stats
 from .items import ItemModel
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
@@ -252,8 +252,23 @@ class AdminInterface:
         if add_targetting:
             new_model.image_base64 = draw_cross_on_image(new_model.image_base64)
         if add_annotations:
+            if not shot_model.checked:
+                status = "Unchecked"
+            elif shot_model.target_user_id:
+                target_name = (
+                    UserInterface(shot_model.target_user_id).get_user_model().name
+                )
+                status = f"Hit {target_name}"
+            else:
+                status = "Missed"
+
+            stats = {
+                "Shooter": shot_model.user_name,
+                "Damage": shot_model.shot_damage,
+                "Result": status,
+            }
             new_model.image_base64 = annotate_image_with_stats(
-                new_model.image_base64, new_model
+                new_model.image_base64, stats
             )
 
         return new_model

@@ -56,7 +56,7 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     text_size = 20
 
     # Define text position (top right corner)
-    text_position = (width - 200, 20)
+    text_position = (width - 20, 20)
 
     # Define text to display
     text = ""
@@ -64,7 +64,7 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
         text += f"{key}: {value}\n"
 
     # Add text to the image
-    draw.text(text_position, text, fill=text_color, size=text_size)
+    draw.text(text_position, text, fill=text_color, size=text_size, align="right")
 
     # Convert the image back to base64
     modified_image_bytes = BytesIO()
