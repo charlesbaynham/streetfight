@@ -226,6 +226,14 @@ class AdminInterface:
         return [ShotModel.from_orm(s) for s in shots]
 
     @db_scoped
+    def get_all_shot_ids(self) -> List[UUID]:
+        query = self._session.query(Shot.id).order_by(Shot.time_created)
+
+        shots = query.all()
+
+        return [s.id for s in shots]
+
+    @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
         query = (
             self._session.query(Shot)
