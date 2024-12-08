@@ -2,12 +2,15 @@ import logging
 from pathlib import Path
 
 from .admin_interface import AdminInterface
+from .dotenv import load_env_vars
 from .image_processing import save_image
 from .model import ShotModel
 
 POSTPROCESS_OUTPUT_DIR = Path(__file__, "../../processed_shots").resolve()
 
 logger = logging.getLogger(__name__)
+
+load_env_vars()
 
 
 # @click.option(
