@@ -28,6 +28,7 @@ services:
     - GUNICORN_WORKERS
     volumes:
     - ./logs:/data/logs
+    - ./processed_shots:/data/processed_shots
     - database:/data/db
     restart: always
 
