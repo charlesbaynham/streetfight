@@ -40,6 +40,46 @@ def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
     return image, split_img
 
 
+def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
+    image, split_img = load_image(base64_image)
+
+    # Get image dimensions
+    width, height = image.size
+
+    # Create a drawing object
+    draw = ImageDraw.Draw(image)
+
+    # Define text color (white in RGB)
+    text_color = (255, 255, 255)
+
+    # Define text size (adjust as needed)
+    text_size = 20
+
+    # Define text position (top right corner)
+    text_position = (width - 200, 20)
+
+    # Define text to display
+    text = ""
+    for key, value in stats.items():
+        text += f"{key}: {value}\n"
+
+    # Add text to the image
+    draw.text(text_position, text, fill=text_color, size=text_size)
+
+    # Convert the image back to base64
+    modified_image_bytes = BytesIO()
+    image.save(modified_image_bytes, format="PNG")
+    modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()
+
+    # Close the image file
+    image.close()
+
+    # Put the metadata back
+    split_img[1] = modified_base64_image
+
+    return ",".join(split_img)
+
+
 def draw_cross_on_image(base64_image: str) -> str:
     image, split_img = load_image(base64_image)
 
@@ -98,7 +138,7 @@ def draw_cross_on_image(base64_image: str) -> str:
     # Paste the cropped image back into the original
     image.paste(cropped_with_border, (0, 0))
 
-    # Optionally, you can convert the image back to base64 if needed
+    # Convert the image back to base64
     modified_image_bytes = BytesIO()
     image.save(modified_image_bytes, format="PNG")
     modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()

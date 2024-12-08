@@ -3,7 +3,7 @@ import logging
 import os
 from enum import Enum
 from typing import List
-from typing import Tuple
+from typing import Tuple, Generator
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -217,6 +217,14 @@ class AdminInterface:
             )
 
     @db_scoped
+    def get_all_shots(self) -> Generator[ShotModel]:
+        query = self._session.query(Shot).order_by(Shot.time_created)
+
+        shots = query.all()
+
+        return (ShotModel.from_orm(s) for s in shots)
+
+    @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
         query = (
             self._session.query(Shot)
@@ -237,9 +245,16 @@ class AdminInterface:
         return num_shots, shot_models
 
     @staticmethod
-    def markup_shot_model(shot_model: ShotModel):
+    def markup_shot_model(
+        shot_model: ShotModel, add_targetting=True, add_annotations=False
+    ):
         new_model = shot_model.copy()
-        new_model.image_base64 = draw_cross_on_image(new_model.image_base64)
+        if add_targetting:
+            new_model.image_base64 = draw_cross_on_image(new_model.image_base64)
+        if add_annotations:
+            new_model.image_base64 = annotate_image_with_stats(
+                new_model.image_base64, new_model
+            )
 
         return new_model
 
