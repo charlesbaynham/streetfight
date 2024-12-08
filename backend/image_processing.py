@@ -1,3 +1,5 @@
+from PIL import ImageFont, ImageDraw, Image
+
 import base64
 import logging
 import time
@@ -58,16 +60,29 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     # Define text size (adjust as needed)
     text_size = 20
 
-    # Define text position (top right corner)
-    text_position = (width - 20, 20)
+    # Define text position (bottom left corner)
+    text_position = (10, height - text_size * 5)
 
     # Define text to display
     text = ""
     for key, value in stats.items():
         text += f"{key}: {value}\n"
 
+    # Draw a black box in the bottom left
+    draw.rectangle(
+        [
+            (0, height),
+            (300, height - 6 * text_size),
+        ],
+        fill=(0, 0, 0),
+    )
+
     # Add text to the image
-    draw.text(text_position, text, fill=text_color, size=text_size, align="right")
+    # TODO: Make this less fragile
+    font = ImageFont.truetype(
+        "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf", text_size
+    )
+    draw.text(text_position, text, font=font, fill=text_color, align="left")
 
     # Convert the image back to base64
     modified_image_bytes = BytesIO()
