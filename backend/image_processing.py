@@ -21,8 +21,11 @@ def save_image(base64_image: str, name: str, output_dir: Path = None):
     Args:
         base64_image (str): base 64 image
     """
+
     if output_dir is None:
         output_dir = IMAGE_OUTPUT_DIR
+
+    output_dir = Path(output_dir)
 
     image, _ = load_image(base64_image)
     filename = f"{name}_{time.time()}.png"
