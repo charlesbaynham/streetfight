@@ -260,7 +260,7 @@ class AdminInterface:
                 )
                 status = f"Hit {target_name}"
             else:
-                status = "Missed"
+                status = "Missed / refunded"
 
             stats = {
                 "Shooter": shot_model.user.name,
