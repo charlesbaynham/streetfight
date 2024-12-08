@@ -79,7 +79,7 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     # Add text to the image
     # TODO: Make this less fragile
     font = ImageFont.truetype(
-        "/usr/share/fonts/truetype/ubuntu/UbuntuMono-R.ttf", text_size
+        str(Path(__file__, "../UbuntuMono-R.ttf").resolve()), text_size
     )
     draw.text(text_position, text, font=font, fill=text_color, align="left")
 
