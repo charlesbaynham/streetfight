@@ -26,6 +26,7 @@ services:
     - LOG_LEVEL
     - LOG_OVERRIDES
     - GUNICORN_WORKERS
+    - POSTPROCESS_OUTPUT_DIR=/data/processed_shots
     volumes:
     - ./logs:/data/logs
     - ./processed_shots:/data/processed_shots
