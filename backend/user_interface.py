@@ -202,7 +202,7 @@ class UserInterface:
 
     @db_scoped
     def set_name(self, new_name: str):
-        self.get_user().name = new_name
+        self.get_user().name = new_name.strip()
 
     @db_scoped
     def set_weapon_data(self, damage: int, fire_delay: float):
