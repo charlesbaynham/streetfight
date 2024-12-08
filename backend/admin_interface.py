@@ -217,12 +217,12 @@ class AdminInterface:
             )
 
     @db_scoped
-    def get_all_shots(self) -> Generator[ShotModel, None, None]:
+    def get_all_shots(self) -> List[ShotModel]:
         query = self._session.query(Shot).order_by(Shot.time_created)
 
         shots = query.all()
 
-        return (ShotModel.from_orm(s) for s in shots)
+        return [ShotModel.from_orm(s) for s in shots]
 
     @db_scoped
     def get_unchecked_shots(self, limit=5) -> Tuple[int, List[ShotModel]]:
@@ -263,7 +263,7 @@ class AdminInterface:
                 status = "Missed"
 
             stats = {
-                "Shooter": shot_model.user_name,
+                "Shooter": shot_model.user.name,
                 "Damage": shot_model.shot_damage,
                 "Result": status,
             }

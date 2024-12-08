@@ -43,7 +43,7 @@ def output_images():
 
         save_image(
             base64_image=marked_up_shot.image_base64,
-            name=marked_up_shot.user,
+            name=marked_up_shot.user.name,
             output_dir=POSTPROCESS_OUTPUT_DIR,
         )
 
