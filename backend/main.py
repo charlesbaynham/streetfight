@@ -465,6 +465,15 @@ async def admin_send_custom_ticker_message(
     send_generic_message(game_id, message)
 
 
+@admin_method(path="/admin_dump_images", method="POST")
+async def admin_dump_images():
+    logger.info("admin_dump_images - %s", locals())
+
+    from .postprocess_shot_images import output_images
+
+    return output_images()
+
+
 @router.get("/sse_updates")
 async def sse_updates(
     user_id=Depends(get_user_id),
