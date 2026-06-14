@@ -101,12 +101,29 @@ const QRParser = ({ webcamRef }) => {
   useEffect(() => {
     if (triggerScan === 0) return;
 
+    // Don't capture/scan while the app is backgrounded: the camera is stopped
+    // and scanning would waste CPU/battery. The visibility effect below
+    // restarts the loop when the app becomes visible again.
+    if (document.hidden) return;
+
+    let timerId;
     capture(webcamRef, scannedCallback).then(() => {
-      setTimeout(() => {
-        setTriggerScan(triggerScan + 1);
+      timerId = setTimeout(() => {
+        setTriggerScan((n) => n + 1);
       }, timeout);
     });
+
+    return () => clearTimeout(timerId);
   }, [triggerScan, setTriggerScan, scannedCallback, webcamRef]);
+
+  // Resume the scan loop when the app becomes visible again after being paused
+  useEffect(() => {
+    const onVisible = () => {
+      if (!document.hidden) setTriggerScan((n) => (n === 0 ? 0 : n + 1));
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, []);
 
   //  Schedule the first scan once we have a webcamRef
   useEffect(() => {
@@ -117,7 +134,7 @@ const QRParser = ({ webcamRef }) => {
     }, timeout);
 
     return () => {
-      clearInterval(timerID);
+      clearTimeout(timerID);
     };
   }, [webcamRef]);
 
