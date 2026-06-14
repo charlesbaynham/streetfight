@@ -18,7 +18,7 @@
           for (t = 0; t < n.options.aliases.length; t++)
             e.push(n.options.aliases[t].toLowerCase());
         for (o = r(n.fn, "function") ? n.fn() : n.fn, i = 0; i < e.length; i++)
-          (s = e[i]),
+          ((s = e[i]),
             (a = s.split(".")),
             1 === a.length
               ? (Modernizr[a[0]] = o)
@@ -26,7 +26,7 @@
                   Modernizr[a[0]] instanceof Boolean ||
                   (Modernizr[a[0]] = new Boolean(Modernizr[a[0]])),
                 (Modernizr[a[0]][a[1]] = o)),
-            C.push((o ? "" : "no-") + a.join("-"));
+            C.push((o ? "" : "no-") + a.join("-")));
       }
   }
   function i(e) {
@@ -56,7 +56,7 @@
   }
   function l() {
     var e = n.body;
-    return e || ((e = a(S ? "svg" : "body")), (e.fake = !0)), e;
+    return (e || ((e = a(S ? "svg" : "body")), (e.fake = !0)), e);
   }
   function f(e, n) {
     return !!~("" + e).indexOf(n);
@@ -85,7 +85,7 @@
       p = l();
     if (parseInt(r, 10))
       for (; r--; )
-        (f = a("div")), (f.id = o ? o[r] : c + (r + 1)), d.appendChild(f);
+        ((f = a("div")), (f.id = o ? o[r] : c + (r + 1)), d.appendChild(f));
     return (
       (i = a("style")),
       (i.type = "text/css"),
@@ -163,9 +163,8 @@
     for (
       var c, d, p, v, m, g = ["modernizr", "tspan", "samp"];
       !j.style && g.length;
-
     )
-      (c = !0), (j.modElem = a(g.shift())), (j.style = j.modElem.style);
+      ((c = !0), (j.modElem = a(g.shift())), (j.style = j.modElem.style));
     for (p = e.length, d = 0; p > d; d++)
       if (
         ((v = e[d]),
@@ -173,13 +172,13 @@
         f(v, "-") && (v = s(v)),
         j.style[v] !== t)
       ) {
-        if (i || r(o, "undefined")) return l(), "pfx" == n ? v : !0;
+        if (i || r(o, "undefined")) return (l(), "pfx" == n ? v : !0);
         try {
           j.style[v] = o;
         } catch (y) {}
-        if (j.style[v] != m) return l(), "pfx" == n ? v : !0;
+        if (j.style[v] != m) return (l(), "pfx" == n ? v : !0);
       }
-    return l(), !1;
+    return (l(), !1);
   }
   function g(e, n, t, o, i) {
     var s = e.charAt(0).toUpperCase() + e.slice(1),
@@ -196,7 +195,7 @@
         o = Modernizr[r[0]];
       if ((2 == r.length && (o = o[r[1]]), "undefined" != typeof o))
         return Modernizr;
-      (n = "function" == typeof n ? n() : n),
+      ((n = "function" == typeof n ? n() : n),
         1 == r.length
           ? (Modernizr[r[0]] = n)
           : (!Modernizr[r[0]] ||
@@ -204,7 +203,7 @@
               (Modernizr[r[0]] = new Boolean(Modernizr[r[0]])),
             (Modernizr[r[0]][r[1]] = n)),
         i([(n && 0 != n ? "" : "no-") + r.join("-")]),
-        Modernizr._trigger(e, n);
+        Modernizr._trigger(e, n));
     }
     return Modernizr;
   }
@@ -233,9 +232,9 @@
       },
     },
     Modernizr = function () {};
-  (Modernizr.prototype = w),
+  ((Modernizr.prototype = w),
     (Modernizr = new Modernizr()),
-    Modernizr.addTest("geolocation", "geolocation" in navigator);
+    Modernizr.addTest("geolocation", "geolocation" in navigator));
   var b = n.documentElement,
     S = "svg" === b.nodeName.toLowerCase(),
     x = "Moz O ms Webkit",
@@ -268,22 +267,22 @@
     delete N.elem;
   });
   var j = { style: N.elem.style };
-  Modernizr._q.unshift(function () {
+  (Modernizr._q.unshift(function () {
     delete j.style;
   }),
-    (w.testAllProps = g);
+    (w.testAllProps = g));
   var E = (w.prefixed = function (e, n, t) {
     return 0 === e.indexOf("@")
       ? T(e)
       : (-1 != e.indexOf("-") && (e = s(e)), n ? g(e, n, t) : g(e, "pfx"));
   });
-  Modernizr.addTest(
+  (Modernizr.addTest(
     "fullscreen",
     !(!E("exitFullscreen", n, !1) && !E("cancelFullScreen", n, !1)),
   ),
-    Modernizr.addTest("vibrate", !!E("vibrate", navigator));
+    Modernizr.addTest("vibrate", !!E("vibrate", navigator)));
   var z;
-  !(function () {
+  (!(function () {
     var e = {}.hasOwnProperty;
     z =
       r(e, "undefined") || r(e.call, "undefined")
@@ -296,21 +295,21 @@
   })(),
     (w._l = {}),
     (w.on = function (e, n) {
-      this._l[e] || (this._l[e] = []),
+      (this._l[e] || (this._l[e] = []),
         this._l[e].push(n),
         Modernizr.hasOwnProperty(e) &&
           setTimeout(function () {
             Modernizr._trigger(e, Modernizr[e]);
-          }, 0);
+          }, 0));
     }),
     (w._trigger = function (e, n) {
       if (this._l[e]) {
         var t = this._l[e];
-        setTimeout(function () {
+        (setTimeout(function () {
           var e, r;
           for (e = 0; e < t.length; e++) (r = t[e])(n);
         }, 0),
-          delete this._l[e];
+          delete this._l[e]);
       }
     }),
     Modernizr._q.push(function () {
@@ -361,8 +360,8 @@
           p.appendChild(d),
           !("Pan" in d || r))
         )
-          return o(p), s("blocked", d), void i(p);
-        (u = function () {
+          return (o(p), s("blocked", d), void i(p));
+        ((u = function () {
           return (
             o(p),
             b.contains(p)
@@ -378,13 +377,13 @@
                 setTimeout(u, 1e3))
           );
         }),
-          setTimeout(u, 10);
+          setTimeout(u, 10));
       }
     }),
     o(),
     i(C),
     delete w.addTest,
-    delete w.addAsyncTest;
+    delete w.addAsyncTest);
   for (var O = 0; O < Modernizr._q.length; O++) Modernizr._q[O]();
   e.Modernizr = Modernizr;
 })(window, document);

@@ -9,24 +9,6 @@ import {
 } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 
-const firefox = navigator.userAgent.toLowerCase().includes("firefox");
-
-function isIosSafari() {
-  const userAgent = navigator.userAgent || navigator.vendor || window.opera;
-
-  // Check for iOS (iPhone, iPad, iPod)
-  const isIosDevice =
-    /iPad|iPhone|iPod/.test(userAgent) ||
-    (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
-
-  // Check for Safari (and not Chrome or other browsers)
-  const isSafari = /Safari/.test(userAgent) && !/Chrome/.test(userAgent);
-
-  return isIosDevice && isSafari;
-}
-
-const safari = isIosSafari();
-
 const constraints = {
   audio: false,
   video: {
@@ -92,9 +74,16 @@ export const MyWebcam = forwardRef(
       if (trigger) captureAndUpload();
     }, [trigger, captureAndUpload]);
 
+    // Guard against overlapping startCamera calls (e.g. rapid hidden<->visible
+    // bursts during mobile app-switching) which would acquire duplicate streams
+    const isStarting = useRef(false);
+
     // Start the camera and bind it to the <video> element
     const startCamera = useCallback(async () => {
       const video = videoRef.current;
+
+      if (isStarting.current || mediaStream.current) return;
+      isStarting.current = true;
 
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
@@ -103,6 +92,8 @@ export const MyWebcam = forwardRef(
         mediaStream.current = stream;
       } catch (e) {
         console.error("navigator.getUserMedia error:", e);
+      } finally {
+        isStarting.current = false;
       }
     }, []);
 
@@ -128,16 +119,26 @@ export const MyWebcam = forwardRef(
       };
     }, [canvasRef, videoRef, capture, startCamera, stopCamera]);
 
-    // Bugfix for Safari: Reinitialize the camera when the tab is hidden and then shown again
-    if (safari) {
-      document.addEventListener("visibilitychange", () => {
-        if (document.visibilityState === "visible") {
-          console.log("Reinitializing camera...");
+    // Stop the camera while the app is backgrounded (saves battery on all
+    // platforms), and resume it when the app becomes visible again. The
+    // stop-then-start on resume also preserves the documented Safari fix where
+    // the camera needs reinitialising to come back from standby.
+    useEffect(() => {
+      const handleVisibilityChange = () => {
+        if (document.visibilityState === "hidden") {
+          stopCamera();
+        } else {
           stopCamera();
           startCamera();
         }
-      });
-    }
+      };
+      document.addEventListener("visibilitychange", handleVisibilityChange);
+      return () =>
+        document.removeEventListener(
+          "visibilitychange",
+          handleVisibilityChange,
+        );
+    }, [startCamera, stopCamera]);
 
     // Bugfix for Firefox: Reinitialize the camera when the screen orientation changes
     // TODO: this isn't enough - I need to also rotate the camera apparently. See src for react-webcam I guess, or just don't bother

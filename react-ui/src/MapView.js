@@ -50,7 +50,9 @@ const MAP_HEIGHT_KM =
   (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
 
 const MAP_POLL_TIME = 5 * 1000;
-const RATE_LIMIT_INTERVAL = 1 * 1000;
+// Throttle how often we upload our location to the server. Kept high to save
+// battery - the local map dot still updates on every position callback.
+const RATE_LIMIT_INTERVAL = 15 * 1000;
 
 // After 5 minutes, the dots will be almost completely transparent
 const TIME_UNTIL_TRANSPARENT = 5 * 60;
@@ -460,31 +462,47 @@ function MapView({
   );
 }
 
-var lastUpdateTime = 0;
-
 export function MapViewSelf() {
   const [position, setPosition] = useState(null);
 
+  // Track the last upload time per-mount so it resets correctly if the
+  // component remounts.
+  const lastUpdateTime = useRef(0);
+
   useEffect(() => {
     if (navigator.geolocation) {
+      // Battery-friendly geolocation options: don't force high accuracy (the
+      // previous default behaviour), allow a cached fix so the GPS radio can
+      // idle, and give a slow fix room before erroring.
+      const geoOptions = {
+        enableHighAccuracy: false,
+        maximumAge: 15000,
+        timeout: 20000,
+      };
+
       // Register a callback for changes to the user's position.
-      // This a) updates the location on the map and b) sends the location to the server.
+      // This a) updates the location on the map (every callback, so our own
+      // dot stays smooth) and b) throttles uploads to the server to save
+      // battery and network.
       const watchId = navigator.geolocation.watchPosition(
         (position) => {
+          setPosition(position);
+
           const currentTime = Date.now();
-          if (currentTime - lastUpdateTime >= RATE_LIMIT_INTERVAL) {
-            setPosition(position);
+          if (currentTime - lastUpdateTime.current >= RATE_LIMIT_INTERVAL) {
             sendLocationUpdate(
               position.coords.latitude,
               position.coords.longitude,
             );
-            lastUpdateTime = currentTime;
+            lastUpdateTime.current = currentTime;
           }
         },
 
         (error) => {
           console.error("Error watching position:", error);
         },
+
+        geoOptions,
       );
 
       return () => {
