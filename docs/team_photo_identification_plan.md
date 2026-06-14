@@ -404,10 +404,13 @@ deliverable.
   configs.
 - **Shooter orientation / aim** as a stronger spatial prior (currently only
   proximity).
-- Open question for the implementer to confirm with the product owner: exact
-  palette of 5 colours that are maximally distinguishable on camera (the choice
-  directly affects the misread rate). Current placeholder:
-  red / yellow / green / blue / purple.
+- **Palette tuning (decided):** the 5 colours stay **configurable**; the initial
+  red / yellow / green / blue / purple are deliberate *placeholders / decent
+  starting defaults*, not final. The actual best-distinguishable palette will be
+  chosen by **live camera tests** with the real hardware (the choice directly
+  affects the misread rate). The implementer should NOT hard-code or treat the
+  placeholder palette as final — keep it editable in `config.py` so swapping
+  colours after field testing is a one-line change.
 
 ---
 
