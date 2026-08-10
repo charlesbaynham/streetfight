@@ -7,6 +7,7 @@ import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
+import IdentityDemo from "./IdentityDemo";
 
 import "./index.css";
 import AdminLogin from "./AdminLogin";
@@ -27,6 +28,10 @@ const router = createBrowserRouter([
   {
     path: "admin/shots",
     element: <ShotQueue />,
+  },
+  {
+    path: "admin/identity",
+    element: <IdentityDemo />,
   },
   {
     path: "test",
