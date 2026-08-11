@@ -1,5 +1,6 @@
 import logging
 import os
+from contextlib import contextmanager
 from enum import Enum
 from functools import wraps
 from logging.handlers import RotatingFileHandler
@@ -18,6 +19,7 @@ from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import StreamingResponse
 
+from . import identity_demo
 from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
 from .item_actions import WEAPON_NAME_LOOKUP
@@ -472,6 +474,47 @@ async def admin_dump_images():
     from .postprocess_shot_images import output_images
 
     return output_images()
+
+
+######## IDENTITY (colour code) DEMO ###########
+#
+# A stateless sandbox for the player-identification scheme: build a scheme,
+# decode a hand-typed reading, or simulate many noisy readings. Nothing here
+# touches the database or a running game.
+
+
+@admin_method(path="/admin_identity_defaults", method="GET")
+async def admin_identity_defaults() -> dict:
+    return identity_demo.demo_defaults()
+
+
+@admin_method(path="/admin_identity_scheme", method="POST")
+async def admin_identity_scheme(
+    spec: identity_demo.SchemeSpec, max_rows: int = identity_demo.MAX_CODEBOOK_ROWS
+) -> dict:
+    with _identity_demo_errors():
+        return identity_demo.describe_scheme(spec, max_rows=max_rows)
+
+
+@admin_method(path="/admin_identity_decode", method="POST")
+async def admin_identity_decode(request: identity_demo.DecodeRequest) -> dict:
+    with _identity_demo_errors():
+        return identity_demo.decode_reading(request)
+
+
+@admin_method(path="/admin_identity_simulate", method="POST")
+async def admin_identity_simulate(request: identity_demo.SimulateRequest) -> dict:
+    with _identity_demo_errors():
+        return identity_demo.simulate(request)
+
+
+@contextmanager
+def _identity_demo_errors():
+    """Turn the demo module's complaints into a readable HTTP 400."""
+    try:
+        yield
+    except identity_demo.DemoError as e:
+        raise HTTPException(400, str(e))
 
 
 @router.get("/sse_updates")

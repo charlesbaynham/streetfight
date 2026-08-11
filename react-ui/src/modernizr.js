@@ -84,7 +84,7 @@
       d = a("div"),
       p = l();
     if (parseInt(r, 10))
-      for (; r--; )
+      for (; r--;)
         ((f = a("div")), (f.id = o ? o[r] : c + (r + 1)), d.appendChild(f));
     return (
       (i = a("style")),
@@ -135,11 +135,11 @@
   function h(n, r) {
     var o = n.length;
     if ("CSS" in e && "supports" in e.CSS) {
-      for (; o--; ) if (e.CSS.supports(v(n[o]), r)) return !0;
+      for (; o--;) if (e.CSS.supports(v(n[o]), r)) return !0;
       return !1;
     }
     if ("CSSSupportsRule" in e) {
-      for (var i = []; o--; ) i.push("(" + v(n[o]) + ":" + r + ")");
+      for (var i = []; o--;) i.push("(" + v(n[o]) + ":" + r + ")");
       return (
         (i = i.join(" or ")),
         d(
@@ -333,7 +333,7 @@
             }),
             n && p.contains(n))
           ) {
-            for (; n.parentNode !== p; ) n = n.parentNode;
+            for (; n.parentNode !== p;) n = n.parentNode;
             p.removeChild(n);
           }
         };

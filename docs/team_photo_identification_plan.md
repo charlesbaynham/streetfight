@@ -391,6 +391,16 @@ deliverable.
   given the parity code's both-faults gap. Full automation can come later (and is
   safer once on the `[4,2,3]` upgrade).
 
+### 8.5 Admin workbench (built, ahead of the vision adapter)
+- `/admin/identity` (React: `react-ui/src/IdentityDemo.js`, backend:
+  `backend/identity_demo.py`) is a stateless sandbox over the pure module: build
+  a scheme from arbitrary palette/channels/code, type in a `Reading` by hand as
+  if the vision model had produced it, decode it against a candidate set (with
+  optional priors), and Monte-Carlo many noisy readings to compare schemes.
+- The headline simulation number is **error given auto-accept**: how often the
+  decoder is confident *and* unflagged *and* wrong, i.e. the rate of silent
+  misidentification the human confirm step above exists to catch.
+
 ---
 
 ## 9. Out of scope / future / open questions

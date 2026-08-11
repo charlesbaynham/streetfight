@@ -439,6 +439,11 @@ export default function AdminMode() {
 
       <p>Welcome to admin mode. I hope you're not a cheater...</p>
 
+      <p>
+        <a href="/admin/shots">Shot queue</a> |{" "}
+        <a href="/admin/identity">Identity code workbench</a>
+      </p>
+
       <Row>
         <AllGamesView games={games} />
       </Row>
