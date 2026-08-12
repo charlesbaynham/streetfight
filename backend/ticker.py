@@ -98,7 +98,7 @@ class Ticker:
 
     @db_scoped
     def _get_game(self) -> Game:
-        return self._session.query(Game).get(self.game_id)
+        return self._session.get(Game, self.game_id)
 
     @db_scoped
     def touch_game_ticker_tag(self):

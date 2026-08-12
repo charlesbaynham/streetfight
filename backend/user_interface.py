@@ -123,7 +123,7 @@ class UserInterface:
         "Return an ORM object for this user, making a new one if required"
 
         with make_user_lock:
-            user = self._session.query(User).get(self.user_id)
+            user = self._session.get(User, self.user_id)
 
             if not user:
                 user = self._make_user()
@@ -169,7 +169,7 @@ class UserInterface:
     @db_scoped
     def get_user_model(self) -> UserModel:
         u = self.get_user()
-        return UserModel.from_orm(u) if u else None
+        return UserModel.model_validate(u) if u else None
 
     @db_scoped
     def get_team_id(self) -> UUID:
@@ -185,7 +185,7 @@ class UserInterface:
     @db_scoped
     def get_team_model(self) -> TeamModel:
         team = self.get_user().team
-        return TeamModel.from_orm(team) if team else None
+        return TeamModel.model_validate(team) if team else None
 
     @db_scoped
     def get_game_model(self) -> GameModel:
@@ -194,7 +194,7 @@ class UserInterface:
             return None
 
         game = team.game
-        return GameModel.from_orm(game) if game else None
+        return GameModel.model_validate(game) if game else None
 
     @db_scoped
     def _get_item_from_database(self, item_id: int) -> Item:
@@ -466,7 +466,7 @@ class UserInterface:
 
         # Make our own session, detached from the usual machinery to ensure no update events
         with session_scope() as session:
-            user = session.query(User).get(self.user_id)
+            user = session.get(User, self.user_id)
             user.latitude = latitute
             user.longitude = longitude
             user.location_timestamp = timestamp

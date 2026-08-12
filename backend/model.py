@@ -19,7 +19,7 @@ from sqlalchemy import ForeignKey
 from sqlalchemy import Integer
 from sqlalchemy import String
 from sqlalchemy import Table
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
@@ -301,50 +301,46 @@ class GameModel(pydantic.BaseModel):
     ticker_update_tag: int
     active: bool
 
-    exclusion_circle_lat: Optional[float]
-    exclusion_circle_long: Optional[float]
-    exclusion_circle_radius: Optional[float]
+    exclusion_circle_lat: Optional[float] = None
+    exclusion_circle_long: Optional[float] = None
+    exclusion_circle_radius: Optional[float] = None
 
-    next_circle_lat: Optional[float]
-    next_circle_long: Optional[float]
-    next_circle_radius: Optional[float]
+    next_circle_lat: Optional[float] = None
+    next_circle_long: Optional[float] = None
+    next_circle_radius: Optional[float] = None
 
-    drop_circle_lat: Optional[float]
-    drop_circle_long: Optional[float]
-    drop_circle_radius: Optional[float]
+    drop_circle_lat: Optional[float] = None
+    drop_circle_long: Optional[float] = None
+    drop_circle_radius: Optional[float] = None
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
 class UserModel(pydantic.BaseModel):
     id: UUID
-    name: Optional[str]
+    name: Optional[str] = None
 
-    team_id: Optional[UUID]
+    team_id: Optional[UUID] = None
 
     num_bullets: int
     hit_points: int
     shot_timeout: float
     shot_damage: int
-    time_of_death: Optional[float]
+    time_of_death: Optional[float] = None
 
-    latitude: Optional[float]
-    longitude: Optional[float]
-    location_timestamp: Optional[float]
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_timestamp: Optional[float] = None
 
     # These are retrieved from the Game associated with the Team this user is in
-    game_id: Optional[UUID]
+    game_id: Optional[UUID] = None
     active: bool
     state: UserState
 
     # This is retrieved from the team too
-    team_name: Optional[str]
+    team_name: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
 class TeamModel(pydantic.BaseModel):
@@ -353,9 +349,7 @@ class TeamModel(pydantic.BaseModel):
     game_id: UUID
     users: List[UserModel]
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
 class ShotModel(pydantic.BaseModel):
@@ -369,15 +363,13 @@ class ShotModel(pydantic.BaseModel):
     game: GameModel
 
     user_id: UUID
-    target_user_id: Optional[UUID]
+    target_user_id: Optional[UUID] = None
 
     shot_damage: int
 
-    location_context: Optional[str]
+    location_context: Optional[str] = None
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
 class TickerEntryModel(pydantic.BaseModel):
@@ -386,12 +378,10 @@ class TickerEntryModel(pydantic.BaseModel):
     game_id: UUID
     message: str
 
-    class Config:
-        orm_mode = True
-        extra = "forbid"
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
-GameModel.update_forward_refs()
-UserModel.update_forward_refs()
-TeamModel.update_forward_refs()
-ShotModel.update_forward_refs()
+GameModel.model_rebuild()
+UserModel.model_rebuild()
+TeamModel.model_rebuild()
+ShotModel.model_rebuild()

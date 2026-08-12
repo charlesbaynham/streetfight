@@ -20,5 +20,5 @@ def test_client(api_client):
 
 
 def test_user_in_team(db_session, user_in_team):
-    user = db_session.query(User).get(user_in_team)
+    user = db_session.get(User, user_in_team)
     assert user.team is not None
