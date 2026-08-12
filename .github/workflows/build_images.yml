@@ -79,3 +79,62 @@ jobs:
       run: |
         echo "Pushing Docker image to GitHub Container Registry"
         docker push $REGISTRY/${IMAGE_NAME_PREFIX}-backend:latest
+
+  # Build the Proxmox LXC rootfs template. Deployment is pull-based: CI has no
+  # route to the hypervisor (it sits on a home LAN behind NAT), so the template
+  # is published as a release asset and fetched from the LAN side, rather than
+  # CI holding a Proxmox credential and pushing.
+  build_lxc_template:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # to publish the template as a release asset
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+    # Optional: skipped unless a CACHIX_AUTH_TOKEN secret exists. Without a
+    # binary cache CI rebuilds a large closure every time, which is what
+    # quietly kills the update cadence.
+    - name: Set up Cachix
+      if: env.CACHIX_AUTH_TOKEN != ''
+      uses: cachix/cachix-action@v15
+      with:
+        name: ${{ vars.CACHIX_CACHE_NAME || 'streetfight' }}
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+      env:
+        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    - name: Build Proxmox LXC template
+      run: |
+        nix build .#proxmoxLxcTemplate --print-build-logs
+        # The tarball is named after the NixOS label, which carries the nixpkgs
+        # revision. Add the commit SHA so app-only changes produce a distinct
+        # filename too: a new filename is what forces the container to be
+        # replaced, and keeping generations distinct is what makes rollback
+        # possible.
+        BUILT=$(echo result/tarball/*.tar.xz)
+        TEMPLATE_NAME="$(basename "$BUILT" .tar.xz)-${GITHUB_SHA::7}.tar.xz"
+        mkdir -p dist
+        cp "$BUILT" "dist/$TEMPLATE_NAME"
+        echo "TEMPLATE_NAME=$TEMPLATE_NAME" >> "$GITHUB_ENV"
+        ls -lh dist/
+    - name: Upload template as a workflow artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: proxmox-lxc-template
+        path: dist/${{ env.TEMPLATE_NAME }}
+        retention-days: 14
+    - name: Publish template as a release asset
+      if: github.ref == 'refs/heads/master'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="template-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+        # A release per master build, so several generations stay downloadable:
+        # rolling back means redeploying a previous template, which needs the
+        # old artifact to still exist.
+        gh release create "$TAG" \
+          --title "Proxmox LXC template $TAG" \
+          --notes "Street Fight Proxmox LXC rootfs template built from ${GITHUB_SHA}." \
+          --target "$GITHUB_SHA" \
+          || echo "Release $TAG already exists, uploading asset to it"
+        gh release upload "$TAG" "dist/$TEMPLATE_NAME" --clobber
