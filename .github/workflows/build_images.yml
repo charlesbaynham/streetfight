@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v31
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build frontend docker image
@@ -51,7 +51,7 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v31
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build backend docker image
