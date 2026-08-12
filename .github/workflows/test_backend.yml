@@ -12,9 +12,11 @@ jobs:
     - uses: actions/setup-node@v3
       with:
         cache: npm
+    # The `ci` shell is the dev shell minus TeX, which is only needed by the
+    # map/PDF generation scripts — not by the tests.
     - name: Install dependencies
-      run: nix develop -c npm install
+      run: nix develop .#ci -c npm install
     - name: Test with pytest
       run: |
         cp .env.dev .env
-        nix develop -c pytest
+        nix develop .#ci -c pytest

@@ -8,9 +8,14 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        backendPackage = pkgs.python3Packages.buildPythonPackage rec {
-          name = "backend";
+        backendPackage = pkgs.python3Packages.buildPythonPackage {
+          pname = "backend";
+          version = "0.1";
           src = ./backend;
+          # nixpkgs >= 25.05 requires the build system to be declared explicitly
+          # rather than inferred; backend/setup.py is plain setuptools.
+          pyproject = true;
+          build-system = [ pkgs.python3Packages.setuptools ];
           propagatedBuildInputs = [ ];
         };
 
@@ -18,10 +23,7 @@
           inherit (texlive) scheme-small;
         });
 
-        pythonReqs = with pkgs.python3Packages; [
-          pip
-
-          # Runtime
+        runtimePythonReqs = with pkgs.python3Packages; [
           python-dotenv
           qrcode
           click
@@ -33,26 +35,40 @@
           fastapi
           wsproto
           uvicorn
+          # starlette's SessionMiddleware (backend/main.py) signs cookies with it
+          itsdangerous
 
-          # Development
+          backendPackage
+        ];
+
+        devPythonReqs = with pkgs.python3Packages; [
+          pip
+
           pytest
           pytest-asyncio
           pytest-mock
           # selenium
           # geckodriver-autoinstaller
           requests
-
-          backendPackage
+          # starlette's TestClient dropped `requests` in favour of httpx
+          httpx
         ];
 
-        reqs = with pkgs; [
-          texDeps
+        pythonReqs = runtimePythonReqs ++ devPythonReqs;
+
+        # Everything the test suite and the linters need, but no TeX. This is
+        # what CI enters, so a test run no longer drags in a TeX distribution.
+        ciReqs = [
           pkgs.nodejs
           (pkgs.python3.withPackages (ps: pythonReqs))
           pkgs.pre-commit
           pkgs.black
           pkgs.caddy
         ];
+
+        # The full shell additionally carries TeX, which only the map/PDF
+        # generation scripts need.
+        reqs = ciReqs ++ [ texDeps ];
 
         frontendBuild = pkgs.buildNpmPackage rec {
           pname = "streetfight";
@@ -124,11 +140,22 @@
 
       in
       {
-        devShell =
-          pkgs.mkShell {
+        devShell = pkgs.mkShell {
+          name = "devShell";
+          buildInputs = reqs;
+        };
+
+        devShells = {
+          default = pkgs.mkShell {
             name = "devShell";
             buildInputs = reqs;
           };
+          # Same as the default shell without TeX — used by CI.
+          ci = pkgs.mkShell {
+            name = "ciShell";
+            buildInputs = ciReqs;
+          };
+        };
 
         apps = {
           inherit loadDocker;
