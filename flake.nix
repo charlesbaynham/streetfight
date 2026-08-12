@@ -218,6 +218,10 @@
               enable = true;
               backend = perSystem.packages.${lxcSystem}.backendEnv;
               frontend = perSystem.packages.${lxcSystem}.frontendBuild;
+              # The rootfs of this container is thrown away on every deploy, so
+              # a /data that is not the Proxmox mountpoint means silent data
+              # loss at the next one.
+              requireStateMountpoint = true;
             };
           }
         ];

@@ -22,6 +22,16 @@ let
     set -u
     fail() { echo "streetfight: $1" >&2; exit 1; }
 
+    ${lib.optionalString cfg.requireStateMountpoint ''
+      # If the mountpoint failed to attach, the directories below would be
+      # created in the rootfs instead and the database would look healthy right
+      # up until the next deploy threw it away. Refuse to run rather than
+      # accumulate state that is silently temporary.
+      if ! ${pkgs.util-linux}/bin/mountpoint -q ${cfg.stateDir}; then
+        fail "${cfg.stateDir} is not a mountpoint. State written there would not survive the container being replaced."
+      fi
+    ''}
+
     for var in SECRET_KEY ADMIN_PASSWORD WEBSITE_URL; do
       if [ -z "''${!var:-}" ]; then
         fail "$var is not set. It must be defined in ${cfg.environmentFile}."
@@ -61,6 +71,18 @@ in
       description = ''
         Directory holding all state that must survive container replacement.
         Expected to be a Proxmox mountpoint, declared outside this flake.
+      '';
+    };
+
+    requireStateMountpoint = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Refuse to start unless {option}`services.streetfight.stateDir` is an
+        actual mountpoint. Worth enabling wherever the host is disposable and
+        the state directory is expected to be attached from outside, so that a
+        mountpoint which failed to attach is a loud failure rather than state
+        quietly written to a filesystem that is about to be discarded.
       '';
     };
 
