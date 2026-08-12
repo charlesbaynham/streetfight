@@ -4,7 +4,12 @@
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+    let
+      # The host the Proxmox template is built for. `nixosConfigurations` is not
+      # a per-system output, so it has to sit outside eachDefaultSystem.
+      lxcSystem = "x86_64-linux";
+
+      perSystem = flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
@@ -55,6 +60,10 @@
         ];
 
         pythonReqs = runtimePythonReqs ++ devPythonReqs;
+
+        # Just enough to run the backend: what the deployed container needs, and
+        # deliberately free of pytest, pip and TeX.
+        backendEnv = pkgs.python3.withPackages (ps: runtimePythonReqs);
 
         # Everything the test suite and the linters need, but no TeX. This is
         # what CI enters, so a test run no longer drags in a TeX distribution.
@@ -165,7 +174,7 @@
         };
 
         packages = {
-          inherit backendPackage frontendBuild frontendBuildWithCaddy;
+          inherit backendPackage backendEnv frontendBuild frontendBuildWithCaddy;
           default = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-frontend";
@@ -191,4 +200,30 @@
         };
       }
     );
+    in
+    nixpkgs.lib.recursiveUpdate perSystem {
+      nixosModules.streetfight = import ./nix/streetfight.nix;
+
+      # The deployable host. Building `.#proxmoxLxcTemplate` produces the rootfs
+      # tarball that gets uploaded to Proxmox as a CT template; replacing the
+      # container with a new template *is* the deploy mechanism, so this config
+      # is never applied with `nixos-rebuild` on a running container.
+      nixosConfigurations.streetfight-lxc = nixpkgs.lib.nixosSystem {
+        system = lxcSystem;
+        modules = [
+          self.nixosModules.streetfight
+          ./nix/lxc.nix
+          {
+            services.streetfight = {
+              enable = true;
+              backend = perSystem.packages.${lxcSystem}.backendEnv;
+              frontend = perSystem.packages.${lxcSystem}.frontendBuild;
+            };
+          }
+        ];
+      };
+
+      packages.${lxcSystem}.proxmoxLxcTemplate =
+        self.nixosConfigurations.streetfight-lxc.config.system.build.tarball;
+    };
 }
