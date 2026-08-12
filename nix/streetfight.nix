@@ -179,7 +179,10 @@ in
         # backend/main.py writes ./logs/backend.log relative to the working
         # directory, and image_processing.py dumps debug images to ./logs/images.
         WorkingDirectory = cfg.stateDir;
-        EnvironmentFile = cfg.environmentFile;
+        # Leading "-" so a missing file is not a systemd-level load failure:
+        # the unit still refuses to start, but the preflight check below is what
+        # reports it, and it can say which variables are wanted and where.
+        EnvironmentFile = "-${cfg.environmentFile}";
         ExecStartPre = preflight;
         ExecStart = "${cfg.backend}/bin/python -m uvicorn backend.main:app --host 127.0.0.1 --port ${toString cfg.backendPort}";
         Restart = "always";
