@@ -88,6 +88,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # to publish the template as a release asset
+    env:
+      # Job-level so the `if:` below can see it: step-level env is not yet in
+      # scope when a step's condition is evaluated.
+      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     steps:
     - uses: actions/checkout@v4
     - name: Install Nix
@@ -101,8 +105,6 @@ jobs:
       with:
         name: ${{ vars.CACHIX_CACHE_NAME || 'streetfight' }}
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
-      env:
-        CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     - name: Build Proxmox LXC template
       run: |
         nix build .#proxmoxLxcTemplate --print-build-logs
