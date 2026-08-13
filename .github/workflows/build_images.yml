@@ -7,6 +7,16 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_PREFIX: ${{ github.repository }}
 
+# Every job here builds with Nix, and each one follows "Install Nix" with the
+# Magic Nix Cache. It stores build results in the GitHub Actions cache, so there
+# is no account, no secret and no third-party service, and pull requests get the
+# cache too. install-nix-action adds the runner to trusted-users by default,
+# which is what lets the caching daemon register itself as a substituter.
+#
+# Paths already available from the upstream cache (cache.nixos.org) are
+# deliberately not re-cached, so what this actually saves is the project's own
+# closure: the Python environment, the frontend build and the LXC tarball.
+
 jobs:
   build_frontend:
     runs-on: ubuntu-latest
@@ -16,7 +26,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v31
+    - name: Set up the Nix binary cache
+      uses: DeterminateSystems/magic-nix-cache-action@v14
+      with:
+        # Not on FlakeHub; without this it tries to authenticate against it.
+        use-flakehub: false
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build frontend docker image
@@ -51,7 +66,12 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Install Nix
-      uses: cachix/install-nix-action@v22
+      uses: cachix/install-nix-action@v31
+    - name: Set up the Nix binary cache
+      uses: DeterminateSystems/magic-nix-cache-action@v14
+      with:
+        # Not on FlakeHub; without this it tries to authenticate against it.
+        use-flakehub: false
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build backend docker image
@@ -79,3 +99,58 @@ jobs:
       run: |
         echo "Pushing Docker image to GitHub Container Registry"
         docker push $REGISTRY/${IMAGE_NAME_PREFIX}-backend:latest
+
+  # Build the Proxmox LXC rootfs template. Deployment is pull-based: CI has no
+  # route to the hypervisor (it sits on a home LAN behind NAT), so the template
+  # is published as a release asset and fetched from the LAN side, rather than
+  # CI holding a Proxmox credential and pushing.
+  build_lxc_template:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # to publish the template as a release asset
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+    # This job in particular rebuilds a whole NixOS closure without a cache,
+    # which is what quietly kills the nixpkgs update cadence.
+    - name: Set up the Nix binary cache
+      uses: DeterminateSystems/magic-nix-cache-action@v14
+      with:
+        # Not on FlakeHub; without this it tries to authenticate against it.
+        use-flakehub: false
+    - name: Build Proxmox LXC template
+      run: |
+        nix build .#proxmoxLxcTemplate --print-build-logs
+        # The tarball is named after the NixOS label, which carries the nixpkgs
+        # revision. Add the commit SHA so app-only changes produce a distinct
+        # filename too: a new filename is what forces the container to be
+        # replaced, and keeping generations distinct is what makes rollback
+        # possible.
+        BUILT=$(echo result/tarball/*.tar.xz)
+        TEMPLATE_NAME="$(basename "$BUILT" .tar.xz)-${GITHUB_SHA::7}.tar.xz"
+        mkdir -p dist
+        cp "$BUILT" "dist/$TEMPLATE_NAME"
+        echo "TEMPLATE_NAME=$TEMPLATE_NAME" >> "$GITHUB_ENV"
+        ls -lh dist/
+    - name: Upload template as a workflow artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: proxmox-lxc-template
+        path: dist/${{ env.TEMPLATE_NAME }}
+        retention-days: 14
+    - name: Publish template as a release asset
+      if: github.ref == 'refs/heads/master'
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="template-$(date -u +%Y%m%d)-${GITHUB_SHA::7}"
+        # A release per master build, so several generations stay downloadable:
+        # rolling back means redeploying a previous template, which needs the
+        # old artifact to still exist.
+        gh release create "$TAG" \
+          --title "Proxmox LXC template $TAG" \
+          --notes "Street Fight Proxmox LXC rootfs template built from ${GITHUB_SHA}." \
+          --target "$GITHUB_SHA" \
+          || echo "Release $TAG already exists, uploading asset to it"
+        gh release upload "$TAG" "dist/$TEMPLATE_NAME" --clobber

@@ -1,16 +1,26 @@
 {
   description = "Simple npm+python environment";
   inputs.flake-utils.url = "github:numtide/flake-utils";
-  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-23.05";
+  inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
 
   outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
+    let
+      # The host the Proxmox template is built for. `nixosConfigurations` is not
+      # a per-system output, so it has to sit outside eachDefaultSystem.
+      lxcSystem = "x86_64-linux";
+
+      perSystem = flake-utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        backendPackage = pkgs.python3Packages.buildPythonPackage rec {
-          name = "backend";
+        backendPackage = pkgs.python3Packages.buildPythonPackage {
+          pname = "backend";
+          version = "0.1";
           src = ./backend;
+          # nixpkgs >= 25.05 requires the build system to be declared explicitly
+          # rather than inferred; backend/setup.py is plain setuptools.
+          pyproject = true;
+          build-system = [ pkgs.python3Packages.setuptools ];
           propagatedBuildInputs = [ ];
         };
 
@@ -18,10 +28,7 @@
           inherit (texlive) scheme-small;
         });
 
-        pythonReqs = with pkgs.python3Packages; [
-          pip
-
-          # Runtime
+        runtimePythonReqs = with pkgs.python3Packages; [
           python-dotenv
           qrcode
           click
@@ -33,26 +40,44 @@
           fastapi
           wsproto
           uvicorn
+          # starlette's SessionMiddleware (backend/main.py) signs cookies with it
+          itsdangerous
 
-          # Development
+          backendPackage
+        ];
+
+        devPythonReqs = with pkgs.python3Packages; [
+          pip
+
           pytest
           pytest-asyncio
           pytest-mock
           # selenium
           # geckodriver-autoinstaller
           requests
-
-          backendPackage
+          # starlette's TestClient dropped `requests` in favour of httpx
+          httpx
         ];
 
-        reqs = with pkgs; [
-          texDeps
+        pythonReqs = runtimePythonReqs ++ devPythonReqs;
+
+        # Just enough to run the backend: what the deployed container needs, and
+        # deliberately free of pytest, pip and TeX.
+        backendEnv = pkgs.python3.withPackages (ps: runtimePythonReqs);
+
+        # Everything the test suite and the linters need, but no TeX. This is
+        # what CI enters, so a test run no longer drags in a TeX distribution.
+        ciReqs = [
           pkgs.nodejs
           (pkgs.python3.withPackages (ps: pythonReqs))
           pkgs.pre-commit
           pkgs.black
           pkgs.caddy
         ];
+
+        # The full shell additionally carries TeX, which only the map/PDF
+        # generation scripts need.
+        reqs = ciReqs ++ [ texDeps ];
 
         frontendBuild = pkgs.buildNpmPackage rec {
           pname = "streetfight";
@@ -124,11 +149,22 @@
 
       in
       {
-        devShell =
-          pkgs.mkShell {
+        devShell = pkgs.mkShell {
+          name = "devShell";
+          buildInputs = reqs;
+        };
+
+        devShells = {
+          default = pkgs.mkShell {
             name = "devShell";
             buildInputs = reqs;
           };
+          # Same as the default shell without TeX — used by CI.
+          ci = pkgs.mkShell {
+            name = "ciShell";
+            buildInputs = ciReqs;
+          };
+        };
 
         apps = {
           inherit loadDocker;
@@ -138,7 +174,7 @@
         };
 
         packages = {
-          inherit backendPackage frontendBuild frontendBuildWithCaddy;
+          inherit backendPackage backendEnv frontendBuild frontendBuildWithCaddy;
           default = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildLayeredImage {
             name = "streetfight-frontend";
@@ -164,4 +200,34 @@
         };
       }
     );
+    in
+    nixpkgs.lib.recursiveUpdate perSystem {
+      nixosModules.streetfight = import ./nix/streetfight.nix;
+
+      # The deployable host. Building `.#proxmoxLxcTemplate` produces the rootfs
+      # tarball that gets uploaded to Proxmox as a CT template; replacing the
+      # container with a new template *is* the deploy mechanism, so this config
+      # is never applied with `nixos-rebuild` on a running container.
+      nixosConfigurations.streetfight-lxc = nixpkgs.lib.nixosSystem {
+        system = lxcSystem;
+        modules = [
+          self.nixosModules.streetfight
+          ./nix/lxc.nix
+          {
+            services.streetfight = {
+              enable = true;
+              backend = perSystem.packages.${lxcSystem}.backendEnv;
+              frontend = perSystem.packages.${lxcSystem}.frontendBuild;
+              # The rootfs of this container is thrown away on every deploy, so
+              # a /data that is not the Proxmox mountpoint means silent data
+              # loss at the next one.
+              requireStateMountpoint = true;
+            };
+          }
+        ];
+      };
+
+      packages.${lxcSystem}.proxmoxLxcTemplate =
+        self.nixosConfigurations.streetfight-lxc.config.system.build.tarball;
+    };
 }

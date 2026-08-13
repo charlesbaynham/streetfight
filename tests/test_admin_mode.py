@@ -68,14 +68,14 @@ def old_shot_prep(
 # Now, shot A should have been marked as checked (because it was)
 def test_alive_user_shot_checked(old_shot_prep, db_session):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    shot_a_model: Shot = db_session.query(Shot).get(shot_a)
+    shot_a_model: Shot = db_session.get(Shot, shot_a)
     assert shot_a_model.checked
 
 
 # Shot B should be marked as checked because it's now invalid
 def test_dead_user_shot_checked(old_shot_prep, db_session):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    shot_b_model: Shot = db_session.query(Shot).get(shot_b)
+    shot_b_model: Shot = db_session.get(Shot, shot_b)
     assert shot_b_model.checked
 
 
@@ -159,7 +159,7 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
     UserInterface(user_id_1).join_team(team_id)
     UserInterface(user_id_2).join_team(team_id)
     UserInterface(user_id_2).award_HP(2)
-    game_id = db_session.query(User).get(user_id_1).team.game.id
+    game_id = db_session.get(User, user_id_1).team.game.id
 
     print(game_id)
     print(AdminInterface().get_scoreboard(game_id))

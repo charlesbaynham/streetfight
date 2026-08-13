@@ -74,7 +74,7 @@ class AdminInterface:
 
     @db_scoped
     def _get_shot_orm(self, shot_id) -> Shot:
-        s = self._session.query(Shot).get(shot_id)
+        s = self._session.get(Shot, shot_id)
         if not s:
             raise HTTPException(404, f"Shot {shot_id} not found")
         return s
@@ -82,12 +82,12 @@ class AdminInterface:
     @db_scoped
     def get_shot_model(self, shot_id) -> ShotModel:
         s = self._get_shot_orm(shot_id)
-        return ShotModel.from_orm(s)
+        return ShotModel.model_validate(s)
 
     @db_scoped
     def get_games(self) -> List[GameModel]:
         logger.info("AdminInterface - get_games")
-        return [GameModel.from_orm(g) for g in self._session.query(Game).all()]
+        return [GameModel.model_validate(g) for g in self._session.query(Game).all()]
 
     @db_scoped
     def get_users(self, team_id: UUID = None, game_id: UUID = None) -> List[UserModel]:
@@ -100,7 +100,7 @@ class AdminInterface:
         if game_id:
             q.filter_by(game_id=game_id)
 
-        return [UserModel.from_orm(g) for g in q.all()]
+        return [UserModel.model_validate(g) for g in q.all()]
 
     @db_scoped
     def create_game(self) -> UUID:
@@ -223,7 +223,7 @@ class AdminInterface:
 
         shots = query.all()
 
-        return [ShotModel.from_orm(s) for s in shots]
+        return [ShotModel.model_validate(s) for s in shots]
 
     @db_scoped
     def get_all_shot_ids(self) -> List[UUID]:
@@ -244,7 +244,7 @@ class AdminInterface:
         num_shots = query.count()
         filtered_shots = query.limit(limit).all()
 
-        shot_models = [ShotModel.from_orm(s) for s in filtered_shots]
+        shot_models = [ShotModel.model_validate(s) for s in filtered_shots]
 
         self._session.close()
 
@@ -257,7 +257,7 @@ class AdminInterface:
     def markup_shot_model(
         shot_model: ShotModel, add_targetting=True, add_annotations=False
     ):
-        new_model = shot_model.copy()
+        new_model = shot_model.model_copy()
         if add_targetting:
             new_model.image_base64 = draw_cross_on_image(new_model.image_base64)
         if add_annotations:

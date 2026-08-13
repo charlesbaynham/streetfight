@@ -62,8 +62,8 @@ class ItemModel(pydantic.BaseModel):
     collected_only_once: bool
     collected_as_team: bool
 
-    sig: Optional[str]
-    salt: Optional[str]
+    sig: Optional[str] = None
+    salt: Optional[str] = None
 
     @classmethod
     def from_base64(cls, encoded_string: str):
@@ -96,7 +96,7 @@ class ItemModel(pydantic.BaseModel):
         return cls(**decoded_dict)
 
     def to_base64(self):
-        json_encoded_obj = json.dumps(self.dict(), cls=_UUIDEncoder)
+        json_encoded_obj = json.dumps(self.model_dump(), cls=_UUIDEncoder)
         logger.debug("JSON encoded: %s", json_encoded_obj)
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
@@ -163,11 +163,14 @@ class ItemModel(pydantic.BaseModel):
 
         return hashed_password_hex
 
-    @pydantic.validator("data")
-    def parse_item_data(cls, v, values):
-        if "itype" not in values:
-            raise pydantic.ValidationError
+    @pydantic.field_validator("data")
+    @classmethod
+    def parse_item_data(cls, v, info: pydantic.ValidationInfo):
+        # "itype" is declared before "data", so it is present in info.data
+        # unless it failed its own validation
+        if "itype" not in info.data:
+            raise ValueError("Cannot validate item data without a valid item type")
 
-        item_type: ItemType = values["itype"]
+        item_type: ItemType = info.data["itype"]
 
-        return ITEM_TYPE_VALIDATORS[item_type](**v).dict()
+        return ITEM_TYPE_VALIDATORS[item_type](**v).model_dump()

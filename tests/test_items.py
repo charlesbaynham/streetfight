@@ -111,7 +111,7 @@ def test_decoded_item_from_base64(valid_encoded_signed_lv1_armour):
     item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
 
     print(f"Encoded: {valid_encoded_signed_lv1_armour}")
-    print(f"Decoded: {item.dict()}")
+    print(f"Decoded: {item.model_dump()}")
 
     assert item.id == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["id"]
     assert item.itype == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["itype"]
@@ -262,17 +262,17 @@ def test_collecting_better_armour_works_and_worse_armour_fails(user_in_team):
     UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
-    armour_lv2 = armour_lv1.copy()
+    armour_lv2 = armour_lv1.model_copy()
     armour_lv2.id = get_uuid()
-    armour_lv2.data = ItemDataArmour(num=2).dict()
+    armour_lv2.data = ItemDataArmour(num=2).model_dump()
     armour_lv2.sign()
 
     UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 3
 
-    armour_lv1_dup = armour_lv1.copy()
+    armour_lv1_dup = armour_lv1.model_copy()
     armour_lv1_dup.id = get_uuid()
-    armour_lv1_dup.data = ItemDataArmour(num=1).dict()
+    armour_lv1_dup.data = ItemDataArmour(num=1).model_dump()
     armour_lv1_dup.sign()
 
     with pytest.raises(HTTPException):
@@ -312,7 +312,7 @@ def test_collecting_revive_while_dead(db_session, valid_encoded_medpack, user_in
     assert UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
 
     # Set time of death to the timeout + 10s ago
-    db_session.query(User).get(user_in_team).time_of_death -= TIME_KNOCKED_OUT + 10
+    db_session.get(User, user_in_team).time_of_death -= TIME_KNOCKED_OUT + 10
     db_session.commit()
 
     assert UserInterface(user_in_team).get_user_model().state == UserState.DEAD
@@ -349,8 +349,8 @@ def test_user_collect_item(api_client, team_factory, db_session):
 
     assert UserInterface(user_id).get_user_model().num_bullets == 10
 
-    user = db_session.query(User).get(user_id)
-    item = db_session.query(Item).get(item_model.id)
+    user = db_session.get(User, user_id)
+    item = db_session.get(Item, item_model.id)
 
     assert user in item.users
     assert item in user.items
