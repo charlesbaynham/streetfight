@@ -2,6 +2,8 @@
 
 This app is not ready for people other than me to use. If you are reading this readme, you're probably not me. So good luck!
 
+It builds itself as a Proxmox LXC container for easy deployment (for me). 
+
 Dev mode:
 
 1. `npm run bootstrap`
