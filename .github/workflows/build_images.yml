@@ -88,23 +88,21 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write  # to publish the template as a release asset
-    env:
-      # Job-level so the `if:` below can see it: step-level env is not yet in
-      # scope when a step's condition is evaluated.
-      CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     steps:
     - uses: actions/checkout@v4
     - name: Install Nix
       uses: cachix/install-nix-action@v31
-    # Optional: skipped unless a CACHIX_AUTH_TOKEN secret exists. Without a
-    # binary cache CI rebuilds a large closure every time, which is what
-    # quietly kills the update cadence.
-    - name: Set up Cachix
-      if: env.CACHIX_AUTH_TOKEN != ''
-      uses: cachix/cachix-action@v15
+    # Without a binary cache CI rebuilds the whole closure on every run, which is
+    # what quietly kills the update cadence. This one backs onto the GitHub
+    # Actions cache, so there is no service to pay for, no secret to configure,
+    # and pull requests get the cache too. install-nix-action puts the runner in
+    # trusted-users by default, which is what lets the daemon register itself as
+    # a substituter.
+    - name: Set up the Nix binary cache
+      uses: DeterminateSystems/magic-nix-cache-action@v14
       with:
-        name: ${{ vars.CACHIX_CACHE_NAME || 'streetfight' }}
-        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+        # Not on FlakeHub; without this it tries to authenticate against it.
+        use-flakehub: false
     - name: Build Proxmox LXC template
       run: |
         nix build .#proxmoxLxcTemplate --print-build-logs
