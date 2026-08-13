@@ -9,6 +9,13 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v31
+    # Stores build results in the GitHub Actions cache: no account, no secret,
+    # and pull requests get the cache too. See build_images.yml for the detail.
+    - name: Set up the Nix binary cache
+      uses: DeterminateSystems/magic-nix-cache-action@v14
+      with:
+        # Not on FlakeHub; without this it tries to authenticate against it.
+        use-flakehub: false
     - uses: actions/setup-node@v3
       with:
         cache: npm
