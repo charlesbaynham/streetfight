@@ -2,12 +2,15 @@
   description = "Simple npm+python environment";
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
+  inputs.cattle.url = "git+https://github.com/charlesbaynham/nix-proxmox-cattle?ref=v1";
 
-  outputs = { self, nixpkgs, flake-utils }:
+  outputs = { self, nixpkgs, flake-utils, cattle }:
     let
       # The host the Proxmox template is built for. `nixosConfigurations` is not
       # a per-system output, so it has to sit outside eachDefaultSystem.
       lxcSystem = "x86_64-linux";
+
+      streetfightModule = import ./nix/streetfight.nix;
 
       perSystem = flake-utils.lib.eachDefaultSystem (system:
       let
@@ -200,34 +203,27 @@
         };
       }
     );
-    in
-    nixpkgs.lib.recursiveUpdate perSystem {
-      nixosModules.streetfight = import ./nix/streetfight.nix;
-
-      # The deployable host. Building `.#proxmoxLxcTemplate` produces the rootfs
-      # tarball that gets uploaded to Proxmox as a CT template; replacing the
-      # container with a new template *is* the deploy mechanism, so this config
-      # is never applied with `nixos-rebuild` on a running container.
-      nixosConfigurations.streetfight-lxc = nixpkgs.lib.nixosSystem {
+      # `.#proxmoxLxcTemplate` is the rootfs tarball Proxmox takes as a CT
+      # template. Everything generic about being a cattle container — the LXC
+      # fixups, the artifact naming, the "/data must be a mountpoint" guard —
+      # comes from nix-proxmox-cattle; only the app wiring is here.
+      lxcTemplate = cattle.lib.mkTemplate {
+        inherit nixpkgs;
+        name = "streetfight";
         system = lxcSystem;
+        stateDir = "/data";
         modules = [
-          self.nixosModules.streetfight
-          ./nix/lxc.nix
+          streetfightModule
           {
             services.streetfight = {
               enable = true;
               backend = perSystem.packages.${lxcSystem}.backendEnv;
               frontend = perSystem.packages.${lxcSystem}.frontendBuild;
-              # The rootfs of this container is thrown away on every deploy, so
-              # a /data that is not the Proxmox mountpoint means silent data
-              # loss at the next one.
-              requireStateMountpoint = true;
             };
           }
         ];
       };
-
-      packages.${lxcSystem}.proxmoxLxcTemplate =
-        self.nixosConfigurations.streetfight-lxc.config.system.build.tarball;
-    };
+    in
+    nixpkgs.lib.recursiveUpdate perSystem
+      (lxcTemplate // { nixosModules.streetfight = streetfightModule; });
 }
