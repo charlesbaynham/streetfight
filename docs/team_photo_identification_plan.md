@@ -5,7 +5,13 @@
 > reasoning behind it, so the implementer does not need to re-derive anything.
 > Nothing in here has been implemented yet.
 >
-> **Branch:** `claude/team-photo-ai-categorization-q7wp08`
+> **Branch:** `claude/haiku-color-recognition-test-n28fld`
+>
+> **Revision note:** §0–§3, §9 and §11 were revised after empirical vision testing
+> and a fresh coding-theory pass (see §12 for the measurements that drove it).
+> The configuration is now **4 channels × 7 colours**, not the 3 × 5 originally
+> drafted. The architecture in §4–§8 is unchanged — it was designed to be
+> reconfigurable and the new config is a `config.py` edit.
 
 ---
 
@@ -15,10 +21,14 @@ Build a **self-contained, independently unit-tested Python module** that maps th
 colours a player wears (read from a "shot" photo) to *which player it is*, robustly
 against a hidden item or a misread colour.
 
-- Players wear colours across **channels** (wearable slots). **Initially 3 channels:
-  shirt, head, armband.**
-- Each channel uses a palette of **colours**. **Initially 5 colours.** This gives
-  **5² = 25 distinct player identities** using a parity (`[3,2,2]`) code.
+- Players wear colours across **channels** (wearable slots). **4 channels:
+  t-shirt, trousers, hat, armbands.**
+- Each channel uses a palette of **7 colours**. The code is the MDS
+  Reed–Solomon `[4,2,3]` over `GF(7)`, giving **49 distinct player identities**
+  at minimum distance **d = 3**.
+- The **trousers** channel deliberately uses **fewer than 7 colours** (see §2.6)
+  because guests supply their own clothing and green/yellow/purple trousers are
+  hard to come by. Capacity is `7 × (number of trouser colours)`.
 - The number of colours, the number of channels, *and* the kind of channel
   (a channel could be shapes instead of colours) must **all be reconfigurable
   without touching the decode logic.** This extensibility is the single most
@@ -27,10 +37,10 @@ against a hidden item or a misread colour.
   unit tests**, decoupled from the database, the web layer, and the vision/LLM
   call.
 
-The chosen guarantee for the initial 3-channel / 5-colour config is:
-**correct one erasure (hidden item) OR detect one misread — but not both in the
-same photo.** That last gap is a deliberate, accepted compromise (see §2.4),
-softened in practice by a GPS prior and confidence-weighted decoding.
+The guarantee at `d = 3` is: **correct up to two erasures (hidden garments), OR
+correct one misread, OR correct one erasure and detect one misread.** Equivalently
+and more usefully: **any two correctly-read garments uniquely identify the player**
+— it does not matter which two.
 
 ---
 
@@ -97,70 +107,113 @@ top candidate for one-click confirmation (still calling the existing
 - Singleton bound: number of codewords `≤ q^(n − d + 1)`. MDS codes (parity,
   Reed–Solomon) meet it with equality.
 
-Consequences for `n = 3` channels:
-| Requirement | Needs `d` | Possible at n=3? | Codewords at q=5 |
-|---|---|---|---|
-| Correct 1 misread **and** 1 erasure (both at once) | 4 | **No** (`d ≤ 3`) | — |
-| Correct 1 erasure **and** *detect* 1 misread (both at once) | 3 | Yes, but forces a **repetition code** → only `q` codewords (would need 25 *colours* for 25 players) | 5 |
-| Correct 1 erasure **OR** detect 1 misread (not both at once) | 2 | Yes — `[3,2,2]` parity code | **25** |
+### 2.4 The decision: 4 channels × 7 colours, `[4,2,3]` RS over `GF(7)`
 
-### 2.4 The decision we made (and the compromise)
-We are sticking with **3 channels and 5 colours initially**, which means the
-**`[3,2,2]` parity code**, `d = 2`, **25 identities**.
+The driving constraint is that **photographs are taken of players actively
+running away and trying not to be photographed.** Occlusion is the normal case,
+not the exception, so erasure tolerance matters far more than raw capacity.
 
-- **Erasure alone → corrected.** Any single hidden channel is reconstructed from
-  the parity relation.
-- **Misread alone (nothing hidden) → detected.** The parity check fails, so we
-  know the read is inconsistent (we can't say *which* channel is wrong, so we
-  flag rather than auto-correct).
-- **Erasure + misread in the same photo → THE COMPROMISE.** With one channel
-  hidden we spend the two survivors reconstructing it and have no check left; if
-  one survivor is also misread, the module can silently produce the **wrong**
-  identity. This is the accepted limitation of staying at 3 channels.
+Because 49 identities is comfortably more than the expected guest count, we only
+need `k = 2` information symbols (`7² = 49`). That makes **`d = n − k + 1 = n − 1`**:
+every channel added buys one more tolerated erasure, for free.
 
-**Mitigations for the compromise** (these are *why* it's acceptable):
-1. The **GPS prior** — a reconstructed identity that maps to a player nowhere
-   near the shooter is implausible and gets down-weighted.
-2. **Confidence-weighted (soft) decoding** — the vision model's per-channel
-   confidences feed a likelihood, so a low-confidence survivor doesn't get
-   treated as gospel.
-3. **Human-in-the-loop** — the admin confirms the top candidate.
+| Channels | Identities | `d` | Erasures tolerated | Channels needed to ID |
+|---|---|---|---|---|
+| 3 | 49 | 2 | 1 | any 2 |
+| **4 (chosen)** | **49** | **3** | **2** | **any 2** |
+| 5 | 49 | 4 | 3 | any 2 |
+
+**The channels are: t-shirt, trousers, hat, armbands.** These were chosen because
+they are observable from *any* angle, which armbands alone are not.
+
+**The armbands are one symbol worn on both arms**, not two independent channels.
+This is deliberate: duplicating the symbol attacks the *erasure probability*
+(roughly 55% → 80% visible, since the two arms fail independently) rather than the
+code distance. Splitting them into two distinct channels was simulated and gains
+only ~1 percentage point of correct identification while requiring every guest to
+source two armband colours — see §12.3.
+
+Guarantees at `d = 3`, from `d ≥ 2t + e + 1`:
+
+- **Up to 2 erasures → corrected.** Any two hidden garments are fine.
+- **1 misread, nothing hidden → corrected.**
+- **1 erasure + 1 misread → detected** (flagged, not silently mis-identified).
+- **Any two correctly-read channels uniquely identify the player.** Verified
+  exhaustively: all six channel pairs yield 49 distinct pairs.
+
+**Anti-cheat bonus:** because the nearest other codeword is 3 symbols away, a
+player must change **at least three of their four garments** to impersonate
+someone else. Changing one garment still decodes to their own identity.
 
 ### 2.5 The upgrade ladder (must be a drop-in, not a rewrite)
-If the compromise proves unacceptable, the fix is to add a channel and/or
-colours and swap the code. The module must make this a config change only:
+The module must make each of these a config change only:
 
 | Config | Code | Guarantee | Capacity |
 |---|---|---|---|
-| **3 channels × 5 colours** (initial) | `[3,2,2]` parity | correct 1 erasure **or** detect 1 misread | 25 |
-| 4 channels × 5 colours | `[4,2,3]` (MDS/RS) | correct 1 erasure **and** detect 1 misread (and correct a lone misread) | 25 |
-| 5 channels × 5 colours | `[5,2,4]` (MDS/RS) | correct 1 erasure **and** 1 misread together | 25 |
-| 3 channels × 7 colours | `[3,2,2]` parity | same as initial | 49 |
+| 3 channels × 7 colours | `[3,2,2]` parity | correct 1 erasure **or** detect 1 misread | 49 |
+| **4 channels × 7 colours (chosen)** | `[4,2,3]` RS | correct 2 erasures; or 1 misread; or 1 erasure + detect 1 misread | **49** |
+| 5 channels × 7 colours | `[5,2,4]` RS | correct 3 erasures; or 1 erasure + 1 misread together | 49 |
+| 4 channels × 7 colours, `k=3` | `[4,3,2]` parity | correct 1 erasure **or** detect 1 misread | 343 |
 
-Capacity for an `[n, k]` code is `q^k`. Parity codes have `k = n−1` (capacity
-`q^(n−1)`). More colours raise capacity; more channels raise either capacity or
-distance depending on which code you pick.
+Capacity for an `[n, k]` code is `q^k`; distance is `n − k + 1` for MDS codes.
+Trading `k` up buys capacity and costs distance. **We are capacity-rich and
+erasure-poor, so keep `k = 2`.**
+
+### 2.6 Restricting the trousers alphabet (per-channel palettes)
+
+Guests supply their own clothing, so the channels are **not equally capable**.
+Yellow, purple and orange trousers are rare in ordinary wardrobes; t-shirts and
+hats come in anything.
+
+Two facts make this cheap to accommodate:
+
+1. **Capacity with a restricted channel is `q × s`**, where `s` is the size of the
+   smallest channel alphabet. (Delete the `d − 1 = 2` least-visible positions; the
+   remaining two must still separate everyone, and the tightest such pair includes
+   trousers.) So `s = 5 → 35 identities`, `s = 4 → 28`.
+2. **A channel's physical colours need not be a subset of any other channel's.**
+   The code operates on `GF(7)` indices; only the *cardinality* matters. And a
+   misread can only ever confuse two colours **within the same channel**, so
+   green trousers never need to be told apart from yellow trousers if yellow is
+   not in the trousers vocabulary at all.
+
+Therefore the trousers channel uses **five easy-to-source colours that are not
+all drawn from the main palette** (§9.1). Restricting trousers costs essentially
+nothing in accuracy and slightly *reduces* the misread rate, because fewer
+symbols in a channel means fewer ways to get it wrong (§12.3).
+
+> **Do not** "solve" the trousers problem by adding a fifth channel (e.g. socks)
+> so trousers can drop to 2 colours. That was simulated: it forces `k = 3`, which
+> means **three** visible garments are needed instead of two, and costs ~9
+> percentage points of correct identification. See §12.3.
 
 ---
 
 ## 3. Configuration decisions to bake in (but keep changeable)
 
-| Decision | Initial value | Must be configurable? |
+| Decision | Value | Must be configurable? |
 |---|---|---|
-| Channels | `shirt`, `head`, `armband` (3) | **Yes** — add/remove/reorder channels |
-| Colours per channel | 5: red, yellow, green, blue, purple | **Yes** — add colours (raises `q`) |
-| Channel alphabet kind | all colour palettes | **Yes** — e.g. a `shape` channel with a shape alphabet |
-| Code | `[3,2,2]` sum-parity over GF(5) | **Yes** — swap to RS/MDS as in §2.5 |
-| Player capacity target | 25 | derived from `q^k`; raise via colours/channels |
-| Guarantee | correct-1-erasure-or-detect-1-misread | derived from the code's `d` |
+| Channels | `tshirt`, `trousers`, `hat`, `armbands` (4) | **Yes** — add/remove/reorder channels |
+| `q` (field size / max alphabet) | 7 | **Yes** — must stay prime (see below) |
+| Full palette (t-shirt, hat, armbands) | 7 colours, §9.1 | **Yes** |
+| Trousers palette | 5 colours, §9.1 — a **different physical set** | **Yes** — `s` is a free parameter |
+| Code | `[4,2,3]` Reed–Solomon over GF(7) | **Yes** — swap per §2.5 |
+| Player capacity | `q × s` = 35 (49 if trousers unrestricted) | derived |
+| Guarantee | correct 2 erasures / 1 misread / 1 erasure + detect 1 misread | derived from `d = 3` |
 
 > **Prime-field constraint (document it):** the algebraic code uses `GF(q)`
 > arithmetic. The simple, dependency-free implementation supports `q` =
-> **prime** (5, 7, 11, …). 5 is prime so the initial config is fine. Non-prime
+> **prime** (5, 7, 11, …). 7 is prime, so the chosen config is fine. Non-prime
 > prime powers (e.g. 4, 8, 9) would need `GF(p^m)` arithmetic — out of scope;
 > if you need exactly those counts, either round up to the next prime number of
-> colours or implement extension-field arithmetic later. Capacities like 6 →
-> use 7 colours.
+> colours or implement extension-field arithmetic later.
+
+> **Restricted-alphabet channels:** a channel may legitimately expose **fewer
+> than `q` labels**. The scheme must then only assign codewords whose symbol in
+> that channel falls inside the allowed subset — capacity becomes `q^(k−1) × s`
+> (here `7 × 5 = 35`). Distance is unaffected: a subset of a code has minimum
+> distance at least that of the parent. This must be a first-class feature, not a
+> hack, since it is how the trousers channel works.
 
 ---
 
@@ -218,12 +271,15 @@ all integration code are untouched. That is the extensibility guarantee.
   `[4,2,3]`→3, `[5,2,4]`→4).
 
 ### 5.3 `channels.py`
-- `Channel`: `name` (e.g. `"shirt"`) + `labels` (ordered list of physical symbol
-  names, e.g. `["red","yellow","green","blue","purple"]`). Provides
-  `label_to_index` / `index_to_label`. A channel may have **more** labels than
-  `q` (uses the first `q`, or validates `len(labels) >= q`); different channels
-  may have **different** label lists (colours vs shapes) but must each supply at
-  least `q` symbols.
+- `Channel`: `name` (e.g. `"tshirt"`) + `labels` (ordered list of physical symbol
+  names, e.g. `["black","purple","red","blue","green","orange","yellow"]`).
+  Provides `label_to_index` / `index_to_label`. Different channels may have
+  **different** label lists (different colours entirely, or colours vs shapes).
+- **A channel may expose fewer than `q` labels** (the trousers case, §2.6). The
+  channel therefore also reports its `allowed_symbols()` — the set of `GF(q)`
+  indices it can physically represent, `{0 … len(labels)−1}`. The scheme uses this
+  to filter the codeword set (§5.4). A channel with `len(labels) > q` is an error;
+  fewer is legitimate and expected.
 - `ChannelSet`: ordered list of `Channel`s; length must equal the code's `n`.
   Converts a codeword (tuple of `GF(q)` indices) ↔ a dict of
   `{channel_name: label}` ("what the player physically wears").
@@ -231,6 +287,10 @@ all integration code are untouched. That is the extensibility guarantee.
 ### 5.4 `scheme.py` — `IdentityScheme`
 - Binds a `ChannelSet` + a `LinearCode` + an **assignment** of player IDs to
   codewords. Public surface:
+  - `usable_codewords()` → the codewords of the `LinearCode` **filtered** so that
+    every symbol lies within its channel's `allowed_symbols()`. This is what makes
+    the restricted trousers alphabet work; `capacity` is the size of *this* set
+    (35 for the chosen config), not `q^k`.
   - `assign(player_ids)` → deterministic mapping `player_id → codeword`
     (raise if more players than `capacity`),
   - `appearance(player_id)` → `{channel_name: label}` (what to tell a player to
@@ -277,13 +337,18 @@ all integration code are untouched. That is the extensibility guarantee.
   feed `Reading`s and priors directly.
 
 ### 5.7 `config.py`
-- Declarative initial config + a `default_scheme()` factory:
-  - palette = `["red","yellow","green","blue","purple"]`,
-  - channels = `shirt`, `head`, `armband` (all using the palette),
-  - code = `parity_code(3, 5)`,
+- Declarative config + a `default_scheme()` factory:
+  - `q = 7`,
+  - `MAIN_PALETTE = ["black","purple","red","blue","green","orange","yellow"]`,
+  - `TROUSER_PALETTE = ["black","blue","green","red","white"]` (5 — deliberately a
+    different physical set, see §9.1),
+  - channels = `tshirt`, `trousers`, `hat`, `armbands` **in that order** (the order
+    fixes the RS evaluation points and therefore the codeword layout — changing it
+    changes what everyone wears),
+  - code = `reed_solomon_code(4, 2, 7)`,
   - thresholds for the decoder flags.
-- Changing the initial setup = editing this one file (add a colour to the
-  palette; add a `Channel`; switch to `reed_solomon_code(...)`).
+- Changing the setup = editing this one file (add a colour to a palette; add a
+  `Channel`; switch the code constructor).
 
 ---
 
@@ -292,13 +357,14 @@ all integration code are untouched. That is the extensibility guarantee.
 The implementer should keep these in mind and ideally cover them with
 parametrised tests:
 
-1. **Add a 6th/7th colour.** Append labels to the palette; bump `q` to the next
-   prime (e.g. 7) in `config.py`. `parity_code(3, 7)` → capacity 49. Decoder,
-   scheme, channels unchanged.
-2. **Split armband into left + right (4 channels).** Add a `Channel`; change the
-   code to `reed_solomon_code(4, 2, 5)` (`[4,2,3]`) for the stronger guarantee,
-   or `parity_code(4, 5)` (`[4,3,2]`, capacity 125) to just raise capacity. Only
-   `config.py` changes.
+1. **Widen or narrow the trousers alphabet.** Add/remove labels on the trousers
+   `Channel` only. Capacity moves as `7 × s` (28 at `s=4`, 35 at `s=5`, 49 at
+   `s=7`). Nothing else changes — this is the routine knob, exercised whenever the
+   guest list grows or someone can't find red trousers.
+2. **Split armbands into left + right (5 channels).** Add a `Channel`; change the
+   code to `reed_solomon_code(5, 2, 7)` (`[5,2,4]`, tolerates 3 erasures). Only
+   `config.py` changes. **Note §12.3: this was measured and is not worth it** —
+   keep it as a documented option, not the default.
 3. **Add a "shape" channel.** New `Channel(name="shape",
    labels=["circle","square","triangle","star","cross"])` — a *different*
    alphabet of the same cardinality `q=5`. The vision adapter must learn to read
@@ -318,29 +384,39 @@ import **only** from `backend.identity`, and use **no DB, no network, no
 Pillow** — so the module is provably standalone. Suggested files/cases:
 
 - `test_identity_galois.py` — field axioms: `a + (-a) == 0`, `a * inv(a) == 1`
-  for all non-zero `a` in GF(5) (and GF(7)); rejects composite `p`.
+  for all non-zero `a` in GF(7) (and GF(5)); rejects composite `p`.
 - `test_identity_code.py`
-  - `parity_code(3,5)`: capacity 25, `min_distance == 2`, every codeword sums to
-    0 mod 5, `encode` round-trips.
-  - `reed_solomon_code(4,2,5)` → `d == 3`; `(5,2,5)` → `d == 4`.
-  - `build_code(3,5,4)` and `reed_solomon_code(6,2,5)` raise clear infeasibility
-    errors.
-- `test_identity_channels.py` — label↔index round-trips; rejects a channel with
-  fewer than `q` labels; supports heterogeneous alphabets (a shape channel).
-- `test_identity_scheme.py` — assignment is unique and deterministic; raises when
-  players > capacity; `appearance` ↔ `codeword` consistency.
+  - `reed_solomon_code(4,2,7)`: 49 codewords, `min_distance == 3`.
+  - **Assert the closed form of §11** holds for all 49 codewords:
+    `hat == (2·trousers − tshirt) mod 7` and
+    `armbands == (3·trousers − 2·tshirt) mod 7`.
+  - **Assert the MDS property directly:** for every one of the six channel pairs,
+    the 49 codewords project to 49 *distinct* pairs. This is the "any two garments
+    identify you" guarantee and is the single most important invariant.
+  - `parity_code(3,7)` → `d == 2`; `reed_solomon_code(5,2,7)` → `d == 4`.
+  - `reed_solomon_code(9,2,7)` raises a clear infeasibility error (`n > q+1`).
+- `test_identity_channels.py` — label↔index round-trips; **accepts a channel with
+  fewer than `q` labels** and reports the right `allowed_symbols()`; rejects more
+  than `q`; supports heterogeneous alphabets (trousers vs t-shirt vs a shape
+  channel).
+- `test_identity_scheme.py`
+  - assignment is unique and deterministic; `appearance` ↔ `codeword` consistency.
+  - **restricted-alphabet capacity:** with the 5-colour trousers channel,
+    `capacity == 35`; with a 4-colour one, `28`; with 7, `49`.
+  - every assigned codeword's trousers symbol is inside the allowed subset.
+  - raises when players > capacity.
 - `test_identity_decoder.py` — the behavioural core, parametrised over configs:
   - clean reading → correct player, posterior ≈ 1.
-  - **single erasure** → still the correct player (parity correction).
-  - **single misread, no erasure** → `inconsistent` flag raised (detection); for
-    the `[4,2,3]` config the same case instead *corrects* to the right player.
-  - **erasure + misread together on the parity config** → assert the documented
-    limitation (may be wrong / ambiguous), then assert that supplying a GPS-style
-    **prior** recovers the correct player. This test *encodes the compromise* so
-    it can't regress silently.
+  - **any two channels erased** → still the correct player (the headline
+    guarantee; parametrise over all six surviving pairs).
+  - **single misread, nothing erased** → *corrected* to the right player.
+  - **1 erasure + 1 misread** → flagged `inconsistent`/`ambiguous`, **never a
+    confident wrong answer.** This is the boundary of the guarantee and must not
+    regress silently.
+  - 3 erasures → `ambiguous` (insufficient information), not a silent guess.
   - prior alone breaks a tie when the reading is ambiguous.
-  - **Re-run the whole behavioural suite under the 4-channel `[4,2,3]` config** to
-    prove the decoder is config-agnostic and the upgrade path works.
+  - **Re-run the whole behavioural suite under the `[3,2,2]` and `[5,2,4]`
+    configs** to prove the decoder is config-agnostic in both directions.
 
 ---
 
@@ -357,12 +433,25 @@ deliverable.
 - Implement behind an interface so the decoder/tests never need it. Provide a
   fake/stub implementation for local dev and tests.
 - Prompt design: ask a current **vision-capable Claude model** to report, for
-  each named channel (shirt, head, armband), the palette colour it sees *or*
-  `"obscured"`, plus a confidence, as structured JSON. Include the palette names
-  (and ideally reference swatches) in the prompt. Confirm the exact current model
-  ID at implementation time (see the `claude-api` reference) and default to the
-  latest, most capable vision Claude model. *(Do not hard-code a model identity
-  that may be stale — read it from config/env.)*
+  each named channel (t-shirt, trousers, hat, armbands), the palette colour it
+  sees *or* `"unknown"`, plus a confidence, as structured JSON. Include **that
+  channel's own palette names only** — never offer a colour the channel cannot
+  physically take (see §2.6). Confirm the exact current model ID at implementation
+  time (see the `claude-api` reference) and default to the latest, most capable
+  vision Claude model. *(Do not hard-code a model identity that may be stale —
+  read it from config/env.)*
+- **`"unknown"` is mandatory in the option list.** Measured (§12.1): with the
+  option removed, the model converts "I cannot see it" into a confident wrong
+  colour. This matters doubly because an erasure costs half what a misread costs
+  (`d ≥ e + 1` vs `d ≥ 2t + 1`) — dropping `unknown` converts cheap failures into
+  expensive ones.
+- **Ask one question per channel, and ask whether the garment is clearly visible
+  before asking its colour.** The stronger model does this investigation
+  spontaneously and it is what produces honest abstentions (§12.2).
+- **Do not threshold on the confidence number without validating it per model.**
+  Measured (§12.1): on a task it could not do, the small model returned 78–90%
+  confidence on invented answers, so its confidence carried no signal; the larger
+  model returned 55% on guesses vs 95% on clear reads and was usable.
 
 ### 8.2 Storing each player's identity
 - Add a nullable column to `User` (`backend/model.py`) for the player's identity
@@ -387,9 +476,15 @@ deliverable.
 - When an admin opens an unchecked shot, run: vision adapter → `Reading`; build
   GPS `Prior`; `decoder.decode(...)` → ranked candidates. Surface the top
   candidate (and `flags`) in the admin review UI as a one-click pre-fill for the
-  existing `hit_user(shot_id, target_user_id)`. **Keep the human confirm step**
-  given the parity code's both-faults gap. Full automation can come later (and is
-  safer once on the `[4,2,3]` upgrade).
+  existing `hit_user(shot_id, target_user_id)`. **Keep the human confirm step.**
+  Admins already review every shot, so a *flagged* photo costs almost nothing
+  while a *silent misidentification* kills the wrong player. Tune every threshold
+  in that direction.
+- **Do not buy safety with a conservative decoder.** Measured (§12.3): flagging
+  anything with a single mismatch cuts wrong-IDs from 2.03% → 1.39% but throws
+  away 13.5 points of correct identification. The leverage is entirely in the
+  misread rate — 8% → 3% takes wrong-IDs to 0.63% *and* raises correct IDs to
+  95%. Spend effort on the prompt and the palette, not on decoder paranoia.
 
 ### 8.5 Admin workbench (built, ahead of the vision adapter)
 - `/admin/identity` (React: `react-ui/src/IdentityDemo.js`, backend:
@@ -414,13 +509,62 @@ deliverable.
   configs.
 - **Shooter orientation / aim** as a stronger spatial prior (currently only
   proximity).
-- **Palette tuning (decided):** the 5 colours stay **configurable**; the initial
-  red / yellow / green / blue / purple are deliberate *placeholders / decent
-  starting defaults*, not final. The actual best-distinguishable palette will be
-  chosen by **live camera tests** with the real hardware (the choice directly
-  affects the misread rate). The implementer should NOT hard-code or treat the
-  placeholder palette as final — keep it editable in `config.py` so swapping
-  colours after field testing is a one-line change.
+- **Palette (now chosen — see §9.1).** Still configurable, and still worth
+  re-validating with live camera tests, but no longer a placeholder.
+
+### 9.1 The palettes
+
+Selected by optimising the **worst-case minimum CIEDE2000 distance across three
+illuminants** — D65 daylight, 3000 K warm-white LED, and a high-pressure sodium
+model, each with 50% camera white-balance correction. Rationale in §12.4.
+
+**Main palette — t-shirt, hat, armbands (`q = 7`):**
+
+| Symbol | Colour | Hex | L* |
+|---|---|---|---|
+| 0 | black | `#1A1A1A` | 9.3 |
+| 1 | purple | `#6A1B9A` | 29.9 |
+| 2 | red | `#B00020` | 36.6 |
+| 3 | blue | `#0072CE` | 44.0 |
+| 4 | green | `#00A651` | 59.8 |
+| 5 | orange | `#FF8200` | 66.9 |
+| 6 | yellow | `#FFF200` | 93.8 |
+
+Worst-case minimum ΔE2000 across the three illuminants: **30.8**. Weakest pairs:
+blue/purple in daylight and under LED; the warm end (red/orange/yellow) compresses
+under sodium.
+
+**Trousers palette (`s = 5`) — a deliberately different physical set:**
+
+| Symbol | Colour | Hex |
+|---|---|---|
+| 0 | black | `#222222` |
+| 1 | blue | `#0072CE` |
+| 2 | green | `#00A651` |
+| 3 | red | `#B00020` |
+| 4 | white | `#F2F3F4` |
+
+Worst-case minimum ΔE2000: **31.6** — *better* than the 7-colour palette, because
+five colours in a channel is an easier packing problem. Every one of these is
+something people already own: black jeans, blue jeans, olive/khaki chinos (count
+these as green), red chinos, white/cream trousers.
+
+**Instructions to guests must define wide, dispute-free buckets**, since people
+are choosing from their own wardrobes and one person's "burgundy" is another's
+"red". State explicitly what counts: *green includes olive and khaki; blue
+includes navy and denim; black is black, not charcoal.*
+
+**Excluded, and why:**
+- **White in the main palette** — it reflects whatever light hits it, so under
+  sodium street lighting a white shirt photographs orange. Including it collapsed
+  yellow/white to ΔE 14 in the sodium model, roughly half the margin of the
+  white-free set. It is safe in the *trousers* channel only because yellow and
+  orange are not in that channel's alphabet.
+- **Grey and brown** — they sit in the achromatic cluster with black and white and
+  degrade worst in low light.
+- **Pink** — was in the 7 until black displaced it; pink appeared in both of the
+  sodium-weak pairs, and swapping it for black raised the worst case from 26.5 to
+  30.8 *and* made the palette far easier to source.
 
 ---
 
@@ -442,34 +586,187 @@ self-evident.
 
 ---
 
-## 11. Reference: the initial concrete code (`[3,2,2]` over GF(5))
+## 11. Reference: the concrete code (`[4,2,3]` Reed-Solomon over GF(7))
 
-Palette index ↔ colour: `0=red, 1=yellow, 2=green, 3=blue, 4=purple`.
+Channel order is fixed: **t-shirt, trousers, hat, armbands**, evaluated at
+`x = 1, 2, 3, 4` respectively. A codeword is `c_i = (m0 + m1·x_i) mod 7`.
 
-Players pick **shirt** and **head** freely (5 × 5 = 25 identities); the
-**armband** is the parity symbol so that `(shirt + head + armband) ≡ 0 (mod 5)`,
-i.e. `armband = (−shirt − head) mod 5`. Because the relation is symmetric, **any
-single hidden channel** can be reconstructed from the other two.
+Because the code is MDS with `k = 2`, **any two channels can be treated as the
+free ones and the other two are determined.** Taking t-shirt and trousers as
+free gives a closed form that is checkable by hand:
 
-Armband colour as a function of (shirt = row, head = column):
+```
+hat      = (2·trousers -   t-shirt) mod 7
+armbands = (3·trousers - 2·t-shirt) mod 7
+```
 
-| shirt ↓ \ head → | red(0) | yellow(1) | green(2) | blue(3) | purple(4) |
-|---|---|---|---|---|---|
-| **red(0)**    | red    | purple | blue   | green  | yellow |
-| **yellow(1)** | purple | blue   | green  | yellow | red    |
-| **green(2)**  | blue   | green  | yellow | red    | purple |
-| **blue(3)**   | green  | yellow | red    | purple | blue   |
-| **purple(4)** | yellow | red    | purple | blue   | green  |
+Verified against all 49 codewords. Symbol indices:
 
-Decode behaviour for this table:
-- **All three read, parity holds** → unique player.
-- **One channel "obscured"** → reconstruct it via the parity relation → unique
-  player (erasure corrected).
-- **All three read, parity fails** → a misread happened somewhere → flag
-  `inconsistent` (detected, not corrected).
-- **One obscured *and* one of the other two misread** → may resolve to the wrong
-  player with no warning → this is the accepted compromise; lean on the GPS prior
-  and the admin confirm step.
+| Index | Main palette (t-shirt, hat, armbands) | Trousers palette |
+|---|---|---|
+| 0 | black | black |
+| 1 | purple | blue |
+| 2 | red | green |
+| 3 | blue | red |
+| 4 | green | white |
+| 5 | orange | — *(not available)* |
+| 6 | yellow | — *(not available)* |
 
-For the upgrade configs (`[4,2,3]`, `[5,2,4]`), construct the code with
-`reed_solomon_code(...)`; the same decoder and integration code apply unchanged.
+### 11.1 The 35 assignments (trousers restricted to 5 colours)
+
+Player slots are numbered by `(t-shirt, trousers)`. Read across for what that
+player wears.
+
+| Slot | T-shirt | Trousers | Hat | Armbands |
+|---|---|---|---|---|
+| 0 | black | black | black | black |
+| 1 | black | blue | red | blue |
+| 2 | black | green | green | yellow |
+| 3 | black | red | yellow | red |
+| 4 | black | white | purple | orange |
+| 5 | purple | black | yellow | orange |
+| 6 | purple | blue | purple | purple |
+| 7 | purple | green | blue | green |
+| 8 | purple | red | orange | black |
+| 9 | purple | white | black | blue |
+| 10 | red | black | orange | blue |
+| 11 | red | blue | black | yellow |
+| 12 | red | green | red | red |
+| 13 | red | red | green | orange |
+| 14 | red | white | yellow | purple |
+| 15 | blue | black | green | purple |
+| 16 | blue | blue | yellow | green |
+| 17 | blue | green | purple | black |
+| 18 | blue | red | blue | blue |
+| 19 | blue | white | orange | yellow |
+| 20 | green | black | blue | yellow |
+| 21 | green | blue | orange | red |
+| 22 | green | green | black | orange |
+| 23 | green | red | red | purple |
+| 24 | green | white | green | green |
+| 25 | orange | black | red | green |
+| 26 | orange | blue | green | black |
+| 27 | orange | green | yellow | blue |
+| 28 | orange | red | purple | yellow |
+| 29 | orange | white | blue | red |
+| 30 | yellow | black | purple | red |
+| 31 | yellow | blue | blue | orange |
+| 32 | yellow | green | orange | purple |
+| 33 | yellow | red | black | green |
+| 34 | yellow | white | red | black |
+
+> Slots are **not** contiguous in trousers colour by accident: the trousers
+> symbol is the restricted one, so it is the inner loop. If the guest list
+> exceeds 35, widen the trousers palette (§2.6) rather than reordering.
+
+> **Do not assign slot 0.** It is the all-zero codeword — black t-shirt, black
+> trousers, black hat, black armbands — which is both indistinguishable from an
+> ordinary member of the public and the single most likely outfit for someone to
+> be wearing by accident. The vision model's failure mode on unclear targets is
+> also to report "black" (§12.1), so the all-black codeword is exactly where
+> spurious reads will pile up. Usable capacity is therefore **34**, still
+> comfortably above the expected guest count. More generally, the assignment
+> policy should prefer codewords with high symbol diversity and hand out the
+> drabber ones last.
+
+### 11.2 Decode behaviour
+
+- **All four read, consistent** -> unique player.
+- **One or two channels `unknown`** -> unique player (any two survivors suffice).
+- **One misread, nothing hidden** -> corrected to the right player.
+- **One hidden + one misread** -> detected; flag for the admin, never a
+  confident wrong answer.
+- **Three or more hidden** -> ambiguous; flag. Do not guess.
+
+---
+
+## 12. Empirical findings from vision testing
+
+These measurements drove the decisions above. They were taken with real photos
+(hand-held phone shots, mixed daylight and night-time tungsten, some motion-blurred
+and one EXIF-rotated) and repeated 15x per condition with fresh, context-free
+sub-agents.
+
+### 12.1 Target size dominates everything
+
+Same photos, same models, same prompt shape. The only variable was how many pixels
+the target garment occupied:
+
+| Target | Ground truth | Small model | Large model |
+|---|---|---|---|
+| Wristwatch (tiny) | orange | **1/33 correct**; 13 confident wrong answers even with `unknown` offered | **0/15 correct**, 13/15 abstained |
+| Top (torso-sized) | black | **15/15**, mean confidence 94.6% | **15/15**, mean confidence 94.9% |
+
+**Conclusion: identify players by whole garments, never by small accessories.**
+A torso-sized garment is essentially solved even in bad light; a wrist-sized one is
+unsalvageable at any model tier. This is why the channels are t-shirt / trousers /
+hat / armbands and not, say, a badge or a wristband.
+
+A secondary result: repeated runs on the *same* image gave four different answers
+out of five attempts on the hard task, so a single confident-looking answer is not
+evidence of a stable percept. Majority voting did **not** rescue it — one image
+voted 4/5 for a wrong colour.
+
+### 12.2 Abstention behaviour differs sharply by model
+
+On the impossible task the small model made exactly one tool call every time (read
+image, answer). The large model repeatedly cropped and zoomed — up to 11 tool calls
+over 64 seconds — and then concluded the object was not identifiable. That
+investigate-before-answering step is what produces honest abstentions.
+
+Crucially, the large model did **not** pay that cost on the easy task: one tool
+call, same latency as the small model. The expensive careful behaviour is
+self-triggering, so it is only paid on hard cases.
+
+### 12.3 Simulation of the fleeing-subject scenario
+
+Monte Carlo, 200k trials. Assumed per-channel visibility: trousers 92%, t-shirt
+92%, hat 80%, a single arm 55%, armbands-on-both-arms 80%; misread rate 8% on
+garments that *are* visible. **These visibility numbers are estimates — re-fit them
+once real shot photos exist. The ranking is more trustworthy than the absolutes.**
+
+| Scheme | Correct | **Wrong ID** | Flagged |
+|---|---|---|---|
+| 3 channels (t-shirt, trousers, hat) | 77.2% | 4.55% | 18.3% |
+| **4 channels, armbands on both arms** | **88.0%** | **2.07%** | 9.9% |
+| 5 channels, a different colour per arm | 89.2% | 1.71% | 9.1% |
+| 4 channels, trousers restricted to 5 colours | 87.9% | 1.54% | 10.5% |
+| 5 channels (+socks), trousers only black/blue | 79.0% | 0.83% | 20.2% |
+
+Readings:
+- The 4th channel is worth ~11 points of correct identification and halves wrong-IDs.
+- Splitting the armbands into two channels buys ~1 point for double the sourcing
+  effort. Not worth it.
+- **Restricting trousers to 5 colours costs nothing** and slightly *reduces*
+  wrong-IDs (fewer symbols per channel means fewer ways to misread).
+- Adding a 5th channel to allow 2 trouser colours is a bad trade: it forces `k = 3`,
+  so three garments must be visible, and costs ~9 points.
+
+### 12.4 Palette selection method
+
+Pure CIELAB optimisation (the Glasbey greedy algorithm, the standard answer for
+"give me N maximally distinct colours") is **the wrong objective here.** Run over a
+coarse sRGB grid it returns sets containing e.g. `#88EE00` and `#224400` — both of
+which any vision model simply calls "green" — plus very dark colours that get
+reported as "black". The model emits a **word**, so the objective is separation in
+*naming* space, not in Lab space.
+
+The palettes in §9.1 were therefore chosen from distinct **basic colour terms**
+(the Berlin & Kay set: red, orange, yellow, green, blue, purple, pink, brown, grey,
+black, white), then the specific hex within each term was optimised for worst-case
+ΔE2000 across the three illuminants.
+
+Relevant prior art, for anyone revisiting this:
+- Kelly's 22 colours of maximum contrast (ISCC-NBS, 1965) and Green-Armytage's
+  26-colour "colour alphabet" — hand-built maximally-distinct ordered sets.
+- Glasbey et al., *Colour displays for categorical images* (2007) — the algorithmic
+  version, in ImageJ/R/Python.
+- The Okabe-Ito 8-colour set — the colour-blind-safe benchmark, relevant because
+  the *admins* reviewing shots are human. Our palette's L* values span 9-94, which
+  gives a second discriminating axis beyond hue.
+- RoboCup vision literature on HSI/HSV colour segmentation: static hue lookup
+  tables perform poorly when illumination *colour* changes; this is the known-hard
+  part of the problem.
+- Low-pressure sodium street lighting is essentially monochromatic at 589 nm, so
+  objects have almost no colour rendering under it. Most UK street lighting is now
+  LED, so sodium is the worst case rather than the typical one.
