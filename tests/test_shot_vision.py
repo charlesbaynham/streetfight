@@ -1,0 +1,325 @@
+"""Tests for the vision adapter: the prompt contract, parsing, and the
+hit/bystander rule.
+
+No network and no database: every test either builds a reply by hand or feeds
+one through :class:`FakeVisionClient`.
+"""
+
+import pytest
+
+from backend import shot_vision as sv
+from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.config import default_scheme
+from backend.vision_client import FakeVisionClient
+from backend.vision_client import VisionError
+from backend.vision_client import parse_json_reply
+
+SCHEME = default_scheme()
+CHANNELS = ["tshirt", "trousers", "hat", "armbands"]
+
+
+# -- helpers ----------------------------------------------------------------
+
+
+def appearance_of(slot):
+    return SCHEME.appearance_of_slot(slot)
+
+
+def reply_for(appearance, hidden=(), person=True, confidence=0.9):
+    """A well-formed model reply for someone wearing ``appearance``."""
+    channels = {}
+    for name in CHANNELS:
+        if name in hidden:
+            channels[name] = {
+                "visible": False,
+                "colour": "unknown",
+                "confidence": 0.2,
+            }
+        else:
+            channels[name] = {
+                "visible": True,
+                "colour": appearance[name],
+                "confidence": confidence,
+            }
+    return {
+        "person_at_aim_point": person,
+        "reasoning": "a test reply",
+        "channels": channels,
+    }
+
+
+def outcome_of(raw):
+    return sv.classify(sv.parse_result(raw), SCHEME)
+
+
+# -- the prompt -------------------------------------------------------------
+
+
+def test_prompt_offers_unknown_for_every_channel():
+    prompt = sv.build_prompt()
+
+    # The measured failure mode without it is a confident wrong colour, which
+    # costs twice what an abstention does.
+    assert prompt.count('answer is no and the colour is "unknown"') == len(CHANNELS)
+
+
+def test_prompt_asks_about_visibility_before_colour():
+    prompt = sv.build_prompt()
+
+    for name in CHANNELS:
+        section = prompt.split(f"{name} (")[1]
+        assert section.index("Can you clearly see it") < section.index(
+            "which of these is it"
+        )
+
+
+def test_prompt_offers_each_channel_only_its_own_colours():
+    prompt = sv.build_prompt()
+
+    trousers_options = prompt.split("trousers (")[1].split("hat (")[0]
+    for colour in TROUSERS_PALETTE:
+        assert f'"{colour}"' in trousers_options
+    # Nobody owns yellow trousers, so the model must never be able to say so
+    for absent in ("yellow", "orange", "purple"):
+        assert f'"{absent}"' not in trousers_options
+
+
+def test_schema_restricts_the_trousers_enum():
+    schema = sv.build_schema()
+    trousers = schema["properties"]["channels"]["properties"]["trousers"]
+
+    assert trousers["properties"]["colour"]["enum"] == TROUSERS_PALETTE + ["unknown"]
+
+
+def test_prompt_names_the_wide_colour_buckets():
+    prompt = sv.build_prompt()
+
+    assert "includes olive and khaki" in prompt
+    assert "includes navy and denim" in prompt
+
+
+# -- parsing ----------------------------------------------------------------
+
+
+def test_parses_a_well_formed_reply():
+    result = sv.parse_result(reply_for(appearance_of(7)))
+
+    assert result.person_at_aim_point
+    assert result.channels["tshirt"].colour == "black"
+    assert result.channels["armbands"].colour == "blue"
+    assert result.channels["tshirt"].confidence == 0.9
+
+
+def test_unknown_becomes_an_erasure():
+    result = sv.parse_result(reply_for(appearance_of(7), hidden=("hat",)))
+
+    assert result.channels["hat"].is_erasure
+    assert result.channels["hat"].colour is None
+
+
+def test_a_colour_outside_the_channel_palette_is_rejected():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["trousers"]["colour"] = "yellow"
+
+    with pytest.raises(sv.ShotVisionError) as excinfo:
+        sv.parse_result(raw)
+
+    assert "trousers" in str(excinfo.value)
+
+
+def test_a_nonsense_colour_is_rejected():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["hat"]["colour"] = "beige"
+
+    with pytest.raises(sv.ShotVisionError):
+        sv.parse_result(raw)
+
+
+def test_a_named_colour_with_visible_false_is_treated_as_unreadable():
+    # Believe the abstention: an erasure is the cheap failure, a misread is not.
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["hat"]["visible"] = False
+
+    result = sv.parse_result(raw)
+
+    assert result.channels["hat"].is_erasure
+
+
+def test_missing_channels_are_rejected():
+    raw = reply_for(appearance_of(7))
+    del raw["channels"]["hat"]
+
+    with pytest.raises(sv.ShotVisionError) as excinfo:
+        sv.parse_result(raw)
+
+    assert "hat" in str(excinfo.value)
+
+
+def test_a_missing_verdict_field_is_rejected():
+    with pytest.raises(sv.ShotVisionError):
+        sv.parse_result({"reasoning": "hmm", "channels": {}})
+
+
+def test_a_miss_needs_no_channels():
+    result = sv.parse_result(
+        {"person_at_aim_point": False, "reasoning": "empty pavement"}
+    )
+
+    assert not result.person_at_aim_point
+    assert all(read.is_erasure for read in result.channels.values())
+
+
+def test_confidence_is_clamped_not_rejected():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["tshirt"]["confidence"] = 5.0
+
+    assert sv.parse_result(raw).channels["tshirt"].confidence == 1.0
+
+
+# -- the hit / bystander rule -----------------------------------------------
+
+
+def test_no_person_at_the_aim_point_is_a_miss():
+    result = outcome_of({"person_at_aim_point": False, "reasoning": "missed"})
+
+    assert result.outcome == sv.MISS
+    assert not result.is_hit
+
+
+def test_visible_armbands_are_a_hit():
+    result = outcome_of(reply_for(appearance_of(7)))
+
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.is_hit
+    assert result.slot == 7
+
+
+def test_visible_armbands_are_a_hit_even_with_everything_else_hidden():
+    # Armbands are the player marker; the rest is identification, not eligibility.
+    result = outcome_of(
+        reply_for(appearance_of(7), hidden=("tshirt", "trousers", "hat"))
+    )
+
+    assert result.outcome == sv.HIT_PLAYER
+
+
+def test_hidden_armbands_still_count_when_the_code_checks_out():
+    # The point of the erasure tolerance: three good garments reconstruct the
+    # fourth, so a real player is not written off as a passer-by.
+    result = outcome_of(reply_for(appearance_of(7), hidden=("armbands",)))
+
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "armbands hidden, but the other colours are a valid code"
+    )
+    assert result.slot == 7
+
+
+def test_hidden_armbands_and_an_invalid_code_is_a_bystander():
+    raw = reply_for(appearance_of(7), hidden=("armbands",))
+    # Break the code: change the hat to a colour no codeword pairs with these
+    appearance = appearance_of(7)
+    wrong = "green" if appearance["hat"] != "green" else "orange"
+    raw["channels"]["hat"]["colour"] = wrong
+
+    result = outcome_of(raw)
+
+    assert result.outcome == sv.HIT_BYSTANDER
+    assert not result.is_hit
+
+
+def test_hidden_armbands_and_a_second_erasure_is_a_bystander():
+    # Only two readable channels always complete to *some* codeword (k = 2), so
+    # the check would vouch for nothing. It must not be treated as evidence.
+    result = outcome_of(reply_for(appearance_of(7), hidden=("armbands", "hat")))
+
+    assert result.outcome == sv.HIT_BYSTANDER
+    assert "too few other garments" in result.outcome_reason
+
+
+def test_the_all_black_outfit_is_a_bystander():
+    # Slot 0 is deliberately never assigned: it is the most likely outfit for a
+    # passer-by to be wearing by accident, and where "black" misreads pile up.
+    result = outcome_of(reply_for(appearance_of(0), hidden=("armbands",)))
+
+    assert result.outcome == sv.HIT_BYSTANDER
+
+
+def test_every_usable_slot_survives_hidden_armbands():
+    for slot in SCHEME.usable_slots():
+        result = outcome_of(reply_for(appearance_of(slot), hidden=("armbands",)))
+        assert result.outcome == sv.HIT_PLAYER, slot
+        assert result.slot == slot
+
+
+# -- handing the reading to the decoder -------------------------------------
+
+
+def test_to_reading_maps_colours_and_erasures():
+    result = sv.parse_result(reply_for(appearance_of(7), hidden=("hat",)))
+    reading = sv.to_reading(result, SCHEME)
+
+    assert len(reading) == 4
+    assert reading.num_erasures == 1
+    assert reading[2].is_erasure  # hat is the third channel
+    assert not reading[0].is_erasure
+
+
+def test_to_hard_symbols_matches_the_codeword():
+    slot = 7
+    result = sv.parse_result(reply_for(appearance_of(slot)))
+
+    assert sv.to_hard_symbols(result, SCHEME) == list(SCHEME.codeword_of_slot(slot))
+
+
+def test_result_serialises_with_colour_swatches():
+    body = outcome_of(reply_for(appearance_of(7))).to_dict()
+
+    assert body["outcome"] == sv.HIT_PLAYER
+    assert body["is_hit"] is True
+    assert body["channels"]["tshirt"]["hex"] == "#1A1A1A"
+    # The same colour name has a different hex in the trousers palette
+    assert body["channels"]["trousers"]["colour"] == "blue"
+    assert body["channels"]["trousers"]["hex"] == "#0072CE"
+
+
+def test_serialised_erasure_has_no_swatch():
+    body = outcome_of(reply_for(appearance_of(7), hidden=("hat",))).to_dict()
+
+    assert body["channels"]["hat"]["colour"] is None
+    assert body["channels"]["hat"]["hex"] is None
+
+
+# -- the client contract ----------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_review_image_runs_the_whole_pipeline():
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
+
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
+    # The image and the real prompt reached the client
+    assert client.calls[0]["image_data_url"] == "data:image/jpeg;base64,AAAA"
+    assert "unknown" in client.calls[0]["prompt"]
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        '{"a": 1}',
+        '```json\n{"a": 1}\n```',
+        '```\n{"a": 1}\n```',
+        'Sure! Here is the JSON:\n{"a": 1}\nHope that helps.',
+    ],
+)
+def test_json_is_recovered_however_the_model_wraps_it(text):
+    assert parse_json_reply(text) == {"a": 1}
+
+
+@pytest.mark.parametrize("text", ["", "   ", "I could not do that", "[1, 2, 3]"])
+def test_unparseable_replies_raise(text):
+    with pytest.raises(VisionError):
+        parse_json_reply(text)
