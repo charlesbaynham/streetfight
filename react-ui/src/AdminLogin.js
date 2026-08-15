@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 
 import { AdminPage } from "./AdminCommon";
 
@@ -8,7 +9,8 @@ export default function AdminLogin() {
   return (
     <AdminPage>
       <p>
-        You are logged in as admin. Head to the <a href="/admin">admin page</a>.
+        You are logged in as admin. Head to the{" "}
+        <Link to="/admin">admin page</Link>.
       </p>
     </AdminPage>
   );

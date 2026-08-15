@@ -5,6 +5,7 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container } from "react-bootstrap";
+import { Link } from "react-router-dom";
 
 import { sendAPIRequest, setAPIErrorHandler } from "./utils";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
@@ -120,9 +121,9 @@ function ShotQueueLink() {
   return (
     <>
       <UpdateListener update_type="shots" callback={update} />
-      <a href="/admin/shots">
+      <Link to="/admin/shots">
         Shot queue{numShots === null ? "" : ` (${numShots})`}
-      </a>
+      </Link>
     </>
   );
 }
@@ -130,9 +131,9 @@ function ShotQueueLink() {
 export function AdminNav() {
   return (
     <p>
-      <a href="/admin">Admin home</a> | <ShotQueueLink /> |{" "}
-      <a href="/admin/identity">Identity workbench</a> |{" "}
-      <a href="/">Player view</a>
+      <Link to="/admin">Admin home</Link> | <ShotQueueLink /> |{" "}
+      <Link to="/admin/identity">Identity workbench</Link> |{" "}
+      <Link to="/">Player view</Link>
     </p>
   );
 }

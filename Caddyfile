@@ -11,6 +11,15 @@ http://, https://localhost {
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}
 
+	# CRA's build output hashes filenames under /static, so it's always safe to
+	# cache them forever - a content change gets a new filename.
+	handle /static/* {
+		root * result
+		header Cache-Control "public, max-age=31536000, immutable"
+		encode gzip zstd
+		file_server
+	}
+
 	handle {
 		root * result
 
