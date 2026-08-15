@@ -1,7 +1,10 @@
 from pathlib import Path
 
 import pytest
+from PIL import ImageChops
+from PIL import ImageStat
 
+from backend.image_processing import annotate_image_with_stats
 from backend.image_processing import draw_aim_marker
 from backend.image_processing import draw_cross_on_image
 from backend.image_processing import load_image
@@ -39,6 +42,49 @@ def test_image_processsing_save_output():
     image.save(Path(__file__, "../../logs/test_output.png").resolve())
 
 
+def as_jpeg(base64_image, quality=85):
+    """The same picture, encoded the way a phone camera uploads it."""
+    import base64
+    from io import BytesIO
+
+    image, _ = load_image(base64_image)
+    buffer = BytesIO()
+    image.convert("RGB").save(buffer, format="JPEG", quality=quality)
+    return "data:image/jpeg;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+
+def test_markup_declares_the_format_it_encoded(test_image_string):
+    # The prefix used to be carried over from the input while the payload was
+    # re-encoded, so an uploaded JPEG came back as PNG bytes still labelled
+    # image/jpeg.
+    import base64
+
+    for marked_up in (
+        draw_cross_on_image(test_image_string),
+        annotate_image_with_stats(test_image_string, {"Result": "Unchecked"}),
+        draw_aim_marker(test_image_string),
+    ):
+        prefix, payload = marked_up.split(",", 1)
+
+        assert prefix == "data:image/jpeg;base64"
+        assert base64.b64decode(payload[:8]).startswith(b"\xff\xd8")
+
+
+def test_markup_does_not_inflate_a_photo(test_image_string):
+    # draw_cross_on_image runs on every admin queue fetch, so what it returns is
+    # what the admin waits to download. Re-encoding to PNG made a phone JPEG
+    # roughly five times bigger.
+    photo = as_jpeg(test_image_string)
+
+    assert len(draw_cross_on_image(photo)) < 1.5 * len(photo)
+
+
+def test_annotating_stats_does_not_crash_on_current_pillow(test_image_string):
+    # The stats box is anchored to the bottom edge, and Pillow >= 10 rejects a
+    # rectangle given bottom corner first.
+    annotate_image_with_stats(test_image_string, {"Shooter": "someone", "Damage": 1})
+
+
 # -- preparing a shot for the vision model ----------------------------------
 
 
@@ -52,12 +98,18 @@ def test_aim_marker_keeps_the_image_the_same_size(test_image_string):
 def test_aim_marker_does_not_duplicate_the_target(test_image_string):
     # draw_cross_on_image pastes a magnified copy of the centre into the corner;
     # the aim marker must not, or the model sees two of the same person.
+    # Compared by mean difference rather than exactly, because the re-encode is
+    # lossy: JPEG noise scores under 1 here, a pasted crop scores over 100.
     original, _ = load_image(test_image_string)
     marked, _ = load_image(draw_aim_marker(test_image_string))
 
     width, height = original.size
     corner = (0, 0, width // 4, height // 4)
-    assert marked.crop(corner).tobytes() == original.crop(corner).tobytes()
+    difference = ImageChops.difference(
+        marked.crop(corner).convert("RGB"), original.crop(corner).convert("RGB")
+    )
+
+    assert max(ImageStat.Stat(difference).mean) < 5
 
 
 def test_aim_marker_draws_something_in_the_middle(test_image_string):
