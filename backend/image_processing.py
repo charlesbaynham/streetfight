@@ -100,6 +100,88 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     return ",".join(split_img)
 
 
+def _to_base64(image: Image.Image, split_img: List[str], format: str = "PNG") -> str:
+    """Re-encode a PIL image back into the data URL it came from."""
+    buffer = BytesIO()
+    image.save(buffer, format=format)
+    split_img = list(split_img)
+    split_img[0] = f"data:image/{format.lower()};base64"
+    split_img[1] = base64.b64encode(buffer.getvalue()).decode()
+    return ",".join(split_img)
+
+
+def draw_aim_marker(base64_image: str) -> str:
+    """Mark where the shot landed: a crosshair at the centre of the frame.
+
+    Deliberately *not* :func:`draw_cross_on_image`, which also pastes a
+    magnified copy of the centre crop into the top-left corner. That is helpful
+    for a human squinting at a phone, but it puts a second copy of the target
+    into the picture, which is exactly the wrong thing to hand a vision model.
+    """
+    image, split_img = load_image(base64_image)
+
+    draw = ImageDraw.Draw(image)
+    width, height = image.size
+    centre_x, centre_y = width // 2, height // 2
+
+    # Scale the marker with the image so it stays visible after downsizing
+    arm = max(width, height) // 20
+    gap = arm // 3
+    thickness = max(2, max(width, height) // 300)
+
+    for colour, offset in (((0, 0, 0), thickness), ((255, 255, 255), 0)):
+        for x0, y0, x1, y1 in (
+            (centre_x - arm, centre_y, centre_x - gap, centre_y),
+            (centre_x + gap, centre_y, centre_x + arm, centre_y),
+            (centre_x, centre_y - arm, centre_x, centre_y - gap),
+            (centre_x, centre_y + gap, centre_x, centre_y + arm),
+        ):
+            draw.line(
+                [(x0 + offset, y0 + offset), (x1 + offset, y1 + offset)],
+                fill=colour,
+                width=thickness,
+            )
+
+    out = _to_base64(image, split_img)
+    image.close()
+    return out
+
+
+def prepare_for_vision(
+    base64_image: str, max_dimension: int = 1024, quality: int = 85
+) -> str:
+    """Downsize and re-encode a shot photo for sending to a vision model.
+
+    Phone photos are far larger than any model needs, and image tokens are the
+    dominant cost of reviewing a queue. 1024px is a floor rather than an
+    aggressive shrink: the measured failure mode (plan §12.1) is that small
+    targets get invented answers, so there is nothing to gain by going lower.
+
+    Images already within ``max_dimension`` are re-encoded but not upscaled.
+    """
+    image, split_img = load_image(base64_image)
+
+    width, height = image.size
+    longest = max(width, height)
+    if longest > max_dimension:
+        scale = max_dimension / longest
+        image = image.resize(
+            (max(1, round(width * scale)), max(1, round(height * scale))),
+            Image.LANCZOS,
+        )
+
+    # JPEG has no alpha channel, and shot photos never meaningfully have one
+    if image.mode not in ("RGB", "L"):
+        image = image.convert("RGB")
+
+    buffer = BytesIO()
+    image.save(buffer, format="JPEG", quality=quality)
+    image.close()
+
+    encoded = base64.b64encode(buffer.getvalue()).decode()
+    return f"data:image/jpeg;base64,{encoded}"
+
+
 def draw_cross_on_image(base64_image: str) -> str:
     image, split_img = load_image(base64_image)
 
