@@ -1,9 +1,9 @@
 // The user-facing shot history: a "My shots" entry for the HUD (with an
 // unseen-changes badge), a fullscreen popup listing every shot with its
-// adjudicated outcome, and a notification bubble that pops up when a shot's
-// status changes.
+// adjudicated outcome, and a bubble in the corner showing the latest shot's
+// status.
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
@@ -11,10 +11,8 @@ import {
   countUnseenShots,
   getShotImage,
   getShots,
-  isShotStatusSeen,
   markShotsSeen,
   refreshShots,
-  shotStatusFingerprint,
   subscribeShots,
 } from "./shotHistoryStore";
 
@@ -25,9 +23,6 @@ import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
 import returnImg from "./images/return.svg";
 
-// Once the bubble has been tapped at least once, it hides after this long
-const BUBBLE_LINGER_MS = 10000;
-
 const OPEN_EVENT = "streetfight:open-shot-history";
 
 // Ask the mounted ShotHistoryController to open the popup, optionally straight
@@ -37,6 +32,16 @@ export function openShotHistory(shotId = null) {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { shotId } }));
 }
 
+// Each status gets its own colour (via the --status-colour custom property set
+// by these classes) as well as its own icon, so the bubble reads at a glance
+const STATE_CLASSES = {
+  unreviewed: styles.stateUnreviewed,
+  escalated: styles.stateEscalated,
+  hit: styles.stateHit,
+  miss: styles.stateMiss,
+  refunded: styles.stateRefunded,
+};
+
 // What to show for a shot's current status. Shots checked before the result
 // column existed have result=null: infer from whether a target was recorded.
 export function shotStatus(shot) {
@@ -44,28 +49,49 @@ export function shotStatus(shot) {
     const result = shot.result || (shot.target_name ? "hit" : "miss");
     if (result === "hit")
       return {
+        state: "hit",
         icon: checkImg,
         label: shot.target_name ? `Hit ${shot.target_name}!` : "Hit!",
       };
     if (result === "refunded")
-      return { icon: returnImg, label: "Ammo refunded" };
-    return { icon: crossImg, label: "Missed" };
+      return { state: "refunded", icon: returnImg, label: "Ammo refunded" };
+    return { state: "miss", icon: crossImg, label: "Missed" };
   }
 
+  // The AI has looked but the call is still the referee's: distinct icon and
+  // colour from a shot nobody has looked at yet
   if (shot.ai_review_state === "done" && shot.ai_suggestion)
     return {
-      emoji: "⏳",
+      state: "escalated",
+      emoji: "🤖",
       label: `AI thinks: ${shot.ai_suggestion}`,
       sublabel: "Escalated to referee",
     };
 
-  return { emoji: "⏳", label: "Being reviewed..." };
+  return { state: "unreviewed", emoji: "⏳", label: "Not reviewed yet" };
 }
 
+function statusClasses(status, ...extra) {
+  return [STATE_CLASSES[status.state], ...extra].filter(Boolean).join(" ");
+}
+
+// A coloured disc with the status glyph on it. The image sits in a wrapper
+// rather than being the disc itself: the filter that knocks the SVGs out to
+// white would otherwise whiten the disc's background too.
 function StatusIcon({ status, className }) {
-  if (status.icon)
-    return <img className={className} src={status.icon} alt={status.label} />;
-  return <span className={className}>{status.emoji}</span>;
+  return (
+    <span className={statusClasses(status, styles.statusIcon, className)}>
+      {status.icon ? (
+        <img
+          className={styles.statusIconImage}
+          src={status.icon}
+          alt={status.label}
+        />
+      ) : (
+        status.emoji
+      )}
+    </span>
+  );
 }
 
 function ShotThumbnail({ shotId, className }) {
@@ -165,42 +191,22 @@ function ShotDetail({ shot, onBack }) {
 }
 
 // The bubble: a thumbnail of the latest shot with its status in the corner.
-// It appears whenever the latest shot has a status the user hasn't seen, stays
-// until tapped at least once, and hides a few seconds after a tap (which also
-// opens the history on that shot).
+// Once the user has taken a shot it stays put for the rest of the game,
+// tracking that shot's status - it takes up little room, and a status that
+// vanishes on its own is easy to miss. Tapping it opens the history on that
+// shot.
 function ShotNotifierBubble({ shotList }) {
   const latest = shotList && shotList.length > 0 ? shotList[0] : null;
-  const fingerprint = latest ? shotStatusFingerprint(latest) : null;
-
-  const [lingering, setLingering] = useState(false);
-  const timerRef = useRef(null);
-
-  // A new status cancels any pending hide and shows the bubble afresh
-  useEffect(() => {
-    setLingering(false);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [fingerprint]);
 
   if (!latest) return null;
 
-  // Opening the history marks everything seen, so the bubble drops out once
-  // the user has looked - the linger keeps it up right after a tap
-  if (isShotStatusSeen(latest) && !lingering) return null;
-
   const status = shotStatus(latest);
 
-  const handleClick = () => {
-    setLingering(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setLingering(false), BUBBLE_LINGER_MS);
-    openShotHistory(latest.id);
-  };
-
   return (
-    <button className={styles.bubble} onClick={handleClick}>
+    <button
+      className={statusClasses(status, styles.bubble)}
+      onClick={() => openShotHistory(latest.id)}
+    >
       <ShotThumbnail shotId={latest.id} className={styles.bubbleImage} />
       <StatusIcon status={status} className={styles.bubbleIcon} />
     </button>
@@ -208,7 +214,7 @@ function ShotNotifierBubble({ shotList }) {
 }
 
 // Mount exactly one of these in the in-game view: it owns the shot list, the
-// popup and the notification bubble
+// popup and the status bubble
 export function ShotHistoryController() {
   const [shotList, setShotList] = useState(getShots());
   const [visible, setVisible] = useState(false);
