@@ -195,6 +195,53 @@ def test_checked_shots_are_not_in_the_backlog(db_session, shot_from_user_in_team
     assert AdminInterface().set_ai_shot_review_enabled(game_id, True) == []
 
 
+def test_already_reviewed_shots_are_not_in_the_backlog(
+    db_session, shot_from_user_in_team
+):
+    """The toggle gets flipped during a game; that must not re-review the queue."""
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_DONE, {"outcome": "miss"}
+    )
+
+    assert AdminInterface().set_ai_shot_review_enabled(game_id, True) == []
+
+
+def test_a_shot_whose_review_errored_is_retried(db_session, shot_from_user_in_team):
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_ERROR, "connection reset"
+    )
+
+    assert AdminInterface().set_ai_shot_review_enabled(game_id, True) == [
+        shot_from_user_in_team
+    ]
+
+
+def test_a_shot_mid_review_is_not_queued_twice(db_session, shot_from_user_in_team):
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_PENDING
+    )
+
+    assert AdminInterface().set_ai_shot_review_enabled(game_id, True) == []
+
+
+def test_unreviewed_shots_are_still_in_the_backlog(
+    db_session, user_in_team, test_image_string, shot_from_user_in_team
+):
+    """The reviewed shot is skipped, the new one that arrived is not."""
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_DONE, {"outcome": "miss"}
+    )
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    new_shot = ui.submit_shot(test_image_string)
+
+    assert AdminInterface().set_ai_shot_review_enabled(game_id, True) == [new_shot]
+
+
 def test_disabling_the_toggle_returns_no_backlog(db_session, shot_from_user_in_team):
     game_id = game_of(shot_from_user_in_team)
     AdminInterface().set_ai_shot_review_enabled(game_id, True)
