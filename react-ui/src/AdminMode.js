@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Col, Row } from "react-bootstrap";
 
 import { sendAPIRequest } from "./utils";
-import { AdminPage, adminPost } from "./AdminCommon";
+import { AdminPage, adminDownload, adminPost } from "./AdminCommon";
 import NewItems from "./NewItems";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
@@ -355,12 +355,10 @@ function AdminPanel() {
           <h2>Maintenance</h2>
           <button
             onClick={() =>
-              adminPost("admin_dump_images", null, () =>
-                window.alert("Shot images dumped on the server."),
-              )
+              adminDownload("admin_dump_images", null, "shot_images.zip")
             }
           >
-            Dump shot images to disk
+            Download shot images (zip)
           </button>
         </Col>
       </Row>
