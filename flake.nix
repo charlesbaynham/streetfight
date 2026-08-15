@@ -45,6 +45,9 @@
           uvicorn
           # starlette's SessionMiddleware (backend/main.py) signs cookies with it
           itsdangerous
+          # backend/vision_client.py calls OpenRouter with it; also what
+          # starlette's TestClient uses
+          httpx
 
           backendPackage
         ];
@@ -58,8 +61,6 @@
           # selenium
           # geckodriver-autoinstaller
           requests
-          # starlette's TestClient dropped `requests` in favour of httpx
-          httpx
         ];
 
         pythonReqs = runtimePythonReqs ++ devPythonReqs;

@@ -1,7 +1,17 @@
 from pathlib import Path
 
+import pytest
+
+from backend.image_processing import draw_aim_marker
 from backend.image_processing import draw_cross_on_image
 from backend.image_processing import load_image
+from backend.image_processing import prepare_for_vision
+from backend.image_processing import zoom_image
+
+
+@pytest.fixture
+def test_image_string():
+    return Path(__file__, "../sample_base64_image.txt").resolve().read_text()
 
 
 def test_image_loading():
@@ -27,3 +37,177 @@ def test_image_processsing_save_output():
     image_out = draw_cross_on_image(test_image_string)
     image, _ = load_image(image_out)
     image.save(Path(__file__, "../../logs/test_output.png").resolve())
+
+
+# -- preparing a shot for the vision model ----------------------------------
+
+
+def test_aim_marker_keeps_the_image_the_same_size(test_image_string):
+    original, _ = load_image(test_image_string)
+    marked, _ = load_image(draw_aim_marker(test_image_string))
+
+    assert marked.size == original.size
+
+
+def test_aim_marker_does_not_duplicate_the_target(test_image_string):
+    # draw_cross_on_image pastes a magnified copy of the centre into the corner;
+    # the aim marker must not, or the model sees two of the same person.
+    original, _ = load_image(test_image_string)
+    marked, _ = load_image(draw_aim_marker(test_image_string))
+
+    width, height = original.size
+    corner = (0, 0, width // 4, height // 4)
+    assert marked.crop(corner).tobytes() == original.crop(corner).tobytes()
+
+
+def test_aim_marker_draws_something_in_the_middle(test_image_string):
+    original, _ = load_image(test_image_string)
+    marked, _ = load_image(draw_aim_marker(test_image_string))
+
+    width, height = original.size
+    middle = (width // 3, height // 3, 2 * width // 3, 2 * height // 3)
+    assert marked.crop(middle).tobytes() != original.crop(middle).tobytes()
+
+
+def test_prepare_for_vision_downsizes_large_images(test_image_string):
+    prepared = prepare_for_vision(test_image_string, max_dimension=64)
+    image, _ = load_image(prepared)
+
+    assert max(image.size) == 64
+    assert prepared.startswith("data:image/jpeg;base64,")
+
+
+def test_prepare_for_vision_does_not_upscale(test_image_string):
+    original, _ = load_image(test_image_string)
+    image, _ = load_image(prepare_for_vision(test_image_string, max_dimension=100_000))
+
+    assert image.size == original.size
+
+
+def test_prepare_for_vision_shrinks_the_payload(test_image_string):
+    prepared = prepare_for_vision(test_image_string, max_dimension=256)
+
+    assert len(prepared) < len(test_image_string)
+
+
+def test_prepare_for_vision_handles_transparency(test_image_string):
+    # JPEG has no alpha channel, so an RGBA source must be converted, not crash
+    import base64
+    from io import BytesIO
+
+    from PIL import Image
+
+    rgba = Image.new("RGBA", (300, 200), (255, 0, 0, 128))
+    buffer = BytesIO()
+    rgba.save(buffer, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+    image, _ = load_image(prepare_for_vision(data_url, max_dimension=150))
+    assert image.mode == "RGB"
+    assert max(image.size) == 150
+
+
+# -- the zoom the model can ask for -----------------------------------------
+
+
+def detailed_image(width=2048, height=1536, stripe=2):
+    """An image with fine detail in the middle, too fine to survive a downsize."""
+    import base64
+    from io import BytesIO
+
+    from PIL import Image
+
+    image = Image.new("RGB", (width, height), (128, 128, 128))
+    pixels = image.load()
+    # Thin vertical stripes across the central quarter, which is what a zoom
+    # keeps and a whole-frame downsize smears into flat grey.
+    for x in range(width * 3 // 8, width * 5 // 8):
+        for y in range(height * 3 // 8, height * 5 // 8):
+            pixels[x, y] = (255, 255, 255) if (x // stripe) % 2 else (0, 0, 0)
+
+    buffer = BytesIO()
+    image.save(buffer, format="PNG")
+    return "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+
+def test_zoom_crops_the_centre_and_scales_back_up():
+    zoomed, _ = load_image(zoom_image(detailed_image(2048, 1536), max_dimension=1024))
+
+    # 2048/4 = 512 wide before rescaling, then scaled so the longest side is 1024
+    assert max(zoomed.size) == 1024
+    # Aspect ratio is preserved by the crop
+    assert zoomed.size[0] / zoomed.size[1] == pytest.approx(2048 / 1536, rel=0.01)
+
+
+def test_zoom_keeps_detail_that_the_plain_downsize_loses():
+    original = detailed_image()
+
+    plain, _ = load_image(prepare_for_vision(original, max_dimension=1024))
+    zoomed, _ = load_image(zoom_image(original, max_dimension=1024))
+
+    # Contrast across the middle band: the stripes survive the zoom but are
+    # averaged away by the whole-frame downsize.
+    def middle_contrast(image):
+        grey = image.convert("L")
+        row = grey.height // 2
+        values = [grey.getpixel((x, row)) for x in range(grey.width)]
+        return max(values) - min(values)
+
+    assert middle_contrast(zoomed) > middle_contrast(plain)
+
+
+def test_zoom_keeps_the_centre_not_some_other_part_of_the_frame():
+    # The detail sits exactly in the central quarter, which is what a factor-4
+    # crop keeps, so the zoomed frame should be striped right out to its edges.
+    zoomed, _ = load_image(zoom_image(detailed_image(), max_dimension=1024))
+    grey = zoomed.convert("L")
+
+    row = grey.height // 2
+    near_left = [grey.getpixel((x, row)) for x in range(10, 60)]
+
+    assert max(near_left) - min(near_left) > 100
+
+
+def test_zoom_marks_the_aim_point():
+    import base64
+    from io import BytesIO
+
+    from PIL import Image
+
+    # A flat grey frame, so anything that is not grey afterwards is the marker
+    flat = Image.new("RGB", (800, 600), (128, 128, 128))
+    buffer = BytesIO()
+    flat.save(buffer, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+    zoomed, _ = load_image(zoom_image(data_url, max_dimension=400))
+    grey = zoomed.convert("L")
+
+    centre_band = [
+        grey.getpixel((x, grey.height // 2))
+        for x in range(grey.width // 4, 3 * grey.width // 4)
+    ]
+
+    assert max(centre_band) - min(centre_band) > 100
+
+
+def test_zoom_rejects_a_nonsense_factor():
+    with pytest.raises(ValueError):
+        zoom_image(detailed_image(), factor=0)
+
+
+def test_zoom_handles_transparency():
+    import base64
+    from io import BytesIO
+
+    from PIL import Image
+
+    rgba = Image.new("RGBA", (800, 600), (0, 128, 255, 128))
+    buffer = BytesIO()
+    rgba.save(buffer, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+    image, _ = load_image(zoom_image(data_url, max_dimension=256))
+
+    assert image.mode == "RGB"
+    assert max(image.size) == 256

@@ -121,6 +121,10 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `RESET_DATABASE`     | Wipe the DB on startup                               |
 | `WEBSITE_URL`        | Frontend URL (used for CORS)                         |
 | `API_URL`            | Backend API base URL                                 |
+| `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
+| `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
+| `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
+| `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
 
 ## Deployment (brief)
 
@@ -143,3 +147,13 @@ Images are built from the Nix flake
 - No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev.
 - Run `pre-commit run --all-files` before committing, and never introduce
   `FIXME` comments (CI gate).
+- **AI shot review** (`backend/ai_shot_review.py`, `backend/shot_vision.py`,
+  `backend/vision_client.py`) is off unless `OPENROUTER_API_KEY` is set *and* an
+  admin ticks the per-game toggle. It only annotates the queue — the admin still
+  decides every shot. `OPENROUTER_MODEL` is a placeholder awaiting a trial
+  against real photos, so keep the client and the prompt model-agnostic: no
+  provider-specific features, and never assume structured-output support.
+- The colour scheme players wear lives in `backend/identity/config.py`
+  (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
+  pure — no database, web or vision imports. See
+  `docs/team_photo_identification_plan.md` for the reasoning.

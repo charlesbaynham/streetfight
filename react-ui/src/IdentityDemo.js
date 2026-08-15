@@ -737,12 +737,14 @@ export default function IdentityDemo() {
       setSpec({
         paletteText: defaults.palette.join(", "),
         qText: "",
-        channels: defaults.channel_names.map((name) => ({
+        channels: defaults.channels.map(({ name, labels }) => ({
           name,
-          labelsText: "",
+          // Blank means "use the palette"; only the restricted channels
+          // (trousers) carry an explicit alphabet.
+          labelsText: labels ? labels.join(", ") : "",
         })),
         code_type: "auto",
-        target_distanceText: "",
+        target_distanceText: String(defaults.target_distance),
         kText: "",
       });
       setThresholdsText({

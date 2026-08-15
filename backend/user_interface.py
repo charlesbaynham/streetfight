@@ -7,6 +7,7 @@ from typing import List
 from typing import Tuple
 from typing import Union
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 from sqlalchemy.orm import Session as SQLAlchemySession
@@ -269,7 +270,14 @@ class UserInterface:
             game_id=game.id
         )
 
+        # Assign the id here rather than letting the column default do it at
+        # flush time, so it can be returned without flushing. Flushing would
+        # clear the session's dirty flag and rob @db_scoped of the signal it
+        # uses to fire the post-commit update event.
+        shot_id = get_uuid()
+
         shot_entry = Shot(
+            id=shot_id,
             user=user,
             team=team,
             game=game,
@@ -283,6 +291,8 @@ class UserInterface:
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
+
+        return shot_id
 
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:

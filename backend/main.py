@@ -81,6 +81,7 @@ def setup_logging():
 load_env_vars()
 setup_logging()
 
+from . import ai_shot_review
 from . import sse_event_streams
 from .admin_auth import is_admin_authed
 from .admin_auth import mark_admin_authed
@@ -88,6 +89,7 @@ from .admin_auth import require_admin_auth
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
+from .asyncio_triggers import trigger_update_event
 from .model import GameModel
 from .model import ShotModel
 from .user_id import get_user_id
@@ -148,7 +150,15 @@ async def submit_shot(
     logger.info("Received shot from user %s", user_id)
 
     with UserInterface(user_id) as ui:
-        return ui.submit_shot(shot.photo)
+        shot_id = ui.submit_shot(shot.photo)
+        game_id = ui.get_user().team.game_id
+
+    # Outside the session: queueing the review must not slow down the player
+    # who fired, and the review itself must not hold a database session while
+    # it waits on the network.
+    trigger_update_event("shots", game_id)
+    if AdminInterface().is_ai_shot_review_enabled(game_id):
+        ai_shot_review.enqueue_review(shot_id)
 
 
 @router.post("/set_name")
@@ -349,6 +359,39 @@ async def admin_refund_shot(shot_id):
 @admin_method(path="/admin_mark_shot_missed", method="POST")
 async def admin_mark_shot_missed(shot_id):
     AdminInterface().mark_shot_missed(shot_id)
+
+
+@admin_method(path="/admin_set_ai_shot_review", method="POST")
+async def admin_set_ai_shot_review(game_id: UUID, enabled: bool):
+    """Turn AI review of the shot queue on or off for a game.
+
+    Switching it on also puts the shots already waiting in the queue through,
+    not just the ones that arrive afterwards.
+    """
+    backlog = AdminInterface().set_ai_shot_review_enabled(game_id, enabled)
+    started = ai_shot_review.enqueue_reviews(backlog)
+    return {"enabled": enabled, "backlog": len(backlog), "started": started}
+
+
+@admin_method("/admin_get_shot_ai_review", method="GET")
+async def admin_get_shot_ai_review(shot_id: UUID):
+    """The AI's reading of one shot.
+
+    Separate from admin_get_shot because the frontend caches shot responses
+    permanently by id, and a review that arrives afterwards would never be seen.
+    """
+    return AdminInterface().get_shot_ai_review(shot_id)
+
+
+@admin_method(path="/admin_review_shot", method="POST")
+async def admin_review_shot(shot_id: UUID):
+    """Review (or re-review) one shot now, whatever the toggle says.
+
+    The fast loop for tuning the prompt or trying a different OPENROUTER_MODEL.
+    """
+    if ai_shot_review.enqueue_review(shot_id) is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    return {"queued": True}
 
 
 @admin_method("/admin_get_locations", method="GET")
