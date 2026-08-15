@@ -295,6 +295,68 @@ class UserInterface:
         return shot_id
 
     @db_scoped
+    def get_own_shots(self) -> List[dict]:
+        """
+        A light summary of every shot this user has fired, newest first, for
+        the user-facing shot history. Deliberately excludes the images: they
+        are big and immutable, so the frontend fetches (and caches) them
+        separately by id via get_own_shot_image, while this list stays cheap
+        to re-poll every time a status changes.
+        """
+        shots = (
+            self._session.query(Shot)
+            .filter_by(user_id=self.user_id)
+            .order_by(Shot.time_created.desc())
+            .all()
+        )
+
+        out = []
+        for shot in shots:
+            target_name = None
+            if shot.target_user_id:
+                target = self._session.get(User, shot.target_user_id)
+                target_name = target.name if target else None
+
+            # Only the AI's bottom line is shared with the player - the full
+            # review (reasoning, clothing readings) stays admin-only
+            ai_suggestion = None
+            if shot.ai_review_state == "done" and shot.ai_review:
+                try:
+                    is_hit = json.loads(shot.ai_review).get("is_hit")
+                    ai_suggestion = "hit" if is_hit else "miss"
+                except ValueError:
+                    pass
+
+            out.append(
+                {
+                    "id": shot.id,
+                    "time_created": shot.time_created,
+                    "checked": shot.checked,
+                    "result": shot.result,
+                    "target_name": target_name,
+                    "ai_review_state": shot.ai_review_state,
+                    "ai_suggestion": ai_suggestion,
+                }
+            )
+
+        return out
+
+    @db_scoped
+    def get_own_shot_image(self, shot_id: UUID) -> str:
+        """
+        The full image for one of this user's own shots.
+
+        Responds 404 rather than 403 for anyone else's shot: whether the id
+        exists at all is nobody else's business.
+        """
+        shot = self._session.get(Shot, shot_id)
+
+        if not shot or shot.user_id != self.user_id:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+
+        return shot.image_base64
+
+    @db_scoped
     def collect_item(self, encoded_item: str) -> None:
         """
         Add the scanned item into a user's inventory
@@ -462,6 +524,7 @@ class UserInterface:
         bullet_refunds = 0
         for shot in unchecked_shots:
             shot.checked = True
+            shot.result = "refunded"
             bullet_refunds += 1
 
         self.award_ammo(bullet_refunds)

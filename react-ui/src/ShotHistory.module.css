@@ -1,0 +1,134 @@
+.badge {
+  display: inline-block;
+  background-color: #cc0000;
+  color: white;
+  border-radius: 50%;
+  min-width: 1.5em;
+  height: 1.5em;
+  line-height: 1.5em;
+  margin-left: 0.5em;
+  font-size: 0.8em;
+  text-align: center;
+}
+
+.list {
+  color: white;
+  padding: 0 1em 1em;
+}
+
+.listTitle {
+  text-align: center;
+}
+
+.shotRow {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 1em;
+  background: none;
+  border: none;
+  border-bottom: 1px solid #444444;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.5em 0;
+  text-align: left;
+}
+
+.thumbnail {
+  width: 4em;
+  height: 4em;
+  object-fit: cover;
+  border-radius: 0.5em;
+  background-color: #333333;
+  flex-shrink: 0;
+  display: block;
+}
+
+.rowText {
+  display: flex;
+  flex-direction: column;
+}
+
+.rowIcon {
+  height: 1.2em;
+  vertical-align: middle;
+}
+
+.rowSublabel {
+  font-style: italic;
+  font-size: 0.8em;
+  color: #cccccc;
+}
+
+.rowTime {
+  font-size: 0.8em;
+  color: #999999;
+}
+
+.detail {
+  color: white;
+  text-align: center;
+  padding: 0 1em 1em;
+}
+
+.backButton {
+  background: none;
+  border: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  padding: 0.5em;
+  width: 100%;
+  text-align: left;
+}
+
+.detailImage {
+  width: 100%;
+  border-radius: 0.5em;
+  background-color: #333333;
+  min-height: 8em;
+}
+
+/* The notification bubble sits just above the fullscreen button
+   (FullscreenButton.module.css: 10mm icon with a 3vh margin) */
+.bubble {
+  position: fixed;
+  left: 3vh;
+  bottom: calc(6vh + 10mm);
+  width: 4.5em;
+  height: 4.5em;
+  padding: 0;
+  border: 2px solid white;
+  border-radius: 0.75em;
+  background-color: black;
+  cursor: pointer;
+  z-index: 50;
+  box-shadow: 0 0 0.5em rgba(0, 0, 0, 0.7);
+}
+
+.bubbleImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0.6em;
+  display: block;
+}
+
+.bubbleIcon {
+  position: absolute;
+  top: -0.6em;
+  right: -0.6em;
+  width: 1.6em;
+  height: 1.6em;
+  line-height: 1.5em;
+  border-radius: 50%;
+  background-color: white;
+  text-align: center;
+  box-sizing: border-box;
+  padding: 0.2em;
+}
+
+span.bubbleIcon {
+  padding: 0;
+}

@@ -253,11 +253,13 @@ class AdminInterface:
         return {"state": shot.ai_review_state, "review": review}
 
     @db_scoped
-    def store_shot_ai_review(self, shot_id: UUID, state: str, payload=None) -> UUID:
+    def store_shot_ai_review(
+        self, shot_id: UUID, state: str, payload=None
+    ) -> Tuple[UUID, UUID]:
         """Record the outcome of a review. The single writer of these columns.
 
-        Returns the shot's game id so the caller can fire an update event
-        without needing a second session.
+        Returns the shot's game id and shooter id so the caller can fire
+        update events without needing a second session.
         """
         shot = self._get_shot_orm(shot_id)
         shot.ai_review_state = state
@@ -268,7 +270,7 @@ class AdminInterface:
         else:
             shot.ai_review = json.dumps(payload, default=str)
         self._session.commit()
-        return shot.game_id
+        return shot.game_id, shot.user_id
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
@@ -423,13 +425,21 @@ class AdminInterface:
         )
 
         try:
-            self.mark_shot_missed(shot_id)
+            self._mark_shot_checked(shot_id, "hit")
         except HTTPException:
-            # Handle the edge case where a user shoots themselves
-            pass
+            # Handle the edge case where a user shoots themselves: the knockout
+            # above already marked their unchecked shots as refunded
+            shot.result = "hit"
 
         # Record the target user in the db
         shot.target_user_id = target_user_id
+
+        self._session.commit()
+
+        # The shot has left the queue, so tell any admin watching it - and the
+        # shooter, whose shot history has a new outcome
+        trigger_update_event("shots", shot.game_id)
+        trigger_update_event("user", u_from.id)
 
     def set_user_HP(self, user_id, num=1):
         with UserInterface(user_id) as ui:
@@ -481,16 +491,33 @@ class AdminInterface:
                 pass
 
     @db_scoped
-    def mark_shot_missed(self, shot_id):
+    def _mark_shot_checked(self, shot_id, result: str) -> Shot:
+        """
+        Mark a shot as checked and record how it was adjudicated. Ticker
+        messages and update events are the caller's job.
+
+        Raises:
+            HTTPException: 404 if shot not found
+            HTTPException: 400 if shot has already been checked
+        """
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
-        user_id = shot.user_id
-        game_id = shot.game_id
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
 
         if shot.checked:
             raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+
+        shot.checked = True
+        shot.result = result
+
+        return shot
+
+    @db_scoped
+    def mark_shot_missed(self, shot_id):
+        shot = self._mark_shot_checked(shot_id, "miss")
+        user_id = shot.user_id
+        game_id = shot.game_id
 
         tk.send_ticker_message(
             tk.TickerMessageType.MISSED_SHOT,
@@ -500,11 +527,12 @@ class AdminInterface:
             session=self._session,
         )
 
-        shot.checked = True
         self._session.commit()
 
-        # The shot has left the queue, so tell any admin watching it
+        # The shot has left the queue, so tell any admin watching it - and the
+        # shooter, whose shot history has a new outcome
         trigger_update_event("shots", game_id)
+        trigger_update_event("user", user_id)
 
     @db_scoped
     def refund_shot(self, shot_id: UUID):
@@ -518,15 +546,9 @@ class AdminInterface:
             HTTPException: 404 if shot not found
             HTTPException: 400 if shot has already been checked
         """
-        shot = self._session.query(Shot).filter_by(id=shot_id).first()
+        shot = self._mark_shot_checked(shot_id, "refunded")
         user_id = shot.user_id
         game_id = shot.game_id
-
-        if not shot:
-            raise HTTPException(404, f"Shot id {shot_id} not found")
-
-        if shot.checked:
-            raise HTTPException(400, f"Shot id {shot_id} has already been checked")
 
         user = shot.user
 
@@ -540,10 +562,10 @@ class AdminInterface:
             session=self._session,
         )
 
-        shot.checked = True
         self._session.commit()
 
         trigger_update_event("shots", game_id)
+        trigger_update_event("user", user_id)
 
     def make_new_item(
         self,

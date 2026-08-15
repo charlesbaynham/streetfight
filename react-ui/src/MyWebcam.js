@@ -8,6 +8,7 @@ import {
   useImperativeHandle,
 } from "react";
 import useScreenOrientation from "./useScreenOrientation";
+import { refreshShots } from "./shotHistoryStore";
 
 const constraints = {
   audio: false,
@@ -61,7 +62,11 @@ export const MyWebcam = forwardRef(
       };
       fetch("/api/submit_shot", requestOptions)
         .then((response) => response.json())
-        .then((data) => console.log(`Response: ${data}`));
+        .then((data) => {
+          console.log(`Response: ${data}`);
+          // The new shot should appear in the shot history straight away
+          refreshShots();
+        });
     }, [capture]);
 
     // Expose the capture function to the parent component

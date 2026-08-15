@@ -111,6 +111,12 @@ class Shot(Base):
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
 
+    # How the shot was adjudicated: "hit" / "miss" / "refunded", or null while
+    # it is still in the queue. Recorded so the shooter's shot history can
+    # report what happened - target_user_id alone can't tell a miss from a
+    # refund.
+    result = Column(String, nullable=True)
+
     location_context = Column(String, nullable=True)
 
     # AI review of the photo. Advisory only: the admin still decides every
@@ -370,6 +376,7 @@ class ShotModel(pydantic.BaseModel):
     time_created: datetime.datetime
     game_id: UUID
     checked: bool
+    result: Optional[str] = None
     image_base64: str
 
     user: UserModel

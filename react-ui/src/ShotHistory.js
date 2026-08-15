@@ -1,0 +1,273 @@
+// The user-facing shot history: a "My shots" entry for the HUD (with an
+// unseen-changes badge), a fullscreen popup listing every shot with its
+// adjudicated outcome, and a notification bubble that pops up when a shot's
+// status changes.
+
+import React, { useCallback, useEffect, useRef, useState } from "react";
+
+import Popup from "./Popup";
+import UpdateListener from "./UpdateListener";
+import {
+  countUnseenShots,
+  getShotImage,
+  getShots,
+  isShotStatusSeen,
+  markShotsSeen,
+  refreshShots,
+  shotStatusFingerprint,
+  subscribeShots,
+} from "./shotHistoryStore";
+
+import styles from "./ShotHistory.module.css";
+import scoreboardStyles from "./Scoreboard.module.css";
+
+import checkImg from "./images/check-solid.svg";
+import crossImg from "./images/cross.svg";
+import returnImg from "./images/return.svg";
+
+// Once the bubble has been tapped at least once, it hides after this long
+const BUBBLE_LINGER_MS = 10000;
+
+const OPEN_EVENT = "streetfight:open-shot-history";
+
+// Ask the mounted ShotHistoryController to open the popup, optionally straight
+// onto one shot's detail view. A window event rather than lifted state so the
+// HUD entry, the bubble and the controller don't all need a common ancestor.
+export function openShotHistory(shotId = null) {
+  window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { shotId } }));
+}
+
+// What to show for a shot's current status. Shots checked before the result
+// column existed have result=null: infer from whether a target was recorded.
+function shotStatus(shot) {
+  if (shot.checked) {
+    const result = shot.result || (shot.target_name ? "hit" : "miss");
+    if (result === "hit")
+      return {
+        icon: checkImg,
+        label: shot.target_name ? `Hit ${shot.target_name}!` : "Hit!",
+      };
+    if (result === "refunded")
+      return { icon: returnImg, label: "Ammo refunded" };
+    return { icon: crossImg, label: "Missed" };
+  }
+
+  if (shot.ai_review_state === "done" && shot.ai_suggestion)
+    return {
+      emoji: "⏳",
+      label: `AI thinks: ${shot.ai_suggestion}`,
+      sublabel: "Escalated to referee",
+    };
+
+  return { emoji: "⏳", label: "Being reviewed..." };
+}
+
+function StatusIcon({ status, className }) {
+  if (status.icon)
+    return <img className={className} src={status.icon} alt={status.label} />;
+  return <span className={className}>{status.emoji}</span>;
+}
+
+function ShotThumbnail({ shotId, className }) {
+  const [image, setImage] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getShotImage(shotId).then((img) => {
+      if (!cancelled) setImage(img);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [shotId]);
+
+  if (!image) return <div className={className} />;
+  return <img className={className} src={image} alt="Your shot" />;
+}
+
+function formatShotTime(timeCreated) {
+  const date = new Date(timeCreated);
+  if (isNaN(date)) return "";
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+}
+
+// The HUD entry: sits under "Show scores >>" and opens the history
+export function ShotHistoryButton({ standalone = false }) {
+  const [shotList, setShotList] = useState(getShots());
+
+  useEffect(() => subscribeShots(setShotList), []);
+
+  if (!shotList || shotList.length === 0) return null;
+
+  const numUnseen = countUnseenShots(shotList);
+
+  return (
+    <p>
+      <button
+        className={
+          scoreboardStyles.showScoresButton +
+          (standalone ? " " + scoreboardStyles.standalone : "")
+        }
+        onClick={() => openShotHistory()}
+      >
+        My shots &gt;&gt;
+        {numUnseen > 0 ? (
+          <span className={styles.badge}>{numUnseen}</span>
+        ) : null}
+      </button>
+    </p>
+  );
+}
+
+function ShotRow({ shot, onClick }) {
+  const status = shotStatus(shot);
+
+  return (
+    <button className={styles.shotRow} onClick={onClick}>
+      <ShotThumbnail shotId={shot.id} className={styles.thumbnail} />
+      <div className={styles.rowText}>
+        <span>
+          <StatusIcon status={status} className={styles.rowIcon} />{" "}
+          {status.label}
+        </span>
+        {status.sublabel ? (
+          <span className={styles.rowSublabel}>{status.sublabel}</span>
+        ) : null}
+        <span className={styles.rowTime}>
+          {formatShotTime(shot.time_created)}
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function ShotDetail({ shot, onBack }) {
+  const status = shotStatus(shot);
+
+  return (
+    <div className={styles.detail}>
+      <button className={styles.backButton} onClick={onBack}>
+        &lt;&lt; All shots
+      </button>
+      <p>
+        <StatusIcon status={status} className={styles.rowIcon} /> {status.label}
+        {status.sublabel ? (
+          <>
+            <br />
+            <span className={styles.rowSublabel}>{status.sublabel}</span>
+          </>
+        ) : null}
+      </p>
+      <ShotThumbnail shotId={shot.id} className={styles.detailImage} />
+      <p className={styles.rowTime}>{formatShotTime(shot.time_created)}</p>
+    </div>
+  );
+}
+
+// The bubble: a thumbnail of the latest shot with its status in the corner.
+// It appears whenever the latest shot has a status the user hasn't seen, stays
+// until tapped at least once, and hides a few seconds after a tap (which also
+// opens the history on that shot).
+function ShotNotifierBubble({ shotList }) {
+  const latest = shotList && shotList.length > 0 ? shotList[0] : null;
+  const fingerprint = latest ? shotStatusFingerprint(latest) : null;
+
+  const [lingering, setLingering] = useState(false);
+  const timerRef = useRef(null);
+
+  // A new status cancels any pending hide and shows the bubble afresh
+  useEffect(() => {
+    setLingering(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [fingerprint]);
+
+  if (!latest) return null;
+
+  // Opening the history marks everything seen, so the bubble drops out once
+  // the user has looked - the linger keeps it up right after a tap
+  if (isShotStatusSeen(latest) && !lingering) return null;
+
+  const status = shotStatus(latest);
+
+  const handleClick = () => {
+    setLingering(true);
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => setLingering(false), BUBBLE_LINGER_MS);
+    openShotHistory(latest.id);
+  };
+
+  return (
+    <button className={styles.bubble} onClick={handleClick}>
+      <ShotThumbnail shotId={latest.id} className={styles.bubbleImage} />
+      <StatusIcon status={status} className={styles.bubbleIcon} />
+    </button>
+  );
+}
+
+// Mount exactly one of these in the in-game view: it owns the shot list, the
+// popup and the notification bubble
+export function ShotHistoryController() {
+  const [shotList, setShotList] = useState(getShots());
+  const [visible, setVisible] = useState(false);
+  const [selectedShotId, setSelectedShotId] = useState(null);
+
+  useEffect(() => subscribeShots(setShotList), []);
+  useEffect(() => {
+    refreshShots();
+  }, []);
+
+  useEffect(() => {
+    const handler = (event) => {
+      setSelectedShotId(event.detail.shotId);
+      setVisible(true);
+    };
+    window.addEventListener(OPEN_EVENT, handler);
+    return () => window.removeEventListener(OPEN_EVENT, handler);
+  }, []);
+
+  // Whatever is on show while the popup is open counts as seen
+  useEffect(() => {
+    if (visible && shotList) markShotsSeen(shotList);
+  }, [visible, shotList]);
+
+  const setVisibleAndReset = useCallback((newVisible) => {
+    setVisible(newVisible);
+    if (!newVisible) setSelectedShotId(null);
+  }, []);
+
+  const selectedShot =
+    shotList && selectedShotId
+      ? shotList.find((shot) => shot.id === selectedShotId)
+      : null;
+
+  return (
+    <>
+      {/* Refresh whenever the server nudges this user: new shots, admin
+          adjudications and AI reviews all arrive as "user" updates */}
+      <UpdateListener update_type="user" callback={refreshShots} />
+      <ShotNotifierBubble shotList={shotList} />
+      <Popup visible={visible} setVisible={setVisibleAndReset}>
+        {selectedShot ? (
+          <ShotDetail
+            shot={selectedShot}
+            onBack={() => setSelectedShotId(null)}
+          />
+        ) : (
+          <div className={styles.list}>
+            <h2 className={styles.listTitle}>My shots</h2>
+            {(shotList || []).map((shot) => (
+              <ShotRow
+                key={shot.id}
+                shot={shot}
+                onClick={() => setSelectedShotId(shot.id)}
+              />
+            ))}
+          </div>
+        )}
+      </Popup>
+    </>
+  );
+}
