@@ -27,6 +27,27 @@ window.addEventListener("activate", (event) => {
   );
 });
 
+// Shots already being fetched, by id. The queue asks for the same shot from
+// several places at once (the pre-load loop and the panel showing it), and a
+// shot is megabytes: without this they each miss the still-empty cache and
+// start their own download of the same photo.
+const inFlight = new Map();
+
+async function fetchAndCache(cache, shot_id) {
+  console.log("Shot not in cache, fetching from API");
+  const apiResponse = await sendAPIRequest("admin_get_shot", {
+    shot_id: shot_id,
+  });
+  if (!apiResponse.ok) {
+    throw new Error(`Error fetching shot: ${apiResponse.statusText}`);
+  }
+
+  // Cache the fetched response for future use
+  await cache.put(shot_id, apiResponse.clone());
+
+  return apiResponse.json();
+}
+
 export async function getShotFromCache(shot_id) {
   console.log("getShotFromCache", shot_id);
 
@@ -36,22 +57,20 @@ export async function getShotFromCache(shot_id) {
 
   const cache = await caches.open(CURRENT_CACHES.shots);
   const response = await cache.match(shot_id);
-  if (!response) {
-    console.log("Shot not in cache, fetching from API");
-    // If the shot is not in the cache, fetch it from the API
-    const apiResponse = await sendAPIRequest("admin_get_shot", {
-      shot_id: shot_id,
-    });
-    if (!apiResponse.ok) {
-      throw new Error(`Error fetching shot: ${apiResponse.statusText}`);
-    }
-
-    // Cache the fetched response for future use
-    await cache.put(shot_id, apiResponse.clone());
-
-    return apiResponse.json();
-  } else {
+  if (response) {
     console.log("Shot found in cache, returning");
     return response.json();
   }
+
+  const pending = inFlight.get(shot_id);
+  if (pending) {
+    console.log("Shot already being fetched, joining that request");
+    return pending;
+  }
+
+  const request = fetchAndCache(cache, shot_id).finally(() => {
+    inFlight.delete(shot_id);
+  });
+  inFlight.set(shot_id, request);
+  return request;
 }

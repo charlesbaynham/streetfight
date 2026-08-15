@@ -191,11 +191,19 @@ function ShotQueuePanel() {
 
       setShotsInQueue(shot_ids);
 
-      if (currentShotIdx >= shot_ids.length) {
-        setCurrentShotIdx(shot_ids.length - 1);
+      const shownIdx = Math.min(currentShotIdx, shot_ids.length - 1);
+      if (shownIdx !== currentShotIdx) {
+        setCurrentShotIdx(shownIdx);
       }
 
-      // Load shots in background
+      // The shot on screen first, alone: pre-loading the whole queue alongside
+      // it means competing for the connection, and the admin cannot judge a
+      // shot they cannot see yet.
+      if (shot_ids[shownIdx]) {
+        await getShotFromCache(shot_ids[shownIdx]);
+      }
+
+      // Load the rest in background
       await Promise.all(
         shot_ids.map((id) => {
           console.log("Pre-loading shot", id);
