@@ -11,8 +11,6 @@ _scheduled_tasks = set()
 
 
 def trigger_update_event(event_type: str, key: Hashable):
-    global _update_events
-
     logger.info(
         "(asyncio_triggers) Triggering updates for type %s, key %s", event_type, key
     )
@@ -36,7 +34,6 @@ def schedule_update_event(event_type: str, key: Hashable, timeout: float):
     Currently there is no way to cancel these. That's fine - it just means an
     extra update of user state.
     """
-    global _scheduled_tasks
 
     logger.info(
         "(asyncio_triggers) Scheduling an update for type %s, key %s in %s seconds",
@@ -55,7 +52,11 @@ def schedule_update_event(event_type: str, key: Hashable, timeout: float):
         )
         trigger_update_event(event_type=event_type, key=key)
 
+    # asyncio only holds a weak reference to a running task, so without keeping
+    # our own strong reference here the task can be garbage collected part way
+    # through its sleep and the update silently never fires.
     task = asyncio.create_task(wait_then_trigger())
+    _scheduled_tasks.add(task)
     task.add_done_callback(_scheduled_tasks.discard)
 
 
