@@ -37,6 +37,16 @@ export function openShotHistory(shotId = null) {
   window.dispatchEvent(new CustomEvent(OPEN_EVENT, { detail: { shotId } }));
 }
 
+// Each status gets its own colour (via the --status-colour custom property set
+// by these classes) as well as its own icon, so the bubble reads at a glance
+const STATE_CLASSES = {
+  unreviewed: styles.stateUnreviewed,
+  escalated: styles.stateEscalated,
+  hit: styles.stateHit,
+  miss: styles.stateMiss,
+  refunded: styles.stateRefunded,
+};
+
 // What to show for a shot's current status. Shots checked before the result
 // column existed have result=null: infer from whether a target was recorded.
 function shotStatus(shot) {
@@ -44,28 +54,49 @@ function shotStatus(shot) {
     const result = shot.result || (shot.target_name ? "hit" : "miss");
     if (result === "hit")
       return {
+        state: "hit",
         icon: checkImg,
         label: shot.target_name ? `Hit ${shot.target_name}!` : "Hit!",
       };
     if (result === "refunded")
-      return { icon: returnImg, label: "Ammo refunded" };
-    return { icon: crossImg, label: "Missed" };
+      return { state: "refunded", icon: returnImg, label: "Ammo refunded" };
+    return { state: "miss", icon: crossImg, label: "Missed" };
   }
 
+  // The AI has looked but the call is still the referee's: distinct icon and
+  // colour from a shot nobody has looked at yet
   if (shot.ai_review_state === "done" && shot.ai_suggestion)
     return {
-      emoji: "⏳",
+      state: "escalated",
+      emoji: "🤖",
       label: `AI thinks: ${shot.ai_suggestion}`,
       sublabel: "Escalated to referee",
     };
 
-  return { emoji: "⏳", label: "Being reviewed..." };
+  return { state: "unreviewed", emoji: "⏳", label: "Not reviewed yet" };
 }
 
+function statusClasses(status, ...extra) {
+  return [STATE_CLASSES[status.state], ...extra].filter(Boolean).join(" ");
+}
+
+// A coloured disc with the status glyph on it. The image sits in a wrapper
+// rather than being the disc itself: the filter that knocks the SVGs out to
+// white would otherwise whiten the disc's background too.
 function StatusIcon({ status, className }) {
-  if (status.icon)
-    return <img className={className} src={status.icon} alt={status.label} />;
-  return <span className={className}>{status.emoji}</span>;
+  return (
+    <span className={statusClasses(status, styles.statusIcon, className)}>
+      {status.icon ? (
+        <img
+          className={styles.statusIconImage}
+          src={status.icon}
+          alt={status.label}
+        />
+      ) : (
+        status.emoji
+      )}
+    </span>
+  );
 }
 
 function ShotThumbnail({ shotId, className }) {
@@ -200,7 +231,10 @@ function ShotNotifierBubble({ shotList }) {
   };
 
   return (
-    <button className={styles.bubble} onClick={handleClick}>
+    <button
+      className={statusClasses(status, styles.bubble)}
+      onClick={handleClick}
+    >
       <ShotThumbnail shotId={latest.id} className={styles.bubbleImage} />
       <StatusIcon status={status} className={styles.bubbleIcon} />
     </button>

@@ -50,8 +50,53 @@
   flex-direction: column;
 }
 
+/* One colour per shot status, set as a custom property so both the icon disc
+   and the notification bubble's border pick it up */
+.stateUnreviewed {
+  --status-colour: #6b7280;
+}
+
+.stateEscalated {
+  --status-colour: #f0a020;
+}
+
+.stateHit {
+  --status-colour: #23a94a;
+}
+
+.stateMiss {
+  --status-colour: #d32020;
+}
+
+.stateRefunded {
+  --status-colour: #2f80d0;
+}
+
+/* A coloured disc behind the status glyph */
+.statusIcon {
+  box-sizing: border-box;
+  display: inline-block;
+  border-radius: 50%;
+  background-color: var(--status-colour, #ffffff);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* The source SVGs are black or red: knock them out to white so they read on
+   top of the disc's colour */
+.statusIconImage {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0.25em;
+  filter: brightness(0) invert(1);
+}
+
 .rowIcon {
-  height: 1.2em;
+  width: 1.5em;
+  height: 1.5em;
+  line-height: 1.5em;
   vertical-align: middle;
 }
 
@@ -99,7 +144,7 @@
   width: 4.5em;
   height: 4.5em;
   padding: 0;
-  border: 2px solid white;
+  border: 2px solid var(--status-colour, white);
   border-radius: 0.75em;
   background-color: black;
   cursor: pointer;
@@ -122,13 +167,5 @@
   width: 1.6em;
   height: 1.6em;
   line-height: 1.5em;
-  border-radius: 50%;
-  background-color: white;
-  text-align: center;
-  box-sizing: border-box;
-  padding: 0.2em;
-}
-
-span.bubbleIcon {
-  padding: 0;
+  border: 1px solid white;
 }
