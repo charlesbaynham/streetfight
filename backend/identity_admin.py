@@ -29,6 +29,8 @@ import pydantic
 
 from . import ticker_message_dispatcher as tk
 from .admin_interface import AdminInterface
+from .identity.allocation import allocate_team_slots
+from .identity.config import TEAM_CHANNEL
 from .identity.config import default_scheme
 from .identity.config import hex_for
 from .identity.overrides import Word
@@ -330,12 +332,17 @@ def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
 
 
 def build_join_codes(game_id: UUID, slots_per_team: int) -> dict:
-    """Signed join QR URLs for a game: the first N usable slots per team.
+    """Signed join QR URLs for a game: N slots per team, one hat colour each.
 
-    Teams are ordered by creation time and the usable slots partitioned in
-    order, ``slots_per_team`` each - deterministic, so reprinting yields the
-    same codes. Each code carries the slot's canonical appearance so the
-    admin can pack the right clothing with each card.
+    Teams are ordered by creation time and allocated whole
+    :data:`~backend.identity.config.TEAM_CHANNEL` colour groups
+    (:func:`~backend.identity.allocation.allocate_team_slots`), so every member
+    of a team wears the same hat and no two teams share a hat colour. The
+    allocation is deterministic, so reprinting yields the same codes. Each code
+    carries the slot's canonical appearance so the admin can pack the right
+    clothing with each card, and each team reports the colours it covers -
+    ``team_colours[0]`` is the colour to buy hats in, and a second entry means
+    the block was too big for one colour to cover.
     """
     if slots_per_team < 1:
         raise IdentityAdminError("slots_per_team must be at least 1")
@@ -346,33 +353,32 @@ def build_join_codes(game_id: UUID, slots_per_team: int) -> dict:
     if not teams:
         raise IdentityAdminError("game has no teams - create the teams first")
 
-    slots = scheme.usable_slots()
-    needed = len(teams) * slots_per_team
-    if needed > len(slots):
-        raise IdentityAdminError(
-            f"{len(teams)} teams x {slots_per_team} slots needs {needed} outfits, "
-            f"but the scheme only has {len(slots)}"
+    try:
+        allocations = allocate_team_slots(
+            scheme, len(teams), slots_per_team, TEAM_CHANNEL
         )
+    except ValueError as e:
+        raise IdentityAdminError(str(e))
 
     out = []
-    for i, team in enumerate(teams):
-        team_slots = slots[i * slots_per_team : (i + 1) * slots_per_team]
+    for team, allocation in zip(teams, allocations):
         out.append(
             {
                 "team_id": team.id,
                 "team_name": team.name,
+                "team_colours": allocation.labels,
                 "codes": [
                     {
                         "slot": slot,
                         "encoded_url": make_join_url(game_id, team.id, slot),
                         "appearance": scheme.appearance_of_slot(slot),
                     }
-                    for slot in team_slots
+                    for slot in allocation.slots
                 ],
             }
         )
 
-    return {"teams": out}
+    return {"team_channel": TEAM_CHANNEL, "teams": out}
 
 
 # ---------------------------------------------------------------------------

@@ -42,6 +42,14 @@ DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "armbands"]
 # Channels not listed here use DEFAULT_PALETTE.
 CHANNEL_PALETTES = {"trousers": TROUSERS_PALETTE}
 
+# The channel spent on telling teams apart by eye: every member of a team is
+# pre-allocated a slot with the same colour here, and no two teams share one
+# (see backend/identity/allocation.py). The hat, because it is the highest and
+# least likely garment to be obscured, and the easiest single item to hand out
+# in a matching colour. Purely an allocation policy -- the decoder neither
+# knows nor cares.
+TEAM_CHANNEL = "hat"
+
 # The minimum distance the code must achieve. d = 3 over 4 channels gives the
 # [4,2,3] Reed-Solomon code: correct two erasures, or one misread, or one
 # erasure plus detect one misread. See the upgrade ladder in

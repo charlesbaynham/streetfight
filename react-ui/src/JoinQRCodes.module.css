@@ -12,6 +12,11 @@
   break-inside: avoid;
 }
 
+.teamColours {
+  font-weight: normal;
+  font-style: italic;
+}
+
 .appearanceList {
   list-style: none;
   padding: 0;

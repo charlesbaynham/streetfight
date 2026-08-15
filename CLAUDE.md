@@ -162,3 +162,10 @@ Images are built from the Nix flake
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
+- One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
+  teams apart by eye: the join-QR pre-allocation
+  (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
+  each team a block of slots sharing one hat colour, and no two teams share a
+  colour. That is an allocation policy only — the decoder is unaffected. A hat
+  colour covers five slots (four for black), so a bigger team picks up a whole
+  second colour rather than sharing a part-used one.

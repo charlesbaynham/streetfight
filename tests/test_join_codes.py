@@ -5,6 +5,7 @@ from uuid import uuid4 as get_uuid
 
 import pytest
 
+from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 from backend.join_codes import JoinCodeModel
 from backend.join_codes import make_join_url
@@ -368,6 +369,36 @@ def test_admin_join_qr_codes_partitions_without_overlap(
     # No slot is handed to two teams, and all are usable
     assert len(all_slots) == len(set(all_slots)) == 6
     assert set(all_slots) <= set(SCHEME.usable_slots())
+
+
+def test_admin_join_qr_codes_gives_each_team_one_team_colour(
+    admin_api_client, db_session, one_game, team_factory
+):
+    team_factory()
+    team_factory()
+    team_factory()
+
+    response = admin_api_client.get(
+        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=4"
+    )
+
+    assert response.is_success
+    body = response.json()
+    assert body["team_channel"] == TEAM_CHANNEL
+
+    colours = []
+    for team in body["teams"]:
+        # Every outfit in the team wears the team's one colour...
+        assert (
+            team["team_colours"]
+            == [entry["appearance"][TEAM_CHANNEL] for entry in team["codes"]][:1]
+        )
+        worn = {entry["appearance"][TEAM_CHANNEL] for entry in team["codes"]}
+        assert worn == set(team["team_colours"])
+        colours.extend(team["team_colours"])
+
+    # ...and no two teams wear the same one
+    assert len(set(colours)) == 3
 
 
 def test_admin_join_qr_codes_too_many_slots_400(
