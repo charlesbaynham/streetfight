@@ -5,6 +5,7 @@ import { Col, Row } from "react-bootstrap";
 import { sendAPIRequest } from "./utils";
 import { AdminPage, adminDownload, adminPost } from "./AdminCommon";
 import NewItems from "./NewItems";
+import JoinQRCodes from "./JoinQRCodes";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
@@ -206,6 +207,9 @@ function GamePanel({ game }) {
           <SendTickerMessage game_id={game.id} />
         </Col>
       </Row>
+
+      <h3>Join QR codes</h3>
+      <JoinQRCodes game_id={game.id} />
     </>
   );
 }
@@ -230,13 +234,29 @@ function SendTickerMessage({ game_id }) {
   );
 }
 
-// Rename any user and put them in a team. Covers players who have opened the
-// app but are not yet in any team, so they don't appear under a game.
-function PlayerRow({ user, teams }) {
+// Rename any user, put them in a team (optionally claiming an identity slot)
+// or delete them outright. Covers players who have opened the app but are not
+// yet in any team, so they don't appear under a game.
+function PlayerRow({ user, teams, freeSlotsByGame }) {
   const nameInput = useRef(null);
-  const teamSelect = useRef(null);
+
+  // Tracked with state (not a ref) so the slot options follow the team choice
+  const [selectedTeamId, setSelectedTeamId] = useState(
+    user.team_id || (teams.length > 0 ? teams[0].id : ""),
+  );
+  const [selectedSlot, setSelectedSlot] = useState("");
 
   const team = teams.find((t) => t.id === user.team_id);
+  const selectedTeam = teams.find((t) => t.id === selectedTeamId);
+
+  // Free slots of the game owning the currently-selected team, plus the
+  // user's current slot (taken, so never in free_slots) if they have one.
+  const slotOptions = [
+    ...((selectedTeam && freeSlotsByGame[selectedTeam.game_id]) || []),
+  ];
+  if (user.identity_slot != null && !slotOptions.includes(user.identity_slot))
+    slotOptions.push(user.identity_slot);
+  slotOptions.sort((a, b) => a - b);
 
   return (
     <li>
@@ -260,22 +280,52 @@ function PlayerRow({ user, teams }) {
       >
         Rename
       </button>{" "}
-      <select ref={teamSelect} defaultValue={user.team_id || undefined}>
+      <select
+        aria-label="team"
+        value={selectedTeamId}
+        onChange={(e) => setSelectedTeamId(e.target.value)}
+      >
         {teams.map((t) => (
           <option key={t.id} value={t.id}>
             {t.name}
           </option>
         ))}
       </select>
+      <select
+        aria-label="slot"
+        value={selectedSlot}
+        onChange={(e) => setSelectedSlot(e.target.value)}
+      >
+        <option value="">(no slot)</option>
+        {slotOptions.map((slot) => (
+          <option key={slot} value={slot}>
+            {slot === user.identity_slot
+              ? `outfit #${slot} (current)`
+              : `outfit #${slot}`}
+          </option>
+        ))}
+      </select>
       <button
-        onClick={() =>
-          adminPost("admin_add_user_to_team", {
-            user_id: user.id,
-            team_id: teamSelect.current.value,
-          })
-        }
+        onClick={() => {
+          const params = { user_id: user.id, team_id: selectedTeamId };
+          if (selectedSlot !== "") params.slot = selectedSlot;
+          adminPost("admin_add_user_to_team", params);
+        }}
       >
         Put in team
+      </button>{" "}
+      <button
+        onClick={() => {
+          if (
+            window.confirm(
+              `Delete ${user.name || "this unnamed player"} entirely?`,
+            )
+          ) {
+            adminPost("admin_delete_user", { user_id: user.id });
+          }
+        }}
+      >
+        Delete
       </button>
     </li>
   );
@@ -284,10 +334,26 @@ function PlayerRow({ user, teams }) {
 function AdminPanel() {
   const [games, setGames] = useState(null);
   const [users, setUsers] = useState([]);
+  const [freeSlotsByGame, setFreeSlotsByGame] = useState({});
 
   // Failures show up in AdminPage's error log box
   const update = useCallback(() => {
-    sendAPIRequest("admin_list_games", null, "GET", setGames);
+    sendAPIRequest("admin_list_games", null, "GET", (loadedGames) => {
+      setGames(loadedGames);
+      // The free identity slots per game feed PlayerRow's slot picker
+      loadedGames.forEach((game) => {
+        sendAPIRequest(
+          "admin_identity_report",
+          { game_id: game.id },
+          "GET",
+          (report) =>
+            setFreeSlotsByGame((previous) => ({
+              ...previous,
+              [game.id]: report.free_slots,
+            })),
+        );
+      });
+    });
     sendAPIRequest("get_users", {}, "GET", setUsers);
   }, []);
 
@@ -342,7 +408,12 @@ function AdminPanel() {
       </p>
       <ul>
         {users.map((user) => (
-          <PlayerRow key={user.id} user={user} teams={allTeams} />
+          <PlayerRow
+            key={user.id}
+            user={user}
+            teams={allTeams}
+            freeSlotsByGame={freeSlotsByGame}
+          />
         ))}
       </ul>
 

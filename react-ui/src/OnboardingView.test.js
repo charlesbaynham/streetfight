@@ -88,7 +88,9 @@ test("the team step waits for a team, and the game step doesn't show yet", async
   grantAllPermissions();
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  expect(screen.getByText("Wait to be added to a team...")).toBeInTheDocument();
+  expect(
+    screen.getByText("Scan your team's join QR code with your camera app..."),
+  ).toBeInTheDocument();
   expect(
     screen.queryByText("Wait for game to start..."),
   ).not.toBeInTheDocument();
@@ -102,6 +104,22 @@ test("the team step shows the team name once assigned, and the game step then ap
 
   expect(screen.getByText('You are in team "Blue Team"')).toBeInTheDocument();
   expect(screen.getByText("Wait for game to start...")).toBeInTheDocument();
+});
+
+test("the team step mentions the outfit when the player has an identity slot", async () => {
+  grantAllPermissions();
+  await renderOnboarding(
+    makeUser({
+      name: "Bob",
+      team_id: "team-9",
+      team_name: "Blue Team",
+      identity_slot: 7,
+    }),
+  );
+
+  expect(
+    screen.getByText('You are in team "Blue Team" — outfit #7'),
+  ).toBeInTheDocument();
 });
 
 test("the name box is pre-filled with an existing name", async () => {
@@ -193,5 +211,7 @@ test("clicking the location step requests geolocation and marks itself done when
   fireEvent.click(stepButton("Grant location permission:"));
 
   await waitFor(() => expect(isDone("Grant location permission:")).toBe(true));
-  expect(screen.getByText("Wait to be added to a team...")).toBeInTheDocument();
+  expect(
+    screen.getByText("Scan your team's join QR code with your camera app..."),
+  ).toBeInTheDocument();
 });

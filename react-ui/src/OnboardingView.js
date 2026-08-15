@@ -129,13 +129,18 @@ function OnboardingView({ user }) {
       );
     else return actionItems;
 
+    const outfit =
+      user.identity_slot !== null && user.identity_slot !== undefined
+        ? ` — outfit #${user.identity_slot}`
+        : "";
+
     if (locationPermissionGranted)
       actionItems.push(
         <ActionItem
           text={
             !teamName
-              ? "Wait to be added to a team..."
-              : `You are in team "${teamName}"`
+              ? "Scan your team's join QR code with your camera app..."
+              : `You are in team "${teamName}"` + outfit
           }
           done={inTeam}
           doable={false}

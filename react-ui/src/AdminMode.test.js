@@ -175,8 +175,12 @@ function defaultRoutes(fixtures) {
     admin_send_custom_ticker_message: {},
     admin_set_user_name: {},
     admin_add_user_to_team: {},
+    admin_delete_user: {},
     admin_create_game: {},
     admin_dump_images: {},
+    // Only free_slots is read by AdminMode (PlayerRow's slot picker); the
+    // real report carries more fields but they'd be dead weight here.
+    admin_identity_report: { free_slots: [3, 5, 9] },
   };
 }
 
@@ -524,11 +528,14 @@ describe("PlayerRow", () => {
     });
   });
 
-  test('"Put in team" posts admin_add_user_to_team with the selected team', async () => {
+  test('"Put in team" posts admin_add_user_to_team with the selected team, omitting slot when none is chosen', async () => {
     await renderAdmin();
     const row = playerRowFor("user-noteam");
 
-    userEvent.selectOptions(within(row).getByRole("combobox"), "Blue");
+    userEvent.selectOptions(
+      within(row).getByRole("combobox", { name: "team" }),
+      "Blue",
+    );
     userEvent.click(within(row).getByRole("button", { name: "Put in team" }));
 
     await waitFor(() =>
@@ -537,6 +544,92 @@ describe("PlayerRow", () => {
     expect(getLastAPICall("admin_add_user_to_team").query).toEqual({
       user_id: "user-noteam",
       team_id: "team-blue",
+    });
+  });
+
+  test("the slot select offers (no slot) plus the game's free slots", async () => {
+    await renderAdmin();
+    const row = playerRowFor("user-noteam");
+
+    const slotSelect = within(row).getByRole("combobox", { name: "slot" });
+    await waitFor(() =>
+      expect(
+        within(slotSelect)
+          .getAllByRole("option")
+          .map((o) => o.textContent),
+      ).toEqual(["(no slot)", "outfit #3", "outfit #5", "outfit #9"]),
+    );
+  });
+
+  test("the slot select includes the player's current slot, labelled as current", async () => {
+    const fixtures = buildFixtures();
+    fixtures.customUser.identity_slot = 7;
+    await renderAdmin({}, fixtures);
+    const row = playerRowFor("user-custom");
+
+    const slotSelect = within(row).getByRole("combobox", { name: "slot" });
+    await waitFor(() =>
+      expect(
+        within(slotSelect)
+          .getAllByRole("option")
+          .map((o) => o.textContent),
+      ).toEqual([
+        "(no slot)",
+        "outfit #3",
+        "outfit #5",
+        "outfit #7 (current)",
+        "outfit #9",
+      ]),
+    );
+  });
+
+  test('"Put in team" includes the slot when one is chosen', async () => {
+    await renderAdmin();
+    const row = playerRowFor("user-noteam");
+
+    userEvent.selectOptions(
+      within(row).getByRole("combobox", { name: "team" }),
+      "Blue",
+    );
+    userEvent.selectOptions(
+      within(row).getByRole("combobox", { name: "slot" }),
+      "5",
+    );
+    userEvent.click(within(row).getByRole("button", { name: "Put in team" }));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_add_user_to_team")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_add_user_to_team").query).toEqual({
+      user_id: "user-noteam",
+      team_id: "team-blue",
+      slot: "5",
+    });
+  });
+
+  test("Delete asks for confirmation naming the player and does nothing if declined", async () => {
+    await renderAdmin();
+    window.confirm = jest.fn(() => false);
+    const row = playerRowFor("user-pewster");
+
+    userEvent.click(within(row).getByRole("button", { name: "Delete" }));
+
+    expect(window.confirm).toHaveBeenCalledWith("Delete Alice entirely?");
+    expect(getAPICalls("admin_delete_user")).toHaveLength(0);
+  });
+
+  test("Delete posts admin_delete_user once confirmed", async () => {
+    await renderAdmin();
+    window.confirm = jest.fn(() => true);
+    const row = playerRowFor("user-pewster");
+
+    userEvent.click(within(row).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_delete_user")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_delete_user").query).toEqual({
+      user_id: "user-pewster",
     });
   });
 });

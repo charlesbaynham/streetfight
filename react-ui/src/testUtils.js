@@ -261,6 +261,7 @@ export function makeUser(overrides = {}) {
     num_bullets: 5,
     shot_damage: 1,
     shot_timeout: 6,
+    identity_slot: null,
     ...overrides,
   };
 }
