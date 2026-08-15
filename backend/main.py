@@ -92,6 +92,7 @@ from .admin_interface import AdminInterface
 from .asyncio_triggers import trigger_update_event
 from .model import GameModel
 from .model import ShotModel
+from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
 
@@ -498,6 +499,13 @@ async def admin_reset_game(game_id: UUID, keep_weapons: bool = True):
     logger.info("admin_reset_game - %s", locals())
 
     AdminInterface().reset_game(game_id=game_id, keep_weapons=keep_weapons)
+
+
+@admin_method("/admin_ticker_messages", method="GET")
+async def admin_ticker_messages(game_id: UUID, num_messages: int = 10):
+    """Public ticker messages for a game, keyed by game rather than by the
+    admin's own player session (the admin's player may not be in the game)."""
+    return Ticker(game_id, user_id=None).get_messages(num_messages)
 
 
 @admin_method(path="/admin_send_custom_ticker_message", method="POST")

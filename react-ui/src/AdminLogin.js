@@ -1,39 +1,15 @@
-import React, { useCallback, useRef, useState } from "react";
-import { sendAPIRequest } from "./utils";
+import React from "react";
 
+import { AdminPage } from "./AdminCommon";
+
+// AdminPage shows the login form when not authed, so this page only needs to
+// handle the already-logged-in case.
 export default function AdminLogin() {
-  const [status, setStatus] = useState("ready");
-
-  const login = useCallback((password) => {
-    sendAPIRequest(
-      "admin_authenticate",
-      {
-        password: password,
-      },
-      "POST",
-    ).then((response) => {
-      if (response.ok) {
-        setStatus("success");
-      } else {
-        setStatus("failure");
-      }
-    });
-  }, []);
-
-  const passwordInput = useRef(null);
-
   return (
-    <>
-      <label htmlFor="password">Password:</label>
-      <input name="password" ref={passwordInput} />
-      <button
-        onClick={() => {
-          login(passwordInput.current.value);
-        }}
-      >
-        Submit
-      </button>
-      Status: {status}
-    </>
+    <AdminPage>
+      <p>
+        You are logged in as admin. Head to the <a href="/admin">admin page</a>.
+      </p>
+    </AdminPage>
   );
 }
