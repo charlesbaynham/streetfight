@@ -49,18 +49,19 @@ describe("shotStatus", () => {
       shotStatus(
         makeShot({ checked: true, result: "hit", target_name: "Ann" }),
       ),
-    ).toEqual({ icon: checkImg, label: "Hit Ann!" });
+    ).toEqual({ state: "hit", icon: checkImg, label: "Hit Ann!" });
   });
 
   test("checked + hit without a target name", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: "hit", target_name: null })),
-    ).toEqual({ icon: checkImg, label: "Hit!" });
+    ).toEqual({ state: "hit", icon: checkImg, label: "Hit!" });
   });
 
   test("checked + refunded", () => {
     expect(shotStatus(makeShot({ checked: true, result: "refunded" }))).toEqual(
       {
+        state: "refunded",
         icon: returnImg,
         label: "Ammo refunded",
       },
@@ -69,6 +70,7 @@ describe("shotStatus", () => {
 
   test("checked + miss", () => {
     expect(shotStatus(makeShot({ checked: true, result: "miss" }))).toEqual({
+      state: "miss",
       icon: crossImg,
       label: "Missed",
     });
@@ -77,13 +79,13 @@ describe("shotStatus", () => {
   test("legacy checked shot (result: null) with a target name infers a hit", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: null, target_name: "Ann" })),
-    ).toEqual({ icon: checkImg, label: "Hit Ann!" });
+    ).toEqual({ state: "hit", icon: checkImg, label: "Hit Ann!" });
   });
 
   test("legacy checked shot (result: null) without a target name infers a miss", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: null, target_name: null })),
-    ).toEqual({ icon: crossImg, label: "Missed" });
+    ).toEqual({ state: "miss", icon: crossImg, label: "Missed" });
   });
 
   test("unchecked with a completed AI review shows the suggestion and is escalated", () => {
@@ -96,7 +98,8 @@ describe("shotStatus", () => {
         }),
       ),
     ).toEqual({
-      emoji: "⏳",
+      state: "escalated",
+      emoji: "🤖",
       label: "AI thinks: hit",
       sublabel: "Escalated to referee",
     });
@@ -113,10 +116,11 @@ describe("shotStatus", () => {
       "a completed review with no suggestion recorded",
       { ai_review_state: "done", ai_suggestion: null },
     ],
-  ])("unchecked, %s, is just 'being reviewed'", (_case, overrides) => {
+  ])("unchecked, %s, is just 'not reviewed yet'", (_case, overrides) => {
     expect(shotStatus(makeShot({ checked: false, ...overrides }))).toEqual({
+      state: "unreviewed",
       emoji: "⏳",
-      label: "Being reviewed...",
+      label: "Not reviewed yet",
     });
   });
 });
@@ -196,8 +200,13 @@ describe("ShotHistoryButton", () => {
   });
 });
 
+// #113 deliberately stopped the bubble from disappearing once its shot's
+// status has been seen ("keep it on screen" - see the ShotNotifierBubble
+// comment in ShotHistory.js): a status that vanishes on its own is easy to
+// miss. It no longer reads the seen map, has no post-tap linger timer, and
+// simply tracks whatever the latest shot in the list is.
 describe("ShotNotifierBubble (via ShotHistoryController)", () => {
-  test("appears when the latest shot's status hasn't been seen", async () => {
+  test("appears once there is at least one shot", async () => {
     installFetchMock({ user_shots: [makeShot({ checked: false })] });
 
     const { container } = render(<ShotHistoryController />);
@@ -209,7 +218,7 @@ describe("ShotNotifierBubble (via ShotHistoryController)", () => {
     expect(container.querySelector(".bubble")).toBeInTheDocument();
   });
 
-  test("is absent once every shot has been seen", async () => {
+  test("stays on screen even once the shot has already been marked seen", async () => {
     const shots = [makeShot({ checked: false })];
     // Seed the seen-map before mounting, matching a returning user whose
     // localStorage already records this exact status as seen.
@@ -217,18 +226,15 @@ describe("ShotNotifierBubble (via ShotHistoryController)", () => {
     installFetchMock({ user_shots: shots });
 
     const { container } = render(<ShotHistoryController />);
-    // Flush the mount-triggered fetch's resolution (and the resulting,
-    // already-seen-so-no-op state update) inside an act() scope, so it
-    // can't spill into whatever runs next.
+    // Flush the mount-triggered fetch's resolution inside an act() scope, so
+    // it can't spill into whatever runs next.
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
     expect(shotHistoryStore.getShots()).toEqual(shots);
-    expect(container.querySelector(".bubble")).not.toBeInTheDocument();
+    expect(container.querySelector(".bubble")).toBeInTheDocument();
   });
 
-  test("clicking opens the shot's detail view and lingers for 10s before hiding", async () => {
-    jest.useFakeTimers();
-
+  test("clicking opens the shot's detail view without hiding the bubble", async () => {
     const shot = makeShot({ checked: false });
     installFetchMock({ user_shots: [shot] });
 
@@ -239,15 +245,9 @@ describe("ShotNotifierBubble (via ShotHistoryController)", () => {
     fireEvent.click(container.querySelector(".bubble"));
 
     expect(screen.getByText(/All shots/)).toBeInTheDocument();
-    // Marking the shot seen as a side effect of opening it would normally
-    // hide the bubble, but the post-tap linger keeps it up.
+    // Marking the shot seen as a side effect of opening it does not hide the
+    // bubble any more - there's no linger timer to expire either.
     expect(container.querySelector(".bubble")).toBeInTheDocument();
-
-    act(() => {
-      jest.advanceTimersByTime(10000);
-    });
-
-    expect(container.querySelector(".bubble")).not.toBeInTheDocument();
   });
 });
 
@@ -299,12 +299,15 @@ describe("ShotHistoryController", () => {
       expect(shotHistoryStore.countUnseenShots(shots)).toBe(0),
     );
 
+    // shotStatusFingerprint is private to shotHistoryStore.js (#113), so
+    // check the round-trip through the public surface instead of the exact
+    // stored value: countUnseenShots is already 0 above, and re-deriving the
+    // same shots' seen-ness directly confirms the localStorage write stuck.
     const seenMap = JSON.parse(localStorage.getItem("seenShotStatuses"));
     shots.forEach((shot) => {
-      expect(seenMap[shot.id]).toBe(
-        shotHistoryStore.shotStatusFingerprint(shot),
-      );
+      expect(seenMap).toHaveProperty(shot.id);
     });
+    expect(shotHistoryStore.countUnseenShots(shots)).toBe(0);
   });
 
   // The store's notify() re-delivers the *same* shots array reference after

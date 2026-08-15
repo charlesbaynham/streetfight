@@ -628,18 +628,17 @@ describe("AdminPanel", () => {
     expect(playerRowFor("user-noteam")).toBeInTheDocument();
   });
 
-  test("Dump shot images to disk posts admin_dump_images and alerts on success", async () => {
+  test("Download shot images (zip) posts admin_dump_images and downloads the response as a zip", async () => {
     await renderAdmin();
 
     userEvent.click(
-      screen.getByRole("button", { name: "Dump shot images to disk" }),
+      screen.getByRole("button", { name: "Download shot images (zip)" }),
     );
 
     await waitFor(() =>
-      expect(window.alert).toHaveBeenCalledWith(
-        "Shot images dumped on the server.",
-      ),
+      expect(getAPICalls("admin_dump_images")).toHaveLength(1),
     );
-    expect(getAPICalls("admin_dump_images")).toHaveLength(1);
+    await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
   });
 });
