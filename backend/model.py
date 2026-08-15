@@ -188,6 +188,17 @@ class User(Base):
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
 
+    # The player's identity slot (backend/identity/): a member of
+    # default_scheme().usable_slots() that determines the canonical colour
+    # code they're assigned to wear. None means this player has no identity
+    # assignment yet.
+    identity_slot = Column(Integer, nullable=True)
+    # A sparse {channel_name: label_or_null} diff against the slot's canonical
+    # codeword, recording what the player actually wears when it differs from
+    # the assignment. Stored as JSON text, same pattern as Shot.ai_review;
+    # null means no overrides. Only meaningful when identity_slot is set.
+    identity_overrides = Column(String, nullable=True)
+
     shots = relationship(
         "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
     )
@@ -352,6 +363,9 @@ class UserModel(pydantic.BaseModel):
 
     # This is retrieved from the team too
     team_name: Optional[str] = None
+
+    identity_slot: Optional[int] = None
+    identity_overrides: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
