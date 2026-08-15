@@ -70,11 +70,12 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     for key, value in stats.items():
         text += f"{key}: {value}\n"
 
-    # Draw a black box in the bottom left
+    # Draw a black box in the bottom left. Pillow >= 10 rejects a rectangle
+    # whose y1 is above its y0, so the top corner has to come first.
     draw.rectangle(
         [
-            (0, height),
-            (300, height - 6 * text_size),
+            (0, height - 6 * text_size),
+            (300, height),
         ],
         fill=(0, 0, 0),
     )
@@ -86,24 +87,26 @@ def annotate_image_with_stats(base64_image: str, stats: dict) -> str:
     )
     draw.text(text_position, text, font=font, fill=text_color, align="left")
 
-    # Convert the image back to base64
-    modified_image_bytes = BytesIO()
-    image.save(modified_image_bytes, format="PNG")
-    modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()
-
-    # Close the image file
+    out = _to_base64(image, split_img)
     image.close()
-
-    # Put the metadata back
-    split_img[1] = modified_base64_image
-
-    return ",".join(split_img)
+    return out
 
 
-def _to_base64(image: Image.Image, split_img: List[str], format: str = "PNG") -> str:
-    """Re-encode a PIL image back into the data URL it came from."""
+def _to_base64(
+    image: Image.Image, split_img: List[str], format: str = "JPEG", quality: int = 85
+) -> str:
+    """Re-encode a PIL image back into the data URL it came from.
+
+    JPEG, not PNG: these are photographs, and PNG re-encoding inflated them
+    roughly fivefold on a path that runs on every admin queue fetch.
+    """
+    if format == "JPEG" and image.mode not in ("RGB", "L"):
+        image = image.convert("RGB")
+
     buffer = BytesIO()
-    image.save(buffer, format=format)
+    image.save(
+        buffer, format=format, **({"quality": quality} if format == "JPEG" else {})
+    )
     split_img = list(split_img)
     split_img[0] = f"data:image/{format.lower()};base64"
     split_img[1] = base64.b64encode(buffer.getvalue()).decode()
@@ -296,15 +299,6 @@ def draw_cross_on_image(base64_image: str) -> str:
     # Paste the cropped image back into the original
     image.paste(cropped_with_border, (0, 0))
 
-    # Convert the image back to base64
-    modified_image_bytes = BytesIO()
-    image.save(modified_image_bytes, format="PNG")
-    modified_base64_image = base64.b64encode(modified_image_bytes.getvalue()).decode()
-
-    # Close the image file
+    out = _to_base64(image, split_img)
     image.close()
-
-    # Put the metadata back
-    split_img[1] = modified_base64_image
-
-    return ",".join(split_img)
+    return out
