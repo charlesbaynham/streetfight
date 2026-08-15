@@ -23,13 +23,16 @@ from .asyncio_triggers import trigger_update_event
 from .image_processing import draw_aim_marker
 from .image_processing import prepare_for_vision
 from .image_processing import zoom_image
+from .model import AI_REVIEW_STATE_DONE
+from .model import AI_REVIEW_STATE_ERROR
+from .model import AI_REVIEW_STATE_PENDING
 from .vision_client import get_vision_client
 
 logger = logging.getLogger(__name__)
 
-STATE_PENDING = "pending"
-STATE_DONE = "done"
-STATE_ERROR = "error"
+STATE_PENDING = AI_REVIEW_STATE_PENDING
+STATE_DONE = AI_REVIEW_STATE_DONE
+STATE_ERROR = AI_REVIEW_STATE_ERROR
 
 DEFAULT_CONCURRENCY = 2
 

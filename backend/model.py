@@ -25,6 +25,13 @@ from sqlalchemy_utils import UUIDType
 
 DEFAULT_SHOT_TIMEOUT = 6
 
+# The values Shot.ai_review_state can take. They live here, next to the column,
+# rather than in backend.ai_shot_review so that code which only reads the column
+# does not have to import the review worker.
+AI_REVIEW_STATE_PENDING = "pending"
+AI_REVIEW_STATE_DONE = "done"
+AI_REVIEW_STATE_ERROR = "error"
+
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)

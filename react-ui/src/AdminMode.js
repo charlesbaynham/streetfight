@@ -133,7 +133,8 @@ function GamePanel({ game }) {
             }
           />{" "}
           AI shot review (tags the shot queue with what a vision model sees;
-          switching it on also works through the shots already queued)
+          switching it on also works through the queued shots that have not been
+          reviewed yet)
         </label>
       </p>
 

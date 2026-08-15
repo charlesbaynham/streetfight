@@ -10,6 +10,7 @@ from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
 from sqlalchemy import and_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from . import ticker_message_dispatcher as tk
@@ -20,6 +21,7 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
+from .model import AI_REVIEW_STATE_ERROR
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
@@ -208,6 +210,15 @@ class AdminInterface:
         on, so the caller can put the existing backlog through as well as
         everything that arrives afterwards. Returns an empty list when
         switching off.
+
+        Shots that already carry a review are left alone: the toggle gets
+        flipped on and off during a game, and re-reviewing a shot that has
+        already been read costs another API call to arrive at the same tags.
+        A shot whose review errored has no verdict to keep, so it is retried -
+        that is the point of switching the toggle back on after fixing the key
+        or the model. One mid-review shot ("pending") is left to the review
+        already in flight; the admin's "Re-run AI review" button covers a
+        review that died before it could store anything.
         """
         logger.info(
             "AdminInterface - set_ai_shot_review_enabled %s/%s", game_id, enabled
@@ -222,6 +233,12 @@ class AdminInterface:
                 shot_id[0]
                 for shot_id in self._session.query(Shot.id)
                 .filter_by(game_id=game_id, checked=False)
+                .filter(
+                    or_(
+                        Shot.ai_review_state.is_(None),
+                        Shot.ai_review_state == AI_REVIEW_STATE_ERROR,
+                    )
+                )
                 .order_by(Shot.time_created)
                 .all()
             ]
