@@ -1,8 +1,8 @@
 // Shared client-side store for the user's own shot history.
 //
 // One fetch feeds every component that cares (the HUD entry's badge, the
-// history popup, the notification bubble), and localStorage remembers which
-// shot statuses the user has already looked at so "unseen" survives reloads.
+// history popup, the status bubble), and localStorage remembers which shot
+// statuses the user has already looked at so "unseen" survives reloads.
 
 import { sendAPIRequest } from "./utils";
 
@@ -37,7 +37,7 @@ export function refreshShots() {
 
 // A shot's user-visible status as a comparable string: when this changes, the
 // user has something new to look at
-export function shotStatusFingerprint(shot) {
+function shotStatusFingerprint(shot) {
   return [
     shot.id,
     shot.checked,
@@ -54,7 +54,7 @@ function loadSeenMap() {
   }
 }
 
-export function isShotStatusSeen(shot) {
+function isShotStatusSeen(shot) {
   return loadSeenMap()[shot.id] === shotStatusFingerprint(shot);
 }
 

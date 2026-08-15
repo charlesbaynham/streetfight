@@ -1,9 +1,9 @@
 // The user-facing shot history: a "My shots" entry for the HUD (with an
 // unseen-changes badge), a fullscreen popup listing every shot with its
-// adjudicated outcome, and a notification bubble that pops up when a shot's
-// status changes.
+// adjudicated outcome, and a bubble in the corner showing the latest shot's
+// status.
 
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
@@ -11,10 +11,8 @@ import {
   countUnseenShots,
   getShotImage,
   getShots,
-  isShotStatusSeen,
   markShotsSeen,
   refreshShots,
-  shotStatusFingerprint,
   subscribeShots,
 } from "./shotHistoryStore";
 
@@ -24,9 +22,6 @@ import scoreboardStyles from "./Scoreboard.module.css";
 import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
 import returnImg from "./images/return.svg";
-
-// Once the bubble has been tapped at least once, it hides after this long
-const BUBBLE_LINGER_MS = 10000;
 
 const OPEN_EVENT = "streetfight:open-shot-history";
 
@@ -196,44 +191,21 @@ function ShotDetail({ shot, onBack }) {
 }
 
 // The bubble: a thumbnail of the latest shot with its status in the corner.
-// It appears whenever the latest shot has a status the user hasn't seen, stays
-// until tapped at least once, and hides a few seconds after a tap (which also
-// opens the history on that shot).
+// Once the user has taken a shot it stays put for the rest of the game,
+// tracking that shot's status - it takes up little room, and a status that
+// vanishes on its own is easy to miss. Tapping it opens the history on that
+// shot.
 function ShotNotifierBubble({ shotList }) {
   const latest = shotList && shotList.length > 0 ? shotList[0] : null;
-  const fingerprint = latest ? shotStatusFingerprint(latest) : null;
-
-  const [lingering, setLingering] = useState(false);
-  const timerRef = useRef(null);
-
-  // A new status cancels any pending hide and shows the bubble afresh
-  useEffect(() => {
-    setLingering(false);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [fingerprint]);
 
   if (!latest) return null;
 
-  // Opening the history marks everything seen, so the bubble drops out once
-  // the user has looked - the linger keeps it up right after a tap
-  if (isShotStatusSeen(latest) && !lingering) return null;
-
   const status = shotStatus(latest);
-
-  const handleClick = () => {
-    setLingering(true);
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => setLingering(false), BUBBLE_LINGER_MS);
-    openShotHistory(latest.id);
-  };
 
   return (
     <button
       className={statusClasses(status, styles.bubble)}
-      onClick={handleClick}
+      onClick={() => openShotHistory(latest.id)}
     >
       <ShotThumbnail shotId={latest.id} className={styles.bubbleImage} />
       <StatusIcon status={status} className={styles.bubbleIcon} />
@@ -242,7 +214,7 @@ function ShotNotifierBubble({ shotList }) {
 }
 
 // Mount exactly one of these in the in-game view: it owns the shot list, the
-// popup and the notification bubble
+// popup and the status bubble
 export function ShotHistoryController() {
   const [shotList, setShotList] = useState(getShots());
   const [visible, setVisible] = useState(false);
