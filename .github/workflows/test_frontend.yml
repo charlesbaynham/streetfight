@@ -6,19 +6,19 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: react-ui/package-lock.json
-      - name: Install dependencies
-        working-directory: react-ui
-        run: npm ci
+    - uses: actions/checkout@v4
+    - uses: actions/setup-node@v4
+      with:
+        node-version: 20
+        cache: npm
+        cache-dependency-path: react-ui/package-lock.json
+    - name: Install dependencies
+      working-directory: react-ui
+      run: npm ci
       # CI=true makes react-scripts run once instead of entering watch mode, and
       # promotes warnings to failures.
-      - name: Test with jest
-        working-directory: react-ui
-        env:
-          CI: true
-        run: npm test
+    - name: Test with jest
+      working-directory: react-ui
+      env:
+        CI: true
+      run: npm test
