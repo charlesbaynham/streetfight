@@ -21,6 +21,20 @@ It combines two views:
 * a **hard-decision** analysis (nearest codeword over the readable channels)
   that drives the ``inconsistent`` flag in line with coding theory
   (``2t + e + 1 <= d``).
+
+Candidate words are not always genuine codewords. An admin override
+(``overrides.py``) can substitute ``None`` into a candidate's *effective
+word* at a position nobody can vouch for (out-of-palette garment, unknown
+colour) -- see :data:`backend.identity.overrides.Word`. A ``None`` candidate
+symbol is treated exactly like an erased *observation* already is: it carries
+no information, so it contributes a likelihood factor of ``1.0`` and is
+skipped by the hard-decision Hamming distance. When any candidate in the set
+carries such positions, the nominal code minimum distance no longer bounds
+how separated the candidates actually are -- callers should compute and pass
+the *candidate set's own* effective minimum distance (e.g.
+``min(overlap_distance(a, b) for a, b in pairs)``, see
+:func:`backend.identity.overrides.pairwise_distances`) as ``code_min_distance``
+instead of the code's nominal ``d``.
 """
 
 from typing import Dict
@@ -86,13 +100,22 @@ class DecodeResult:
 
 def _hamming_distance(
     reading: Reading,
-    codeword: Sequence[int],
+    codeword: Sequence[Optional[int]],
     channels: ChannelSet,
 ) -> int:
     """Hamming distance between the reading's hard-decision symbols and a
-    codeword, counted **over readable (non-erased) channels only**."""
+    candidate word, counted **over positions that are both read (non-erased
+    observation) and known (non-``None`` candidate symbol)**.
+
+    A ``None`` in ``codeword`` (an overridden candidate's uninformative
+    position, see the module docstring) is skipped just like an erased
+    observation: neither side can be shown to disagree, so it contributes
+    nothing.
+    """
     dist = 0
     for obs, channel, expected in zip(reading, channels, codeword):
+        if expected is None:  # candidate symbol unknown -> contributes nothing
+            continue
         best = obs.best_symbol(channel)
         if best is None:  # erased -> contributes nothing
             continue
@@ -103,7 +126,7 @@ def _hamming_distance(
 
 def decode(
     reading: Reading,
-    candidates: Mapping[object, Sequence[int]],
+    candidates: Mapping[object, Sequence[Optional[int]]],
     channels: ChannelSet,
     prior: Optional[Prior] = None,
     thresholds: Optional[DecoderThresholds] = None,
@@ -116,8 +139,12 @@ def decode(
     reading:
         One :class:`ChannelObservation` per channel, in channel order.
     candidates:
-        ``{player_id: codeword}`` -- the players in play and their codewords
-        (e.g. alive players on other teams).
+        ``{player_id: word}`` -- the players in play and their codewords
+        (e.g. alive players on other teams). A candidate's word is usually a
+        genuine ``Codeword``, but may instead be an overridden player's
+        *effective word* (:data:`backend.identity.overrides.Word`), whose
+        entries can be ``None`` at positions nobody can vouch for -- see the
+        module docstring for how those positions are scored.
     channels:
         The :class:`ChannelSet` (used to resolve symbol labels and ``q``).
     prior:
@@ -125,9 +152,12 @@ def decode(
     thresholds:
         Optional :class:`DecoderThresholds` (defaults to sensible values).
     code_min_distance:
-        The code's minimum distance ``d`` (used for the ``inconsistent``
-        flag's correction-radius test). If omitted, the flag falls back to a
-        plain "no exact codeword match" check.
+        The minimum distance used for the ``inconsistent`` flag's
+        correction-radius test. Pass the code's nominal ``d`` when every
+        candidate is a real codeword; when any candidate carries ``None``
+        positions (see above), pass the candidate set's own effective minimum
+        distance instead, since the nominal ``d`` no longer bounds it. If
+        omitted, the flag falls back to a plain "no exact match" check.
     """
     if len(reading) != channels.n:
         raise ValueError(
@@ -150,6 +180,8 @@ def decode(
             )
         likelihood = 1.0
         for obs, channel, symbol in zip(reading, channels, codeword):
+            if symbol is None:  # overridden/uninformative -> no information
+                continue
             likelihood *= obs.symbol_weight(symbol, channel, q, floor)
         scores[player_id] = prior.weight_for(player_id, uniform) * likelihood
 

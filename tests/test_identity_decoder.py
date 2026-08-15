@@ -201,6 +201,82 @@ def test_distribution_observation_decodes():
     assert result.best == target
 
 
+# -- None-symbol candidates (overridden players) -----------------------------
+#
+# A candidate word may carry `None` at a position nobody can vouch for (an
+# admin override on that player -- see overrides.py). These pin the two
+# mechanisms decoder.py documents for that case: the likelihood loop skips a
+# `None` candidate symbol (factor 1.0, like an erased observation already
+# does), and `_hamming_distance` skips it too, which can flip `inconsistent`.
+
+
+def test_none_candidate_symbol_is_immune_to_a_contradicting_reading():
+    # Single candidate, so ranking can't rescue it: the masked channel must be
+    # ignored on its own merits, not merely outcompeted by a rival.
+    scheme = default_scheme()
+    target = nth_usable(scheme, 8)
+    codeword = scheme.codeword_of_slot(target)
+    # The reading strongly (mis)reports channel 0 against the candidate's own
+    # true colour there.
+    reading = reading_for(scheme, codeword, misread=(0,))
+    masked = {target: (None,) + tuple(codeword[1:])}
+
+    result = decode(reading, masked, scheme.channels)
+
+    assert result.best == target
+    assert result.best_posterior == pytest.approx(1.0)  # only candidate
+    assert result.min_distance_to_codeword == 0  # channel 0 skipped, not counted
+    assert not result.inconsistent
+
+
+def test_none_candidate_symbol_does_not_penalise_the_likelihood():
+    # Two candidates, identical except channel 0: for the plain codewords the
+    # reading's exact match at channel 0 favours candidate `a`. With channel 0
+    # masked to None for `a`, that channel contributes a flat 1.0 for it
+    # instead -- at least as favourable as any confidence-weighted match, so
+    # `a`'s edge over `b` should not shrink.
+    scheme = default_scheme()
+    slots = scheme.usable_slots()
+    a, b = slots[0], slots[1]
+    assert scheme.codeword_of_slot(a)[0] != scheme.codeword_of_slot(b)[0]
+    codeword_a = scheme.codeword_of_slot(a)
+    reading = reading_for(scheme, codeword_a)  # exact match on every channel
+
+    plain = {a: codeword_a, b: scheme.codeword_of_slot(b)}
+    masked = {a: (None,) + tuple(codeword_a[1:]), b: scheme.codeword_of_slot(b)}
+
+    plain_scores = dict(decode(reading, plain, scheme.channels).ranked)
+    masked_scores = dict(decode(reading, masked, scheme.channels).ranked)
+
+    assert masked_scores[a] / masked_scores[b] >= plain_scores[a] / plain_scores[b]
+
+
+def test_none_candidate_symbol_can_flip_the_inconsistent_flag():
+    # RS [4,2,3]: one erasure plus one (elsewhere) misread leaves no correction
+    # budget (t = (d-1-e)//2 = 0), so the plain candidate set is flagged. But if
+    # the misread channel is exactly the one an override has masked to None for
+    # the true player, that position no longer counts as a disagreement for
+    # them, and the flag clears.
+    scheme = default_scheme()
+    target = nth_usable(scheme, 20)
+    codeword = scheme.codeword_of_slot(target)
+    reading = reading_for(scheme, codeword, misread=(0,), erase=(1,))
+    d = scheme.code.min_distance()
+
+    plain = all_candidates(scheme)
+    plain_result = decode(reading, plain, scheme.channels, code_min_distance=d)
+    assert plain_result.inconsistent
+    assert plain_result.min_distance_to_codeword == 1
+
+    masked = dict(plain)
+    masked[target] = (None,) + tuple(codeword[1:])
+    masked_result = decode(reading, masked, scheme.channels, code_min_distance=d)
+
+    assert masked_result.best == target
+    assert masked_result.min_distance_to_codeword == 0
+    assert not masked_result.inconsistent
+
+
 def test_thresholds_are_configurable():
     scheme = default_scheme()
     target = nth_usable(scheme, 1)
