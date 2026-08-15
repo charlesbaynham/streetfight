@@ -25,6 +25,7 @@ import {
 
 import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
+import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
 
 afterEach(() => {
@@ -420,5 +421,51 @@ describe("ShotHistoryController", () => {
         ].sort(),
       );
     });
+  });
+
+  // The shot lands at the centre of the frame, so every rendered photo gets
+  // the aiming crosshair over its middle
+  test("every loaded shot photo gets a crosshair over its centre", async () => {
+    const shot = makeShot({ checked: false });
+    installFetchMock({
+      user_shots: [shot],
+      user_shot_image: { image_base64: "data:image/png;base64,xyz" },
+    });
+
+    const { container } = render(<ShotHistoryController />);
+    act(() => openShotHistory(shot.id));
+
+    // The bubble's thumbnail and the detail view's larger copy
+    await waitFor(() =>
+      expect(container.querySelectorAll("img.detailImage")).toHaveLength(1),
+    );
+
+    const photos = container.querySelectorAll(
+      "img.detailImage, img.bubbleImage",
+    );
+    expect(photos).toHaveLength(2);
+    photos.forEach((photo) => {
+      const crosshair = photo.parentElement.querySelector("img.crosshair");
+      expect(crosshair).toBeInTheDocument();
+      expect(crosshair).toHaveAttribute("src", crosshairImg);
+      // Decorative: the photo alongside it already carries the alt text
+      expect(crosshair).toHaveAttribute("alt", "");
+    });
+  });
+
+  test("a shot whose photo has not loaded yet shows no crosshair", async () => {
+    const shot = makeShot({ checked: false });
+    installFetchMock({
+      user_shots: [shot],
+      // Never resolves to an image, as when the fetch is still in flight
+      user_shot_image: { image_base64: null },
+    });
+
+    const { container } = render(<ShotHistoryController />);
+    await act(() => shotHistoryStore.refreshShots());
+    act(() => openShotHistory());
+
+    await screen.findByRole("heading", { name: "My shots" });
+    expect(container.querySelector("img.crosshair")).not.toBeInTheDocument();
   });
 });
