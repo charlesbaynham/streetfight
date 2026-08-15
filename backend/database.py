@@ -40,12 +40,62 @@ def after_cursor_execute(conn, cursor, statement, parameters, context, executema
         logger.debug("Query complete in %fs", total)
 
 
+def add_missing_columns(engine):
+    """
+    Poor man's migrations: add any columns that the ORM models define but the
+    database lacks.
+
+    There is no Alembic here - in dev the database is simply reset after a
+    model change. Production data survives deploys though, so a newly added
+    column would otherwise break every SELECT on its table (e.g.
+    games.ai_shot_review_enabled did exactly that to the whole admin panel).
+    New tables are handled by the create_all() call in load(); this handles
+    new columns on existing tables.
+    """
+    import sqlalchemy as sa
+    from sqlalchemy.schema import CreateColumn
+
+    from .model import Base
+
+    inspector = sa.inspect(engine)
+
+    with engine.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            if not inspector.has_table(table.name):
+                continue
+
+            existing = {col["name"] for col in inspector.get_columns(table.name)}
+
+            for column in table.columns:
+                if column.name in existing:
+                    continue
+
+                ddl = CreateColumn(column).compile(dialect=engine.dialect).string
+
+                # NOT NULL columns can only be added to a non-empty table with
+                # a default, so render the model's Python-side default (if it
+                # is a plain scalar) as a server-side DEFAULT clause
+                default = getattr(column.default, "arg", None)
+                if default is not None and not callable(default):
+                    literal = sa.literal(default).compile(
+                        dialect=engine.dialect,
+                        compile_kwargs={"literal_binds": True},
+                    )
+                    ddl += f" DEFAULT {literal}"
+
+                logging.getLogger(__name__).warning(
+                    "Adding missing database column %s.%s", table.name, ddl
+                )
+                conn.execute(sa.text(f"ALTER TABLE {table.name} ADD COLUMN {ddl}"))
+
+
 def load():
     """
     Set up a database connection to be used from now on
     """
     from sqlalchemy_utils import database_exists
 
+    from .model import Base
     from .reset_db import reset_database
 
     db_url = os.environ.get("DATABASE_URL")
@@ -93,6 +143,11 @@ def load():
         "RESET_DATABASE" in os.environ and bool(os.environ["RESET_DATABASE"])
     ):
         reset_database(engine=engine)
+    else:
+        # Bring an existing database up to date with the models: create any
+        # new tables, then add any new columns to existing tables
+        Base.metadata.create_all(bind=engine)
+        add_missing_columns(engine)
 
 
 @contextmanager
