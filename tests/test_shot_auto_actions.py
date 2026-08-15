@@ -91,8 +91,10 @@ def set_shot_time(db_session, shot_id, when: datetime):
     db_session.commit()
 
 
-def enable_review(game_id):
+def enable_ai(game_id):
+    """Both flags on: recognition annotates the queue and auto-actions act."""
     AdminInterface().set_ai_shot_review_enabled(game_id, True)
+    AdminInterface().set_ai_auto_actions_enabled(game_id, True)
 
 
 @pytest.fixture
@@ -144,7 +146,7 @@ def test_get_queue_head_of_an_empty_queue_is_none(db_session, one_game):
 
 @pytest.mark.asyncio
 async def test_a_confident_miss_resolves_the_head(db_session, shot_from_user_in_team):
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(miss_reply(confidence=0.9))
@@ -159,7 +161,7 @@ async def test_a_confident_miss_resolves_the_head(db_session, shot_from_user_in_
 async def test_a_confident_bystander_hit_is_marked_missed(
     db_session, shot_from_user_in_team
 ):
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(bystander_reply(confidence=0.9))
@@ -174,7 +176,7 @@ async def test_a_confident_bystander_hit_is_marked_missed(
 async def test_a_confident_hit_hits_the_identified_player(
     db_session, shot_from_user_in_team, target_with_slot
 ):
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(confident_hit_reply())
@@ -192,7 +194,7 @@ async def test_a_confident_hit_hits_the_identified_player(
 
 @pytest.mark.asyncio
 async def test_an_unconfident_miss_stays_queued(db_session, shot_from_user_in_team):
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(miss_reply(confidence=0.4))
@@ -208,7 +210,7 @@ def test_a_legacy_review_without_confidence_never_fires(
 ):
     # Reviews stored before the confidence field existed parse as 0.0.
     game_id = game_of(shot_from_user_in_team)
-    enable_review(game_id)
+    enable_ai(game_id)
     AdminInterface().store_shot_ai_review(
         shot_from_user_in_team,
         ai_shot_review.STATE_DONE,
@@ -229,7 +231,7 @@ async def test_a_hit_with_shaky_channels_stays_queued(
     reply = confident_hit_reply(confidence=0.9)
     for name in ("tshirt", "trousers", "hat"):
         reply["channels"][name]["confidence"] = 0.5
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(shot_from_user_in_team, FakeVisionClient(reply))
 
@@ -241,7 +243,7 @@ async def test_a_hit_with_shaky_channels_stays_queued(
 
 @pytest.mark.asyncio
 async def test_an_errored_review_blocks_the_drain(db_session, shot_from_user_in_team):
-    enable_review(game_of(shot_from_user_in_team))
+    enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(error=VisionError("nope"))
@@ -257,7 +259,7 @@ async def test_an_errored_review_blocks_the_drain(db_session, shot_from_user_in_
 
 def drain_with_confident_hit(db_session, shot_id):
     game_id = game_of(shot_id)
-    enable_review(game_id)
+    enable_ai(game_id)
     store_done_review(shot_id, confident_hit_reply())
     shot_auto_actions.process_queue_head(game_id)
     return shot_row(db_session, shot_id)
@@ -331,7 +333,7 @@ def test_an_ambiguous_head_blocks_and_an_admin_resolution_cascades(
     set_shot_time(db_session, newer, datetime(2026, 1, 1, 12, 0, 5))
 
     game_id = game_of(older)
-    enable_review(game_id)
+    enable_ai(game_id)
     store_done_review(older, miss_reply(confidence=0.3))  # ambiguous head
     store_done_review(newer, miss_reply(confidence=0.9))  # confident behind it
 
@@ -368,7 +370,7 @@ def test_a_knockout_mid_drain_refunds_the_victims_shot_and_continues(
     set_shot_time(db_session, later_shot, datetime(2026, 1, 1, 12, 0, 10))
 
     game_id = game_of(kill_shot)
-    enable_review(game_id)
+    enable_ai(game_id)
     store_done_review(kill_shot, confident_hit_reply())
     store_done_review(later_shot, miss_reply(confidence=0.9))
     # The victim's queued shot has no review at all
@@ -389,7 +391,7 @@ def test_racing_an_admin_is_swallowed_and_the_drain_terminates(
     mocker, db_session, shot_from_user_in_team
 ):
     game_id = game_of(shot_from_user_in_team)
-    enable_review(game_id)
+    enable_ai(game_id)
     store_done_review(shot_from_user_in_team, miss_reply(confidence=0.9))
 
     real_decide = shot_auto_actions._decide
@@ -407,10 +409,10 @@ def test_racing_an_admin_is_swallowed_and_the_drain_terminates(
     assert shot_row(db_session, shot_from_user_in_team).result == "miss"
 
 
-# -- the toggle gates every action ------------------------------------------
+# -- the auto-actions toggle gates every action ------------------------------
 
 
-def test_the_drain_is_a_no_op_when_the_toggle_is_off(
+def test_the_drain_is_a_no_op_when_auto_actions_are_off(
     db_session, shot_from_user_in_team
 ):
     game_id = game_of(shot_from_user_in_team)
@@ -422,10 +424,44 @@ def test_the_drain_is_a_no_op_when_the_toggle_is_off(
 
 
 @pytest.mark.asyncio
-async def test_a_manual_rerun_with_the_toggle_off_annotates_but_does_not_act(
+async def test_annotate_only_mode_reviews_but_never_acts(
     db_session, shot_from_user_in_team
 ):
-    # admin_review_shot works whatever the toggle says, but the annotation it
+    # Recognition on, auto-actions off: every photo is reviewed but the shot
+    # stays in the queue for the admin to resolve by hand.
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().set_ai_shot_review_enabled(game_id, True)
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(miss_reply(confidence=0.9))
+    )
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.ai_review_state == ai_shot_review.STATE_DONE
+    assert shot.checked is False
+
+
+def test_auto_actions_act_on_a_done_head_without_the_review_toggle(
+    db_session, shot_from_user_in_team
+):
+    # The flags are independent: a review stored while recognition is off
+    # (e.g. a manual admin_review_shot run) is still acted on.
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().set_ai_auto_actions_enabled(game_id, True)
+    store_done_review(shot_from_user_in_team, miss_reply(confidence=0.9))
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.checked is True
+    assert shot.result == "miss"
+
+
+@pytest.mark.asyncio
+async def test_a_manual_rerun_with_both_toggles_off_annotates_but_does_not_act(
+    db_session, shot_from_user_in_team
+):
+    # admin_review_shot works whatever the toggles say, but the annotation it
     # stores must not act on the queue unless the game has opted in.
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(miss_reply(confidence=0.9))
@@ -434,3 +470,50 @@ async def test_a_manual_rerun_with_the_toggle_off_annotates_but_does_not_act(
     shot = shot_row(db_session, shot_from_user_in_team)
     assert shot.ai_review_state == ai_shot_review.STATE_DONE
     assert shot.checked is False
+
+
+# -- the admin endpoint ------------------------------------------------------
+
+
+def test_auto_actions_default_to_off(db_session, one_game):
+    assert AdminInterface().is_ai_auto_actions_enabled(one_game) is False
+
+
+def test_auto_actions_endpoint_flips_the_game_flag(admin_api_client, one_game):
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_auto_actions?game_id={one_game}&enabled=true"
+    )
+
+    assert response.status_code == 200
+    assert AdminInterface().is_ai_auto_actions_enabled(one_game) is True
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_auto_actions?game_id={one_game}&enabled=false"
+    )
+
+    assert response.is_success
+    assert AdminInterface().is_ai_auto_actions_enabled(one_game) is False
+
+
+def test_enabling_auto_actions_drains_a_waiting_confident_head(
+    db_session, admin_api_client, shot_from_user_in_team
+):
+    game_id = game_of(shot_from_user_in_team)
+    store_done_review(shot_from_user_in_team, miss_reply(confidence=0.9))
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_auto_actions?game_id={game_id}&enabled=true"
+    )
+
+    assert response.is_success
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.checked is True
+    assert shot.result == "miss"
+
+
+def test_auto_actions_endpoint_needs_admin_auth(api_client, one_game):
+    response = api_client.post(
+        f"/api/admin_set_ai_auto_actions?game_id={one_game}&enabled=true"
+    )
+
+    assert response.status_code == 403

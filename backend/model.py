@@ -51,10 +51,16 @@ class Game(Base):
     active = Column(Boolean, nullable=False, default=False)
 
     # When on, every unchecked shot is sent to a vision model and annotated
-    # with what it saw -- and confident verdicts on the head of the queue are
-    # acted on automatically (backend/shot_auto_actions.py). Ambiguous or
-    # unconfident reviews stay in the queue for the admin.
+    # with what it saw. Annotation only: the admin still resolves every shot
+    # unless ai_auto_actions_enabled is also on.
     ai_shot_review_enabled = Column(Boolean, nullable=False, default=False)
+
+    # When on, confident verdicts on the head of the shot queue are acted on
+    # automatically (backend/shot_auto_actions.py); ambiguous or unconfident
+    # reviews stay in the queue for the admin. Independent of
+    # ai_shot_review_enabled -- it acts on whatever reviews exist, however
+    # they were produced.
+    ai_auto_actions_enabled = Column(Boolean, nullable=False, default=False)
 
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
@@ -341,6 +347,7 @@ class GameModel(pydantic.BaseModel):
     ticker_update_tag: int
     active: bool
     ai_shot_review_enabled: bool = False
+    ai_auto_actions_enabled: bool = False
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None

@@ -500,8 +500,11 @@ deliverable.
   action (`mark_shot_missed` for a confident miss/bystander, `hit_user` for a
   confident hit) when its overall confidence ≥ `confident_threshold` (0.6).
   The mitigations that replace the confirm step:
-  - the per-game AI-review toggle gates every auto-action, so nothing fires
-    unless an admin has opted the game in;
+  - a dedicated per-game auto-actions toggle (`ai_auto_actions_enabled`,
+    default off) gates every auto-action, so nothing fires unless an admin has
+    opted the game in — it is separate from the per-game recognition toggle
+    (`ai_shot_review_enabled`), which only annotates the queue, so a game can
+    have every photo recognised while the admin still resolves each shot;
   - legacy stored reviews have no confidence field, which parses as 0.0 —
     they can never auto-fire;
   - hits additionally use erasure decoding, not min-confidence: a channel read

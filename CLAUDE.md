@@ -149,10 +149,12 @@ Images are built from the Nix flake
   `FIXME` comments (CI gate).
 - **AI shot review** (`backend/ai_shot_review.py`, `backend/shot_vision.py`,
   `backend/vision_client.py`) is off unless `OPENROUTER_API_KEY` is set *and* an
-  admin ticks the per-game toggle. It annotates the queue, and — via
-  `backend/shot_auto_actions.py` — auto-applies verdicts whose overall
-  confidence ≥ `confident_threshold` (0.6), but only ever to the **head** of the
-  queue: an ambiguous head stays with the admin and blocks the shots behind it.
+  admin ticks the per-game **recognition** toggle (`ai_shot_review_enabled`) —
+  that toggle only annotates the queue. A second, independent per-game toggle
+  (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
+  auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
+  but only ever to the **head** of the queue: an ambiguous head stays with the
+  admin and blocks the shots behind it.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.

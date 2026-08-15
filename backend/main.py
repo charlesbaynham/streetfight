@@ -439,6 +439,20 @@ async def admin_set_ai_shot_review(game_id: UUID, enabled: bool):
     return {"enabled": enabled, "backlog": len(backlog), "started": started}
 
 
+@admin_method(path="/admin_set_ai_auto_actions", method="POST")
+async def admin_set_ai_auto_actions(game_id: UUID, enabled: bool):
+    """Turn acting on confident AI verdicts on or off for a game.
+
+    Independent of the review toggle: reviews only annotate, this flag decides
+    whether confident verdicts resolve the head of the queue. Switching it on
+    also drains an already-reviewed confident head that was waiting for it.
+    """
+    AdminInterface().set_ai_auto_actions_enabled(game_id, enabled)
+    if enabled:
+        shot_auto_actions.process_queue_head(game_id)
+    return {"enabled": enabled}
+
+
 @admin_method("/admin_get_shot_ai_review", method="GET")
 async def admin_get_shot_ai_review(shot_id: UUID):
     """The AI's reading of one shot.

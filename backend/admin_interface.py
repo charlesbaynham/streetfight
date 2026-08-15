@@ -317,11 +317,36 @@ class AdminInterface:
             ]
 
         self._session.commit()
+        # Wake the admin SSE stream so every open dashboard sees the new
+        # checkbox state, not just the one that clicked it.
+        trigger_update_event("shots", game_id)
         return backlog
 
     @db_scoped
     def is_ai_shot_review_enabled(self, game_id: UUID) -> bool:
         return bool(self._get_game_orm(game_id).ai_shot_review_enabled)
+
+    @db_scoped
+    def set_ai_auto_actions_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn acting on confident AI verdicts on or off for a game.
+
+        Independent of the review toggle: reviews only annotate, and this flag
+        alone decides whether backend.shot_auto_actions may resolve the head of
+        the queue.
+        """
+        logger.info(
+            "AdminInterface - set_ai_auto_actions_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_auto_actions_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_auto_actions_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_auto_actions_enabled)
 
     @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:

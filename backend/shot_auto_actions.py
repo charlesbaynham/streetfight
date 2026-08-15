@@ -41,14 +41,14 @@ _HIT = "hit"
 def process_queue_head(game_id: UUID) -> None:
     """Auto-resolve the head of a game's shot queue while confident verdicts allow.
 
-    A no-op unless the game's AI-review toggle is on -- so a manual
-    admin_review_shot re-run still annotates, but only acts when the game has
-    opted in. Races with an admin resolving the same shot are expected: the
+    A no-op unless the game's auto-actions toggle is on -- reviews (automatic
+    or manual re-runs) always annotate, but only act when the game has opted
+    in. Races with an admin resolving the same shot are expected: the
     resolvers 400 on an already-checked shot, and the re-read sees the truth.
     """
     from .admin_interface import AdminInterface
 
-    if not AdminInterface().is_ai_shot_review_enabled(game_id):
+    if not AdminInterface().is_ai_auto_actions_enabled(game_id):
         return
 
     while True:

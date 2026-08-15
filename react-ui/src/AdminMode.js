@@ -133,11 +133,22 @@ function GamePanel({ game }) {
               })
             }
           />{" "}
-          AI shot review (tags the shot queue with what a vision model sees, and
-          automatically applies confident verdicts — confidence at least 0.6 —
-          to the oldest queued shot; ambiguous shots stay in the queue for you.
-          Switching it on also works through the queued shots that have not been
-          reviewed yet)
+          AI reviews shot photos automatically (annotates the queue)
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={game.ai_auto_actions_enabled}
+            onChange={(e) =>
+              adminPost("admin_set_ai_auto_actions", {
+                game_id: game.id,
+                enabled: e.target.checked,
+              })
+            }
+          />{" "}
+          AI verdicts resolve shots automatically (confident calls ≥ 0.6 on the
+          oldest queued shot; ambiguous ones wait for you)
         </label>
       </p>
 

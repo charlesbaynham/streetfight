@@ -296,6 +296,7 @@ export function makeGame(overrides = {}) {
     ticker_update_tag: 0,
     active: true,
     ai_shot_review_enabled: false,
+    ai_auto_actions_enabled: false,
     ...overrides,
   };
 }

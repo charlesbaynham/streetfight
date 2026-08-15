@@ -152,6 +152,7 @@ function buildFixtures() {
     id: "game-1",
     active: true,
     ai_shot_review_enabled: false,
+    ai_auto_actions_enabled: false,
     teams: [redTeam, blueTeam],
   });
 
@@ -170,6 +171,7 @@ function defaultRoutes(fixtures) {
     admin_set_weapon: {},
     admin_set_game_active: {},
     admin_set_ai_shot_review: {},
+    admin_set_ai_auto_actions: {},
     admin_reset_game: {},
     admin_create_team: {},
     admin_send_custom_ticker_message: {},
@@ -371,10 +373,23 @@ describe("GamePanel", () => {
     );
   });
 
-  test("the AI shot review checkbox reflects ai_shot_review_enabled and posts on toggle", async () => {
+  test("both AI checkboxes render with distinct labels", async () => {
     await renderAdmin();
 
-    const checkbox = screen.getByLabelText(/AI shot review/);
+    expect(
+      screen.getByLabelText(/AI reviews shot photos automatically/),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(/AI verdicts resolve shots automatically/),
+    ).toBeInTheDocument();
+  });
+
+  test("the AI review checkbox reflects ai_shot_review_enabled and posts on toggle", async () => {
+    await renderAdmin();
+
+    const checkbox = screen.getByLabelText(
+      /AI reviews shot photos automatically/,
+    );
     expect(checkbox).not.toBeChecked();
 
     userEvent.click(checkbox);
@@ -383,6 +398,25 @@ describe("GamePanel", () => {
       expect(getLastAPICall("admin_set_ai_shot_review")).toBeDefined(),
     );
     expect(getLastAPICall("admin_set_ai_shot_review").query).toEqual({
+      game_id: "game-1",
+      enabled: "true",
+    });
+  });
+
+  test("the AI auto-actions checkbox reflects ai_auto_actions_enabled and posts on toggle", async () => {
+    await renderAdmin();
+
+    const checkbox = screen.getByLabelText(
+      /AI verdicts resolve shots automatically/,
+    );
+    expect(checkbox).not.toBeChecked();
+
+    userEvent.click(checkbox);
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_set_ai_auto_actions")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_set_ai_auto_actions").query).toEqual({
       game_id: "game-1",
       enabled: "true",
     });
