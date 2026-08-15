@@ -50,9 +50,39 @@ const MAP_HEIGHT_KM =
   (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
 
 const MAP_POLL_TIME = 5 * 1000;
-// Throttle how often we upload our location to the server. Kept high to save
-// battery - the local map dot still updates on every position callback.
-const RATE_LIMIT_INTERVAL = 15 * 1000;
+
+// Geolocation settings, picked from how closely the player is watching the map.
+// Expanded (popped out, or the admin's full-screen map) means they're reading
+// positions off it, so refresh as fast as we reasonably can. Foreground-but-
+// cornered still shows our dot, so we pay for the GNSS radio but refresh less
+// often. Once the app is backgrounded nobody can see the map at all, so we fall
+// back to the cheap providers, tolerate stale fixes and upload rarely.
+// `uploadInterval` throttles uploads to the server only - the local map dot
+// still updates on every position callback in all three cases.
+const EXPANDED_GEO_SETTINGS = {
+  geoOptions: {
+    enableHighAccuracy: true,
+    maximumAge: 1 * 1000,
+    timeout: 20 * 1000,
+  },
+  uploadInterval: 1 * 1000,
+};
+const FOREGROUND_GEO_SETTINGS = {
+  geoOptions: {
+    enableHighAccuracy: true,
+    maximumAge: 5 * 1000,
+    timeout: 20 * 1000,
+  },
+  uploadInterval: 5 * 1000,
+};
+const BACKGROUND_GEO_SETTINGS = {
+  geoOptions: {
+    enableHighAccuracy: false,
+    maximumAge: 15 * 1000,
+    timeout: 20 * 1000,
+  },
+  uploadInterval: 15 * 1000,
+};
 
 // After 5 minutes, the dots will be almost completely transparent
 const TIME_UNTIL_TRANSPARENT = 5 * 60;
@@ -221,9 +251,16 @@ function MapView({
   ownPosition = null,
   other_positions_and_details = [],
   alwaysExpanded = false,
+  onExpandedChange = null,
 }) {
   const [poppedOut, setPoppedOut] = useState(false);
   const expanded = alwaysExpanded || poppedOut;
+
+  // Let the parent know when the map opens / closes, so it can decide how hard
+  // to work for a position fix. Pass a stable callback (e.g. a setState).
+  useEffect(() => {
+    if (onExpandedChange) onExpandedChange(expanded);
+  }, [expanded, onExpandedChange]);
 
   const mapContainerRef = useRef(null);
   const [boxWidthPx, setBoxWidthPx] = useState(0);
@@ -466,19 +503,36 @@ export function MapViewSelf() {
   const [position, setPosition] = useState(null);
 
   // Track the last upload time per-mount so it resets correctly if the
-  // component remounts.
+  // component remounts. Deliberately outside the watch effect below, so
+  // re-registering the watch on a visibility change doesn't reset the throttle.
   const lastUpdateTime = useRef(0);
+
+  // Is the app in the foreground? The map is always on screen while playing (in
+  // the corner if not popped out), so app visibility is what decides whether
+  // anyone can actually see our dot.
+  const [isVisible, setIsVisible] = useState(!document.hidden);
+
+  // Has the player popped the map out to look at it properly?
+  const [isExpanded, setIsExpanded] = useState(false);
+
+  useEffect(() => {
+    const handleVisibilityChange = () => setIsVisible(!document.hidden);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     if (navigator.geolocation) {
-      // Battery-friendly geolocation options: don't force high accuracy (the
-      // previous default behaviour), allow a cached fix so the GPS radio can
-      // idle, and give a slow fix room before erroring.
-      const geoOptions = {
-        enableHighAccuracy: false,
-        maximumAge: 15000,
-        timeout: 20000,
-      };
+      // The accuracy / battery tradeoff depends on how closely the player is
+      // watching. Backgrounded wins over expanded: a popped-out map that's
+      // offscreen still isn't being read. An existing watch can't be
+      // reconfigured, so this effect re-registers it whenever the tier changes.
+      let settings;
+      if (!isVisible) settings = BACKGROUND_GEO_SETTINGS;
+      else if (isExpanded) settings = EXPANDED_GEO_SETTINGS;
+      else settings = FOREGROUND_GEO_SETTINGS;
+      const { geoOptions, uploadInterval } = settings;
 
       // Register a callback for changes to the user's position.
       // This a) updates the location on the map (every callback, so our own
@@ -489,7 +543,7 @@ export function MapViewSelf() {
           setPosition(position);
 
           const currentTime = Date.now();
-          if (currentTime - lastUpdateTime.current >= RATE_LIMIT_INTERVAL) {
+          if (currentTime - lastUpdateTime.current >= uploadInterval) {
             sendLocationUpdate(
               position.coords.latitude,
               position.coords.longitude,
@@ -506,15 +560,16 @@ export function MapViewSelf() {
       );
 
       return () => {
-        // Clean up the watch when this component is unmounted.
+        // Clean up the watch when this component is unmounted, or before
+        // re-registering it with different settings.
         navigator.geolocation.clearWatch(watchId);
       };
     } else {
       console.error("Geolocation is not supported by this browser.");
     }
-  }, []);
+  }, [isVisible, isExpanded]);
 
-  return <MapView ownPosition={position} />;
+  return <MapView ownPosition={position} onExpandedChange={setIsExpanded} />;
 }
 
 export function MapViewAdmin() {
