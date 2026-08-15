@@ -66,8 +66,13 @@ class ChannelSet:
     """An ordered collection of channels backing a code of length ``n``.
 
     ``q`` is the field cardinality (the common symbol count the code uses).
-    Every channel must supply at least ``q`` labels; only the first ``q`` are
-    addressable by codewords, but channels may carry extra labels.
+    A channel may supply **more** than ``q`` labels (only the first ``q`` are
+    addressable) or **fewer** (plan §2.6): guests supply their own clothing, so
+    the trousers channel deliberately carries five easy-to-source colours while
+    ``q = 7``. A channel with ``s < q`` labels simply makes the codewords whose
+    symbol at that position is ``>= s`` unwearable, which
+    :meth:`is_representable` reports and ``IdentityScheme.usable_slots`` uses to
+    trim the assignable identities.
     """
 
     def __init__(self, channels: Iterable[Channel], q: int):
@@ -77,12 +82,6 @@ class ChannelSet:
         names = [c.name for c in channels]
         if len(names) != len(set(names)):
             raise ValueError(f"duplicate channel names: {names}")
-        for c in channels:
-            if c.size < q:
-                raise ValueError(
-                    f"channel {c.name!r} supplies {c.size} labels but q={q}; "
-                    "every channel must provide at least q symbols"
-                )
         self.channels = channels
         self.q = q
 
@@ -103,6 +102,23 @@ class ChannelSet:
     @property
     def names(self) -> List[str]:
         return [c.name for c in self.channels]
+
+    def max_addressable_symbol(self, channel_index: int) -> int:
+        """How many symbols this channel can actually wear, ``min(size, q)``."""
+        return min(self.channels[channel_index].size, self.q)
+
+    def is_representable(self, codeword: Sequence[int]) -> bool:
+        """Whether every symbol of ``codeword`` exists in its own channel.
+
+        False for a codeword that asks the restricted trousers channel for, say,
+        yellow -- the algebra is fine, but nobody can wear it.
+        """
+        if len(codeword) != self.n:
+            return False
+        return all(
+            0 <= symbol < self.max_addressable_symbol(i)
+            for i, symbol in enumerate(codeword)
+        )
 
     def by_name(self, name: str) -> Channel:
         for c in self.channels:

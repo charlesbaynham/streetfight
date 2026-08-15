@@ -584,6 +584,26 @@ includes navy and denim; black is black, not charcoal.*
 Keep commits 1–7 free of DB/web/vision imports so the module's independence is
 self-evident.
 
+**Status update.** Steps 1–7 are built, and `config.py` now carries the revised
+configuration from §2.4/§9.1: four channels (`tshirt`, `trousers`, `hat`,
+`armbands`), the 7-colour main palette, the 5-colour trousers palette, and the
+`[4,2,3]` Reed–Solomon code. Two things the original spec did not anticipate came
+out of §2.6 and are now part of the module:
+
+- `ChannelSet` accepts a channel with **fewer** than `q` labels (it used to
+  reject one), because the restricted trousers palette needs it. The codewords
+  such a channel cannot express are reported by `ChannelSet.is_representable`.
+- `IdentityScheme.usable_slots()` is the assignable set: representable codewords,
+  less slot 0 (§11.1). For the configured scheme that is **34** of the 49
+  codewords, and `assign()` now draws from it, so it can never hand a player an
+  outfit nobody can source.
+
+`IdentityScheme.codewords_matching()` was added alongside for the hit/bystander
+check in the vision layer — it answers "is this a valid outfit" without needing a
+candidate set. Note its documented limit: with only `k` readable channels any
+reading completes to exactly one codeword, so the check is vacuous and callers
+must require more than `k`.
+
 ---
 
 ## 11. Reference: the concrete code (`[4,2,3]` Reed-Solomon over GF(7))

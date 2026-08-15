@@ -26,9 +26,20 @@ HIGH = 0.9  # vision confidence for a clean per-channel read
 # -- helpers ----------------------------------------------------------------
 
 
+def parity_scheme():
+    """The ``[3,2,2]`` parity config from the upgrade ladder (plan §2.5)."""
+    return scheme_with_distance(2)
+
+
 def all_candidates(scheme):
-    """``{slot: codeword}`` for every identity the scheme can express."""
-    return {slot: scheme.codeword_of_slot(slot) for slot in range(scheme.capacity)}
+    """``{slot: codeword}`` for every identity that can actually be worn."""
+    return {slot: scheme.codeword_of_slot(slot) for slot in scheme.usable_slots()}
+
+
+def nth_usable(scheme, index):
+    """A wearable slot, picked positionally so tests stay config-agnostic."""
+    slots = scheme.usable_slots()
+    return slots[index % len(slots)]
 
 
 def correct_obs(scheme, channel_index, symbol, confidence=HIGH):
@@ -47,7 +58,9 @@ def reading_for(scheme, codeword, erase=(), misread=()):
         if i in erase:
             obs.append(ChannelObservation.erasure())
         elif i in misread:
-            wrong = (symbol + 1) % scheme.channels.q
+            # Wrap within the channel's own alphabet -- a vision model can only
+            # ever report a colour that channel actually has.
+            wrong = (symbol + 1) % scheme.channels.max_addressable_symbol(i)
             obs.append(correct_obs(scheme, i, wrong))
         else:
             obs.append(correct_obs(scheme, i, symbol))
@@ -66,8 +79,8 @@ def run(scheme, reading, prior=None, candidates=None):
 
 # Param: (scheme factory, label) for the config-agnostic suite.
 SCHEMES = [
-    pytest.param(default_scheme, id="parity-3-2-2"),
-    pytest.param(lambda: scheme_with_distance(3), id="rs-4-2-3"),
+    pytest.param(parity_scheme, id="parity-3-2-2"),
+    pytest.param(default_scheme, id="rs-4-2-3"),
 ]
 
 
@@ -77,7 +90,7 @@ SCHEMES = [
 @pytest.mark.parametrize("make_scheme", SCHEMES)
 def test_clean_reading_identifies_player(make_scheme):
     scheme = make_scheme()
-    target = 7
+    target = nth_usable(scheme, 7)
     reading = reading_for(scheme, scheme.codeword_of_slot(target))
     result = run(scheme, reading)
     assert result.best == target
@@ -93,7 +106,7 @@ def test_clean_reading_identifies_player(make_scheme):
 @pytest.mark.parametrize("make_scheme", SCHEMES)
 def test_single_erasure_is_corrected(make_scheme):
     scheme = make_scheme()
-    target = 11
+    target = nth_usable(scheme, 11)
     reading = reading_for(scheme, scheme.codeword_of_slot(target), erase=(1,))
     result = run(scheme, reading)
     assert result.best == target
@@ -106,8 +119,8 @@ def test_single_erasure_is_corrected(make_scheme):
 
 def test_single_misread_parity_is_detected():
     # [3,2,2]: a lone misread cannot be corrected, only DETECTED -> inconsistent.
-    scheme = default_scheme()
-    target = 9
+    scheme = parity_scheme()
+    target = nth_usable(scheme, 9)
     reading = reading_for(scheme, scheme.codeword_of_slot(target), misread=(0,))
     result = run(scheme, reading)
     assert result.inconsistent
@@ -115,8 +128,8 @@ def test_single_misread_parity_is_detected():
 
 def test_single_misread_rs_is_corrected():
     # [4,2,3]: d=3 corrects one misread -> right player, NOT flagged inconsistent.
-    scheme = scheme_with_distance(3)
-    target = 9
+    scheme = default_scheme()
+    target = nth_usable(scheme, 9)
     reading = reading_for(scheme, scheme.codeword_of_slot(target), misread=(0,))
     result = run(scheme, reading)
     assert result.best == target
@@ -130,8 +143,8 @@ def test_parity_erasure_plus_misread_is_the_compromise():
     # One hidden channel + one misread among the survivors: the parity code has
     # no check left and can silently decode to the WRONG player. This test pins
     # the documented limitation so it can't regress unnoticed.
-    scheme = default_scheme()
-    target = 12
+    scheme = parity_scheme()
+    target = nth_usable(scheme, 12)
     reading = reading_for(
         scheme, scheme.codeword_of_slot(target), erase=(0,), misread=(1,)
     )
@@ -141,8 +154,8 @@ def test_parity_erasure_plus_misread_is_the_compromise():
 
 def test_gps_prior_recovers_the_compromise():
     # ...but a GPS-style prior favouring the true player rescues it (soft decode).
-    scheme = default_scheme()
-    target = 12
+    scheme = parity_scheme()
+    target = nth_usable(scheme, 12)
     reading = reading_for(
         scheme, scheme.codeword_of_slot(target), erase=(0,), misread=(1,)
     )
@@ -156,7 +169,7 @@ def test_gps_prior_recovers_the_compromise():
 
 def test_prior_breaks_an_ambiguous_tie():
     scheme = default_scheme()
-    a, b = 3, 17
+    a, b = nth_usable(scheme, 3), nth_usable(scheme, 17)
     candidates = {a: scheme.codeword_of_slot(a), b: scheme.codeword_of_slot(b)}
     # Everything erased -> the reading carries no information: a pure tie.
     reading = Reading([ChannelObservation.erasure() for _ in range(scheme.channels.n)])
@@ -174,14 +187,14 @@ def test_prior_breaks_an_ambiguous_tie():
 
 def test_distribution_observation_decodes():
     scheme = default_scheme()
-    target = 5
+    target = nth_usable(scheme, 5)
     codeword = scheme.codeword_of_slot(target)
     obs = []
     for i, symbol in enumerate(codeword):
         channel = scheme.channels[i]
         dist = {channel.index_to_label(symbol): 0.8}
         # spread a little mass onto a neighbour to mimic a real model
-        other = (symbol + 2) % scheme.channels.q
+        other = (symbol + 2) % scheme.channels.max_addressable_symbol(i)
         dist[channel.index_to_label(other)] = 0.2
         obs.append(ChannelObservation.distribution(dist))
     result = run(scheme, Reading(obs))
@@ -190,7 +203,7 @@ def test_distribution_observation_decodes():
 
 def test_thresholds_are_configurable():
     scheme = default_scheme()
-    target = 1
+    target = nth_usable(scheme, 1)
     reading = reading_for(scheme, scheme.codeword_of_slot(target))
 
     def confident_under(threshold):

@@ -24,16 +24,30 @@ def candidates(count):
 def test_default_scheme_matches_the_config():
     info = demo.describe_scheme(demo.SchemeSpec())
 
-    assert (info["n"], info["k"], info["q"]) == (3, 2, 5)
-    assert info["min_distance"] == 2
-    assert info["capacity"] == 25
-    assert info["code_type"] == "parity"
-    assert len(info["codebook"]) == 25
+    assert (info["n"], info["k"], info["q"]) == (4, 2, 7)
+    assert info["min_distance"] == 3
+    assert info["capacity"] == 49
+    # The restricted trousers channel and the all-black slot 0 are not
+    # assignable, so fewer identities are usable than the code can express.
+    assert info["usable_capacity"] == 34
+    assert info["code_type"] == "reed_solomon"
+    assert len(info["codebook"]) == 49
     assert info["codebook"][0]["appearance"] == {
-        "shirt": "red",
-        "head": "red",
-        "armband": "red",
+        "tshirt": "black",
+        "trousers": "black",
+        "hat": "black",
+        "armbands": "black",
     }
+
+
+def test_codebook_marks_unwearable_codewords():
+    info = demo.describe_scheme(demo.SchemeSpec())
+
+    # Slot 5's codeword asks trousers for symbol 5, which has no colour.
+    row = info["codebook"][5]
+    assert row["wearable"] is False
+    assert row["appearance"] is None
+    assert info["codebook"][0]["wearable"] is True
 
 
 def test_upgrade_ladder_gives_the_expected_codes():
@@ -50,6 +64,7 @@ def test_upgrade_ladder_gives_the_expected_codes():
 
 def test_per_channel_alphabets_are_allowed():
     spec = demo.SchemeSpec(
+        palette=["red", "yellow", "green", "blue", "purple"],
         channels=[
             demo.ChannelSpec(name="shirt"),
             demo.ChannelSpec(name="head"),
@@ -57,7 +72,8 @@ def test_per_channel_alphabets_are_allowed():
                 name="shape",
                 labels=["circle", "square", "triangle", "star", "cross"],
             ),
-        ]
+        ],
+        target_distance=2,
     )
     info = demo.describe_scheme(spec)
 
@@ -67,7 +83,10 @@ def test_per_channel_alphabets_are_allowed():
 
 def test_spare_palette_colours_via_explicit_q():
     spec = demo.SchemeSpec(
-        palette=["red", "yellow", "green", "blue", "purple", "orange"], q=5
+        palette=["red", "yellow", "green", "blue", "purple", "orange"],
+        channels=[demo.ChannelSpec(name=n) for n in ("shirt", "head", "armband")],
+        target_distance=2,
+        q=5,
     )
     info = demo.describe_scheme(spec)
 
@@ -95,7 +114,7 @@ def test_codebook_can_be_truncated():
         (demo.SchemeSpec(code_type="banana"), "unknown code_type"),
         (
             demo.SchemeSpec(
-                channels=[demo.ChannelSpec(name=f"c{i}") for i in range(6)],
+                channels=[demo.ChannelSpec(name=f"c{i}") for i in range(8)],
                 target_distance=4,
             ),
             "n <= q",
@@ -112,70 +131,99 @@ def test_bad_schemes_explain_themselves(spec, message_fragment):
 # -- decoding ---------------------------------------------------------------
 
 
+# Slot 7 is codeword (0, 1, 2, 3): black t-shirt, blue trousers, red hat,
+# blue armbands. Slot 14 is (0, 2, 4, 6) and shares only the t-shirt with it.
+TARGET = "p7"
+
+
 def test_clean_reading_identifies_the_right_player():
     request = demo.DecodeRequest(
-        candidates=candidates(5),
+        candidates=candidates(10),
         reading=[
-            demo.ObservationSpec(symbol="yellow", confidence=0.9),
+            demo.ObservationSpec(symbol="black", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
             demo.ObservationSpec(symbol="red", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
     )
     result = demo.decode_reading(request)
 
-    # Slot 1 is codeword (1, 0, 4) = yellow / red / purple.
-    assert result["best"] == "p1"
+    assert result["best"] == TARGET
     assert result["inconsistent"] is False
     assert result["auto_accept"] is True
-    assert result["hard_reading"] == ["yellow", "red", "purple"]
+    assert result["hard_reading"] == ["black", "blue", "red", "blue"]
     assert result["hard_reading_is_codeword"] is True
     assert result["ranked"][0]["distance"] == 0
 
 
-def test_erasure_is_corrected_by_the_parity_channel():
+def test_two_erasures_are_corrected():
+    # d=3, so any two hidden garments still identify the player (plan §2.4).
     request = demo.DecodeRequest(
-        candidates=candidates(25),
+        candidates=candidates(49),
         reading=[
-            demo.ObservationSpec(symbol="yellow", confidence=0.9),
-            demo.ObservationSpec(symbol="red", confidence=0.9),
+            demo.ObservationSpec(symbol="black", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
+            demo.ObservationSpec(kind="erasure"),
             demo.ObservationSpec(kind="erasure"),
         ],
     )
     result = demo.decode_reading(request)
 
-    assert result["best"] == "p1"
-    assert result["num_erasures"] == 1
+    assert result["best"] == TARGET
+    assert result["num_erasures"] == 2
     assert result["inconsistent"] is False
     assert result["hard_reading_is_codeword"] is None
 
 
-def test_misread_is_detected_as_inconsistent():
+def test_single_misread_is_corrected():
+    # d=3 corrects one misread outright rather than only flagging it.
     request = demo.DecodeRequest(
-        candidates=candidates(25),
+        candidates=candidates(49),
         reading=[
-            demo.ObservationSpec(symbol="yellow", confidence=0.9),
-            demo.ObservationSpec(symbol="red", confidence=0.9),
-            demo.ObservationSpec(symbol="green", confidence=0.9),
+            demo.ObservationSpec(symbol="black", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
+            demo.ObservationSpec(symbol="green", confidence=0.9),  # hat misread
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
     )
     result = demo.decode_reading(request)
 
-    # d=2 detects but cannot correct a single misread.
-    assert result["inconsistent"] is True
+    assert result["best"] == TARGET
+    assert result["inconsistent"] is False
     assert result["hard_reading_is_codeword"] is False
     assert result["min_distance_to_codeword"] == 1
 
 
+def test_erasure_plus_misread_is_detected_as_inconsistent():
+    # One hidden garment leaves no correction budget, so a misread alongside it
+    # is flagged rather than silently decoded.
+    request = demo.DecodeRequest(
+        candidates=candidates(49),
+        reading=[
+            demo.ObservationSpec(symbol="black", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
+            demo.ObservationSpec(symbol="green", confidence=0.9),  # hat misread
+            demo.ObservationSpec(kind="erasure"),
+        ],
+    )
+    result = demo.decode_reading(request)
+
+    assert result["inconsistent"] is True
+    assert result["min_distance_to_codeword"] == 1
+
+
 def test_prior_breaks_a_tie():
+    # Only the t-shirt is readable, and both candidates wear black: a pure tie.
     reading = [
-        demo.ObservationSpec(symbol="yellow", confidence=0.9),
-        demo.ObservationSpec(symbol="red", confidence=0.9),
+        demo.ObservationSpec(symbol="black", confidence=0.9),
+        demo.ObservationSpec(kind="erasure"),
+        demo.ObservationSpec(kind="erasure"),
         demo.ObservationSpec(kind="erasure"),
     ]
     biased = demo.DecodeRequest(
         candidates=[
-            demo.CandidateSpec(name="near", slot=1, prior=0.9),
-            demo.CandidateSpec(name="far", slot=6, prior=0.1),
+            demo.CandidateSpec(name="near", slot=7, prior=0.9),
+            demo.CandidateSpec(name="far", slot=14, prior=0.1),
         ],
         reading=reading,
     )
@@ -187,18 +235,36 @@ def test_prior_breaks_a_tie():
 
 def test_distribution_observations_are_accepted():
     request = demo.DecodeRequest(
-        candidates=candidates(5),
+        candidates=candidates(10),
         reading=[
             demo.ObservationSpec(
-                kind="distribution", distribution={"yellow": 0.6, "green": 0.4}
+                kind="distribution", distribution={"black": 0.6, "green": 0.4}
             ),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
             demo.ObservationSpec(symbol="red", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
     )
     result = demo.decode_reading(request)
 
-    assert result["best"] == "p1"
+    assert result["best"] == TARGET
+
+
+def test_a_colour_outside_a_restricted_channel_is_rejected():
+    # "yellow" exists in the main palette but trousers do not come in it.
+    request = demo.DecodeRequest(
+        candidates=candidates(10),
+        reading=[
+            demo.ObservationSpec(symbol="black", confidence=0.9),
+            demo.ObservationSpec(symbol="yellow", confidence=0.9),
+            demo.ObservationSpec(symbol="red", confidence=0.9),
+            demo.ObservationSpec(symbol="blue", confidence=0.9),
+        ],
+    )
+    with pytest.raises(demo.DemoError) as excinfo:
+        demo.decode_reading(request)
+
+    assert "trousers" in str(excinfo.value)
 
 
 @pytest.mark.parametrize(
@@ -208,11 +274,8 @@ def test_distribution_observations_are_accepted():
         (
             {
                 "candidates": candidates(2),
-                "reading": [
-                    demo.ObservationSpec(symbol="beige"),
-                    demo.ObservationSpec(symbol="red"),
-                    demo.ObservationSpec(symbol="red"),
-                ],
+                "reading": [demo.ObservationSpec(symbol="beige")]
+                + [demo.ObservationSpec(symbol="red")] * 3,
             },
             "no label 'beige'",
         ),
@@ -222,14 +285,14 @@ def test_distribution_observations_are_accepted():
                     demo.CandidateSpec(name="a", slot=0),
                     demo.CandidateSpec(name="a", slot=1),
                 ],
-                "reading": [demo.ObservationSpec(symbol="red")] * 3,
+                "reading": [demo.ObservationSpec(symbol="red")] * 4,
             },
             "unique",
         ),
         (
             {
                 "candidates": [demo.CandidateSpec(name="a", slot=99)],
-                "reading": [demo.ObservationSpec(symbol="red")] * 3,
+                "reading": [demo.ObservationSpec(symbol="red")] * 4,
             },
             "out of range",
         ),
@@ -325,27 +388,35 @@ def test_api_defaults(admin_api_client):
     response = admin_api_client.get("/api/admin_identity_defaults")
 
     assert response.status_code == 200
-    assert response.json()["channel_names"] == ["shirt", "head", "armband"]
+    body = response.json()
+    assert body["channel_names"] == ["tshirt", "trousers", "hat", "armbands"]
+    assert body["target_distance"] == 3
+    # The restricted channel travels with the defaults, so the workbench starts
+    # from the real scheme rather than silently widening trousers to 7 colours.
+    trousers = next(c for c in body["channels"] if c["name"] == "trousers")
+    assert trousers["labels"] == ["black", "blue", "green", "red", "white"]
+    assert next(c for c in body["channels"] if c["name"] == "hat")["labels"] is None
 
 
 def test_api_scheme_and_decode(admin_api_client):
     response = admin_api_client.post("/api/admin_identity_scheme", json={})
     assert response.status_code == 200
-    assert response.json()["capacity"] == 25
+    assert response.json()["capacity"] == 49
 
     response = admin_api_client.post(
         "/api/admin_identity_decode",
         json={
-            "candidates": [{"name": "p1", "slot": 1}, {"name": "p2", "slot": 2}],
+            "candidates": [{"name": "p7", "slot": 7}, {"name": "p8", "slot": 8}],
             "reading": [
-                {"kind": "best_guess", "symbol": "yellow", "confidence": 0.9},
+                {"kind": "best_guess", "symbol": "black", "confidence": 0.9},
+                {"kind": "best_guess", "symbol": "blue", "confidence": 0.9},
                 {"kind": "best_guess", "symbol": "red", "confidence": 0.9},
                 {"kind": "erasure"},
             ],
         },
     )
     assert response.status_code == 200
-    assert response.json()["best"] == "p1"
+    assert response.json()["best"] == "p7"
 
 
 def test_api_simulate(admin_api_client):

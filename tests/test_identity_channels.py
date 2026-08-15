@@ -28,10 +28,31 @@ def test_channel_rejects_duplicate_labels():
         Channel("shirt", ["red", "red", "green"])
 
 
-def test_channelset_rejects_channel_with_too_few_labels():
+def test_channelset_accepts_a_restricted_channel():
+    # Plan §2.6: guests supply their own clothing, so a channel may carry fewer
+    # than q labels. The codewords it cannot express are simply unwearable.
     short = Channel("armband", ["red", "yellow"])
-    with pytest.raises(ValueError):
-        ChannelSet([Channel("shirt", PALETTE), short], q=5)
+    cs = ChannelSet([Channel("shirt", PALETTE), short], q=5)
+
+    assert cs.max_addressable_symbol(0) == 5
+    assert cs.max_addressable_symbol(1) == 2
+
+
+def test_is_representable_tracks_each_channels_own_alphabet():
+    short = Channel("armband", ["red", "yellow"])
+    cs = ChannelSet([Channel("shirt", PALETTE), short], q=5)
+
+    assert cs.is_representable([4, 1])
+    assert not cs.is_representable([4, 2])  # no third armband colour exists
+    assert not cs.is_representable([0])  # wrong length
+
+
+def test_channel_larger_than_q_only_exposes_the_first_q_symbols():
+    big = Channel("shirt", PALETTE + ["cyan", "magenta"])
+    cs = ChannelSet([big, Channel("armband", PALETTE)], q=5)
+
+    assert cs.max_addressable_symbol(0) == 5
+    assert not cs.is_representable([5, 0])
 
 
 def test_channelset_rejects_duplicate_names():
