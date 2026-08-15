@@ -20,74 +20,75 @@ function jsonResponse(body, ok = true) {
   return { ok, json: async () => body };
 }
 
-describe("shotStatusFingerprint", () => {
-  test("changes when checked, result, or a completed AI suggestion changes", () => {
-    const base = makeShot({
-      id: "s1",
-      checked: false,
-      result: null,
-      ai_review_state: null,
-      ai_suggestion: null,
-    });
-    const fingerprint = store.shotStatusFingerprint(base);
-
-    expect(store.shotStatusFingerprint({ ...base, checked: true })).not.toBe(
-      fingerprint,
-    );
-
-    expect(store.shotStatusFingerprint({ ...base, result: "hit" })).not.toBe(
-      fingerprint,
-    );
-
-    expect(
-      store.shotStatusFingerprint({
-        ...base,
-        ai_review_state: "done",
-        ai_suggestion: "hit",
-      }),
-    ).not.toBe(fingerprint);
-  });
-
-  test("ignores ai_suggestion while ai_review_state is not 'done'", () => {
-    const base = makeShot({
-      id: "s1",
-      checked: false,
-      result: null,
-      ai_review_state: null,
-      ai_suggestion: null,
-    });
-    const fingerprint = store.shotStatusFingerprint(base);
-
-    const pending = {
-      ...base,
-      ai_review_state: "pending",
-      ai_suggestion: "hit",
-    };
-    expect(store.shotStatusFingerprint(pending)).toBe(fingerprint);
-
-    const nullState = { ...base, ai_review_state: null, ai_suggestion: "hit" };
-    expect(store.shotStatusFingerprint(nullState)).toBe(fingerprint);
-  });
-});
-
-describe("markShotsSeen / isShotStatusSeen / countUnseenShots", () => {
-  test("round-trip through localStorage, and a changed status counts as unseen again", () => {
+// shotStatusFingerprint and isShotStatusSeen are private to
+// shotHistoryStore.js as of #113 (the status bubble redesign no longer needs
+// them externally) - exercised below only through the public surface
+// (markShotsSeen / countUnseenShots), which is what actually matters:
+// whether a status change makes a seen shot count as unseen again.
+describe("markShotsSeen / countUnseenShots", () => {
+  test("a changed checked/result status counts a previously-seen shot as unseen again", () => {
     const shot1 = makeShot({ id: "s1", checked: false });
     const shot2 = makeShot({ id: "s2", checked: false });
 
     expect(store.countUnseenShots([shot1, shot2])).toBe(2);
-    expect(store.isShotStatusSeen(shot1)).toBe(false);
 
     store.markShotsSeen([shot1, shot2]);
-
-    expect(store.isShotStatusSeen(shot1)).toBe(true);
-    expect(store.isShotStatusSeen(shot2)).toBe(true);
     expect(store.countUnseenShots([shot1, shot2])).toBe(0);
 
     // The shot's status changes after being marked seen: unseen again.
     const shot1Updated = { ...shot1, checked: true, result: "hit" };
-    expect(store.isShotStatusSeen(shot1Updated)).toBe(false);
     expect(store.countUnseenShots([shot1Updated, shot2])).toBe(1);
+  });
+
+  test("a completed AI suggestion counts a previously-seen shot as unseen again", () => {
+    const shot = makeShot({
+      id: "s1",
+      checked: false,
+      ai_review_state: null,
+      ai_suggestion: null,
+    });
+
+    store.markShotsSeen([shot]);
+    expect(store.countUnseenShots([shot])).toBe(0);
+
+    const aiDone = { ...shot, ai_review_state: "done", ai_suggestion: "hit" };
+    expect(store.countUnseenShots([aiDone])).toBe(1);
+  });
+
+  test("ignores ai_suggestion while ai_review_state is not 'done'", () => {
+    const shot = makeShot({
+      id: "s1",
+      checked: false,
+      ai_review_state: null,
+      ai_suggestion: null,
+    });
+
+    store.markShotsSeen([shot]);
+
+    const pending = {
+      ...shot,
+      ai_review_state: "pending",
+      ai_suggestion: "hit",
+    };
+    expect(store.countUnseenShots([pending])).toBe(0);
+
+    const nullState = { ...shot, ai_review_state: null, ai_suggestion: "hit" };
+    expect(store.countUnseenShots([nullState])).toBe(0);
+  });
+
+  test("round-trips seen status through localStorage", () => {
+    const shot1 = makeShot({ id: "s1", checked: false });
+    const shot2 = makeShot({ id: "s2", checked: false });
+
+    store.markShotsSeen([shot1, shot2]);
+
+    // A fresh module load (as happens on page reload) reads the same
+    // localStorage, so a shot marked seen before reload stays seen after.
+    jest.resetModules();
+    jest.doMock("./utils", () => ({ sendAPIRequest: jest.fn() }));
+    const reloadedStore = require("./shotHistoryStore");
+
+    expect(reloadedStore.countUnseenShots([shot1, shot2])).toBe(0);
   });
 
   test("countUnseenShots handles a null/undefined list", () => {
@@ -109,8 +110,7 @@ describe("corrupt localStorage", () => {
     localStorage.setItem("seenShotStatuses", "{not valid json");
     const shot = makeShot({ id: "s1" });
 
-    expect(() => store.isShotStatusSeen(shot)).not.toThrow();
-    expect(store.isShotStatusSeen(shot)).toBe(false);
+    expect(() => store.countUnseenShots([shot])).not.toThrow();
     expect(store.countUnseenShots([shot])).toBe(1);
   });
 });

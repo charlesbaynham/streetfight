@@ -1,0 +1,290 @@
+/* Identity overrides admin page.
+   Overrides are meant to look exceptional - warm/red colours, badges, counts -
+   because the point is social pressure to keep them rare. */
+
+.hint {
+  color: #666;
+  font-size: 0.85em;
+}
+
+.errorText {
+  color: #c0392b;
+  white-space: pre-wrap;
+}
+
+.errorBox {
+  background: #fbdddd;
+  border: 1px solid #c0392b;
+  border-radius: 0.4em;
+  padding: 0.5em 0.7em;
+  margin: 0.5em 0;
+}
+
+/* --- Summary strip --- */
+
+.summaryStrip {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1em;
+  padding: 0.8em 1em;
+  border-radius: 0.6em;
+  margin: 0.8em 0;
+  border: 2px solid transparent;
+}
+
+.summaryStat {
+  text-align: center;
+  min-width: 5em;
+}
+
+.summaryValue {
+  font-size: 1.6em;
+  font-weight: bold;
+  line-height: 1.1;
+}
+
+.summaryLabel {
+  font-size: 0.75em;
+  opacity: 0.8;
+}
+
+.summaryHeadline {
+  flex: 1 1 12em;
+  font-weight: bold;
+}
+
+.toneGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  color: #1e5c34;
+}
+
+.toneWarning {
+  background: #fdf0d5;
+  border-color: #d9a441;
+  color: #7a5a12;
+}
+
+.toneDanger {
+  background: #fbe3d5;
+  border-color: #e07b39;
+  color: #8a3d0d;
+}
+
+.toneCritical {
+  background: #fbdddd;
+  border-color: #c0392b;
+  color: #7a1d15;
+}
+
+/* --- Warnings list --- */
+
+.warningsList {
+  list-style: none;
+  padding: 0;
+  margin: 0.6em 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3em;
+}
+
+.warningItem {
+  padding: 0.4em 0.7em;
+  border-radius: 0.4em;
+  border-left: 4px solid transparent;
+}
+
+/* --- Player table --- */
+
+.tableWrap {
+  overflow-x: auto;
+  margin: 0.6em 0;
+}
+
+.playerTable {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 32em;
+}
+
+.playerTable th,
+.playerTable td {
+  padding: 0.4em 0.6em;
+  border-bottom: 1px solid #ddd;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.playerRow {
+  cursor: pointer;
+}
+
+.playerRow:hover {
+  background: #f4f4f4;
+}
+
+.overriddenRow {
+  background: #fdf0d5;
+}
+
+.overriddenRow:hover {
+  background: #fbe3b8;
+}
+
+.selectedRow {
+  outline: 2px solid #0072ce;
+  outline-offset: -2px;
+}
+
+.overrideBadge {
+  display: inline-block;
+  margin-left: 0.5em;
+  padding: 0.05em 0.5em;
+  border-radius: 1em;
+  background: #c0392b;
+  color: white;
+  font-size: 0.7em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.swatchRow {
+  display: flex;
+  gap: 0.35em;
+  flex-wrap: wrap;
+}
+
+/* --- Swatches --- */
+
+.channelSwatch {
+  position: relative;
+  display: inline-flex;
+}
+
+.swatch {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 0.3em;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  color: rgba(0, 0, 0, 0.55);
+  flex: none;
+}
+
+.swatchSmall {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.swatchUnknown {
+  background: repeating-linear-gradient(
+    45deg,
+    #eeeeee,
+    #eeeeee 4px,
+    #cccccc 4px,
+    #cccccc 8px
+  );
+}
+
+.canonicalDot {
+  position: absolute;
+  bottom: -0.25em;
+  right: -0.25em;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  border: 2px solid white;
+  background: #fff;
+  box-shadow: 0 0 0 1px #c0392b;
+}
+
+/* --- Editor --- */
+
+.editor {
+  border: 2px solid #0072ce;
+  border-radius: 0.6em;
+  padding: 0.8em 1em;
+  margin: 0.8em 0 2em 0;
+}
+
+.editorHeader {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 1em;
+}
+
+.editorField {
+  margin: 0.5em 0;
+}
+
+.overrideTable {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0.6em 0;
+}
+
+.overrideTable th,
+.overrideTable td {
+  padding: 0.3em 0.5em;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+/* --- Suggest panel --- */
+
+.suggestPanel {
+  margin-top: 1.2em;
+  padding-top: 0.8em;
+  border-top: 1px dashed #aaa;
+}
+
+.channelFixedGrid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4em;
+  margin: 0.5em 0;
+}
+
+.channelFixedRow {
+  display: flex;
+  align-items: center;
+  gap: 0.6em;
+  flex-wrap: wrap;
+}
+
+.freeCheckbox {
+  min-width: 9em;
+}
+
+.suggestionList {
+  list-style: none;
+  padding: 0;
+  margin: 0.6em 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6em;
+}
+
+.suggestionCard {
+  border: 1px solid #ccc;
+  border-radius: 0.5em;
+  padding: 0.5em 0.7em;
+}
+
+.suggestionSwatches {
+  display: flex;
+  gap: 0.7em;
+  flex-wrap: wrap;
+  margin-bottom: 0.3em;
+}
+
+.suggestionLabel {
+  margin-left: 0.3em;
+  font-size: 0.85em;
+}

@@ -93,6 +93,24 @@ class AdminInterface:
         return [GameModel.model_validate(g) for g in self._session.query(Game).all()]
 
     @db_scoped
+    def get_user_model(self, user_id: UUID) -> UserModel:
+        return UserModel.model_validate(self._get_user_orm(user_id))
+
+    @db_scoped
+    def get_users_for_game(self, game_id: UUID) -> List[UserModel]:
+        """Every user on a team belonging to ``game_id``. 404s if the game
+        doesn't exist. Used by the identity admin report/suggest logic
+        (backend/identity_admin.py), which needs the whole game's roster to
+        compute pairwise distances and slot uniqueness.
+        """
+        self._get_game_orm(game_id)  # 404 if the game doesn't exist
+
+        users = (
+            self._session.query(User).join(Team).filter(Team.game_id == game_id).all()
+        )
+        return [UserModel.model_validate(u) for u in users]
+
+    @db_scoped
     def get_users(self, team_id: UUID = None, game_id: UUID = None) -> List[UserModel]:
         logger.info("AdminInterface - get_users")
 
