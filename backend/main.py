@@ -161,6 +161,28 @@ async def submit_shot(
     if AdminInterface().is_ai_shot_review_enabled(game_id):
         ai_shot_review.enqueue_review(shot_id)
 
+    return shot_id
+
+
+@router.get("/user_shots")
+async def get_user_shots(
+    user_id=Depends(get_user_id),
+):
+    """This user's own shots, newest first, without the images"""
+    with UserInterface(user_id) as ui:
+        return ui.get_own_shots()
+
+
+@router.get("/user_shot_image")
+async def get_user_shot_image(
+    shot_id: UUID,
+    user_id=Depends(get_user_id),
+):
+    """The image for one of this user's own shots. Immutable, so the frontend
+    caches these by id and only ever fetches each one once."""
+    with UserInterface(user_id) as ui:
+        return {"image_base64": ui.get_own_shot_image(shot_id)}
+
 
 @router.post("/set_name")
 async def set_name(

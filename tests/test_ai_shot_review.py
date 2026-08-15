@@ -150,8 +150,8 @@ async def test_a_garbled_reply_is_recorded_as_an_error(
 
 
 @pytest.mark.asyncio
-async def test_a_review_notifies_the_admin_stream(
-    mocker, db_session, shot_from_user_in_team
+async def test_a_review_notifies_the_admin_stream_and_the_shooter(
+    mocker, db_session, shot_from_user_in_team, user_in_team
 ):
     mocked = mocker.patch("backend.ai_shot_review.trigger_update_event")
 
@@ -159,6 +159,8 @@ async def test_a_review_notifies_the_admin_stream(
         shot_from_user_in_team, FakeVisionClient(hit_reply())
     )
 
+    triggered = [call.args for call in mocked.call_args_list]
+    assert ("user", user_in_team) in triggered
     assert mocked.call_args_list[-1][0][0] == "shots"
 
 

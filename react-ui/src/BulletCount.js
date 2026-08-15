@@ -3,6 +3,7 @@ import React, { useEffect, useState } from "react";
 import TemporaryOverlay from "./TemporaryOverlay";
 import CollectItemFromQueryParam from "./CollectItemsFromQueryParams";
 import { ButtonAndScoreboard } from "./Scoreboard";
+import { ShotHistoryButton } from "./ShotHistory";
 
 import styles from "./BulletCount.module.css";
 
@@ -102,6 +103,7 @@ export default function BulletCount({ user }) {
       <CollectItemFromQueryParam enabled={!anyActive} />
 
       <ButtonAndScoreboard />
+      <ShotHistoryButton />
     </div>
   );
 }

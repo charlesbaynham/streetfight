@@ -146,7 +146,12 @@ async def review_shot(shot_id: UUID, client=None) -> None:
         payload = str(e) or e.__class__.__name__
 
     try:
-        game_id = AdminInterface().store_shot_ai_review(shot_id, state, payload)
+        game_id, shooter_id = AdminInterface().store_shot_ai_review(
+            shot_id, state, payload
+        )
+        # The shooter's shot history shows the AI's provisional verdict, so
+        # nudge them as well as the admin queue
+        trigger_update_event("user", shooter_id)
         trigger_update_event("shots", game_id)
     except Exception:
         logger.exception("Could not store the review of shot %s", shot_id)
