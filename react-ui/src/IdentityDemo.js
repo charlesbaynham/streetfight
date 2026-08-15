@@ -60,6 +60,18 @@ const panel = {
   marginBottom: "1em",
 };
 const errorStyle = { color: "red", whiteSpace: "pre-wrap" };
+const unwearableStyle = { ...cell, color: "#999" };
+
+// The backend sends appearance = null for a codeword a restricted channel
+// (trousers) has no colour for: the algebra is fine, but nobody could be
+// wearing it. Render a dash rather than reading through the null.
+function AppearanceCells({ appearance, channels }) {
+  return channels.map((c) => (
+    <td key={c.name} style={appearance ? cell : unwearableStyle}>
+      {appearance ? appearance[c.name] : "—"}
+    </td>
+  ));
+}
 
 function SchemeEditor({ spec, setSpec }) {
   const setChannel = (idx, patch) => {
@@ -207,6 +219,11 @@ function SchemeSummary({ info }) {
         <b>{info.capacity}</b> players
       </p>
       <p>{info.guarantees.summary}</p>
+      <p>
+        <b>{info.usable_capacity}</b> of those slots are actually assignable:
+        the rest ask a restricted channel for a colour it doesn&apos;t have (or
+        are slot 0, all-black).
+      </p>
 
       <details>
         <summary>
@@ -218,6 +235,7 @@ function SchemeSummary({ info }) {
             <tr>
               <th style={cell}>slot</th>
               <th style={cell}>codeword</th>
+              <th style={cell}>wearable</th>
               {info.channels.map((c) => (
                 <th key={c.name} style={cell}>
                   {c.name}
@@ -230,11 +248,13 @@ function SchemeSummary({ info }) {
               <tr key={row.slot}>
                 <td style={cell}>{row.slot}</td>
                 <td style={cell}>{row.codeword.join(" ")}</td>
-                {info.channels.map((c) => (
-                  <td key={c.name} style={cell}>
-                    {row.appearance[c.name]}
-                  </td>
-                ))}
+                <td style={row.wearable ? cell : unwearableStyle}>
+                  {row.wearable ? "yes" : "no"}
+                </td>
+                <AppearanceCells
+                  appearance={row.appearance}
+                  channels={info.channels}
+                />
               </tr>
             ))}
           </tbody>
@@ -525,11 +545,10 @@ function DecodeResultView({ result, info }) {
               <td style={cell}>{row.posterior.toFixed(4)}</td>
               <td style={cell}>{row.distance}</td>
               <td style={cell}>{row.codeword.join(" ")}</td>
-              {info.channels.map((c) => (
-                <td key={c.name} style={cell}>
-                  {row.appearance[c.name]}
-                </td>
-              ))}
+              <AppearanceCells
+                appearance={row.appearance}
+                channels={info.channels}
+              />
             </tr>
           ))}
         </tbody>
@@ -840,6 +859,15 @@ export default function IdentityDemo() {
         setDecodeError(`slot ${slot} is not in the loaded codebook`);
         return;
       }
+      if (!row.appearance) {
+        setDecodeError(
+          `slot ${slot} is not wearable: a restricted channel has no colour ` +
+            `for its codeword ${row.codeword.join(" ")}, so there is no ` +
+            "appearance to load",
+        );
+        return;
+      }
+      setDecodeError(null);
       setReading(
         info.channels.map((channel) => ({
           kind: "best_guess",
