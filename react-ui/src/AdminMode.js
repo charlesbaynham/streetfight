@@ -19,7 +19,7 @@ const WEAPONS = {
   "Eat-a-bullet": [1, 1],
 };
 
-function weaponName(user) {
+export function weaponName(user) {
   for (const [name, [damage, timeout]] of Object.entries(WEAPONS)) {
     if (user.shot_damage === damage && user.shot_timeout === timeout)
       return name;
