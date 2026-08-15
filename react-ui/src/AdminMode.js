@@ -133,11 +133,11 @@ function GamePanel({ game }) {
               })
             }
           />{" "}
-          AI shot review (tags the shot queue with what a vision model sees,
-          and automatically applies confident verdicts — confidence at least
-          0.6 — to the oldest queued shot; ambiguous shots stay in the queue
-          for you. Switching it on also works through the queued shots that
-          have not been reviewed yet)
+          AI shot review (tags the shot queue with what a vision model sees, and
+          automatically applies confident verdicts — confidence at least 0.6 —
+          to the oldest queued shot; ambiguous shots stay in the queue for you.
+          Switching it on also works through the queued shots that have not been
+          reviewed yet)
         </label>
       </p>
 
