@@ -6,26 +6,68 @@ import "bootstrap/dist/css/bootstrap.min.css";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container } from "react-bootstrap";
 
-import { sendAPIRequest } from "./utils";
+import { sendAPIRequest, setAPIErrorHandler } from "./utils";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 
-// POST wrapper for admin actions. The optional callback fires on success (with
-// the parsed response body); any failure pops an alert so you know it happened.
+// POST wrapper for admin actions. The optional callback fires on success with
+// the parsed response body; failures show up in the AdminErrorLog box.
 export function adminPost(endpoint, params, callback = null) {
-  return sendAPIRequest(endpoint, params, "POST", callback).then(
-    async (response) => {
-      if (!response.ok) {
-        let detail = "";
-        try {
-          const body = await response.json();
-          detail = JSON.stringify(
-            body.detail !== undefined ? body.detail : body,
-          );
-        } catch (e) {}
-        window.alert(`${endpoint} failed (${response.status}): ${detail}`);
-      }
-      return response;
-    },
+  return sendAPIRequest(endpoint, params, "POST", callback);
+}
+
+// A red box listing every API call that has failed on this page - status code
+// and raw response text, because the admin is the one debugging. Registers
+// itself as the global error handler from utils.sendAPIRequest, so it catches
+// every request made by any component on the page. Consecutive identical
+// failures collapse into one line with a counter (a failing 5-second poll
+// should not scroll the page).
+function AdminErrorLog() {
+  const [errors, setErrors] = useState([]);
+
+  useEffect(() => {
+    setAPIErrorHandler(({ endpoint, status, text }) => {
+      setErrors((previous) => {
+        const last = previous[previous.length - 1];
+        if (last && last.endpoint === endpoint && last.status === status) {
+          return [...previous.slice(0, -1), { ...last, count: last.count + 1 }];
+        }
+        const entry = {
+          time: new Date().toLocaleTimeString(),
+          endpoint,
+          status,
+          text: String(text).slice(0, 500),
+          count: 1,
+        };
+        // Keep the log bounded
+        return [...previous.slice(-19), entry];
+      });
+    });
+    return () => setAPIErrorHandler(null);
+  }, []);
+
+  if (errors.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        background: "#ffe0e0",
+        border: "2px solid red",
+        padding: "0.5em",
+        margin: "0.5em 0",
+      }}
+    >
+      <b>API errors</b> <button onClick={() => setErrors([])}>Dismiss</button>
+      <ul>
+        {errors.map((error, idx) => (
+          <li key={idx}>
+            <code>
+              {error.time} {error.endpoint} &rarr; {error.status}
+              {error.count > 1 ? ` (x${error.count})` : ""}: {error.text}
+            </code>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 
@@ -107,11 +149,18 @@ export function AdminPage({ children }) {
     });
   }, []);
 
-  if (authed === null) return <p>Checking admin login...</p>;
+  if (authed === null)
+    return (
+      <Container>
+        <AdminErrorLog />
+        <p>Checking admin login...</p>
+      </Container>
+    );
 
   if (!authed)
     return (
       <Container>
+        <AdminErrorLog />
         <AdminLoginForm onSuccess={() => setAuthed(true)} />
       </Container>
     );
@@ -120,6 +169,7 @@ export function AdminPage({ children }) {
     <Container>
       <UpdateSSEConnection endpoint="sse_admin_updates" />
       <AdminNav />
+      <AdminErrorLog />
       {children}
     </Container>
   );

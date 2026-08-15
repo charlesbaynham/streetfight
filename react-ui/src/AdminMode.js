@@ -284,6 +284,7 @@ function AdminPanel() {
   const [games, setGames] = useState(null);
   const [users, setUsers] = useState([]);
 
+  // Failures show up in AdminPage's error log box
   const update = useCallback(() => {
     sendAPIRequest("admin_list_games", null, "GET", setGames);
     sendAPIRequest("get_users", {}, "GET", setUsers);
@@ -303,7 +304,13 @@ function AdminPanel() {
     }
   }, [games, update]);
 
-  if (games === null) return <p>Loading...</p>;
+  if (games === null)
+    return (
+      <>
+        <p>Loading...</p>
+        <button onClick={update}>Retry</button>
+      </>
+    );
 
   const allTeams = games.flatMap((game) => game.teams);
 
