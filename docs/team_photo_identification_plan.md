@@ -495,6 +495,24 @@ deliverable.
   Admins already review every shot, so a *flagged* photo costs almost nothing
   while a *silent misidentification* kills the wrong player. Tune every threshold
   in that direction.
+- **Reversal (implemented in `backend/shot_auto_actions.py`):** the universal
+  human confirm step is gone — a completed review now auto-fires the game
+  action (`mark_shot_missed` for a confident miss/bystander, `hit_user` for a
+  confident hit) when its overall confidence ≥ `confident_threshold` (0.6).
+  The mitigations that replace the confirm step:
+  - the per-game AI-review toggle gates every auto-action, so nothing fires
+    unless an admin has opted the game in;
+  - legacy stored reviews have no confidence field, which parses as 0.0 —
+    they can never auto-fire;
+  - hits additionally use erasure decoding, not min-confidence: a channel read
+    below 0.6 becomes an erasure, at least 3 readable channels (`k + 1`) are
+    required, and the erasure correction must identify **exactly one**
+    assignable slot, held by exactly one living non-shooter in the game —
+    anything else stays in the queue;
+  - only the **head** of a game's unresolved queue is ever auto-actioned, in
+    strict order: an ambiguous head blocks the shots behind it (its resolution
+    may invalidate them, e.g. a knockout refunds the victim's queued shots),
+    and resolving it — by admin or auto — cascades the drain forward.
 - **Do not buy safety with a conservative decoder.** Measured (§12.3): flagging
   anything with a single mismatch cuts wrong-IDs from 2.03% → 1.39% but throws
   away 13.5 points of correct identification. The leverage is entirely in the
@@ -515,8 +533,9 @@ deliverable.
 
 ## 9. Out of scope / future / open questions
 
-- **Full automation** of `hit_user` (only after the stronger code + field
-  validation).
+- ~~**Full automation** of `hit_user` (only after the stronger code + field
+  validation).~~ Done — see the §8.4 reversal and
+  `backend/shot_auto_actions.py`.
 - **Extension-field `GF(p^m)`** arithmetic (only needed for non-prime colour
   counts like 4/8/9; round to a prime instead for now).
 - **Distance-optimised assignment** for arbitrary `(n, q, P)` where no neat

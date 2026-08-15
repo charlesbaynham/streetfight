@@ -176,6 +176,167 @@ def test_confidence_is_clamped_not_rejected():
     assert sv.parse_result(raw).channels["tshirt"].confidence == 1.0
 
 
+# -- the top-level confidence -----------------------------------------------
+
+
+def test_top_level_confidence_is_parsed():
+    raw = reply_for(appearance_of(7))
+    raw["confidence"] = 0.7
+
+    assert sv.parse_result(raw).confidence == 0.7
+
+
+def test_top_level_confidence_is_clamped_not_rejected():
+    raw = reply_for(appearance_of(7))
+
+    raw["confidence"] = 5.0
+    assert sv.parse_result(raw).confidence == 1.0
+
+    raw["confidence"] = -3
+    assert sv.parse_result(raw).confidence == 0.0
+
+
+def test_a_missing_top_level_confidence_defaults_to_zero():
+    # Legacy stored reviews have no confidence field, and a model may ignore
+    # the request. Neither must ever look confident enough to auto-fire.
+    assert sv.parse_result(reply_for(appearance_of(7))).confidence == 0.0
+
+
+def test_an_unparseable_top_level_confidence_defaults_to_zero():
+    raw = reply_for(appearance_of(7))
+    raw["confidence"] = "very sure"
+
+    assert sv.parse_result(raw).confidence == 0.0
+
+
+def test_a_miss_reply_keeps_its_confidence():
+    raw = {"shot_hit_a_person": False, "reasoning": "pavement", "confidence": 0.8}
+
+    assert sv.parse_result(raw).confidence == 0.8
+
+
+def test_to_dict_includes_the_top_level_confidence():
+    raw = reply_for(appearance_of(7))
+    raw["confidence"] = 0.7
+
+    assert outcome_of(raw).to_dict()["confidence"] == 0.7
+
+
+def test_the_schema_requires_the_overall_confidence():
+    schema = sv.build_schema()
+
+    assert schema["properties"]["confidence"] == {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 1,
+    }
+    assert "confidence" in schema["required"]
+
+
+def test_the_prompt_asks_for_an_overall_confidence():
+    prompt = sv.build_prompt()
+
+    assert "photo as a whole" in prompt
+    assert '"confidence": 0.9' in prompt
+
+
+# -- the low-confidence erasure rule ----------------------------------------
+
+
+def test_a_low_confidence_channel_becomes_an_erasure():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["armbands"]["confidence"] = 0.5
+
+    symbols = sv.to_hard_symbols(sv.parse_result(raw), SCHEME)
+
+    assert symbols[CHANNELS.index("armbands")] is None
+
+
+def test_low_confidence_armbands_fall_back_to_the_code_check():
+    # A shaky armband read behaves exactly like a hidden one: the other three
+    # channels still reconstruct the outfit.
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["armbands"]["confidence"] = 0.5
+
+    result = outcome_of(raw)
+
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "armbands hidden, but the other colours are a valid code"
+    )
+    assert result.slot == 7
+
+
+def test_two_low_confidence_channels_make_a_bystander():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["armbands"]["confidence"] = 0.5
+    raw["channels"]["hat"]["confidence"] = 0.55
+
+    result = outcome_of(raw)
+
+    assert result.outcome == sv.HIT_BYSTANDER
+    assert "too few other garments" in result.outcome_reason
+
+
+# -- rebuilding candidates from a stored review -----------------------------
+
+
+def stored_review(raw):
+    """The to_dict() payload a completed review of ``raw`` would store."""
+    return outcome_of(raw).to_dict()
+
+
+def test_slot_candidates_identify_a_fully_read_outfit():
+    body = stored_review(reply_for(appearance_of(7)))
+
+    assert sv.slot_candidates_from_review(body, SCHEME) == [7]
+
+
+def test_slot_candidates_survive_one_erasure():
+    body = stored_review(reply_for(appearance_of(7), hidden=("hat",)))
+
+    assert sv.slot_candidates_from_review(body, SCHEME) == [7]
+
+
+def test_slot_candidates_with_only_two_readable_channels_are_empty():
+    # With only k = 2 readable positions an MDS code matches exactly one
+    # codeword whatever the colours are, so the match vouches for nothing.
+    body = stored_review(reply_for(appearance_of(7), hidden=("hat", "armbands")))
+
+    assert sv.slot_candidates_from_review(body, SCHEME) == []
+
+
+def test_slot_candidates_erase_low_confidence_stored_reads():
+    # Same erasure rule as the live path: two channels at 0.5 leave only two
+    # readable, which is not enough to vouch for anything.
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["hat"]["confidence"] = 0.5
+    raw["channels"]["armbands"]["confidence"] = 0.5
+
+    assert sv.slot_candidates_from_review(stored_review(raw), SCHEME) == []
+
+
+def test_slot_candidates_of_an_invalid_code_are_empty():
+    # Three readable channels whose unique completion is not the outfit anyone
+    # wears. (With >= 3 readable positions an MDS code matches at most one
+    # codeword, so "several candidates" cannot occur here; zero candidates is
+    # the ambiguous case.)
+    raw = reply_for(appearance_of(7), hidden=("armbands",))
+    appearance = appearance_of(7)
+    wrong = "green" if appearance["hat"] != "green" else "orange"
+    raw["channels"]["hat"]["colour"] = wrong
+
+    assert sv.slot_candidates_from_review(stored_review(raw), SCHEME) == []
+
+
+def test_slot_candidates_of_a_garbled_payload_are_empty():
+    assert sv.slot_candidates_from_review({"outcome": "hit_player"}, SCHEME) == []
+    assert sv.slot_candidates_from_review({"channels": "what"}, SCHEME) == []
+    assert (
+        sv.slot_candidates_from_review({"channels": {"tshirt": "black"}}, SCHEME) == []
+    )
+
+
 # -- the hit / bystander rule -----------------------------------------------
 
 

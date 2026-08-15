@@ -18,6 +18,7 @@ import os
 from typing import Optional
 from uuid import UUID
 
+from . import shot_auto_actions
 from . import shot_vision
 from .asyncio_triggers import trigger_update_event
 from .image_processing import draw_aim_marker
@@ -158,3 +159,11 @@ async def review_shot(shot_id: UUID, client=None) -> None:
         trigger_update_event("shots", game_id)
     except Exception:
         logger.exception("Could not store the review of shot %s", shot_id)
+        return
+
+    # A completed review may have made the queue head resolvable. Guarded so
+    # this function keeps its "never raises" contract.
+    try:
+        shot_auto_actions.process_queue_head(game_id)
+    except Exception:
+        logger.exception("Auto-action drain after reviewing shot %s failed", shot_id)

@@ -86,6 +86,7 @@ load_env_vars()
 setup_logging()
 
 from . import ai_shot_review
+from . import shot_auto_actions
 from . import sse_event_streams
 from .admin_auth import is_admin_authed
 from .admin_auth import mark_admin_authed
@@ -378,7 +379,11 @@ async def admin_get_shot(shot_id: UUID) -> ShotModel:
 
 @admin_method(path="/admin_shot_hit_user", method="POST")
 async def admin_shot_hit_user(shot_id: UUID, target_user_id: UUID):
+    game_id = AdminInterface().get_shot_game_id(shot_id)
     AdminInterface().hit_user(shot_id, target_user_id)
+    # Resolving the head may unblock confident reviews queued behind it. The
+    # drain lives here, not inside hit_user, so it cannot recurse.
+    shot_auto_actions.process_queue_head(game_id)
 
 
 @admin_method(path="/admin_set_hp", method="POST")
@@ -410,12 +415,16 @@ async def admin_give_ammo(user_id, num: int = 1):
 
 @admin_method(path="/admin_refund_shot", method="POST")
 async def admin_refund_shot(shot_id):
+    game_id = AdminInterface().get_shot_game_id(shot_id)
     AdminInterface().refund_shot(shot_id)
+    shot_auto_actions.process_queue_head(game_id)
 
 
 @admin_method(path="/admin_mark_shot_missed", method="POST")
 async def admin_mark_shot_missed(shot_id):
+    game_id = AdminInterface().get_shot_game_id(shot_id)
     AdminInterface().mark_shot_missed(shot_id)
+    shot_auto_actions.process_queue_head(game_id)
 
 
 @admin_method(path="/admin_set_ai_shot_review", method="POST")

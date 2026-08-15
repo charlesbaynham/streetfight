@@ -2,8 +2,10 @@ import asyncio
 import json
 import logging
 import os
+from collections import namedtuple
 from enum import Enum
 from typing import List
+from typing import Optional
 from typing import Tuple
 from uuid import UUID
 from uuid import uuid4 as get_uuid
@@ -42,6 +44,11 @@ logger = logging.getLogger(__name__)
 
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped
+
+
+# What the auto-action drain needs to know about the head of a game's shot
+# queue -- deliberately not a ShotModel, so image_base64 is never loaded.
+QueueHead = namedtuple("QueueHead", ["id", "user_id", "ai_review_state", "ai_review"])
 
 
 class CircleTypes(str, Enum):
@@ -87,6 +94,33 @@ class AdminInterface:
     def get_shot_model(self, shot_id) -> ShotModel:
         s = self._get_shot_orm(shot_id)
         return ShotModel.model_validate(s)
+
+    @db_scoped
+    def get_shot_game_id(self, shot_id) -> UUID:
+        """Just the game a shot belongs to, without loading the image.
+        404s if the shot is unknown."""
+        row = self._session.query(Shot.game_id).filter_by(id=shot_id).first()
+        if not row:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+        return row[0]
+
+    @db_scoped
+    def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
+        """The oldest unchecked shot in a game, or None if the queue is empty.
+
+        Ordered by (time_created, id): timestamps have 1s resolution, so the id
+        breaks ties deterministically. Selects columns only -- never
+        image_base64, which the auto-action drain has no use for.
+        """
+        row = (
+            self._session.query(
+                Shot.id, Shot.user_id, Shot.ai_review_state, Shot.ai_review
+            )
+            .filter_by(game_id=game_id, checked=False)
+            .order_by(Shot.time_created, Shot.id)
+            .first()
+        )
+        return QueueHead(*row) if row else None
 
     @db_scoped
     def get_games(self) -> List[GameModel]:
