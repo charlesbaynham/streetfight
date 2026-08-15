@@ -133,6 +133,7 @@ export function AdminNav() {
     <p>
       <Link to="/admin">Admin home</Link> | <ShotQueueLink /> |{" "}
       <Link to="/admin/identity">Identity workbench</Link> |{" "}
+      <Link to="/admin/identity-overrides">Identity overrides</Link> |{" "}
       <Link to="/">Player view</Link>
     </p>
   );
