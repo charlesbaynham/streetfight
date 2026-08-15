@@ -16,6 +16,27 @@ export function adminPost(endpoint, params, callback = null) {
   return sendAPIRequest(endpoint, params, "POST", callback);
 }
 
+// POST wrapper for admin actions whose response body is a file rather than
+// JSON. Saves the response as a normal browser download; failures show up in
+// the AdminErrorLog box like any other admin request.
+export function adminDownload(endpoint, params, filename) {
+  return sendAPIRequest(endpoint, params, "POST").then(async (response) => {
+    if (!response.ok) return response;
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    return response;
+  });
+}
+
 // A red box listing every API call that has failed on this page - status code
 // and raw response text, because the admin is the one debugging. Registers
 // itself as the global error handler from utils.sendAPIRequest, so it catches

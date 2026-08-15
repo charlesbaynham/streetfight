@@ -1,3 +1,6 @@
+import io
+import zipfile
+
 import pytest
 from fastapi.exceptions import HTTPException
 
@@ -167,6 +170,23 @@ def test_scoreboard_builds(db_session, team_factory, user_factory):
 
 def test_hit_user(user_in_team):
     AdminInterface().hit_user_by_admin(user_id=user_in_team)
+
+
+def test_dump_images_returns_zip_download(admin_api_client, old_shot_prep):
+    response = admin_api_client.post("/api/admin_dump_images")
+
+    assert response.is_success
+    assert response.headers["content-type"] == "application/zip"
+    assert (
+        'attachment; filename="shot_images.zip"'
+        in response.headers["content-disposition"]
+    )
+
+    with zipfile.ZipFile(io.BytesIO(response.content)) as zip_file:
+        names = zip_file.namelist()
+        # One marked-up image per shot submitted in old_shot_prep
+        assert len(names) == 2
+        assert all(name.endswith(".png") for name in names)
 
 
 def test_set_circle(admin_api_client, user_in_team):
