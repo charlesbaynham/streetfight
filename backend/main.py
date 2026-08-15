@@ -20,6 +20,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
+from . import identity_admin
 from . import identity_demo
 from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
@@ -594,6 +595,44 @@ def _identity_demo_errors():
     try:
         yield
     except identity_demo.DemoError as e:
+        raise HTTPException(400, str(e))
+
+
+######## IDENTITY (colour code) ADMIN INTEGRATION ###########
+#
+# The first database wiring of backend/identity/: a per-game report of who's
+# assigned which slot / override, and the two mutating endpoints the admin
+# "Identity overrides" page (react-ui/src/AdminIdentity.js) is coded against.
+# See backend/identity_admin.py for the actual logic -- this is deliberately
+# thin, matching the identity-demo endpoints just above.
+
+
+@admin_method(path="/admin_identity_report", method="GET")
+async def admin_identity_report(game_id: UUID) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.build_report(game_id)
+
+
+@admin_method(path="/admin_identity_set", method="POST")
+async def admin_identity_set(request: identity_admin.IdentitySetRequest) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.set_identity(request)
+
+
+@admin_method(path="/admin_identity_suggest", method="POST")
+async def admin_identity_suggest(
+    request: identity_admin.IdentitySuggestRequest,
+) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.suggest_identity(request)
+
+
+@contextmanager
+def _identity_admin_errors():
+    """Turn identity_admin's complaints into a readable HTTP 400."""
+    try:
+        yield
+    except identity_admin.IdentityAdminError as e:
         raise HTTPException(400, str(e))
 
 

@@ -4,6 +4,7 @@ import logging
 import time
 from threading import RLock
 from typing import List
+from typing import Optional
 from typing import Tuple
 from typing import Union
 from uuid import UUID
@@ -204,6 +205,20 @@ class UserInterface:
     @db_scoped
     def set_name(self, new_name: str):
         self.get_user().name = new_name.strip()
+
+    @db_scoped
+    def set_identity(self, slot: Optional[int], overrides_json: Optional[str]):
+        """Write the user's identity slot + overrides (JSON text, or None).
+
+        Just the column write -- validation (slot usability, uniqueness,
+        collisions, override label checks) lives in backend/identity_admin.py,
+        which is the impure bridge to the pure backend/identity package. Using
+        UserInterface here (rather than a raw AdminInterface column set) gets
+        the usual touch-on-write + update-event-on-commit behaviour for free.
+        """
+        u = self.get_user()
+        u.identity_slot = slot
+        u.identity_overrides = overrides_json
 
     @db_scoped
     def set_weapon_data(self, damage: int, fire_delay: float):

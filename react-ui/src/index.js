@@ -8,6 +8,7 @@ import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
+import AdminIdentity from "./AdminIdentity";
 
 import "./index.css";
 import AdminLogin from "./AdminLogin";
@@ -35,6 +36,14 @@ const router = createBrowserRouter([
     element: (
       <AdminPage>
         <IdentityDemo />
+      </AdminPage>
+    ),
+  },
+  {
+    path: "admin/identity-overrides",
+    element: (
+      <AdminPage>
+        <AdminIdentity />
       </AdminPage>
     ),
   },

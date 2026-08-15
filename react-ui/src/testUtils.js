@@ -44,6 +44,14 @@ function makeFakeResponse(status, body) {
       Promise.resolve(bodyIsString ? JSON.parse(body) : (body ?? null)),
     text: () =>
       Promise.resolve(bodyIsString ? body : JSON.stringify(body ?? null)),
+    // For endpoints whose real response is a file download (e.g.
+    // admin_dump_images's zip) rather than JSON. Content doesn't need to be
+    // realistic - callers only need something Blob-shaped to hand to
+    // URL.createObjectURL.
+    blob: () =>
+      Promise.resolve(
+        new Blob([bodyIsString ? body : JSON.stringify(body ?? "")]),
+      ),
     // Real Response bodies can only be read once; sendAPIRequest relies on
     // clone() to let the error handler and the caller each read the body.
     // This mock's json()/text() are non-destructive already, but clone()
@@ -318,6 +326,15 @@ function installFakeCaches() {
   };
 }
 
+// jsdom doesn't implement createObjectURL/revokeObjectURL at all (they're
+// tied to real Blob storage a browser provides) - AdminCommon.adminDownload
+// calls both when saving a file download, so stub them rather than let that
+// throw "is not a function".
+function installFakeObjectURL() {
+  URL.createObjectURL = jest.fn(() => "blob:mock-url");
+  URL.revokeObjectURL = jest.fn();
+}
+
 // Reinstalls every global stub this suite relies on, fresh. Called from a
 // beforeEach in setupTests.js so no state (fetch call log, SSE instances,
 // permission overrides, mock call history) leaks between tests.
@@ -364,4 +381,5 @@ export function resetTestEnvironment() {
   window.scrollTo = jest.fn();
 
   installFakeCaches();
+  installFakeObjectURL();
 }
