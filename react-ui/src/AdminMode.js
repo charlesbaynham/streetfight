@@ -283,23 +283,10 @@ function PlayerRow({ user, teams }) {
 function AdminPanel() {
   const [games, setGames] = useState(null);
   const [users, setUsers] = useState([]);
-  const [error, setError] = useState(null);
 
+  // Failures show up in AdminPage's error log box
   const update = useCallback(() => {
-    // Surface failures rather than sitting on "Loading..." forever - a
-    // broken admin_list_games looks otherwise identical to a slow one
-    sendAPIRequest("admin_list_games", null, "GET").then(async (response) => {
-      if (!response.ok) {
-        const body = await response.text();
-        setError(
-          `admin_list_games failed (${response.status}): ` +
-            `${body.slice(0, 300)} - check the backend logs`,
-        );
-        return;
-      }
-      setError(null);
-      setGames(await response.json());
-    });
+    sendAPIRequest("admin_list_games", null, "GET", setGames);
     sendAPIRequest("get_users", {}, "GET", setUsers);
   }, []);
 
@@ -320,8 +307,8 @@ function AdminPanel() {
   if (games === null)
     return (
       <>
-        <p>{error || "Loading..."}</p>
-        {error ? <button onClick={update}>Retry</button> : null}
+        <p>Loading...</p>
+        <button onClick={update}>Retry</button>
       </>
     );
 
@@ -333,8 +320,6 @@ function AdminPanel() {
       <UpdateListener update_type="admin" callback={update} />
 
       <h1>Admin</h1>
-
-      {error ? <p>{error}</p> : null}
 
       {games.length === 0 ? (
         <p>

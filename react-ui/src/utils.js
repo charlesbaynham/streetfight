@@ -22,6 +22,15 @@ export function makeAPIURL(endpoint, query_params = null) {
   return url;
 }
 
+// If set, every failed API request (non-2xx response or network error) is
+// reported here as {endpoint, status, text}. The admin pages register a
+// handler that displays the failures; player pages leave it unset.
+var apiErrorHandler = null;
+
+export function setAPIErrorHandler(handler) {
+  apiErrorHandler = handler;
+}
+
 export function sendAPIRequest(
   endpoint,
   query_params = null,
@@ -49,18 +58,32 @@ export function sendAPIRequest(
 
   // Callbacks are only called on success
   // To handle errors, use the returned promise which gives the raw response
-  return fetch(url, requestOptions).then(async (response) => {
-    if (callback) {
-      if (!response.ok) {
-        console.log(`Error in api call to ${url}:`);
-        console.dir(response);
-        console.dir(response.json());
-      } else {
-        callback(await response.json());
+  return fetch(url, requestOptions).then(
+    async (response) => {
+      if (!response.ok && apiErrorHandler) {
+        let text = "";
+        try {
+          // Clone: the body can only be read once, and the caller may want it
+          text = await response.clone().text();
+        } catch (e) {}
+        apiErrorHandler({ endpoint, status: response.status, text });
       }
-    }
-    return response;
-  });
+      if (callback) {
+        if (!response.ok) {
+          console.log(`Error in api call to ${url}:`);
+          console.dir(response);
+        } else {
+          callback(await response.json());
+        }
+      }
+      return response;
+    },
+    (error) => {
+      if (apiErrorHandler)
+        apiErrorHandler({ endpoint, status: "network", text: String(error) });
+      throw error;
+    },
+  );
 }
 
 export function getGunImgFromUser(user) {
