@@ -7,6 +7,7 @@ from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Dict
 from typing import List
+from typing import Optional
 from uuid import UUID
 
 import pydantic
@@ -25,6 +26,7 @@ from . import identity_demo
 from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
 from .item_actions import WEAPON_NAME_LOOKUP
+from .join_codes import JoinCodeModel
 from .locations import LANDMARK_LOCATIONS
 from .ticker_message_dispatcher import send_generic_message
 
@@ -196,19 +198,36 @@ async def set_name(
         ui.set_name(name)
 
 
+class _EncodedJoinCode(BaseModel):
+    data: str
+
+
 @router.post("/join_game")
 async def join_game(
-    game_id: str,
+    encoded_code: _EncodedJoinCode,
     user_id=Depends(get_user_id),
 ):
-    try:
-        game_id = UUID(game_id)
-    except ValueError as e:
-        raise HTTPException(400, str(e))
-    logger.info("User %s joining game %s", user_id, game_id)
+    """Join a team and claim an identity slot by scanning a signed join code.
 
-    with UserInterface(user_id) as ui:
-        return ui.join_game(game_id)
+    The body is ``{"data": <url-or-b64>}``, same shape as collect_item.
+    """
+    try:
+        code = JoinCodeModel.from_base64(encoded_code.data)
+    except ValueError:
+        raise HTTPException(400, "Malformed data")
+
+    code_validation_error = code.validate_signature()
+    if code_validation_error:
+        raise HTTPException(
+            403, f"The scanned join code is invalid - error {code_validation_error}"
+        )
+
+    logger.info(
+        "User %s joining team %s with slot %s", user_id, code.team_id, code.slot
+    )
+
+    with _identity_admin_errors():
+        return identity_admin.claim_join_slot(user_id, code)
 
 
 class _EncodedItem(BaseModel):
@@ -316,9 +335,22 @@ async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
 
 
 @admin_method(path="/admin_add_user_to_team", method="POST")
-async def admin_add_user_to_team(user_id: UUID, team_id: UUID) -> None:
-    logger.info("Adding user %s to team %s", user_id, team_id)
-    return AdminInterface().add_user_to_team(user_id, team_id)
+async def admin_add_user_to_team(
+    user_id: UUID, team_id: UUID, slot: Optional[int] = None
+) -> None:
+    """Put a user in a team and, optionally, assign them an identity slot.
+
+    Not atomic: the team join commits before the slot is validated, so a
+    rejected slot leaves the user in the team and returns 400 - the admin
+    repairs the slot via the identity page.
+    """
+    logger.info("Adding user %s to team %s (slot %s)", user_id, team_id, slot)
+    AdminInterface().add_user_to_team(user_id, team_id)
+    if slot is not None:
+        with _identity_admin_errors():
+            identity_admin.set_identity(
+                identity_admin.IdentitySetRequest(user_id=user_id, slot=slot)
+            )
 
 
 @admin_method("/admin_list_games", method="GET")
@@ -459,6 +491,14 @@ async def admin_make_new_item(
 async def admin_set_game_active(game_id: UUID, active: bool):
     logger.info("admin_set_game_active")
     AdminInterface().set_game_active(game_id, active)
+
+
+@admin_method(path="/admin_delete_user", method="POST")
+async def admin_delete_user(user_id: UUID):
+    """Delete a player outright - the repair for a duplicate user created by
+    joining on the wrong phone or browser."""
+    logger.info("admin_delete_user %s", user_id)
+    AdminInterface().delete_user(user_id)
 
 
 @admin_method(path="/admin_set_user_name", method="POST")
@@ -611,6 +651,14 @@ def _identity_demo_errors():
 async def admin_identity_report(game_id: UUID) -> dict:
     with _identity_admin_errors():
         return identity_admin.build_report(game_id)
+
+
+@admin_method(path="/admin_join_qr_codes", method="GET")
+async def admin_join_qr_codes(game_id: UUID, slots_per_team: int = 8) -> dict:
+    """Signed join QR URLs for every team in a game: scanning one joins that
+    team and claims that identity slot. Deterministic, so reprints match."""
+    with _identity_admin_errors():
+        return identity_admin.build_join_codes(game_id, slots_per_team)
 
 
 @admin_method(path="/admin_identity_set", method="POST")

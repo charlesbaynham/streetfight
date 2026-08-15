@@ -1,9 +1,7 @@
 import base64
 import binascii
-import hashlib
 import json
 import logging
-import os
 import re
 from typing import Dict
 from typing import Optional
@@ -15,6 +13,7 @@ import pydantic
 
 from .dotenv import load_env_vars
 from .model import ItemType
+from .qr_signing import sign_payload
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +62,8 @@ class ItemModel(pydantic.BaseModel):
     collected_as_team: bool
 
     sig: Optional[str] = None
+    # Pre-HMAC items were scrypt-signed with a salt. The field is kept only so
+    # old URLs still parse - their signatures then fail validation (403).
     salt: Optional[str] = None
 
     @classmethod
@@ -123,45 +124,14 @@ class ItemModel(pydantic.BaseModel):
         return json.dumps(self.data)
 
     def get_signature(self) -> str:
-        secret_key = os.environ["SECRET_KEY"]
-
-        # Input password to be hashed
-        payload = (
-            str(self.id)
-            + self.itype
-            + self.data_as_json()
-            + str(self.collected_only_once)
-            + str(self.collected_as_team)
-            + secret_key
+        return sign_payload(
+            "item",
+            self.id,
+            self.itype,
+            self.data_as_json(),
+            self.collected_only_once,
+            self.collected_as_team,
         )
-
-        # Generate a random salt
-        if not self.salt:
-            self.salt = os.urandom(8).hex()
-
-        # Parameters for scrypt (adjust these as needed)
-        n = 16384  # CPU/memory cost factor
-        r = 8  # Block size
-        p = 1  # Parallelization factor
-
-        # Hash the password using scrypt
-        hashed_payload = hashlib.scrypt(
-            payload.encode("utf-8"),
-            salt=self.salt.encode("utf-8"),
-            n=n,
-            r=r,
-            p=p,
-            dklen=16,
-        )
-
-        # Convert the hashed password to hexadecimal representation
-        hashed_password_hex = hashed_payload.hex()
-
-        logger.debug(
-            "Hash of payload %s, salt=%s is %s", payload, self.salt, hashed_password_hex
-        )
-
-        return hashed_password_hex
 
     @pydantic.field_validator("data")
     @classmethod
