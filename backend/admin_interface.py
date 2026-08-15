@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 from enum import Enum
@@ -198,6 +199,76 @@ class AdminInterface:
         # Manually bump all the users
         for user_id in user_ids:
             trigger_update_event("user", user_id)
+
+    @db_scoped
+    def set_ai_shot_review_enabled(self, game_id: UUID, enabled: bool) -> List[UUID]:
+        """Turn AI shot review on or off for a game.
+
+        Returns the ids of the shots waiting in the queue when it is switched
+        on, so the caller can put the existing backlog through as well as
+        everything that arrives afterwards. Returns an empty list when
+        switching off.
+        """
+        logger.info(
+            "AdminInterface - set_ai_shot_review_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_shot_review_enabled = enabled
+
+        backlog = []
+        if enabled:
+            backlog = [
+                shot_id[0]
+                for shot_id in self._session.query(Shot.id)
+                .filter_by(game_id=game_id, checked=False)
+                .order_by(Shot.time_created)
+                .all()
+            ]
+
+        self._session.commit()
+        return backlog
+
+    @db_scoped
+    def is_ai_shot_review_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_shot_review_enabled)
+
+    @db_scoped
+    def get_shot_ai_review(self, shot_id: UUID) -> dict:
+        """The stored AI review for one shot.
+
+        Deliberately its own endpoint rather than a field on the shot: the
+        frontend caches shot responses permanently by id, so a review that
+        lands after the image was cached would never be seen. Keeping the big
+        image cached and this small payload live avoids that.
+        """
+        shot = self._get_shot_orm(shot_id)
+        review = None
+        if shot.ai_review:
+            try:
+                review = json.loads(shot.ai_review)
+            except ValueError:
+                # An "error" state stores a plain message, not JSON
+                review = {"error": shot.ai_review}
+        return {"state": shot.ai_review_state, "review": review}
+
+    @db_scoped
+    def store_shot_ai_review(self, shot_id: UUID, state: str, payload=None) -> UUID:
+        """Record the outcome of a review. The single writer of these columns.
+
+        Returns the shot's game id so the caller can fire an update event
+        without needing a second session.
+        """
+        shot = self._get_shot_orm(shot_id)
+        shot.ai_review_state = state
+        if payload is None:
+            shot.ai_review = None
+        elif isinstance(payload, str):
+            shot.ai_review = payload
+        else:
+            shot.ai_review = json.dumps(payload, default=str)
+        self._session.commit()
+        return shot.game_id
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
@@ -432,6 +503,9 @@ class AdminInterface:
         shot.checked = True
         self._session.commit()
 
+        # The shot has left the queue, so tell any admin watching it
+        trigger_update_event("shots", game_id)
+
     @db_scoped
     def refund_shot(self, shot_id: UUID):
         """
@@ -468,6 +542,8 @@ class AdminInterface:
 
         shot.checked = True
         self._session.commit()
+
+        trigger_update_event("shots", game_id)
 
     def make_new_item(
         self,
@@ -653,20 +729,21 @@ class AdminInterface:
         ):
             self._session.delete(ticker_entry)
 
-    async def generate_any_ticker_updates(self, timeout=None):
+    async def generate_any_game_updates(self, timeout=None):
         """
-        An async iterator that yields None every time any ticker or circle is updated in any
-        game, or at most after timeout seconds
+        An async iterator that yields None every time any ticker, circle or shot
+        queue is updated in any game, or at most after timeout seconds
         """
         while True:
             game_ids = self._get_all_game_ids()
 
-            # Lookup / make an event for each game's ticker and circle
+            # Lookup / make an event for each game's ticker, circle and shots
             events = []
             for game_id in game_ids:
                 logger.debug("(AdminInterface) Getting events for game %s", game_id[0])
                 events.append(get_trigger_event("ticker", game_id[0]))
                 events.append(get_trigger_event("circle", game_id[0]))
+                events.append(get_trigger_event("shots", game_id[0]))
 
             # make futures for waiting for all these events
             futures = [

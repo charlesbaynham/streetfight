@@ -1,3 +1,66 @@
 .shotImg {
-    width: 100%;
+  width: 100%;
+}
+
+.tagRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  align-items: center;
+  margin: 0.4em 0;
+}
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35em;
+  padding: 0.15em 0.6em;
+  border-radius: 1em;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+  font-size: 0.85em;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+/* An unreadable channel is information too, so it is shown rather than
+   dropped - just visibly not a colour reading. */
+.tagUnknown {
+  opacity: 0.6;
+  font-style: italic;
+}
+
+.swatch {
+  width: 0.8em;
+  height: 0.8em;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.4);
+  flex: none;
+}
+
+.outcomeHit {
+  background: #d6f5df;
+  border-color: #37a05a;
+  font-weight: bold;
+}
+
+.outcomeBystander {
+  background: #fdf0d5;
+  border-color: #d9a441;
+}
+
+.outcomeMiss {
+  background: #eeeeee;
+  border-color: #aaaaaa;
+}
+
+.outcomeError {
+  background: #fbdddd;
+  border-color: #c0392b;
+}
+
+.aiReason {
+  font-size: 0.8em;
+  color: #666;
+  margin: 0.2em 0 0.6em 0;
 }

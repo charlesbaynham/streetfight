@@ -43,6 +43,10 @@ class Game(Base):
     time_created = Column(DateTime, server_default=func.now())
     active = Column(Boolean, nullable=False, default=False)
 
+    # When on, every unchecked shot is sent to a vision model and annotated
+    # with what it saw. The admin still makes the call; this only adds tags.
+    ai_shot_review_enabled = Column(Boolean, nullable=False, default=False)
+
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
@@ -108,6 +112,14 @@ class Shot(Base):
     checked = Column(Boolean, nullable=False, default=False)
 
     location_context = Column(String, nullable=True)
+
+    # AI review of the photo. Advisory only: the admin still decides every
+    # shot, these just become tags under the image in the queue.
+    # State is null (never queued) / "pending" / "done" / "error".
+    ai_review_state = Column(String, nullable=True)
+    # The ShotVisionResult as JSON text, or the error message when the state is
+    # "error". Text JSON matches how location_context is already stored.
+    ai_review = Column(String, nullable=True)
 
 
 class Team(Base):
@@ -300,6 +312,7 @@ class GameModel(pydantic.BaseModel):
     teams: List["TeamModel"]
     ticker_update_tag: int
     active: bool
+    ai_shot_review_enabled: bool = False
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None
@@ -368,6 +381,9 @@ class ShotModel(pydantic.BaseModel):
     shot_damage: int
 
     location_context: Optional[str] = None
+
+    ai_review_state: Optional[str] = None
+    ai_review: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
