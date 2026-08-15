@@ -14,9 +14,8 @@ setup, not a live migration.
 """
 
 from typing import Dict
-from typing import Iterable
 from typing import List
-from typing import Mapping
+from typing import Optional
 from typing import Sequence
 from typing import Tuple
 
@@ -90,30 +89,62 @@ class IdentityScheme:
         """What to physically wear: ``{channel_name: label}`` for a slot."""
         return self.channels.codeword_to_appearance(self.codeword_of_slot(slot))
 
-    def assign(self, player_ids: Iterable) -> Dict:
-        """Deterministically assign each player a slot ``0, 1, 2, ...``.
+    def usable_slots(self) -> List[int]:
+        """The slots that can actually be assigned to a player.
 
-        Returns ``{player_id: slot}``. Raises if there are more players than
-        :attr:`capacity`. Order follows the iterable, so callers control which
-        player gets which slot.
+        Two things disqualify a slot:
+
+        * its codeword is not wearable, because a restricted channel has no
+          label for the symbol it asks for (plan §2.6), and
+        * it is slot 0, the all-zero codeword. Plan §11.1: that is black in
+          every channel, which is both the single most likely outfit for a
+          passer-by to be wearing by accident and where the vision model's
+          failure mode piles up (it says "black" when it cannot tell).
+
+        For the default scheme this is 34 of the 49 codewords.
         """
-        player_ids = list(player_ids)
-        if len(player_ids) > self.capacity:
+        return [
+            slot
+            for slot in range(self.capacity)
+            if slot != 0 and self.channels.is_representable(self.codeword_of_slot(slot))
+        ]
+
+    def codewords_matching(
+        self, hard_symbols: Sequence[Optional[int]]
+    ) -> List[Codeword]:
+        """Every codeword agreeing with ``hard_symbols`` on its readable positions.
+
+        ``hard_symbols`` is one entry per channel, ``None`` for an erasure. This
+        answers "is this a *valid outfit*", not "which player is this" -- the
+        latter needs a candidate set and belongs in
+        :func:`~backend.identity.decoder.decode`.
+
+        Note how weak the answer gets as erasures pile up. For an MDS code with
+        ``k`` information symbols, any ``k`` readable positions determine the
+        codeword uniquely, so with exactly ``k`` left this always returns one
+        match and vouches for nothing. Callers that want the code to actually
+        *check* something must require more than ``k`` readable channels.
+        """
+        if len(hard_symbols) != self.channels.n:
             raise ValueError(
-                f"{len(player_ids)} players exceed scheme capacity {self.capacity}"
+                f"got {len(hard_symbols)} symbols but the scheme has "
+                f"{self.channels.n} channels"
             )
-        return {player_id: slot for slot, player_id in enumerate(player_ids)}
+        readable = [
+            (i, symbol) for i, symbol in enumerate(hard_symbols) if symbol is not None
+        ]
+        return [
+            codeword
+            for codeword in (
+                self.code.encode(message) for message in self.code.messages()
+            )
+            if all(codeword[i] == symbol for i, symbol in readable)
+        ]
 
-    def codewords_for(self, assignment: Mapping) -> Dict:
-        """Map a ``{player_id: slot}`` assignment to ``{player_id: codeword}``."""
-        return {
-            player_id: self.codeword_of_slot(slot)
-            for player_id, slot in assignment.items()
-        }
-
-    def appearances_for(self, assignment: Mapping) -> Dict[object, Dict[str, str]]:
-        """Map a ``{player_id: slot}`` assignment to ``{player_id: appearance}``."""
-        return {
-            player_id: self.appearance_of_slot(slot)
-            for player_id, slot in assignment.items()
-        }
+    # There is deliberately no assign() here. Allocating slots by position in a
+    # list looks convenient and is a trap: a player joining after the game has
+    # started shifts everyone below them onto a different codeword, i.e. a
+    # different outfit, which they are not wearing. A player's slot has to be
+    # stored against the player and assigned before the game (guests have to
+    # turn up in the right clothing), so it belongs with the User record rather
+    # than in this pure module. See plan §8.2.

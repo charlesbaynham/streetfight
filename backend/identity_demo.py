@@ -29,8 +29,10 @@ from .identity.code import ReedSolomonCode
 from .identity.code import build_code
 from .identity.code import parity_code
 from .identity.code import reed_solomon_code
+from .identity.config import CHANNEL_PALETTES
 from .identity.config import DEFAULT_CHANNEL_NAMES
 from .identity.config import DEFAULT_PALETTE
+from .identity.config import DEFAULT_TARGET_DISTANCE
 from .identity.config import DEFAULT_THRESHOLDS
 from .identity.decoder import DecoderThresholds
 from .identity.decoder import decode
@@ -72,13 +74,18 @@ class SchemeSpec(pydantic.BaseModel):
     """Everything needed to build an :class:`IdentityScheme` from scratch."""
 
     palette: List[str] = list(DEFAULT_PALETTE)
+    # Channels default to the main palette; the ones with their own restricted
+    # alphabet (trousers) carry it explicitly.
     channels: List[ChannelSpec] = [
-        ChannelSpec(name=name) for name in DEFAULT_CHANNEL_NAMES
+        ChannelSpec(name=name, labels=CHANNEL_PALETTES.get(name))
+        for name in DEFAULT_CHANNEL_NAMES
     ]
     # "auto" picks the simplest construction reaching target_distance;
     # "parity" and "reed_solomon" force one.
     code_type: str = "auto"
-    target_distance: Optional[int] = None
+    # d = 3 is the configured scheme (plan §2.4): with 4 channels and "auto"
+    # this builds the [4,2,3] Reed-Solomon code that default_scheme() uses.
+    target_distance: Optional[int] = DEFAULT_TARGET_DISTANCE
     k: Optional[int] = None
     # Field size. Defaults to the palette length; set it lower to keep spare
     # (unused) colours in the palette, or when the palette length isn't prime.
@@ -251,11 +258,19 @@ def describe_scheme(spec: SchemeSpec, max_rows: int = MAX_CODEBOOK_ROWS) -> dict
     codebook = []
     for slot in range(shown):
         codeword = scheme.codeword_of_slot(slot)
+        wearable = scheme.channels.is_representable(codeword)
         codebook.append(
             {
                 "slot": slot,
                 "codeword": list(codeword),
-                "appearance": scheme.channels.codeword_to_appearance(codeword),
+                # A restricted channel (plan §2.6) makes some codewords
+                # unwearable: the algebra is fine, but no such garment exists.
+                "wearable": wearable,
+                "appearance": (
+                    scheme.channels.codeword_to_appearance(codeword)
+                    if wearable
+                    else None
+                ),
             }
         )
 
@@ -264,6 +279,7 @@ def describe_scheme(spec: SchemeSpec, max_rows: int = MAX_CODEBOOK_ROWS) -> dict
         "k": code.k,
         "q": code.q,
         "capacity": scheme.capacity,
+        "usable_capacity": len(scheme.usable_slots()),
         "min_distance": d,
         "min_distance_source": d_source,
         "code_type": _code_name(code),
@@ -374,6 +390,13 @@ def _candidate_codewords(
     return out
 
 
+def _appearance_or_none(scheme: IdentityScheme, codeword: Sequence[int]):
+    """``{channel: label}``, or None if a restricted channel can't express it."""
+    if not scheme.channels.is_representable(codeword):
+        return None
+    return scheme.channels.codeword_to_appearance(codeword)
+
+
 def _hard_distance(hard: Sequence[Optional[int]], codeword: Sequence[int]) -> int:
     """Hamming distance over the readable (non-erased) channels only."""
     return sum(
@@ -411,7 +434,9 @@ def decode_reading(request: DecodeRequest) -> dict:
             "slot": slots[name],
             "posterior": posteriors[name],
             "codeword": list(codewords[name]),
-            "appearance": scheme.channels.codeword_to_appearance(codewords[name]),
+            # None when a restricted channel cannot express this codeword --
+            # the slot is decodable but nobody could be wearing it.
+            "appearance": _appearance_or_none(scheme, codewords[name]),
             "distance": _hard_distance(hard, codewords[name]),
         }
         for name, _ in result.ranked
@@ -470,17 +495,20 @@ def simulate(request: SimulateRequest) -> dict:
 
     scheme = build_scheme(request.scheme)
     channels = scheme.channels
-    q = channels.q
 
     candidates = request.candidates
     if not candidates:
-        if not 0 < request.num_players <= scheme.capacity:
+        # Simulate real players, so draw from the slots that can actually be
+        # worn -- a restricted channel makes some codewords unassignable.
+        usable = scheme.usable_slots()
+        if not 0 < request.num_players <= len(usable):
             raise DemoError(
-                f"num_players must be in 1..{scheme.capacity} (the scheme capacity)"
+                f"num_players must be in 1..{len(usable)} (the usable slots of "
+                f"this scheme; its raw capacity is {scheme.capacity})"
             )
         candidates = [
             CandidateSpec(name=f"player{slot}", slot=slot)
-            for slot in range(request.num_players)
+            for slot in usable[: request.num_players]
         ]
 
     codewords = _candidate_codewords(candidates, scheme)
@@ -515,15 +543,18 @@ def simulate(request: SimulateRequest) -> dict:
         seen_labels: List[Optional[str]] = []
         num_erasures = 0
         num_misreads = 0
-        for channel, symbol in zip(channels, true_codeword):
+        for index, (channel, symbol) in enumerate(zip(channels, true_codeword)):
+            # A misread can only ever land on a colour that channel actually
+            # has -- a restricted channel therefore has fewer ways to be wrong.
+            channel_size = channels.max_addressable_symbol(index)
             roll = rng.random()
             if roll < request.p_erasure:
                 observations.append(ChannelObservation.erasure())
                 seen_labels.append(None)
                 num_erasures += 1
                 continue
-            if roll < request.p_erasure + request.p_misread and q > 1:
-                wrong = rng.choice([s for s in range(q) if s != symbol])
+            if roll < request.p_erasure + request.p_misread and channel_size > 1:
+                wrong = rng.choice([s for s in range(channel_size) if s != symbol])
                 num_misreads += 1
             else:
                 wrong = symbol
@@ -601,6 +632,14 @@ def demo_defaults() -> dict:
     return {
         "palette": list(DEFAULT_PALETTE),
         "channel_names": list(DEFAULT_CHANNEL_NAMES),
+        # Channels whose alphabet differs from the main palette carry it here,
+        # so the workbench starts from the real (restricted) trousers channel
+        # rather than silently widening it.
+        "channels": [
+            {"name": name, "labels": CHANNEL_PALETTES.get(name)}
+            for name in DEFAULT_CHANNEL_NAMES
+        ],
+        "target_distance": DEFAULT_TARGET_DISTANCE,
         "thresholds": {
             "confident_threshold": DEFAULT_THRESHOLDS.confident_threshold,
             "ambiguous_margin": DEFAULT_THRESHOLDS.ambiguous_margin,

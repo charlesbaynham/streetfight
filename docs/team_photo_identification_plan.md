@@ -457,6 +457,21 @@ deliverable.
 - Add a nullable column to `User` (`backend/model.py`) for the player's identity
   **slot** (integer) — the codeword is derived via the scheme, so storing the
   slot keeps the DB decoupled from the colour palette. Expose it in `UserModel`.
+
+**Two acceptance criteria, from review of the vision PR:**
+
+- **A player's slot must be stable.** It is stored against the player and never
+  derived from their position in a list of players. Allocating by position means
+  somebody joining after the game has started shifts everyone below them onto a
+  different codeword — i.e. a different outfit, which they are not wearing. The
+  pure module deliberately offers no `assign()` for this reason; allocation is a
+  database operation that fills only the slots that are still empty.
+- **Slots must be pre-assignable, before the night.** Previous games let people
+  join on the night; that no longer works, because a player needs their outfit in
+  advance in order to turn up wearing it. So setup needs a way to allocate slots
+  to a guest list ahead of time and print or send each guest their appearance.
+  Whatever that flow is, it has to be usable before anybody has a `User` row from
+  actually opening the app.
 - Admin assigns slots when setting up a game; provide a way to print/export each
   player's `appearance` (what to wear) — extend `generate_qr_items.py`-style
   tooling or a simple admin endpoint.
@@ -583,6 +598,26 @@ includes navy and denim; black is black, not charcoal.*
 
 Keep commits 1–7 free of DB/web/vision imports so the module's independence is
 self-evident.
+
+**Status update.** Steps 1–7 are built, and `config.py` now carries the revised
+configuration from §2.4/§9.1: four channels (`tshirt`, `trousers`, `hat`,
+`armbands`), the 7-colour main palette, the 5-colour trousers palette, and the
+`[4,2,3]` Reed–Solomon code. Two things the original spec did not anticipate came
+out of §2.6 and are now part of the module:
+
+- `ChannelSet` accepts a channel with **fewer** than `q` labels (it used to
+  reject one), because the restricted trousers palette needs it. The codewords
+  such a channel cannot express are reported by `ChannelSet.is_representable`.
+- `IdentityScheme.usable_slots()` is the assignable set: representable codewords,
+  less slot 0 (§11.1). For the configured scheme that is **34** of the 49
+  codewords, and `assign()` now draws from it, so it can never hand a player an
+  outfit nobody can source.
+
+`IdentityScheme.codewords_matching()` was added alongside for the hit/bystander
+check in the vision layer — it answers "is this a valid outfit" without needing a
+candidate set. Note its documented limit: with only `k` readable channels any
+reading completes to exactly one codeword, so the check is vacuous and callers
+must require more than `k`.
 
 ---
 

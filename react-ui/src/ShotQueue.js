@@ -1,9 +1,102 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { getShotFromCache } from "./ShotCache";
+import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import { Container, Row, Col } from "react-bootstrap";
 
 import styles from "./ShotQueue.module.css";
+
+const OUTCOME_LABELS = {
+  hit_player: ["HIT", styles.outcomeHit],
+  hit_bystander: ["Bystander - not a hit", styles.outcomeBystander],
+  miss: ["Miss", styles.outcomeMiss],
+};
+
+// The AI's reading of a shot, shown as tags under the photo. Advisory only -
+// the admin still decides every shot with the buttons alongside.
+function ShotAiTags({ shot_id }) {
+  const [state, setState] = useState(null);
+  const [review, setReview] = useState(null);
+
+  const update = useCallback(() => {
+    if (!shot_id) return;
+    // Deliberately not read through ShotCache: that caches by shot id
+    // permanently, so a review arriving after the image was cached would
+    // never show up.
+    sendAPIRequest("admin_get_shot_ai_review", { shot_id: shot_id }).then(
+      async (response) => {
+        if (!response.ok) return;
+        const body = await response.json();
+        setState(body.state);
+        setReview(body.review);
+      },
+    );
+  }, [shot_id]);
+
+  useEffect(update, [update]);
+
+  // A review lands seconds after the shot it describes, so refetch when the
+  // backend says the queue changed - the shot id alone will not have.
+  const listener = <UpdateListener update_type="shots" callback={update} />;
+
+  if (!state) return listener;
+
+  if (state === "pending") {
+    return (
+      <>
+        {listener}
+        <p className={styles.aiReason}>Reviewing...</p>
+      </>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <>
+        {listener}
+        <div className={styles.tagRow}>
+          <span className={`${styles.tag} ${styles.outcomeError}`}>
+            AI review failed: {review ? review.error : "unknown error"}
+          </span>
+        </div>
+      </>
+    );
+  }
+
+  if (!review) return listener;
+
+  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
+    review.outcome,
+    styles.outcomeMiss,
+  ];
+
+  return (
+    <>
+      {listener}
+      <div className={styles.tagRow}>
+        <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>
+        {Object.entries(review.channels || {}).map(([name, channel]) => (
+          <span
+            key={name}
+            className={`${styles.tag} ${channel.colour ? "" : styles.tagUnknown}`}
+          >
+            {channel.hex ? (
+              <span
+                className={styles.swatch}
+                style={{ background: channel.hex }}
+              />
+            ) : null}
+            {name}: {channel.colour || "unknown"}
+          </span>
+        ))}
+      </div>
+      <p className={styles.aiReason}>
+        {review.outcome_reason}
+        {review.reasoning ? ` - ${review.reasoning}` : null}
+      </p>
+    </>
+  );
+}
 
 function NearestPlayers({ shot_data }) {
   if (shot_data === null) return;
@@ -83,8 +176,6 @@ function NearestPlayers({ shot_data }) {
     </>
   );
 }
-
-// TODO: Needs to automatically update on new shots
 
 export default function ShotQueue() {
   const [shot, setShot] = useState(null);
@@ -169,6 +260,10 @@ export default function ShotQueue() {
 
   return (
     <Container>
+      {/* The queue changes under us: new shots arrive, and AI reviews land
+          seconds after the shot they describe. */}
+      <UpdateSSEConnection endpoint="sse_admin_updates" />
+      <UpdateListener update_type="shots" callback={update} />
       <Row>
         <Col>
           <h1>
@@ -203,6 +298,7 @@ export default function ShotQueue() {
                 alt="The next shot in the queue"
                 src={shot.image_base64}
               />
+              <ShotAiTags shot_id={shot.id} />
             </Col>
             <Col>
               <NearestPlayers shot_data={shot} />

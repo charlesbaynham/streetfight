@@ -25,6 +25,20 @@ function GameView({ game }) {
     [game],
   );
 
+  const setAiShotReview = useCallback(
+    (enabled) => {
+      sendAPIRequest(
+        "admin_set_ai_shot_review",
+        {
+          game_id: game.id,
+          enabled: enabled,
+        },
+        "POST",
+      );
+    },
+    [game],
+  );
+
   return (
     <>
       <h2>Game {game.id}</h2>
@@ -47,6 +61,21 @@ function GameView({ game }) {
           Pause
         </button>
       </label>
+
+      <p>
+        <label htmlFor="ai_shot_review">
+          AI shot review (tags the shot queue with what a vision model sees;
+          switching it on also works through the shots already queued)
+        </label>{" "}
+        <input
+          id="ai_shot_review"
+          type="checkbox"
+          checked={game.ai_shot_review_enabled}
+          onChange={(e) => {
+            setAiShotReview(e.target.checked);
+          }}
+        />
+      </p>
 
       <h3>Public Ticker</h3>
 
