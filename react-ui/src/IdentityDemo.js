@@ -6,6 +6,7 @@
 // simulation to compare schemes.
 
 import React, { useCallback, useEffect, useMemo, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { sendAPIRequest } from "./utils";
 
@@ -890,7 +891,7 @@ export default function IdentityDemo() {
       <p>
         Admin sandbox for the colour-code player identification (see{" "}
         <code>backend/identity/</code>). Nothing here touches the database.{" "}
-        <a href="/admin">back to admin</a>
+        <Link to="/admin">back to admin</Link>
       </p>
 
       <SchemeEditor spec={spec} setSpec={setSpec} />
