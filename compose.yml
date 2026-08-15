@@ -25,6 +25,10 @@ services:
     - WEBSITE_URL
     - LOG_LEVEL
     - LOG_OVERRIDES
+    - OPENROUTER_API_KEY
+    - OPENROUTER_MODEL
+    - OPENROUTER_TIMEOUT_SECONDS
+    - AI_SHOT_REVIEW_CONCURRENCY
     - POSTPROCESS_OUTPUT_DIR=/data/processed_shots
     volumes:
     - ./logs:/data/logs
