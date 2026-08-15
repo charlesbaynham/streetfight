@@ -52,27 +52,30 @@ def test_unwearable_slots_raise_rather_than_inventing_a_colour():
             scheme.appearance_of_slot(slot)
 
 
-def test_assignment_is_deterministic_and_unique():
+def test_usable_slots_is_stable_across_calls():
+    # Slots are looked up by a player's stored slot number, so the mapping from
+    # slot to outfit must never move under a player's feet.
     scheme = default_scheme()
-    players = [f"player-{i}" for i in range(NUM_USABLE)]
-    assignment = scheme.assign(players)
 
-    assert assignment == scheme.assign(players)  # deterministic
-    assert sorted(assignment.values()) == scheme.usable_slots()
+    assert scheme.usable_slots() == scheme.usable_slots()
+    assert scheme.usable_slots() == default_scheme().usable_slots()
 
 
-def test_assignment_only_hands_out_wearable_outfits():
+def test_every_usable_slot_has_a_wearable_outfit():
     scheme = default_scheme()
-    players = [f"player-{i}" for i in range(NUM_USABLE)]
-    # Would raise if any assigned slot were unwearable
-    appearances = scheme.appearances_for(scheme.assign(players))
+
+    # Would raise if any usable slot were unwearable
+    appearances = [scheme.appearance_of_slot(slot) for slot in scheme.usable_slots()]
+
     assert len(appearances) == NUM_USABLE
 
 
-def test_assignment_rejects_too_many_players():
+def test_the_scheme_offers_no_positional_assignment():
+    # Removed deliberately: allocating slots by position renumbers everyone when
+    # a player joins late. Slots live on the player record instead (plan §8.2).
     scheme = default_scheme()
-    with pytest.raises(ValueError):
-        scheme.assign([f"player-{i}" for i in range(NUM_USABLE + 1)])
+
+    assert not hasattr(scheme, "assign")
 
 
 def test_slot_codeword_roundtrip():
@@ -103,9 +106,8 @@ def test_every_codeword_satisfies_the_documented_closed_form():
 
 def test_appearances_are_all_distinct():
     scheme = default_scheme()
-    players = [f"p{i}" for i in range(NUM_USABLE)]
-    appearances = scheme.appearances_for(scheme.assign(players))
-    seen = {tuple(sorted(a.items())) for a in appearances.values()}
+    appearances = [scheme.appearance_of_slot(slot) for slot in scheme.usable_slots()]
+    seen = {tuple(sorted(a.items())) for a in appearances}
     assert len(seen) == NUM_USABLE
 
 

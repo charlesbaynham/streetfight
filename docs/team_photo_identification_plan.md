@@ -457,6 +457,21 @@ deliverable.
 - Add a nullable column to `User` (`backend/model.py`) for the player's identity
   **slot** (integer) — the codeword is derived via the scheme, so storing the
   slot keeps the DB decoupled from the colour palette. Expose it in `UserModel`.
+
+**Two acceptance criteria, from review of the vision PR:**
+
+- **A player's slot must be stable.** It is stored against the player and never
+  derived from their position in a list of players. Allocating by position means
+  somebody joining after the game has started shifts everyone below them onto a
+  different codeword — i.e. a different outfit, which they are not wearing. The
+  pure module deliberately offers no `assign()` for this reason; allocation is a
+  database operation that fills only the slots that are still empty.
+- **Slots must be pre-assignable, before the night.** Previous games let people
+  join on the night; that no longer works, because a player needs their outfit in
+  advance in order to turn up wearing it. So setup needs a way to allocate slots
+  to a guest list ahead of time and print or send each guest their appearance.
+  Whatever that flow is, it has to be usable before anybody has a `User` row from
+  actually opening the app.
 - Admin assigns slots when setting up a game; provide a way to print/export each
   player's `appearance` (what to wear) — extend `generate_qr_items.py`-style
   tooling or a simple admin endpoint.

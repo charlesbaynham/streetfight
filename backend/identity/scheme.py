@@ -14,9 +14,7 @@ setup, not a live migration.
 """
 
 from typing import Dict
-from typing import Iterable
 from typing import List
-from typing import Mapping
 from typing import Optional
 from typing import Sequence
 from typing import Tuple
@@ -143,33 +141,10 @@ class IdentityScheme:
             if all(codeword[i] == symbol for i, symbol in readable)
         ]
 
-    def assign(self, player_ids: Iterable) -> Dict:
-        """Deterministically assign each player a slot from :meth:`usable_slots`.
-
-        Returns ``{player_id: slot}``. Raises if there are more players than
-        there are usable slots. Order follows the iterable, so callers control
-        which player gets which slot.
-        """
-        player_ids = list(player_ids)
-        slots = self.usable_slots()
-        if len(player_ids) > len(slots):
-            raise ValueError(
-                f"{len(player_ids)} players exceed the {len(slots)} usable slots "
-                f"of this scheme (capacity {self.capacity} before removing "
-                "unwearable codewords and the all-zero slot)"
-            )
-        return {player_id: slot for player_id, slot in zip(player_ids, slots)}
-
-    def codewords_for(self, assignment: Mapping) -> Dict:
-        """Map a ``{player_id: slot}`` assignment to ``{player_id: codeword}``."""
-        return {
-            player_id: self.codeword_of_slot(slot)
-            for player_id, slot in assignment.items()
-        }
-
-    def appearances_for(self, assignment: Mapping) -> Dict[object, Dict[str, str]]:
-        """Map a ``{player_id: slot}`` assignment to ``{player_id: appearance}``."""
-        return {
-            player_id: self.appearance_of_slot(slot)
-            for player_id, slot in assignment.items()
-        }
+    # There is deliberately no assign() here. Allocating slots by position in a
+    # list looks convenient and is a trap: a player joining after the game has
+    # started shifts everyone below them onto a different codeword, i.e. a
+    # different outfit, which they are not wearing. A player's slot has to be
+    # stored against the player and assigned before the game (guests have to
+    # turn up in the right clothing), so it belongs with the User record rather
+    # than in this pure module. See plan §8.2.
