@@ -42,7 +42,7 @@ def reply_for(appearance, hidden=(), person=True, confidence=0.9):
                 "confidence": confidence,
             }
     return {
-        "person_at_aim_point": person,
+        "shot_hit_a_person": person,
         "reasoning": "a test reply",
         "channels": channels,
     }
@@ -104,7 +104,7 @@ def test_prompt_names_the_wide_colour_buckets():
 def test_parses_a_well_formed_reply():
     result = sv.parse_result(reply_for(appearance_of(7)))
 
-    assert result.person_at_aim_point
+    assert result.shot_hit_a_person
     assert result.channels["tshirt"].colour == "black"
     assert result.channels["armbands"].colour == "blue"
     assert result.channels["tshirt"].confidence == 0.9
@@ -162,10 +162,10 @@ def test_a_missing_verdict_field_is_rejected():
 
 def test_a_miss_needs_no_channels():
     result = sv.parse_result(
-        {"person_at_aim_point": False, "reasoning": "empty pavement"}
+        {"shot_hit_a_person": False, "reasoning": "empty pavement"}
     )
 
-    assert not result.person_at_aim_point
+    assert not result.shot_hit_a_person
     assert all(read.is_erasure for read in result.channels.values())
 
 
@@ -180,7 +180,7 @@ def test_confidence_is_clamped_not_rejected():
 
 
 def test_no_person_at_the_aim_point_is_a_miss():
-    result = outcome_of({"person_at_aim_point": False, "reasoning": "missed"})
+    result = outcome_of({"shot_hit_a_person": False, "reasoning": "missed"})
 
     assert result.outcome == sv.MISS
     assert not result.is_hit
@@ -302,8 +302,110 @@ async def test_review_image_runs_the_whole_pipeline():
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
     # The image and the real prompt reached the client
-    assert client.calls[0]["image_data_url"] == "data:image/jpeg;base64,AAAA"
-    assert "unknown" in client.calls[0]["prompt"]
+    assert client.images_sent == ["data:image/jpeg;base64,AAAA"]
+    assert "unknown" in client.calls[0]["turns"][0]["text"]
+
+
+# -- the one zoom the model may ask for --------------------------------------
+
+ZOOM_REQUEST = {"request_zoom": True}
+
+
+@pytest.mark.asyncio
+async def test_a_zoom_request_gets_exactly_one_more_turn():
+    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_provider=lambda: "data:image/jpeg;base64,ZOOMED",
+    )
+
+    assert len(client.calls) == 2
+    assert client.images_sent == [
+        "data:image/jpeg;base64,WIDE",
+        "data:image/jpeg;base64,WIDE",  # the first turn is still in view
+        "data:image/jpeg;base64,ZOOMED",
+    ]
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
+
+
+@pytest.mark.asyncio
+async def test_the_second_turn_carries_the_first_exchange():
+    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
+
+    await sv.review_image(client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom")
+
+    roles = [turn["role"] for turn in client.calls[1]["turns"]]
+    assert roles == ["user", "assistant", "user"]
+    assert "one zoom" in client.calls[1]["turns"][-1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_the_zoom_is_not_produced_unless_it_is_asked_for():
+    calls = []
+
+    def zoom_provider():
+        calls.append(1)
+        return "data:zoom"
+
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    await sv.review_image(client, "data:...", SCHEME, zoom_provider=zoom_provider)
+
+    assert calls == []
+
+
+@pytest.mark.asyncio
+async def test_only_one_zoom_is_ever_granted():
+    # A model that keeps asking gets its second reply used as the answer.
+    second = reply_for(appearance_of(8))
+    second["request_zoom"] = True
+    client = FakeVisionClient(reply=[ZOOM_REQUEST, second])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
+    )
+
+    assert len(client.calls) == 2
+    assert result.outcome == sv.HIT_PLAYER
+
+
+@pytest.mark.asyncio
+async def test_a_zoom_request_with_no_zoom_available_is_an_error_not_a_hang():
+    client = FakeVisionClient(reply=ZOOM_REQUEST)
+
+    with pytest.raises(sv.ShotVisionError):
+        await sv.review_image(client, "data:...", SCHEME)
+
+    assert len(client.calls) == 1
+
+
+def test_wants_zoom_only_fires_on_an_explicit_true():
+    assert sv.wants_zoom({"request_zoom": True})
+    assert not sv.wants_zoom({"request_zoom": False})
+    assert not sv.wants_zoom({})
+    assert not sv.wants_zoom("nope")
+
+
+def test_the_schema_lets_the_model_ask():
+    assert sv.build_schema()["properties"]["request_zoom"] == {"type": "boolean"}
+
+
+def test_the_prompt_explains_the_zoom_and_the_hit_rule():
+    prompt = sv.build_prompt()
+
+    assert '{"request_zoom": true}' in prompt
+    assert "middle 25% of the image in higher resolution" in prompt
+    assert "You may do this once only" in prompt
+    assert "You MUST ultimately make a decision" in prompt
+    assert "clothing or hands or shoes counts as a hit" in prompt
+
+
+def test_the_buckets_cover_chinos():
+    assert "beige" in sv.build_prompt()
 
 
 @pytest.mark.parametrize(

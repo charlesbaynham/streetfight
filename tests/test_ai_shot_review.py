@@ -32,7 +32,7 @@ def no_api_key(monkeypatch):
 def hit_reply(slot=7):
     appearance = SCHEME.appearance_of_slot(slot)
     return {
-        "person_at_aim_point": True,
+        "shot_hit_a_person": True,
         "reasoning": "clear view of the target",
         "channels": {
             name: {"visible": True, "colour": colour, "confidence": 0.9}
@@ -67,10 +67,46 @@ async def test_the_image_sent_is_prepared_not_raw(db_session, shot_from_user_in_
 
     await ai_shot_review.review_shot(shot_from_user_in_team, client)
 
-    sent = client.calls[0]["image_data_url"]
+    sent = client.images_sent[0]
     original = AdminInterface().get_shot_model(shot_from_user_in_team).image_base64
     assert sent.startswith("data:image/jpeg;base64,")
     assert sent != original
+
+
+@pytest.mark.asyncio
+async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
+    mocker, db_session, shot_from_user_in_team
+):
+    # The whole point of the zoom is to spend camera resolution that
+    # prepare_for_vision has already thrown away, so it must start from the raw
+    # photo. Zooming the prepared image would just magnify blur.
+    spy = mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+    client = FakeVisionClient(reply=[{"request_zoom": True}, hit_reply()])
+
+    await ai_shot_review.review_shot(shot_from_user_in_team, client)
+
+    original = AdminInterface().get_shot_model(shot_from_user_in_team).image_base64
+    assert spy.call_args[0][0] == original
+    assert client.images_sent[-1] == "data:image/jpeg;base64,Z"
+    assert (
+        AdminInterface().get_shot_ai_review(shot_from_user_in_team)["state"]
+        == ai_shot_review.STATE_DONE
+    )
+
+
+@pytest.mark.asyncio
+async def test_no_zoom_is_produced_when_the_model_does_not_ask(
+    mocker, db_session, shot_from_user_in_team
+):
+    spy = mocker.patch("backend.ai_shot_review.zoom_image")
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(hit_reply())
+    )
+
+    spy.assert_not_called()
 
 
 @pytest.mark.asyncio

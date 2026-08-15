@@ -15,6 +15,7 @@ import json
 import logging
 import os
 import re
+from typing import List
 from typing import Optional
 
 logger = logging.getLogger(__name__)
@@ -71,9 +72,17 @@ def parse_json_reply(text: str) -> dict:
 
 
 class VisionClient:
-    """The interface :mod:`backend.shot_vision` codes against."""
+    """The interface :mod:`backend.shot_vision` codes against.
 
-    async def complete(self, image_data_url: str, prompt: str, schema: dict) -> dict:
+    ``turns`` is a conversation: a list of
+    ``{"role": "user"|"assistant", "text": str, "image_data_url": str|None}``.
+    It is a list rather than a single prompt because the model may ask for a
+    zoomed view of the photo, and answering that means a second turn with the
+    first exchange still in view -- otherwise it re-reasons from scratch and
+    cannot tell that it has already spent its one zoom.
+    """
+
+    async def complete(self, turns: List[dict], schema: dict) -> dict:
         raise NotImplementedError
 
 
@@ -90,23 +99,12 @@ class OpenRouterVisionClient(VisionClient):
         self.model = model or os.getenv("OPENROUTER_MODEL") or DEFAULT_MODEL
         self.timeout = timeout if timeout is not None else _timeout_from_env()
 
-    async def complete(self, image_data_url: str, prompt: str, schema: dict) -> dict:
+    async def complete(self, turns: List[dict], schema: dict) -> dict:
         import httpx
 
         payload = {
             "model": self.model,
-            "messages": [
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": image_data_url},
-                        },
-                    ],
-                }
-            ],
+            "messages": [_as_message(turn) for turn in turns],
             # Requested, not relied upon: a model without native JSON mode
             # ignores this and parse_json_reply picks up the slack.
             "response_format": {
@@ -167,22 +165,53 @@ class OpenRouterVisionClient(VisionClient):
 
 
 class FakeVisionClient(VisionClient):
-    """A canned client for tests and for local development without a key."""
+    """A canned client for tests and for local development without a key.
+
+    ``reply`` may be a single dict, a callable, or a list of dicts to hand back
+    one per call -- which is how a test drives "ask for a zoom, then answer".
+    """
 
     def __init__(self, reply=None, error: Optional[Exception] = None):
         self.reply = reply if reply is not None else {}
         self.error = error
         self.calls = []
 
-    async def complete(self, image_data_url: str, prompt: str, schema: dict) -> dict:
-        self.calls.append(
-            {"image_data_url": image_data_url, "prompt": prompt, "schema": schema}
-        )
+    async def complete(self, turns: List[dict], schema: dict) -> dict:
+        self.calls.append({"turns": list(turns), "schema": schema})
         if self.error is not None:
             raise self.error
         if callable(self.reply):
-            return self.reply(image_data_url, prompt, schema)
+            return self.reply(turns, schema)
+        if isinstance(self.reply, list):
+            index = min(len(self.calls), len(self.reply)) - 1
+            return self.reply[index]
         return self.reply
+
+    @property
+    def images_sent(self) -> List[str]:
+        """Every image handed to the model, in order, across all calls."""
+        return [
+            turn["image_data_url"]
+            for call in self.calls
+            for turn in call["turns"]
+            if turn.get("image_data_url")
+        ]
+
+
+def _as_message(turn: dict) -> dict:
+    """One conversation turn as a chat-completions message.
+
+    Plain text plus an optional image part -- nothing provider-specific, so a
+    swap of OPENROUTER_MODEL does not need a change here.
+    """
+    content = []
+    if turn.get("text"):
+        content.append({"type": "text", "text": turn["text"]})
+    if turn.get("image_data_url"):
+        content.append(
+            {"type": "image_url", "image_url": {"url": turn["image_data_url"]}}
+        )
+    return {"role": turn.get("role", "user"), "content": content}
 
 
 def _content_of(body: dict) -> str:

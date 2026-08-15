@@ -77,7 +77,7 @@ COLOUR_BUCKETS = {
     "green": "includes olive and khaki",
     "blue": "includes navy and denim",
     "black": "black, not charcoal",
-    "white": "includes cream",
+    "white": "includes cream and beige (e.g. chinos)",
 }
 
 # Decoder flag thresholds (tune per field experience).

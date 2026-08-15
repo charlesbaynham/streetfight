@@ -6,11 +6,12 @@ This is the vision *adapter* from the design brief (plan §8.1). It sits between
 
 Two principles run through it:
 
-**The model observes; Python decides.** The model is never asked "was this a
-hit". It is asked, per channel, whether the garment is clearly visible and if so
-what colour it is. :func:`classify` turns those observations into an outcome, so
-the rule lives somewhere tests can pin it down and does not drift when the model
-behind ``OPENROUTER_MODEL`` changes.
+**The model observes; Python decides.** The model answers two kinds of question
+it can actually see the answer to: did the shot land on a person, and what
+colour is each garment. It is never asked whether that person is a *player* --
+:func:`classify` decides that from the observations, so the rule lives somewhere
+tests can pin it down and does not drift when the model behind
+``OPENROUTER_MODEL`` changes.
 
 **An erasure is cheaper than a misread.** The code corrects two erasures but
 only one misread (``d >= 2t + e + 1``), so "unknown" is offered for every
@@ -19,6 +20,7 @@ channel and the prompt asks about visibility before colour. Measured (plan
 colour, which is the expensive failure.
 """
 
+import json
 import logging
 from typing import Dict
 from typing import List
@@ -35,6 +37,15 @@ from .identity.observations import Reading
 logger = logging.getLogger(__name__)
 
 UNKNOWN = "unknown"
+
+# The reply field carrying "did the shot land on a person". Note that is not
+# "is somebody standing at the centre": clothing, hands and shoes all count, and
+# only a shot that entirely misses the person is a miss.
+HIT_FIELD = "shot_hit_a_person"
+
+# The model asks for a closer look by setting this. It gets one.
+ZOOM_FIELD = "request_zoom"
+ZOOM_FACTOR = 4
 
 # Outcomes. Only HIT_PLAYER counts against a player's hit points -- and nothing
 # acts on these yet, they are shown to the admin as advice.
@@ -81,14 +92,14 @@ class ShotVisionResult:
 
     def __init__(
         self,
-        person_at_aim_point: bool,
+        shot_hit_a_person: bool,
         channels: Dict[str, ChannelRead],
         reasoning: str = "",
         outcome: str = MISS,
         outcome_reason: str = "",
         slot: Optional[int] = None,
     ):
-        self.person_at_aim_point = person_at_aim_point
+        self.shot_hit_a_person = shot_hit_a_person
         self.channels = channels
         self.reasoning = reasoning
         self.outcome = outcome
@@ -102,7 +113,7 @@ class ShotVisionResult:
     def to_dict(self) -> dict:
         """The JSON stored on the Shot and rendered as tags in the queue."""
         return {
-            "person_at_aim_point": self.person_at_aim_point,
+            "shot_hit_a_person": self.shot_hit_a_person,
             "outcome": self.outcome,
             "outcome_reason": self.outcome_reason,
             "is_hit": self.is_hit,
@@ -131,7 +142,11 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
     return {
         "type": "object",
         "properties": {
-            "person_at_aim_point": {"type": "boolean"},
+            HIT_FIELD: {"type": "boolean"},
+            # Asking for the zoom through the reply rather than a provider
+            # tool-call API: OPENROUTER_MODEL is meant to be swapped freely, and
+            # a boolean in the JSON works on every model.
+            ZOOM_FIELD: {"type": "boolean"},
             "reasoning": {"type": "string"},
             "channels": {
                 "type": "object",
@@ -157,9 +172,19 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
                 "additionalProperties": False,
             },
         },
-        "required": ["person_at_aim_point", "reasoning", "channels"],
+        "required": [HIT_FIELD, ZOOM_FIELD, "reasoning", "channels"],
         "additionalProperties": False,
     }
+
+
+def wants_zoom(raw) -> bool:
+    """Whether a raw reply is a request for a closer look.
+
+    Checked *before* :func:`parse_result`, because a model asking for the zoom
+    will not have filled in the channels yet and ``parse_result`` is right to
+    reject a reply that has not.
+    """
+    return isinstance(raw, dict) and raw.get(ZOOM_FIELD) is True
 
 
 def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
@@ -193,13 +218,26 @@ shot landed.
 Your job is to report what the person at the crosshair is wearing. Report only \
 what you can actually see. Do not guess.
 
-FIRST: is there a person at the crosshair at all? If the crosshair is on empty \
-ground, a wall, the sky, or nobody in particular, set "person_at_aim_point" to \
-false and stop there.
+You have the ability to request a zoomed-in view of this photograph if you reply \
+with {{"request_zoom": true}} and nothing else. The next turn will provide you an \
+image that contains only the middle 25% of the image in higher resolution. You \
+may do this once only, so spend it on a target that is too small or too far away \
+to judge from the whole frame. If the image is merely blurred, a zoom will not \
+help.
 
-If there is a person at the crosshair, answer these questions about THAT PERSON \
-ONLY. There are usually other people in the frame -- passers-by who are not in \
-the game. Ignore everyone except the person at the crosshair.
+FIRST: did the shot hit a person? If the crosshair is on empty ground, a wall, \
+the sky, or nobody in particular, set "{HIT_FIELD}" to false.
+
+Some shots will be very close. For these, if it is difficult for you to tell \
+whether it is a hit or not, you may request a zoomed version of the image once. \
+You MUST ultimately make a decision on whether the shot is hitting a person or \
+not. Hitting any part of their clothing or hands or shoes counts as a hit. It is \
+only a miss if it entirely misses the person and hits, for example, a building or \
+a street light.
+
+If the shot hit a person, answer these questions about THAT PERSON ONLY. There \
+are usually other people in the frame -- passers-by who are not in the game. \
+Ignore everyone except the person the shot hit.
 
 {chr(10).join(questions)}
 
@@ -212,12 +250,21 @@ Some colour names cover a range, so use these buckets:
 
 Reply with JSON only, matching this shape:
 {{
-  "person_at_aim_point": true,
+  "{HIT_FIELD}": true,
+  "request_zoom": false,
   "reasoning": "one or two sentences on what you can and cannot see",
   "channels": {{
 {_example_channels(palettes)}
   }}
 }}"""
+
+
+ZOOM_FOLLOW_UP = (
+    "Here is the zoomed view: the middle 25% of the previous photograph, at "
+    "higher resolution. The crosshair again marks where the shot landed. This is "
+    "your one zoom, so answer in full now with the JSON described above. "
+    '"request_zoom" must be false in your reply.'
+)
 
 
 def _example_channels(palettes: Dict[str, List[str]]) -> str:
@@ -247,11 +294,9 @@ def parse_result(raw: dict, palettes: Optional[Dict[str, List[str]]] = None):
     if not isinstance(raw, dict):
         raise ShotVisionError(f"expected a JSON object, got {type(raw).__name__}")
 
-    person = raw.get("person_at_aim_point")
+    person = raw.get(HIT_FIELD)
     if not isinstance(person, bool):
-        raise ShotVisionError(
-            f"'person_at_aim_point' must be true or false; got {person!r}"
-        )
+        raise ShotVisionError(f"'{HIT_FIELD}' must be true or false; got {person!r}")
 
     reasoning = raw.get("reasoning") or ""
     if not isinstance(reasoning, str):
@@ -259,7 +304,7 @@ def parse_result(raw: dict, palettes: Optional[Dict[str, List[str]]] = None):
 
     if not person:
         return ShotVisionResult(
-            person_at_aim_point=False,
+            shot_hit_a_person=False,
             channels={name: ChannelRead(False, None, 0.0) for name in palettes},
             reasoning=reasoning,
         )
@@ -277,7 +322,7 @@ def parse_result(raw: dict, palettes: Optional[Dict[str, List[str]]] = None):
         channels[name] = _parse_channel(name, raw_channels[name], palette)
 
     return ShotVisionResult(
-        person_at_aim_point=True, channels=channels, reasoning=reasoning
+        shot_hit_a_person=True, channels=channels, reasoning=reasoning
     )
 
 
@@ -370,7 +415,7 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
     the time -- so "no armbands visible" cannot simply mean "not a player".
     The code covers that case instead:
 
-    1. nobody at the aim point -> miss;
+    1. the shot did not land on anybody -> miss;
     2. armbands read -> a player, and a hit;
     3. armbands hidden, but the other three channels are all read and complete
        to exactly one assignable codeword -> a player, and a hit. With one
@@ -384,9 +429,9 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
     """
     scheme = scheme or default_scheme()
 
-    if not result.person_at_aim_point:
+    if not result.shot_hit_a_person:
         result.outcome = MISS
-        result.outcome_reason = "nobody at the aim point"
+        result.outcome_reason = "the shot did not land on anybody"
         return result
 
     symbols = to_hard_symbols(result, scheme)
@@ -444,13 +489,45 @@ def _slot_of(scheme, symbols: List[Optional[int]]) -> Optional[int]:
 
 
 async def review_image(
-    client, image_data_url: str, scheme=None, palettes=None
+    client, image_data_url: str, scheme=None, palettes=None, zoom_provider=None
 ) -> ShotVisionResult:
-    """Send one prepared image to the model and return the classified result."""
+    """Review one prepared image, allowing the model a single zoom.
+
+    ``zoom_provider`` is a zero-argument callable returning a magnified view of
+    the shot, and is only invoked if the model asks for one. It is a callable
+    rather than a second image argument so the cost of producing the zoom is not
+    paid on the shots that do not need it -- and so the caller can cut it from
+    the *original* photo, which is the whole point (see
+    :func:`~backend.image_processing.zoom_image`).
+
+    The one-zoom limit is enforced here rather than trusted to the prompt.
+    """
     palettes = palettes or channel_palettes()
-    raw = await client.complete(
-        image_data_url=image_data_url,
-        prompt=build_prompt(palettes),
-        schema=build_schema(palettes),
-    )
+    schema = build_schema(palettes)
+
+    turns = [
+        {
+            "role": "user",
+            "text": build_prompt(palettes),
+            "image_data_url": image_data_url,
+        }
+    ]
+
+    raw = await client.complete(turns, schema)
+
+    if wants_zoom(raw) and zoom_provider is not None:
+        logger.info("Vision model asked for a zoom; sending the magnified centre")
+        turns = turns + [
+            {"role": "assistant", "text": json.dumps(raw)},
+            {
+                "role": "user",
+                "text": ZOOM_FOLLOW_UP,
+                "image_data_url": zoom_provider(),
+            },
+        ]
+        # Whatever comes back now is the answer: the model has had its one look.
+        raw = await client.complete(turns, schema)
+    elif wants_zoom(raw):
+        logger.warning("Vision model asked for a zoom but none is available")
+
     return classify(parse_result(raw, palettes), scheme)

@@ -22,6 +22,7 @@ from . import shot_vision
 from .asyncio_triggers import trigger_update_event
 from .image_processing import draw_aim_marker
 from .image_processing import prepare_for_vision
+from .image_processing import zoom_image
 from .vision_client import get_vision_client
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,17 @@ async def review_shot(shot_id: UUID, client=None) -> None:
             # The aim marker tells the model where the shot landed; the resize
             # keeps the image bill sane.
             prepared = prepare_for_vision(draw_aim_marker(image_base64))
-            result = await shot_vision.review_image(client, prepared)
+
+            # Cut the zoom from the *original*, not from `prepared`. The resize
+            # above has already discarded the camera resolution that makes a
+            # distant target readable, which is the only reason to zoom at all.
+            # Only called if the model asks, so an unzoomed shot costs nothing.
+            def zoom_provider():
+                return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
+
+            result = await shot_vision.review_image(
+                client, prepared, zoom_provider=zoom_provider
+            )
         payload = result.to_dict()
         logger.info(
             "Shot %s reviewed: %s (%s)", shot_id, result.outcome, result.outcome_reason
