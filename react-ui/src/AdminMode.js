@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Col, Row } from "react-bootstrap";
 
 import { sendAPIRequest } from "./utils";
-import { AdminPage, adminPost } from "./AdminCommon";
+import { AdminPage, adminDownload, adminPost } from "./AdminCommon";
 import NewItems from "./NewItems";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
@@ -19,7 +19,7 @@ const WEAPONS = {
   "Eat-a-bullet": [1, 1],
 };
 
-function weaponName(user) {
+export function weaponName(user) {
   for (const [name, [damage, timeout]] of Object.entries(WEAPONS)) {
     if (user.shot_damage === damage && user.shot_timeout === timeout)
       return name;
@@ -133,7 +133,8 @@ function GamePanel({ game }) {
             }
           />{" "}
           AI shot review (tags the shot queue with what a vision model sees;
-          switching it on also works through the shots already queued)
+          switching it on also works through the queued shots that have not been
+          reviewed yet)
         </label>
       </p>
 
@@ -354,12 +355,10 @@ function AdminPanel() {
           <h2>Maintenance</h2>
           <button
             onClick={() =>
-              adminPost("admin_dump_images", null, () =>
-                window.alert("Shot images dumped on the server."),
-              )
+              adminDownload("admin_dump_images", null, "shot_images.zip")
             }
           >
-            Dump shot images to disk
+            Download shot images (zip)
           </button>
         </Col>
       </Row>

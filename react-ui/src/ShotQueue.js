@@ -99,9 +99,10 @@ function ShotAiTags({ shot_id }) {
   );
 }
 
-function NearestPlayers({ shot_data }) {
-  if (shot_data === null) return;
-
+// Candidate targets for a shot, nearest-first: every other player present in
+// the shot's location context, with their distance from the shooter at the
+// moment it was taken. Excludes the shooter themselves.
+export function rankShotCandidates(shot_data) {
   const shooting_user_id = shot_data.user_id;
   const context = JSON.parse(shot_data.location_context);
 
@@ -163,6 +164,14 @@ function NearestPlayers({ shot_data }) {
 
   // Sort shooting_users by distance
   shooting_users.sort((a, b) => (a.distance > b.distance ? 1 : -1));
+
+  return shooting_users;
+}
+
+function NearestPlayers({ shot_data }) {
+  if (shot_data === null) return;
+
+  const shooting_users = rankShotCandidates(shot_data);
 
   return (
     <>

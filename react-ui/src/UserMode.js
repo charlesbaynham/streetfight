@@ -20,6 +20,7 @@ import {
   isCameraPermissionGranted,
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
+import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
@@ -71,6 +72,7 @@ function GetView({ user }) {
         ) : (
           <div>
             <ButtonAndScoreboard standalone />
+            <ShotHistoryButton standalone />
           </div>
         )}
         <div className={styles.mapAndTickerContainer}>
@@ -80,6 +82,8 @@ function GetView({ user }) {
       </div>
 
       <WebcamView trigger={triggerShot} isDead={!isAlive} />
+
+      <ShotHistoryController />
 
       {isAlive ? (
         <CrosshairImage />

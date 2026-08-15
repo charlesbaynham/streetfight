@@ -25,6 +25,13 @@ from sqlalchemy_utils import UUIDType
 
 DEFAULT_SHOT_TIMEOUT = 6
 
+# The values Shot.ai_review_state can take. They live here, next to the column,
+# rather than in backend.ai_shot_review so that code which only reads the column
+# does not have to import the review worker.
+AI_REVIEW_STATE_PENDING = "pending"
+AI_REVIEW_STATE_DONE = "done"
+AI_REVIEW_STATE_ERROR = "error"
+
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
@@ -110,6 +117,12 @@ class Shot(Base):
 
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
+
+    # How the shot was adjudicated: "hit" / "miss" / "refunded", or null while
+    # it is still in the queue. Recorded so the shooter's shot history can
+    # report what happened - target_user_id alone can't tell a miss from a
+    # refund.
+    result = Column(String, nullable=True)
 
     location_context = Column(String, nullable=True)
 
@@ -384,6 +397,7 @@ class ShotModel(pydantic.BaseModel):
     time_created: datetime.datetime
     game_id: UUID
     checked: bool
+    result: Optional[str] = None
     image_base64: str
 
     user: UserModel

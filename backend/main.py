@@ -17,6 +17,7 @@ from fastapi import HTTPException
 from fastapi import Request
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
+from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
 from . import identity_admin
@@ -161,6 +162,28 @@ async def submit_shot(
     trigger_update_event("shots", game_id)
     if AdminInterface().is_ai_shot_review_enabled(game_id):
         ai_shot_review.enqueue_review(shot_id)
+
+    return shot_id
+
+
+@router.get("/user_shots")
+async def get_user_shots(
+    user_id=Depends(get_user_id),
+):
+    """This user's own shots, newest first, without the images"""
+    with UserInterface(user_id) as ui:
+        return ui.get_own_shots()
+
+
+@router.get("/user_shot_image")
+async def get_user_shot_image(
+    shot_id: UUID,
+    user_id=Depends(get_user_id),
+):
+    """The image for one of this user's own shots. Immutable, so the frontend
+    caches these by id and only ever fetches each one once."""
+    with UserInterface(user_id) as ui:
+        return {"image_base64": ui.get_own_shot_image(shot_id)}
 
 
 @router.post("/set_name")
@@ -523,9 +546,15 @@ async def admin_send_custom_ticker_message(
 async def admin_dump_images():
     logger.info("admin_dump_images - %s", locals())
 
-    from .postprocess_shot_images import output_images
+    from .postprocess_shot_images import zip_shot_images
 
-    return output_images()
+    zip_bytes = zip_shot_images()
+
+    return Response(
+        content=zip_bytes,
+        media_type="application/zip",
+        headers={"Content-Disposition": 'attachment; filename="shot_images.zip"'},
+    )
 
 
 ######## IDENTITY (colour code) DEMO ###########

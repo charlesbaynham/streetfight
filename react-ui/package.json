@@ -56,5 +56,12 @@
   },
   "devDependencies": {
     "webpack-cli": "^5.1.4"
+  },
+  "jest": {
+    "resetMocks": false,
+    "moduleNameMapper": {
+      "^qr-scanner$": "<rootDir>/src/testMocks/qrScanner.js",
+      "^use-sound$": "<rootDir>/src/testMocks/useSound.js"
+    }
   }
 }
