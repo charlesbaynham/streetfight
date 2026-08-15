@@ -89,7 +89,7 @@ class Ticker:
             if private_user_id:
                 message_class = "user"
 
-            if highlight_user_id == self.user_id:
+            if highlight_user_id is not None and highlight_user_id == self.user_id:
                 message_class = "highlight"
 
             out.append((message_class, message))

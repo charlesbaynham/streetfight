@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
+import { AdminPage, adminPost } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
-import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
-import { Container, Row, Col } from "react-bootstrap";
+import UpdateListener from "./UpdateListener";
+import { Row, Col } from "react-bootstrap";
 
 import styles from "./ShotQueue.module.css";
 
@@ -177,7 +178,7 @@ function NearestPlayers({ shot_data }) {
   );
 }
 
-export default function ShotQueue() {
+function ShotQueuePanel() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
   const [currentShotIdx, setCurrentShotIdx] = useState(0);
@@ -214,14 +215,10 @@ export default function ShotQueue() {
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {
-      sendAPIRequest(
-        "admin_shot_hit_user",
-        {
-          shot_id: shot_id,
-          target_user_id: target_user_id,
-        },
-        "POST",
-      ).then((_) => {
+      adminPost("admin_shot_hit_user", {
+        shot_id: shot_id,
+        target_user_id: target_user_id,
+      }).then((_) => {
         update();
       });
     },
@@ -229,19 +226,15 @@ export default function ShotQueue() {
   );
 
   const markShotMissed = useCallback(() => {
-    sendAPIRequest("admin_mark_shot_missed", { shot_id: shot.id }, "POST").then(
-      (_) => {
-        update();
-      },
-    );
+    adminPost("admin_mark_shot_missed", { shot_id: shot.id }).then((_) => {
+      update();
+    });
   }, [shot, update]);
 
   const refundShot = useCallback(() => {
-    sendAPIRequest("admin_refund_shot", { shot_id: shot.id }, "POST").then(
-      (_) => {
-        update();
-      },
-    );
+    adminPost("admin_refund_shot", { shot_id: shot.id }).then((_) => {
+      update();
+    });
   }, [shot, update]);
 
   useEffect(update, [update]);
@@ -259,10 +252,9 @@ export default function ShotQueue() {
   }, [currentShotIdx]);
 
   return (
-    <Container>
+    <>
       {/* The queue changes under us: new shots arrive, and AI reviews land
           seconds after the shot they describe. */}
-      <UpdateSSEConnection endpoint="sse_admin_updates" />
       <UpdateListener update_type="shots" callback={update} />
       <Row>
         <Col>
@@ -299,6 +291,13 @@ export default function ShotQueue() {
                 src={shot.image_base64}
               />
               <ShotAiTags shot_id={shot.id} />
+              <button
+                onClick={() =>
+                  adminPost("admin_review_shot", { shot_id: shot.id })
+                }
+              >
+                Re-run AI review
+              </button>
             </Col>
             <Col>
               <NearestPlayers shot_data={shot} />
@@ -341,6 +340,14 @@ export default function ShotQueue() {
           </Row>
         </>
       ) : null}
-    </Container>
+    </>
+  );
+}
+
+export default function ShotQueue() {
+  return (
+    <AdminPage>
+      <ShotQueuePanel />
+    </AdminPage>
   );
 }

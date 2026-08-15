@@ -11,6 +11,7 @@ import IdentityDemo from "./IdentityDemo";
 
 import "./index.css";
 import AdminLogin from "./AdminLogin";
+import { AdminPage } from "./AdminCommon";
 
 const router = createBrowserRouter([
   {
@@ -31,7 +32,11 @@ const router = createBrowserRouter([
   },
   {
     path: "admin/identity",
-    element: <IdentityDemo />,
+    element: (
+      <AdminPage>
+        <IdentityDemo />
+      </AdminPage>
+    ),
   },
   {
     path: "test",

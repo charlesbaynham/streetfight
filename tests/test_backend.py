@@ -116,6 +116,22 @@ def test_make_game(admin_api_client):
     assert UUID(response.json())
 
 
+def test_admin_ticker_messages(admin_api_client):
+    game_id = admin_api_client.post("/api/admin_create_game").json()
+
+    message = "A public announcement"
+    admin_api_client.post(
+        f"/api/admin_send_custom_ticker_message?game_id={game_id}&message={message}"
+    )
+
+    response = admin_api_client.get(
+        f"/api/admin_ticker_messages?game_id={game_id}&num_messages=5"
+    )
+
+    assert response.status_code == 200
+    assert ["public", message] in response.json()
+
+
 def test_admin_get_shots_info(admin_api_client):
     response = admin_api_client.get("/api/admin_get_shots_info")
 

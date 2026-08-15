@@ -745,6 +745,14 @@ class AdminInterface:
                 events.append(get_trigger_event("circle", game_id[0]))
                 events.append(get_trigger_event("shots", game_id[0]))
 
+            # No games yet: there are no events to wait on, and
+            # asyncio.as_completed([]) would raise StopIteration and kill this
+            # generator. Poll until a game appears.
+            if not events:
+                await asyncio.sleep(1)
+                yield
+                continue
+
             # make futures for waiting for all these events
             futures = [
                 asyncio.wait_for(event.wait(), timeout=timeout) for event in events
