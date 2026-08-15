@@ -2,8 +2,10 @@ import asyncio
 import json
 import logging
 import os
+from collections import namedtuple
 from enum import Enum
 from typing import List
+from typing import Optional
 from typing import Tuple
 from uuid import UUID
 from uuid import uuid4 as get_uuid
@@ -29,6 +31,7 @@ from .model import ItemType
 from .model import Shot
 from .model import ShotModel
 from .model import Team
+from .model import TeamModel
 from .model import TickerEntry
 from .model import User
 from .model import UserModel
@@ -41,6 +44,11 @@ logger = logging.getLogger(__name__)
 
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped
+
+
+# What the auto-action drain needs to know about the head of a game's shot
+# queue -- deliberately not a ShotModel, so image_base64 is never loaded.
+QueueHead = namedtuple("QueueHead", ["id", "user_id", "ai_review_state", "ai_review"])
 
 
 class CircleTypes(str, Enum):
@@ -88,6 +96,33 @@ class AdminInterface:
         return ShotModel.model_validate(s)
 
     @db_scoped
+    def get_shot_game_id(self, shot_id) -> UUID:
+        """Just the game a shot belongs to, without loading the image.
+        404s if the shot is unknown."""
+        row = self._session.query(Shot.game_id).filter_by(id=shot_id).first()
+        if not row:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+        return row[0]
+
+    @db_scoped
+    def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
+        """The oldest unchecked shot in a game, or None if the queue is empty.
+
+        Ordered by (time_created, id): timestamps have 1s resolution, so the id
+        breaks ties deterministically. Selects columns only -- never
+        image_base64, which the auto-action drain has no use for.
+        """
+        row = (
+            self._session.query(
+                Shot.id, Shot.user_id, Shot.ai_review_state, Shot.ai_review
+            )
+            .filter_by(game_id=game_id, checked=False)
+            .order_by(Shot.time_created, Shot.id)
+            .first()
+        )
+        return QueueHead(*row) if row else None
+
+    @db_scoped
     def get_games(self) -> List[GameModel]:
         logger.info("AdminInterface - get_games")
         return [GameModel.model_validate(g) for g in self._session.query(Game).all()]
@@ -95,6 +130,26 @@ class AdminInterface:
     @db_scoped
     def get_user_model(self, user_id: UUID) -> UserModel:
         return UserModel.model_validate(self._get_user_orm(user_id))
+
+    @db_scoped
+    def get_team_model(self, team_id: UUID) -> TeamModel:
+        return TeamModel.model_validate(self._get_team_orm(team_id))
+
+    @db_scoped
+    def get_teams_for_game(self, game_id: UUID) -> List[TeamModel]:
+        """Teams of a game, oldest first (with id as a same-second tiebreak) -
+        a stable order for the join-code partition. 404s if the game doesn't
+        exist.
+        """
+        self._get_game_orm(game_id)  # 404 if the game doesn't exist
+
+        teams = (
+            self._session.query(Team)
+            .filter_by(game_id=game_id)
+            .order_by(Team.time_created, Team.id)
+            .all()
+        )
+        return [TeamModel.model_validate(t) for t in teams]
 
     @db_scoped
     def get_users_for_game(self, game_id: UUID) -> List[UserModel]:
@@ -262,11 +317,36 @@ class AdminInterface:
             ]
 
         self._session.commit()
+        # Wake the admin SSE stream so every open dashboard sees the new
+        # checkbox state, not just the one that clicked it.
+        trigger_update_event("shots", game_id)
         return backlog
 
     @db_scoped
     def is_ai_shot_review_enabled(self, game_id: UUID) -> bool:
         return bool(self._get_game_orm(game_id).ai_shot_review_enabled)
+
+    @db_scoped
+    def set_ai_auto_actions_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn acting on confident AI verdicts on or off for a game.
+
+        Independent of the review toggle: reviews only annotate, and this flag
+        alone decides whether backend.shot_auto_actions may resolve the head of
+        the queue.
+        """
+        logger.info(
+            "AdminInterface - set_ai_auto_actions_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_auto_actions_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_auto_actions_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_auto_actions_enabled)
 
     @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:
@@ -324,6 +404,65 @@ class AdminInterface:
                 game_id=game_id,
                 session=ui.get_session(),
             )
+
+    @db_scoped
+    def delete_user(self, user_id: UUID):
+        """Remove a player entirely - the repair for the duplicate ``User`` a
+        wrong-phone / wrong-browser join creates.
+
+        Their collected items and fired shots (images included) go with them;
+        shots *targeting* them survive as anonymous history with
+        ``target_user_id`` nulled. Announces the removal on the game ticker
+        and bumps the same update events joining a team does, so open
+        dashboards and clients refresh. The deleted browser session simply
+        gets a fresh auto-created user on its next touch.
+
+        Raises:
+            HTTPException: 404 if the user is not found
+        """
+        logger.info("AdminInterface - delete_user %s", user_id)
+
+        user = self._get_user_orm(user_id)
+
+        user_name = user.name
+        game_id = user.team.game_id if user.team else None
+
+        for item in list(user.items):
+            self._session.delete(item)
+
+        for shot in list(user.shots):
+            self._session.delete(shot)
+
+        self._session.query(Shot).filter_by(target_user_id=user_id).update(
+            {"target_user_id": None}
+        )
+
+        # Ticker rows referencing the user would break their foreign keys on
+        # delete: private messages go with the user, highlights just lose the
+        # highlight.
+        self._session.query(TickerEntry).filter_by(private_user_id=user_id).delete()
+        self._session.query(TickerEntry).filter_by(highlight_user_id=user_id).update(
+            {"highlight_user_id": None}
+        )
+
+        user.team = None
+        self._session.delete(user)
+
+        if game_id:
+            # Posting the message also touches the game's ticker tag and
+            # commits the session, mirroring add_user_to_team's announcement
+            tk.send_generic_message(
+                game_id, f"{user_name} has left the game", session=self._session
+            )
+        else:
+            self._session.commit()
+
+        # Their queued shots vanished from the queue, and any client session
+        # still holding this user id needs to find out it is gone
+        if game_id:
+            trigger_update_event("shots", game_id)
+            trigger_update_event("ticker", game_id)
+        trigger_update_event("user", user_id)
 
     @db_scoped
     def get_all_shots(self) -> List[ShotModel]:

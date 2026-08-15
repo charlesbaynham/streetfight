@@ -28,6 +28,7 @@ from typing import Optional
 
 from .identity.config import COLOUR_BUCKETS
 from .identity.config import DEFAULT_CHANNEL_NAMES
+from .identity.config import DEFAULT_THRESHOLDS
 from .identity.config import default_scheme
 from .identity.config import hex_for
 from .identity.config import palette_for_channel
@@ -38,6 +39,12 @@ logger = logging.getLogger(__name__)
 
 UNKNOWN = "unknown"
 
+# A channel read below this confidence is treated as an erasure, exactly like
+# not-visible/unknown: the code corrects two erasures but only one misread, so
+# a shaky colour is worth less than an honest abstention. The same constant
+# gates the auto-actions in backend.shot_auto_actions.
+CONFIDENT_THRESHOLD = DEFAULT_THRESHOLDS.confident_threshold
+
 # The reply field carrying "did the shot land on a person". Note that is not
 # "is somebody standing at the centre": clothing, hands and shoes all count, and
 # only a shot that entirely misses the person is a miss.
@@ -47,8 +54,9 @@ HIT_FIELD = "shot_hit_a_person"
 ZOOM_FIELD = "request_zoom"
 ZOOM_FACTOR = 4
 
-# Outcomes. Only HIT_PLAYER counts against a player's hit points -- and nothing
-# acts on these yet, they are shown to the admin as advice.
+# Outcomes. Only HIT_PLAYER counts against a player's hit points. Shown to the
+# admin as advice -- and, when a game's AI-review toggle is on, acted on for the
+# head of the queue by backend.shot_auto_actions when confident enough.
 HIT_PLAYER = "hit_player"
 HIT_BYSTANDER = "hit_bystander"
 MISS = "miss"
@@ -98,6 +106,7 @@ class ShotVisionResult:
         outcome: str = MISS,
         outcome_reason: str = "",
         slot: Optional[int] = None,
+        confidence: float = 0.0,
     ):
         self.shot_hit_a_person = shot_hit_a_person
         self.channels = channels
@@ -105,6 +114,7 @@ class ShotVisionResult:
         self.outcome = outcome
         self.outcome_reason = outcome_reason
         self.slot = slot
+        self.confidence = confidence
 
     @property
     def is_hit(self) -> bool:
@@ -114,6 +124,7 @@ class ShotVisionResult:
         """The JSON stored on the Shot and rendered as tags in the queue."""
         return {
             "shot_hit_a_person": self.shot_hit_a_person,
+            "confidence": self.confidence,
             "outcome": self.outcome,
             "outcome_reason": self.outcome_reason,
             "is_hit": self.is_hit,
@@ -148,6 +159,7 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
             # a boolean in the JSON works on every model.
             ZOOM_FIELD: {"type": "boolean"},
             "reasoning": {"type": "string"},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             "channels": {
                 "type": "object",
                 "properties": {
@@ -172,7 +184,7 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
                 "additionalProperties": False,
             },
         },
-        "required": [HIT_FIELD, ZOOM_FIELD, "reasoning", "channels"],
+        "required": [HIT_FIELD, ZOOM_FIELD, "reasoning", "confidence", "channels"],
         "additionalProperties": False,
     }
 
@@ -243,7 +255,8 @@ Ignore everyone except the person the shot hit.
 
 Answering "{UNKNOWN}" is a correct and useful answer. It is much better than a \
 guess: a wrong colour is worse than no colour. Give each answer a confidence \
-between 0 and 1.
+between 0 and 1. Also give a single overall "confidence" between 0 and 1 for \
+your reading of this photo as a whole.
 
 Some colour names cover a range, so use these buckets:
 {buckets}
@@ -253,6 +266,7 @@ Reply with JSON only, matching this shape:
   "{HIT_FIELD}": true,
   "request_zoom": false,
   "reasoning": "one or two sentences on what you can and cannot see",
+  "confidence": 0.9,
   "channels": {{
 {_example_channels(palettes)}
   }}
@@ -302,11 +316,14 @@ def parse_result(raw: dict, palettes: Optional[Dict[str, List[str]]] = None):
     if not isinstance(reasoning, str):
         raise ShotVisionError(f"'reasoning' must be a string; got {reasoning!r}")
 
+    confidence = _clamped_confidence(raw.get("confidence"))
+
     if not person:
         return ShotVisionResult(
             shot_hit_a_person=False,
             channels={name: ChannelRead(False, None, 0.0) for name in palettes},
             reasoning=reasoning,
+            confidence=confidence,
         )
 
     raw_channels = raw.get("channels")
@@ -322,8 +339,25 @@ def parse_result(raw: dict, palettes: Optional[Dict[str, List[str]]] = None):
         channels[name] = _parse_channel(name, raw_channels[name], palette)
 
     return ShotVisionResult(
-        shot_hit_a_person=True, channels=channels, reasoning=reasoning
+        shot_hit_a_person=True,
+        channels=channels,
+        reasoning=reasoning,
+        confidence=confidence,
     )
+
+
+def _clamped_confidence(raw_value) -> float:
+    """The top-level confidence, clamped to [0, 1].
+
+    Missing or unparseable becomes 0.0 rather than an error: a stored legacy
+    review with no confidence field, or a model that ignores the request, must
+    never look confident enough to auto-fire.
+    """
+    try:
+        value = float(raw_value)
+    except (TypeError, ValueError):
+        return 0.0
+    return min(max(value, 0.0), 1.0)
 
 
 def _parse_channel(name: str, raw, palette: List[str]) -> ChannelRead:
@@ -374,12 +408,16 @@ def _parse_channel(name: str, raw, palette: List[str]) -> ChannelRead:
 
 
 def to_hard_symbols(result: ShotVisionResult, scheme=None) -> List[Optional[int]]:
-    """Per-channel symbol indices in channel order, None for an erasure."""
+    """Per-channel symbol indices in channel order, None for an erasure.
+
+    A read below CONFIDENT_THRESHOLD is erased here, so everything downstream
+    (:func:`classify`, :func:`_slot_of`) is confidence-aware.
+    """
     scheme = scheme or default_scheme()
     symbols = []
     for channel in scheme.channels:
         read = result.channels.get(channel.name)
-        if read is None or read.is_erasure:
+        if read is None or read.is_erasure or read.confidence < CONFIDENT_THRESHOLD:
             symbols.append(None)
         else:
             symbols.append(channel.label_to_index(read.colour))
@@ -469,14 +507,14 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
     return result
 
 
-def _slot_of(scheme, symbols: List[Optional[int]]) -> Optional[int]:
-    """The assignable slot these symbols identify, if they identify exactly one.
+def _candidate_slots(scheme, symbols: List[Optional[int]]) -> List[int]:
+    """The assignable slots agreeing with ``symbols`` on its readable positions.
 
     Codewords nobody could be wearing do not count as an identification: ones a
     restricted channel cannot express, and the never-assigned all-black slot 0.
     """
     usable = set(scheme.usable_slots())
-    assignable = [
+    return [
         slot
         for slot in (
             scheme.slot_of_codeword(codeword)
@@ -485,7 +523,58 @@ def _slot_of(scheme, symbols: List[Optional[int]]) -> Optional[int]:
         )
         if slot in usable
     ]
+
+
+def _slot_of(scheme, symbols: List[Optional[int]]) -> Optional[int]:
+    """The assignable slot these symbols identify, if they identify exactly one."""
+    assignable = _candidate_slots(scheme, symbols)
     return assignable[0] if len(assignable) == 1 else None
+
+
+def slot_candidates_from_review(review_dict: dict, scheme=None) -> List[int]:
+    """Candidate slots rebuilt from a *stored* review payload (``to_dict()``).
+
+    Pure -- no database. The stored channel labels are mapped back to indices
+    with the same low-confidence erasure rule as :func:`to_hard_symbols`, and
+    anything unrecognisable (a legacy payload, a colour no longer in the
+    palette) is erased rather than rejected: an unreadable stored review is
+    merely ambiguous, and ambiguity is the safe answer.
+
+    Requires at least ``k + 1`` readable channels, else returns ``[]``: with
+    only ``k`` readable positions an MDS code always matches exactly one
+    codeword and vouches for nothing (see
+    :meth:`IdentityScheme.codewords_matching`). This is ``_slot_of``'s
+    candidate list without the exactly-one collapse, so a geolocation prior
+    can later re-rank the candidates via ``to_reading``/``decoder.decode``
+    instead of rewriting this.
+    """
+    scheme = scheme or default_scheme()
+    stored_channels = review_dict.get("channels")
+    if not isinstance(stored_channels, dict):
+        return []
+
+    symbols: List[Optional[int]] = []
+    for channel in scheme.channels:
+        read = stored_channels.get(channel.name)
+        colour = read.get("colour") if isinstance(read, dict) else None
+        confidence = (
+            _clamped_confidence(read.get("confidence"))
+            if isinstance(read, dict)
+            else 0.0
+        )
+        if (
+            not isinstance(colour, str)
+            or not channel.has_label(colour)
+            or confidence < CONFIDENT_THRESHOLD
+        ):
+            symbols.append(None)
+        else:
+            symbols.append(channel.label_to_index(colour))
+
+    readable = sum(1 for symbol in symbols if symbol is not None)
+    if readable < scheme.code.k + 1:
+        return []
+    return _candidate_slots(scheme, symbols)
 
 
 async def review_image(

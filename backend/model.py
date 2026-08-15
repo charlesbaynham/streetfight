@@ -51,8 +51,16 @@ class Game(Base):
     active = Column(Boolean, nullable=False, default=False)
 
     # When on, every unchecked shot is sent to a vision model and annotated
-    # with what it saw. The admin still makes the call; this only adds tags.
+    # with what it saw. Annotation only: the admin still resolves every shot
+    # unless ai_auto_actions_enabled is also on.
     ai_shot_review_enabled = Column(Boolean, nullable=False, default=False)
+
+    # When on, confident verdicts on the head of the shot queue are acted on
+    # automatically (backend/shot_auto_actions.py); ambiguous or unconfident
+    # reviews stay in the queue for the admin. Independent of
+    # ai_shot_review_enabled -- it acts on whatever reviews exist, however
+    # they were produced.
+    ai_auto_actions_enabled = Column(Boolean, nullable=False, default=False)
 
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
@@ -126,8 +134,10 @@ class Shot(Base):
 
     location_context = Column(String, nullable=True)
 
-    # AI review of the photo. Advisory only: the admin still decides every
-    # shot, these just become tags under the image in the queue.
+    # AI review of the photo. Shown as tags under the image in the queue, and
+    # -- when the game's toggle is on -- acted on automatically for the queue
+    # head when confident enough (backend/shot_auto_actions.py); everything
+    # ambiguous is still the admin's call.
     # State is null (never queued) / "pending" / "done" / "error".
     ai_review_state = Column(String, nullable=True)
     # The ShotVisionResult as JSON text, or the error message when the state is
@@ -337,6 +347,7 @@ class GameModel(pydantic.BaseModel):
     ticker_update_tag: int
     active: bool
     ai_shot_review_enabled: bool = False
+    ai_auto_actions_enabled: bool = False
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None

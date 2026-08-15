@@ -27,6 +27,7 @@ from uuid import UUID
 
 import pydantic
 
+from . import ticker_message_dispatcher as tk
 from .admin_interface import AdminInterface
 from .identity.config import default_scheme
 from .identity.config import hex_for
@@ -38,6 +39,8 @@ from .identity.overrides import overrides_for
 from .identity.overrides import pairwise_distances
 from .identity.overrides import suggest_free_channels
 from .identity.scheme import IdentityScheme
+from .join_codes import JoinCodeModel
+from .join_codes import make_join_url
 from .model import UserModel
 from .user_interface import UserInterface
 
@@ -199,6 +202,41 @@ def build_report(game_id: UUID) -> dict:
 # ---------------------------------------------------------------------------
 
 
+def _validate_slot_assignment(
+    scheme: IdentityScheme,
+    user_id: UUID,
+    slot: int,
+    overrides: Optional[Dict[str, Optional[str]]],
+    game_users: List[UserModel],
+    force: bool = False,
+):
+    """Reject an unusable/held slot, an unwearable override, or (unless
+    ``force``) an effective word at zero overlap-distance from another
+    player's. Raises :class:`IdentityAdminError`; returns nothing.
+    """
+    others = [u for u in game_users if u.id != user_id]
+    names_by_id = {u.id: u.name for u in game_users}
+
+    if slot not in scheme.usable_slots():
+        raise IdentityAdminError(f"slot {slot} is not a usable slot")
+
+    holder = next((u for u in others if u.identity_slot == slot), None)
+    if holder is not None:
+        raise IdentityAdminError(f"slot {slot} is already used by {holder.name}")
+
+    codeword = scheme.codeword_of_slot(slot)
+    try:
+        word = effective_word(codeword, overrides or {}, scheme.channels)
+    except ValueError as e:
+        raise IdentityAdminError(str(e))
+
+    if not force:
+        other_words = _effective_words(others, scheme)
+        for other_id, other_word in other_words.items():
+            if overlap_distance(word, other_word) == 0:
+                raise IdentityAdminError(f"identical outfit to {names_by_id[other_id]}")
+
+
 def set_identity(request: IdentitySetRequest) -> dict:
     scheme = default_scheme()
     admin = AdminInterface()
@@ -210,31 +248,12 @@ def set_identity(request: IdentitySetRequest) -> dict:
     if slot is None and overrides is not None:
         raise IdentityAdminError("assign a slot first")
 
-    if slot is not None and slot not in scheme.usable_slots():
-        raise IdentityAdminError(f"slot {slot} is not a usable slot")
-
     game_users = admin.get_users_for_game(user.game_id) if user.game_id else []
-    others = [u for u in game_users if u.id != user.id]
-    names_by_id = {u.id: u.name for u in game_users}
 
     if slot is not None:
-        holder = next((u for u in others if u.identity_slot == slot), None)
-        if holder is not None:
-            raise IdentityAdminError(f"slot {slot} is already used by {holder.name}")
-
-        codeword = scheme.codeword_of_slot(slot)
-        try:
-            word = effective_word(codeword, overrides or {}, scheme.channels)
-        except ValueError as e:
-            raise IdentityAdminError(str(e))
-
-        if not request.force:
-            other_words = _effective_words(others, scheme)
-            for other_id, other_word in other_words.items():
-                if overlap_distance(word, other_word) == 0:
-                    raise IdentityAdminError(
-                        f"identical outfit to {names_by_id[other_id]}"
-                    )
+        _validate_slot_assignment(
+            scheme, user.id, slot, overrides, game_users, force=request.force
+        )
 
     overrides_json = json.dumps(overrides) if overrides is not None else None
 
@@ -243,6 +262,117 @@ def set_identity(request: IdentitySetRequest) -> dict:
 
     updated = admin.get_user_model(request.user_id)
     return _player_row(updated, scheme)
+
+
+# ---------------------------------------------------------------------------
+# POST /join_game (player-facing, via a signed join code)
+# ---------------------------------------------------------------------------
+
+
+def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
+    """Join the code's team and claim its identity slot for ``user_id``.
+
+    The signature must already have been checked by the caller (the API
+    layer 403s on a bad one). Validation reuses the same rules as an admin
+    slot assignment, with no overrides and no force - so a slot rendered
+    indistinguishable by another player's override is rejected too. A
+    re-scan of a code the scanner already holds is an idempotent no-op; a
+    scan of a *different* code while already in a team is a move, allowed
+    whenever the same validation passes (the old slot frees itself).
+    """
+    scheme = default_scheme()
+    admin = AdminInterface()
+
+    game_users = admin.get_users_for_game(code.game_id)  # 404s if game missing
+    team = admin.get_team_model(code.team_id)  # 404s if team missing
+    if team.game_id != code.game_id:
+        raise IdentityAdminError("join code's team does not belong to its game")
+
+    scanner = next((u for u in game_users if u.id == user_id), None)
+    if (
+        scanner is not None
+        and scanner.team_id == code.team_id
+        and scanner.identity_slot == code.slot
+    ):
+        # Re-scan of the scanner's own code
+        return _player_row(scanner, scheme)
+
+    _validate_slot_assignment(
+        scheme, user_id, code.slot, overrides=None, game_users=game_users, force=False
+    )
+
+    # The atomic write: team + slot in one transaction, with the slot-holder
+    # check re-run inside it (409 on losing the race). Then the same ticker
+    # announcement AdminInterface.add_user_to_team makes.
+    with UserInterface(user_id) as ui:
+        ui.join_team_and_claim_slot(code.team_id, code.slot)
+
+        u = ui.get_user()
+
+        user_name = u.name
+        team_name = u.team.name
+        game_id = u.team.game_id
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.USER_JOINED_TEAM,
+            {"user": user_name, "team": team_name},
+            game_id=game_id,
+            session=ui.get_session(),
+        )
+
+    updated = admin.get_user_model(user_id)
+    return _player_row(updated, scheme)
+
+
+# ---------------------------------------------------------------------------
+# GET /admin_join_qr_codes
+# ---------------------------------------------------------------------------
+
+
+def build_join_codes(game_id: UUID, slots_per_team: int) -> dict:
+    """Signed join QR URLs for a game: the first N usable slots per team.
+
+    Teams are ordered by creation time and the usable slots partitioned in
+    order, ``slots_per_team`` each - deterministic, so reprinting yields the
+    same codes. Each code carries the slot's canonical appearance so the
+    admin can pack the right clothing with each card.
+    """
+    if slots_per_team < 1:
+        raise IdentityAdminError("slots_per_team must be at least 1")
+
+    scheme = default_scheme()
+    teams = AdminInterface().get_teams_for_game(game_id)  # 404s if game missing
+
+    if not teams:
+        raise IdentityAdminError("game has no teams - create the teams first")
+
+    slots = scheme.usable_slots()
+    needed = len(teams) * slots_per_team
+    if needed > len(slots):
+        raise IdentityAdminError(
+            f"{len(teams)} teams x {slots_per_team} slots needs {needed} outfits, "
+            f"but the scheme only has {len(slots)}"
+        )
+
+    out = []
+    for i, team in enumerate(teams):
+        team_slots = slots[i * slots_per_team : (i + 1) * slots_per_team]
+        out.append(
+            {
+                "team_id": team.id,
+                "team_name": team.name,
+                "codes": [
+                    {
+                        "slot": slot,
+                        "encoded_url": make_join_url(game_id, team.id, slot),
+                        "appearance": scheme.appearance_of_slot(slot),
+                    }
+                    for slot in team_slots
+                ],
+            }
+        )
+
+    return {"teams": out}
 
 
 # ---------------------------------------------------------------------------

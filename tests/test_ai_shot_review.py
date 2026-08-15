@@ -164,6 +164,38 @@ async def test_a_review_notifies_the_admin_stream_and_the_shooter(
     assert mocked.call_args_list[-1][0][0] == "shots"
 
 
+@pytest.mark.asyncio
+async def test_a_failing_auto_action_drain_does_not_break_the_review_contract(
+    mocker, db_session, shot_from_user_in_team
+):
+    # review_shot never raises, and the review must be stored even if the
+    # drain bolted onto the end of it blows up.
+    mocker.patch(
+        "backend.ai_shot_review.shot_auto_actions.process_queue_head",
+        side_effect=RuntimeError("boom"),
+    )
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(hit_reply())
+    )
+
+    stored = AdminInterface().get_shot_ai_review(shot_from_user_in_team)
+    assert stored["state"] == ai_shot_review.STATE_DONE
+
+
+@pytest.mark.asyncio
+async def test_a_completed_review_runs_the_auto_action_drain(
+    mocker, db_session, shot_from_user_in_team
+):
+    spy = mocker.patch("backend.ai_shot_review.shot_auto_actions.process_queue_head")
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(hit_reply())
+    )
+
+    spy.assert_called_once_with(game_of(shot_from_user_in_team))
+
+
 def test_without_an_api_key_nothing_is_queued(
     no_api_key, db_session, shot_from_user_in_team
 ):

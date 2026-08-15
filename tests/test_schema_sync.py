@@ -22,6 +22,7 @@ def make_old_schema_engine(tmp_path):
 
     with engine.begin() as conn:
         conn.execute(sa.text("ALTER TABLE games DROP COLUMN ai_shot_review_enabled"))
+        conn.execute(sa.text("ALTER TABLE games DROP COLUMN ai_auto_actions_enabled"))
         conn.execute(sa.text("ALTER TABLE shots DROP COLUMN ai_review_state"))
         conn.execute(sa.text("ALTER TABLE shots DROP COLUMN ai_review"))
         conn.execute(
@@ -49,7 +50,7 @@ def test_missing_columns_are_added(tmp_path):
     add_missing_columns(engine)
 
     columns = {col["name"] for col in sa.inspect(engine).get_columns("games")}
-    assert "ai_shot_review_enabled" in columns
+    assert {"ai_shot_review_enabled", "ai_auto_actions_enabled"} <= columns
     shot_columns = {col["name"] for col in sa.inspect(engine).get_columns("shots")}
     assert {"ai_review_state", "ai_review"} <= shot_columns
 
@@ -59,6 +60,7 @@ def test_missing_columns_are_added(tmp_path):
         assert len(games) == 1
         assert games[0].active is True
         assert games[0].ai_shot_review_enabled is False
+        assert games[0].ai_auto_actions_enabled is False
 
 
 def test_sync_is_idempotent(tmp_path):

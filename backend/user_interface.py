@@ -262,6 +262,41 @@ class UserInterface:
         team.users.append(self.get_user())
 
     @db_scoped
+    def join_team_and_claim_slot(self, team_id: UUID, slot: int):
+        """Join ``team_id`` and claim identity ``slot`` in one transaction.
+
+        Unlike join_team this never auto-creates the team: join codes are
+        signed against an existing team, so a missing one is a 404, not a
+        provisioning request. The slot-holder check is re-run here, inside
+        the same transaction as the write, so two players scanning the same
+        code can't both claim it - the loser gets a 409.
+        """
+        team = self._session.query(Team).filter_by(id=team_id).first()
+
+        if not team:
+            raise HTTPException(404, f"Team {team_id} not found")
+
+        holder = (
+            self._session.query(User)
+            .join(Team, User.team_id == Team.id)
+            .filter(
+                Team.game_id == team.game_id,
+                User.identity_slot == slot,
+                User.id != self.user_id,
+            )
+            .first()
+        )
+        if holder is not None:
+            raise HTTPException(
+                409, f"Outfit #{slot} was just claimed by {holder.name}"
+            )
+
+        user = self.get_user()
+        team.users.append(user)
+        user.identity_slot = slot
+        user.identity_overrides = None
+
+    @db_scoped
     def submit_shot(self, image_base64: str):
         from .admin_interface import AdminInterface
 

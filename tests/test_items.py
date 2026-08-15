@@ -24,7 +24,9 @@ def mock_asyncio_tasks(mocker):
     mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
-SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA = {
+# An item signed with the retired scrypt scheme (sig/salt as an old printed
+# URL would carry them). It must still parse, but its signature must fail.
+OLD_SCRYPT_SIGNED_ARMOUR_DATA = {
     "id": UUID("00000000-0000-0000-0000-000000000002"),
     "itype": "armour",
     "data": {"num": 1},
@@ -86,7 +88,7 @@ SAMPLE_INVALID_DATA = {
 
 @pytest.fixture
 def valid_encoded_signed_lv1_armour():
-    return ItemModel(**SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA).to_base64()
+    return ItemModel(**SAMPLE_ARMOUR_DATA).sign().to_base64()
 
 
 @pytest.fixture
@@ -113,11 +115,11 @@ def test_decoded_item_from_base64(valid_encoded_signed_lv1_armour):
     print(f"Encoded: {valid_encoded_signed_lv1_armour}")
     print(f"Decoded: {item.model_dump()}")
 
-    assert item.id == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["id"]
-    assert item.itype == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["itype"]
-    assert item.data == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["data"]
-    assert item.sig == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["sig"]
-    assert item.salt == SAMPLE_SIGNED_LEVEL1_ARMOUR_DATA["salt"]
+    assert item.id == SAMPLE_ARMOUR_DATA["id"]
+    assert item.itype == SAMPLE_ARMOUR_DATA["itype"]
+    assert item.data == SAMPLE_ARMOUR_DATA["data"]
+    assert item.sig == item.get_signature()
+    assert item.salt is None
 
 
 def test_decoded_item_to_base64(valid_encoded_signed_lv1_armour):
@@ -158,6 +160,44 @@ def test_can_sign(valid_encoded_signed_lv1_armour):
     item.sign()
 
     assert item.validate_signature() == None
+
+
+def test_signing_is_deterministic_and_uses_shared_helper():
+    from backend.qr_signing import sign_payload
+
+    item_a = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+    item_b = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+
+    # No salt: reprints yield identical URLs
+    assert item_a.sig == item_b.sig
+    assert item_a.salt is None
+
+    assert item_a.sig == sign_payload(
+        "item",
+        item_a.id,
+        item_a.itype,
+        item_a.data_as_json(),
+        item_a.collected_only_once,
+        item_a.collected_as_team,
+    )
+
+
+def test_old_scrypt_signed_item_parses_but_fails_validation():
+    encoded = ItemModel(**OLD_SCRYPT_SIGNED_ARMOUR_DATA).to_base64()
+
+    # Old URLs still parse (the salt field is tolerated)...
+    item = ItemModel.from_base64(encoded)
+    assert item.salt == OLD_SCRYPT_SIGNED_ARMOUR_DATA["salt"]
+
+    # ...but their scrypt signatures no longer validate
+    assert item.validate_signature() == "Signature mismatch"
+
+
+def test_old_scrypt_signed_item_cannot_be_collected(user_in_team):
+    encoded = ItemModel(**OLD_SCRYPT_SIGNED_ARMOUR_DATA).to_base64()
+
+    with pytest.raises(HTTPException, match="The scanned item is invalid"):
+        UserInterface(user_in_team).collect_item(encoded)
 
 
 def test_collect_item_valid(valid_encoded_signed_lv1_armour, user_in_team):

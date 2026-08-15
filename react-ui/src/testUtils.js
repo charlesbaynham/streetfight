@@ -261,6 +261,7 @@ export function makeUser(overrides = {}) {
     num_bullets: 5,
     shot_damage: 1,
     shot_timeout: 6,
+    identity_slot: null,
     ...overrides,
   };
 }
@@ -295,6 +296,7 @@ export function makeGame(overrides = {}) {
     ticker_update_tag: 0,
     active: true,
     ai_shot_review_enabled: false,
+    ai_auto_actions_enabled: false,
     ...overrides,
   };
 }

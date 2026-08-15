@@ -9,6 +9,7 @@ import { sendAPIRequest } from "./utils";
 import WebcamView from "./WebcamView";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import TickerView from "./TickerView";
+import JoinFromQueryParams from "./JoinFromQueryParams";
 
 import styles from "./UserMode.module.css";
 import OnboardingView from "./OnboardingView";
@@ -137,6 +138,9 @@ export default function UserMode() {
   return (
     <>
       <UpdateSSEConnection />
+      {/* Top level, not in the alive-only path: joining happens during
+          onboarding, before the player has a team */}
+      <JoinFromQueryParams />
       <UpdateListener
         update_type="user"
         callback={() => {
