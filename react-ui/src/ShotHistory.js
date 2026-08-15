@@ -39,7 +39,7 @@ export function openShotHistory(shotId = null) {
 
 // What to show for a shot's current status. Shots checked before the result
 // column existed have result=null: infer from whether a target was recorded.
-function shotStatus(shot) {
+export function shotStatus(shot) {
   if (shot.checked) {
     const result = shot.result || (shot.target_name ? "hit" : "miss");
     if (result === "hit")
@@ -85,7 +85,7 @@ function ShotThumbnail({ shotId, className }) {
   return <img className={className} src={image} alt="Your shot" />;
 }
 
-function formatShotTime(timeCreated) {
+export function formatShotTime(timeCreated) {
   const date = new Date(timeCreated);
   if (isNaN(date)) return "";
   return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
