@@ -5,10 +5,10 @@ import { sendAPIRequest } from "./utils";
 
 // TODO: TEMPORARY - test map only, swap back before this is played for real.
 // Stands in for the hand-drawn map so the map view can be exercised against a
-// real GPS fix while I'm away. It's an OpenStreetMap export covering Koyao
-// Island Resort, Ko Yao Noi, Thailand.
-// Map data (c) OpenStreetMap contributors, ODbL (https://osm.org/copyright).
-import mapSrc from "./images/map_koyao_test.png";
+// real GPS fix while I'm away. Satellite imagery covering Koyao Island Resort,
+// Ko Yao Noi, Thailand, at the highest zoom available there (~0.6 m/px).
+// Imagery (c) Esri, Maxar, Earthstar Geographics and the GIS User Community.
+import mapSrc from "./images/map_koyao_satellite.jpg";
 // import mapSrc from "./images/map.png";
 
 import styles from "./MapView.module.css";
@@ -17,10 +17,10 @@ import { deregisterListener, registerListener } from "./UpdateListener";
 
 // TODO: TEMPORARY - georeferencing for the test map imported above. Remove this
 // block and uncomment the real one below when restoring "map.png".
-// Stitched from whole OSM tiles at zoom 18, so unlike the hand-drawn map these
-// reference points are exact rather than measured by eye: ref 1 is the top-left
-// pixel of the image, ref 2 the bottom-right. Covers ~1.06 km x 1.20 km, which
-// is the whole resort plus a margin of the island road either side.
+// Stitched from whole web-mercator tiles at zoom 18, so unlike the hand-drawn
+// map these reference points are exact rather than measured by eye: ref 1 is
+// the top-left pixel of the image, ref 2 the bottom-right. Covers ~1.06 km x
+// 1.20 km, the whole resort plus a margin of the island road either side.
 const ref_map_width_px = 1792;
 const ref_map_height_px = 2048;
 const ref_1_lat_long = [8.119053222994047, 98.6187744140625];
