@@ -3,19 +3,38 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 
-import mapSrc from "./images/map.png";
+// TODO: TEMPORARY - test map only, swap back before this is played for real.
+// Stands in for the hand-drawn map so the map view can be exercised against a
+// real GPS fix while I'm away. It's an OpenStreetMap export covering Koyao
+// Island Resort, Ko Yao Noi, Thailand.
+// Map data (c) OpenStreetMap contributors, ODbL (https://osm.org/copyright).
+import mapSrc from "./images/map_koyao_test.png";
+// import mapSrc from "./images/map.png";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 import { deregisterListener, registerListener } from "./UpdateListener";
 
-// Based on calculations and markup in "map alignment.svg"
-const ref_map_width_px = 2273.28;
-const ref_map_height_px = 2206.72;
-const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
-const ref_1_xy = [695.4, 1745.2];
-const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
-const ref_2_xy = [1650.3, 398.9];
+// TODO: TEMPORARY - georeferencing for the test map imported above. Remove this
+// block and uncomment the real one below when restoring "map.png".
+// Stitched from whole OSM tiles at zoom 18, so unlike the hand-drawn map these
+// reference points are exact rather than measured by eye: ref 1 is the top-left
+// pixel of the image, ref 2 the bottom-right. Covers ~1.06 km x 1.20 km, which
+// is the whole resort plus a margin of the island road either side.
+const ref_map_width_px = 1792;
+const ref_map_height_px = 2048;
+const ref_1_lat_long = [8.119053222994047, 98.6187744140625];
+const ref_1_xy = [0, 0];
+const ref_2_lat_long = [8.108176866407039, 98.62838745117188];
+const ref_2_xy = [1792, 2048];
+
+// The real map. Based on calculations and markup in "map alignment.svg"
+// const ref_map_width_px = 2273.28;
+// const ref_map_height_px = 2206.72;
+// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
+// const ref_1_xy = [695.4, 1745.2];
+// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
+// const ref_2_xy = [1650.3, 398.9];
 
 // These are fake, for testing.
 // const ref_1_lat_long = [51.3, -0.4];
