@@ -106,6 +106,10 @@
   --status-colour: #d32020;
 }
 
+.stateBystander {
+  --status-colour: #9c4dcc;
+}
+
 .stateRefunded {
   --status-colour: #2f80d0;
 }

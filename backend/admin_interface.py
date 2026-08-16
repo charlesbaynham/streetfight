@@ -515,6 +515,8 @@ class AdminInterface:
                     UserInterface(shot_model.target_user_id).get_user_model().name
                 )
                 status = f"Hit {target_name}"
+            elif shot_model.result == "bystander":
+                status = "Hit a bystander"
             else:
                 status = "Missed / refunded"
 
@@ -695,6 +697,34 @@ class AdminInterface:
 
         tk.send_ticker_message(
             tk.TickerMessageType.MISSED_SHOT,
+            {},
+            user_id=user_id,
+            game_id=game_id,
+            session=self._session,
+        )
+
+        self._session.commit()
+
+        # The shot has left the queue, so tell any admin watching it - and the
+        # shooter, whose shot history has a new outcome
+        trigger_update_event("shots", game_id)
+        trigger_update_event("user", user_id)
+
+    @db_scoped
+    def mark_shot_bystander(self, shot_id):
+        """
+        Mark a shot as having caught a bystander rather than a player.
+
+        Mechanically identical to a miss - the ammo is spent and nobody takes
+        damage - but recorded separately so the shooter's history (and the
+        ticker) can say what actually happened.
+        """
+        shot = self._mark_shot_checked(shot_id, "bystander")
+        user_id = shot.user_id
+        game_id = shot.game_id
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.BYSTANDER_SHOT,
             {},
             user_id=user_id,
             game_id=game_id,

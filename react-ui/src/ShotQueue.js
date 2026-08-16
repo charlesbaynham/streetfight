@@ -248,6 +248,12 @@ function ShotQueuePanel() {
     });
   }, [shot, update]);
 
+  const markShotBystander = useCallback(() => {
+    adminPost("admin_mark_shot_bystander", { shot_id: shot.id }).then((_) => {
+      update();
+    });
+  }, [shot, update]);
+
   const refundShot = useCallback(() => {
     adminPost("admin_refund_shot", { shot_id: shot.id }).then((_) => {
       update();
@@ -346,6 +352,13 @@ function ShotQueuePanel() {
               }}
             >
               Missed
+            </button>
+            <button
+              onClick={() => {
+                markShotBystander();
+              }}
+            >
+              Bystander
             </button>
             <button
               onClick={() => {

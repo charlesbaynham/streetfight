@@ -158,7 +158,7 @@ async def test_a_confident_miss_resolves_the_head(db_session, shot_from_user_in_
 
 
 @pytest.mark.asyncio
-async def test_a_confident_bystander_hit_is_marked_missed(
+async def test_a_confident_bystander_hit_is_marked_bystander(
     db_session, shot_from_user_in_team
 ):
     enable_ai(game_of(shot_from_user_in_team))
@@ -169,7 +169,7 @@ async def test_a_confident_bystander_hit_is_marked_missed(
 
     shot = shot_row(db_session, shot_from_user_in_team)
     assert shot.checked is True
-    assert shot.result == "miss"
+    assert shot.result == "bystander"
 
 
 @pytest.mark.asyncio

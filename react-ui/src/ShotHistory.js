@@ -40,6 +40,7 @@ const STATE_CLASSES = {
   escalated: styles.stateEscalated,
   hit: styles.stateHit,
   miss: styles.stateMiss,
+  bystander: styles.stateBystander,
   refunded: styles.stateRefunded,
 };
 
@@ -56,6 +57,13 @@ export function shotStatus(shot) {
       };
     if (result === "refunded")
       return { state: "refunded", icon: returnImg, label: "Ammo refunded" };
+    if (result === "bystander")
+      return {
+        state: "bystander",
+        emoji: "😲",
+        label: "You shot a bystander!",
+        sublabel: "Not a player - no damage done",
+      };
     return { state: "miss", icon: crossImg, label: "Missed" };
   }
 

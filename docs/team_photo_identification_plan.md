@@ -497,8 +497,9 @@ deliverable.
   in that direction.
 - **Reversal (implemented in `backend/shot_auto_actions.py`):** the universal
   human confirm step is gone — a completed review now auto-fires the game
-  action (`mark_shot_missed` for a confident miss/bystander, `hit_user` for a
-  confident hit) when its overall confidence ≥ `confident_threshold` (0.6).
+  action (`mark_shot_missed` for a confident miss, `mark_shot_bystander` for a
+  confident bystander, `hit_user` for a confident hit) when its overall
+  confidence ≥ `confident_threshold` (0.6).
   The mitigations that replace the confirm step:
   - a dedicated per-game auto-actions toggle (`ai_auto_actions_enabled`,
     default off) gates every auto-action, so nothing fires unless an admin has
