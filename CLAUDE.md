@@ -39,6 +39,8 @@ minimal changes over large refactors.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
+  - `venues.py` — where a game is played: the map image, its georeferencing and
+    the landmarks circles can be placed at. See the venues note below.
   - `sse_event_streams.py` + `asyncio_triggers.py` — SSE streams and the
     asyncio event registry that drives live updates.
 - `react-ui/` — Create React App frontend.
@@ -49,6 +51,9 @@ minimal changes over large refactors.
     dispatch typed updates ("user", "ticker", ...).
   - `src/setupProxy.js` — dev proxy: forwards `/api`, `/docs`, `/openapi.json` to
     the backend at `http://127.0.0.1:8000`.
+  - `src/venue.js` + `src/mapImages.js` — fetches the venue from the backend and
+    turns its reference points into map geometry; `mapImages.js` is the bundled
+    map images the server's `map.image` key resolves against.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
@@ -153,6 +158,14 @@ Images are built from the Nix flake
   `sse_event_streams.py`. When you change state that clients observe, make sure
   the corresponding update event is triggered.
 - No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev.
+- **Venues** (`backend/venues.py`) are the single place where a location is
+  defined: map image key, the two reference points that georeference it, the
+  corner mini-map width, and the landmarks. One is active at a time
+  (`ACTIVE_VENUE` — comment / uncomment), and the frontend reads it from
+  `GET /api/get_venue`. Playing somewhere new means adding a `Venue` there,
+  dropping the map into `react-ui/src/images/` and adding one line to
+  `react-ui/src/mapImages.js` — nothing in `MapView.js` should need touching.
+  Note the resort venue currently active is a temporary test one.
 - Run `pre-commit run --all-files` before committing, and never introduce
   `FIXME` comments (CI gate).
 - **AI shot review** (`backend/ai_shot_review.py`, `backend/shot_vision.py`,

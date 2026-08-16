@@ -27,8 +27,9 @@ from .admin_interface import CircleTypes
 from .dotenv import load_env_vars
 from .item_actions import WEAPON_NAME_LOOKUP
 from .join_codes import JoinCodeModel
-from .locations import LANDMARK_LOCATIONS
 from .ticker_message_dispatcher import send_generic_message
+from .venues import ACTIVE_VENUE
+from .venues import Venue
 
 
 def setup_logging():
@@ -134,6 +135,13 @@ async def get_user_info(
 ):
     with UserInterface(user_id) as ui:
         return ui.get_user_model()
+
+
+@router.get("/get_venue")
+async def get_venue() -> Venue:
+    """The place this game is being played: its map, that map's
+    georeferencing, and its landmarks. See backend/venues.py."""
+    return ACTIVE_VENUE
 
 
 @router.get("/get_circles")
@@ -547,7 +555,7 @@ async def admin_set_circle(
     )
 
 
-Landmark = Enum("Landmark", {k: k for k in LANDMARK_LOCATIONS.keys()})
+Landmark = Enum("Landmark", {k: k for k in ACTIVE_VENUE.landmarks})
 
 
 @admin_method(path="/admin_set_circle_by_location", method="POST")
@@ -561,7 +569,7 @@ async def admin_set_circle_by_location(
 
     location = str(location.value).upper().replace(" ", "_")
     try:
-        lat, long = LANDMARK_LOCATIONS[location]
+        lat, long = ACTIVE_VENUE.landmarks[location]
     except KeyError:
         raise HTTPException(404, f"Unknown location {location}")
 
@@ -573,7 +581,7 @@ async def admin_set_circle_by_location(
 @admin_method(path="/admin_get_landmarks", method="GET")
 async def admin_get_landmarks() -> list[str]:
     logger.info("admin_get_landmarks - %s", locals())
-    return [k for k in LANDMARK_LOCATIONS.keys()]
+    return [k for k in ACTIVE_VENUE.landmarks]
 
 
 @admin_method(path="/admin_clear_circle", method="POST")

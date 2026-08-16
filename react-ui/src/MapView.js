@@ -1,72 +1,18 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
-
-// TODO: TEMPORARY - test map only, swap back before this is played for real.
-// Stands in for the hand-drawn map so the map view can be exercised against a
-// real GPS fix while I'm away. Satellite imagery covering Koyao Island Resort,
-// Ko Yao Noi, Thailand, at the highest zoom available there (~0.6 m/px).
-// Imagery (c) Esri, Maxar, Earthstar Geographics and the GIS User Community.
-import mapSrc from "./images/map_koyao_satellite.jpg";
-// import mapSrc from "./images/map.png";
+import { mapGeometry, useVenue } from "./venue";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
 import { deregisterListener, registerListener } from "./UpdateListener";
-
-// TODO: TEMPORARY - georeferencing for the test map imported above. Remove this
-// block and uncomment the real one below when restoring "map.png".
-// Stitched from whole web-mercator tiles at zoom 18, so unlike the hand-drawn
-// map these reference points are exact rather than measured by eye: ref 1 is
-// the top-left pixel of the image, ref 2 the bottom-right. Covers ~1.06 km x
-// 1.20 km, the whole resort plus a margin of the island road either side.
-const ref_map_width_px = 1792;
-const ref_map_height_px = 2048;
-const ref_1_lat_long = [8.119053222994047, 98.6187744140625];
-const ref_1_xy = [0, 0];
-const ref_2_lat_long = [8.108176866407039, 98.62838745117188];
-const ref_2_xy = [1792, 2048];
-
-// The real map. Based on calculations and markup in "map alignment.svg"
-// const ref_map_width_px = 2273.28;
-// const ref_map_height_px = 2206.72;
-// const ref_1_lat_long = [51.4076739525208, -0.30754164680355806];
-// const ref_1_xy = [695.4, 1745.2];
-// const ref_2_lat_long = [51.41383263398225, -0.30056843291595964];
-// const ref_2_xy = [1650.3, 398.9];
-
-// These are fake, for testing.
-// const ref_1_lat_long = [51.3, -0.4];
-// const ref_2_lat_long = [51.5, -0.2];
-
-const long_per_width_px =
-  (ref_2_lat_long[1] - ref_1_lat_long[1]) / (ref_2_xy[0] - ref_1_xy[0]);
-const lat_per_height_px =
-  (ref_2_lat_long[0] - ref_1_lat_long[0]) / (ref_2_xy[1] - ref_1_xy[1]);
-const map_bottom_left = {
-  long: ref_1_lat_long[1] - ref_1_xy[0] * long_per_width_px,
-  lat:
-    ref_1_lat_long[0] + (ref_map_height_px - ref_1_xy[1]) * lat_per_height_px,
-};
-const map_top_right = {
-  long:
-    ref_1_lat_long[1] + (ref_map_width_px - ref_1_xy[0]) * long_per_width_px,
-  lat: ref_1_lat_long[0] - ref_1_xy[1] * lat_per_height_px,
-};
-
-const degreesLongitudePerKm =
-  1 /
-  (111.32 *
-    Math.cos(
-      ((map_bottom_left.lat + map_top_right.lat) / 2) * (Math.PI / 180),
-    ));
-const degreesLatitudePerKm = 1 / 110.574;
-
-const MAP_WIDTH_KM =
-  (map_top_right.long - map_bottom_left.long) / degreesLongitudePerKm;
-const MAP_HEIGHT_KM =
-  (map_top_right.lat - map_bottom_left.lat) / degreesLatitudePerKm;
 
 const MAP_POLL_TIME = 5 * 1000;
 
@@ -106,10 +52,6 @@ const BACKGROUND_GEO_SETTINGS = {
 // After 5 minutes, the dots will be almost completely transparent
 const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
-
-// Width of the map in km when it's in the corner
-// 10% of the map in view
-const CORNER_BOX_WIDTH_KM = 0.1 * MAP_WIDTH_KM;
 
 function sendLocationUpdate(lat, long) {
   sendAPIRequest(
@@ -266,12 +208,26 @@ function MapCircles({
   );
 }
 
-function MapView({
+// The map, once we know which venue we're playing at. Split out from MapView
+// so that all of this can assume it has a geometry to draw against.
+function VenueMapView({
+  geometry,
   ownPosition = null,
   other_positions_and_details = [],
   alwaysExpanded = false,
   onExpandedChange = null,
 }) {
+  const {
+    mapSrc,
+    bottomLeft,
+    topRight,
+    degreesLongitudePerKm,
+    degreesLatitudePerKm,
+    widthKm: MAP_WIDTH_KM,
+    heightKm: MAP_HEIGHT_KM,
+    cornerWidthKm: CORNER_BOX_WIDTH_KM,
+  } = geometry;
+
   const [poppedOut, setPoppedOut] = useState(false);
   const expanded = alwaysExpanded || poppedOut;
 
@@ -316,10 +272,8 @@ function MapView({
 
   // For the map position, we need to know where its centre should be. This will
   // change every time we move, so hold it in a ref to prevent rerendering
-  const mapCentreLatRef = useRef((map_bottom_left.lat + map_top_right.lat) / 2);
-  const mapCentreLongRef = useRef(
-    (map_bottom_left.long + map_top_right.long) / 2,
-  );
+  const mapCentreLatRef = useRef((bottomLeft.lat + topRight.lat) / 2);
+  const mapCentreLongRef = useRef((bottomLeft.long + topRight.long) / 2);
 
   const coordsToKm = useCallback(
     (lat, long) => {
@@ -333,7 +287,7 @@ function MapView({
 
       return [x_km, y_km];
     },
-    [box_height_km, box_width_km],
+    [box_height_km, box_width_km, degreesLatitudePerKm, degreesLongitudePerKm],
   );
 
   const kmToPixels = useCallback(
@@ -374,24 +328,25 @@ function MapView({
       box_centre_lat = ownPosition.coords.latitude;
       box_centre_long = ownPosition.coords.longitude;
     } else {
-      box_centre_lat = (map_bottom_left.lat + map_top_right.lat) / 2;
-      box_centre_long = (map_bottom_left.long + map_top_right.long) / 2;
+      box_centre_lat = (bottomLeft.lat + topRight.lat) / 2;
+      box_centre_long = (bottomLeft.long + topRight.long) / 2;
     }
     mapCentreLatRef.current = box_centre_lat;
     mapCentreLongRef.current = box_centre_long;
-  }, [expanded, ownPosition]);
+  }, [expanded, ownPosition, bottomLeft, topRight]);
 
   // Recalculate things that move when things move. Except circles: those
   // calculate themselves, like these things ought to.
   useEffect(() => {
+    // Nothing has a position until the box has been measured: every pixel
+    // below is a fraction of its size, so they'd all come out NaN
+    if (!boxWidthPx || !boxHeightPx) return;
+
     // Update the map coordinate functions
     recalculateMapCentre();
 
     // Calculate map position based on box position
-    const [map_x0, map_y0] = coordsToPixels(
-      map_bottom_left.lat,
-      map_bottom_left.long,
-    );
+    const [map_x0, map_y0] = coordsToPixels(bottomLeft.lat, bottomLeft.long);
 
     // Calculate our own dot
     const [dot_x, dot_y] = ownPosition
@@ -516,6 +471,26 @@ function MapView({
       }
     </TransformWrapper>
   );
+}
+
+// Wait for the server to tell us where we're playing before drawing anything -
+// until then there's no map image and no idea what the ground coordinates of
+// the box are. Holds the container's shape so the layout doesn't jump.
+function MapView(props) {
+  const venue = useVenue();
+  const geometry = useMemo(() => (venue ? mapGeometry(venue) : null), [venue]);
+
+  if (!geometry) {
+    const containerClasses = [
+      styles.mapContainer,
+      props.alwaysExpanded
+        ? styles.mapContainerExpanded
+        : styles.mapContainerCorner,
+    ];
+    return <div className={containerClasses.join(" ")} />;
+  }
+
+  return <VenueMapView geometry={geometry} {...props} />;
 }
 
 export function MapViewSelf() {
