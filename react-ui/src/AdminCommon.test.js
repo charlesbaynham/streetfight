@@ -2,6 +2,7 @@ import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { AdminPage, AdminLoginForm } from "./AdminCommon";
+import styles from "./AdminCommon.module.css";
 import { sendAPIRequest, setAPIErrorHandler } from "./utils";
 import * as utils from "./utils";
 import {
@@ -84,6 +85,41 @@ describe("AdminPage", () => {
     expect(screen.getByText("Secret content")).toBeInTheDocument();
     expect(screen.getByText("Admin home")).toBeInTheDocument();
     expect(screen.getByText("Identity workbench")).toBeInTheDocument();
+    expect(screen.getByText("Admin login")).toBeInTheDocument();
+  });
+});
+
+describe("AdminNav", () => {
+  // Every nav link is `end`, so a page must only highlight its own entry -
+  // the danger being "/" and "/admin", which prefix-match everything below
+  // them and would otherwise light up on every admin page.
+  async function renderNavAt(path) {
+    installFetchMock({ admin_is_authed: true, admin_get_shots_info: [] });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter initialEntries={[path]}>
+          <AdminPage>
+            <p>Page content</p>
+          </AdminPage>
+        </MemoryRouter>,
+      ),
+    );
+  }
+
+  test.each([
+    ["/admin", "Admin home"],
+    ["/admin/shots", "Shot queue (0)"],
+    ["/admin/identity-overrides", "Identity overrides"],
+    ["/admin/login", "Admin login"],
+  ])("on %s only the %s link is marked active", async (path, label) => {
+    await renderNavAt(path);
+
+    const links = screen.getAllByRole("link");
+    const active = links.filter((link) =>
+      link.classList.contains(styles.navLinkActive),
+    );
+    expect(active).toHaveLength(1);
+    expect(active[0]).toHaveTextContent(label);
   });
 });
 

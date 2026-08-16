@@ -1,0 +1,41 @@
+/* The admin pages get driven one-handed on a phone mid-game, so the nav is a
+   row of wrapping touch targets rather than a line of inline links. */
+.nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  margin: 0.5em 0;
+}
+
+.navLink {
+  flex: 1 1 auto;
+  min-width: 8em;
+  /* Comfortably above the ~44px minimum touch target */
+  min-height: 3em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5em 0.8em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.5em;
+  background: #f8f9fa;
+  color: #212529;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+}
+
+.navLink:hover,
+.navLink:focus {
+  background: #e9ecef;
+  color: #212529;
+  text-decoration: none;
+}
+
+.navLinkActive,
+.navLinkActive:hover,
+.navLinkActive:focus {
+  background: #0d6efd;
+  border-color: #0d6efd;
+  color: #fff;
+}
