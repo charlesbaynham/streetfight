@@ -1,16 +1,15 @@
-import {
-  render,
-  screen,
-  waitFor,
-  fireEvent,
-  act,
-} from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import { AdminPage, AdminLoginForm } from "./AdminCommon";
 import { sendAPIRequest, setAPIErrorHandler } from "./utils";
 import * as utils from "./utils";
-import { installFetchMock, getLastAPICall, emitUpdate } from "./testUtils";
+import {
+  installFetchMock,
+  getLastAPICall,
+  emitUpdate,
+  actAndFlush,
+} from "./testUtils";
 
 afterEach(() => {
   // Belt and braces: RTL's automatic unmount already runs AdminErrorLog's
@@ -26,23 +25,8 @@ afterEach(() => {
 // A findByText that happens to wait for its result mostly resolves this,
 // but not reliably: the state update itself can still land in a tick that
 // isn't nested inside any act() call, which React warns about even though
-// the DOM is later observed to be correct. Draining a few empty ticks inside
-// one continuous act(async) call is what actually keeps the "acting" flag
-// held across the whole chain.
-//
-// Critically, the trigger and the flush have to share one continuous act()
-// call: splitting them (e.g. `render(...); await screen.findByText(...)`)
-// leaves a gap between act() calls that the update can still land in.
-async function actAndFlush(triggerFn, ticks = 3) {
-  let result;
-  await act(async () => {
-    result = triggerFn();
-    for (let i = 0; i < ticks; i++) {
-      await new Promise((resolve) => setTimeout(resolve, 0));
-    }
-  });
-  return result;
-}
+// the DOM is later observed to be correct. actAndFlush (see testUtils.js)
+// keeps the "acting" flag held across the whole chain.
 
 describe("AdminPage", () => {
   test("shows the checking state before the auth check resolves, and does not render children", () => {
