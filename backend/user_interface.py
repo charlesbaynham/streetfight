@@ -28,6 +28,7 @@ from .model import Team
 from .model import TeamModel
 from .model import User
 from .model import UserModel
+from .shot_vision import HIT_BYSTANDER
 from .ticker import Ticker
 
 logger = logging.getLogger(__name__)
@@ -372,10 +373,16 @@ class UserInterface:
             ai_suggestion = None
             if shot.ai_review_state == "done" and shot.ai_review:
                 try:
-                    is_hit = json.loads(shot.ai_review).get("is_hit")
-                    ai_suggestion = "hit" if is_hit else "miss"
+                    review = json.loads(shot.ai_review)
                 except ValueError:
-                    pass
+                    review = None
+                if review is not None:
+                    if review.get("outcome") == HIT_BYSTANDER:
+                        ai_suggestion = "bystander"
+                    else:
+                        # Reviews stored before outcomes existed only have
+                        # is_hit
+                        ai_suggestion = "hit" if review.get("is_hit") else "miss"
 
             out.append(
                 {

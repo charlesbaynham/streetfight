@@ -14,6 +14,7 @@ import {
   makeUser,
   makeTeam,
   makeGame,
+  actAndFlush,
 } from "./testUtils";
 
 // These panels aren't what's under test here (Circles, the ticker feed, the
@@ -199,10 +200,12 @@ async function flushEffects() {
 // login gate) to have mounted.
 async function renderAdmin(routeOverrides = {}, fixtures = buildFixtures()) {
   installFetchMock({ ...defaultRoutes(fixtures), ...routeOverrides });
-  render(
-    <MemoryRouter>
-      <AdminMode />
-    </MemoryRouter>,
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <AdminMode />
+      </MemoryRouter>,
+    ),
   );
   await screen.findByRole("heading", { level: 1, name: "Admin" });
   await flushEffects();
@@ -681,16 +684,20 @@ describe("AdminPanel", () => {
       get_users: [],
       admin_get_shots_info: [],
     });
-    render(
-      <MemoryRouter>
-        <AdminMode />
-      </MemoryRouter>,
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <AdminMode />
+        </MemoryRouter>,
+      ),
     );
 
     await screen.findByText("Loading...");
     const before = getAPICalls("admin_list_games").length;
 
-    userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Retry" })),
+    );
 
     await waitFor(() =>
       expect(getAPICalls("admin_list_games").length).toBeGreaterThan(before),
@@ -702,7 +709,9 @@ describe("AdminPanel", () => {
     await renderAdmin({ admin_list_games: [] }, fixtures);
     window.confirm = jest.fn();
 
-    userEvent.click(screen.getByRole("button", { name: "Create new game" }));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Create new game" })),
+    );
 
     await waitFor(() =>
       expect(getAPICalls("admin_create_game")).toHaveLength(1),
@@ -724,7 +733,9 @@ describe("AdminPanel", () => {
     await renderAdmin();
     window.confirm = jest.fn(() => true);
 
-    userEvent.click(screen.getByRole("button", { name: "Create new game" }));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Create new game" })),
+    );
 
     await waitFor(() =>
       expect(getAPICalls("admin_create_game")).toHaveLength(1),
@@ -737,7 +748,7 @@ describe("AdminPanel", () => {
     const gamesBefore = getAPICalls("admin_list_games").length;
     const usersBefore = getAPICalls("get_users").length;
 
-    emitUpdate("admin");
+    await actAndFlush(() => emitUpdate("admin"));
 
     await waitFor(() => {
       expect(getAPICalls("admin_list_games").length).toBeGreaterThan(

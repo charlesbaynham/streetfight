@@ -2,8 +2,9 @@
 
 The vision review only annotates a shot; this module is what turns a confident
 annotation into the game action the admin would have taken -- mark_shot_missed
-for a confident miss or bystander, hit_user for a confident, unambiguously
-identified hit. Everything else stays in the queue for the admin.
+for a confident miss, mark_shot_bystander for a confident bystander, hit_user
+for a confident, unambiguously identified hit. Everything else stays in the
+queue for the admin.
 
 **Strict queue order.** Only the oldest unchecked shot of a game is ever acted
 on. Resolving a shot can invalidate the shots behind it (a knockout refunds the
@@ -35,6 +36,7 @@ CONFIDENT = DEFAULT_THRESHOLDS.confident_threshold
 
 # The decisions _decide can reach; None means "leave it to the admin".
 _MISS = "miss"
+_BYSTANDER = "bystander"
 _HIT = "hit"
 
 
@@ -71,6 +73,11 @@ def process_queue_head(game_id: UUID) -> None:
                     target_id,
                 )
                 AdminInterface().hit_user(head.id, target_id)
+            elif action == _BYSTANDER:
+                logger.info(
+                    "Auto-bystander: shot %s confidently hit nobody playing", head.id
+                )
+                AdminInterface().mark_shot_bystander(head.id)
             else:
                 logger.info("Auto-miss: shot %s confidently missed", head.id)
                 AdminInterface().mark_shot_missed(head.id)
@@ -110,8 +117,10 @@ def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
         return None
 
     outcome = review.get("outcome")
-    if outcome in (MISS, HIT_BYSTANDER):
+    if outcome == MISS:
         return (_MISS, None)
+    if outcome == HIT_BYSTANDER:
+        return (_BYSTANDER, None)
     if outcome != HIT_PLAYER:
         return None
 

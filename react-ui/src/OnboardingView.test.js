@@ -1,10 +1,4 @@
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  act,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 import OnboardingView from "./OnboardingView";
 import {
@@ -13,6 +7,7 @@ import {
   grantAllPermissions,
   setPermission,
   makeUser,
+  actAndFlush,
 } from "./testUtils";
 
 // A user with no team, for the steps that gate on webcam/location before a
@@ -21,14 +16,14 @@ function soloUser(overrides = {}) {
   return makeUser({ team_id: null, team_name: null, ...overrides });
 }
 
-// OnboardingView checks permissions on mount via two `.then()`-chained
-// promises (isCameraPermissionGranted / isLocationPermissionGranted). Flush
-// them before asserting, so every test observes the settled state instead of
-// racing the initial render.
+// OnboardingView checks permissions on mount via two `.then()`-chained async
+// functions (isCameraPermissionGranted / isLocationPermissionGranted), each
+// itself awaiting navigator.permissions.query(...) - several microtask ticks
+// deep. actAndFlush (see testUtils.js) drains enough ticks, inside one
+// continuous act() call, for both to settle before a test asserts, so every
+// test observes the settled state instead of racing the initial render.
 async function renderOnboarding(user) {
-  const utils = render(<OnboardingView user={user} />);
-  await act(async () => {});
-  return utils;
+  return actAndFlush(() => render(<OnboardingView user={user} />));
 }
 
 function stepButton(text) {
@@ -182,9 +177,9 @@ test("clicking the location step and being denied leaves it not done", async () 
   mockGeolocationDenied();
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  await act(async () => {
-    fireEvent.click(stepButton("Grant location permission:"));
-  });
+  await actAndFlush(() =>
+    fireEvent.click(stepButton("Grant location permission:")),
+  );
 
   expect(window.navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
   expect(isDone("Grant location permission:")).toBe(false);

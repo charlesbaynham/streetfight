@@ -61,6 +61,28 @@ def test_miss_recorded_in_shot_history(user_in_team, test_image_string):
     assert shot["target_name"] is None
 
 
+def test_bystander_recorded_in_shot_history(user_in_team, test_image_string):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+
+    AdminInterface().mark_shot_bystander(shot_id)
+
+    (shot,) = UserInterface(user_in_team).get_own_shots()
+    assert shot["checked"] is True
+    assert shot["result"] == "bystander"
+    assert shot["target_name"] is None
+    # A bystander costs the ammo, exactly like a miss
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+
+
+def test_bystander_tells_the_shooter(user_in_team, test_image_string):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+
+    AdminInterface().mark_shot_bystander(shot_id)
+
+    messages = UserInterface(user_in_team).get_messages(10, private=True)
+    assert any("bystander" in message.lower() for _, message in messages)
+
+
 def test_refund_recorded_in_shot_history(user_in_team, test_image_string):
     shot_id = submit_a_shot(user_in_team, test_image_string)
 
@@ -140,6 +162,17 @@ def test_shot_history_ai_suggestion_can_be_miss(user_in_team, shot_from_user_in_
 
     (shot,) = UserInterface(user_in_team).get_own_shots()
     assert shot["ai_suggestion"] == "miss"
+
+
+def test_shot_history_ai_suggestion_can_be_bystander(
+    user_in_team, shot_from_user_in_team
+):
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, "done", {"is_hit": False, "outcome": "hit_bystander"}
+    )
+
+    (shot,) = UserInterface(user_in_team).get_own_shots()
+    assert shot["ai_suggestion"] == "bystander"
 
 
 def test_user_shots_endpoint_excludes_images(

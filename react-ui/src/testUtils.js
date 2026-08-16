@@ -18,6 +18,11 @@
 //   emitError([es])            - fire the stream's onerror
 //   (es defaults to the most recently created FakeEventSource)
 //
+// Async state updates that outlive a single act():
+//   actAndFlush(triggerFn, [ticks]) - run triggerFn (e.g. render(), fireEvent.click(),
+//                                     emitUpdate()) and drain a few macrotask ticks,
+//                                     all inside one continuous act() call
+//
 // Permissions:
 //   setPermission(name, state) - control navigator.permissions.query's resolved state
 //   grantAllPermissions()      - convenience: geolocation + camera both "granted"
@@ -27,6 +32,8 @@
 //
 // Internal (used by setupTests.js; not normally needed in a test file):
 //   resetTestEnvironment()     - reinstalls every global stub fresh, called before each test
+
+import { act } from "@testing-library/react";
 
 // ---------------------------------------------------------------------------
 // Fake fetch Response + route-table-driven fetch mock
@@ -206,6 +213,31 @@ export function emitKeepalive(count, es = latestEventSource()) {
 export function emitError(es = latestEventSource()) {
   if (!es) throw new Error("No FakeEventSource instance available to emit on");
   if (es.onerror) es.onerror(new Event("error"));
+}
+
+// ---------------------------------------------------------------------------
+// actAndFlush - trigger + drain async state updates in one continuous act()
+// ---------------------------------------------------------------------------
+
+// Some effects (a fetch's .then() chain with its own internal awaits, an
+// async permission check, a passive effect like UpdateListener's SSE
+// registration that re-subscribes on every render) settle their state update
+// a few ticks after the action that triggers them, not immediately. Splitting
+// the trigger and the wait across two separate act() calls (e.g.
+// `render(...); await screen.findByText(...)`) leaves a gap between them that
+// the update can still land in outside of any act() scope - React warns
+// about that even though the DOM is later observed to be correct. Draining a
+// few empty ticks inside one continuous act(async) call is what actually
+// keeps the "acting" flag held across the whole chain.
+export async function actAndFlush(triggerFn, ticks = 3) {
+  let result;
+  await act(async () => {
+    result = triggerFn();
+    for (let i = 0; i < ticks; i++) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+  return result;
 }
 
 // ---------------------------------------------------------------------------

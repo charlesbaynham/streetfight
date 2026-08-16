@@ -2,7 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import JoinQRCodes from "./JoinQRCodes";
-import { installFetchMock, getLastAPICall } from "./testUtils";
+import { installFetchMock, getLastAPICall, actAndFlush } from "./testUtils";
 
 const REPORT = {
   team_channel: "hat",
@@ -43,7 +43,9 @@ test("Generate fetches admin_join_qr_codes and renders one QR per code with capt
   installFetchMock({ admin_join_qr_codes: REPORT });
   const { container } = render(<JoinQRCodes game_id="game-1" />);
 
-  userEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
 
   await screen.findByText("Team Red — outfit #7");
 
@@ -67,7 +69,9 @@ test("each team heading names the colour its whole team wears", async () => {
   installFetchMock({ admin_join_qr_codes: REPORT });
   render(<JoinQRCodes game_id="game-1" />);
 
-  userEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
 
   // One colour for the whole team...
   await screen.findByText(/purple hats/);
@@ -82,7 +86,9 @@ test("the slots-per-team input feeds the request", async () => {
   const input = screen.getByLabelText(/Slots per team/);
   userEvent.clear(input);
   userEvent.type(input, "4");
-  userEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
 
   await waitFor(() =>
     expect(getLastAPICall("admin_join_qr_codes")).toBeDefined(),
@@ -101,7 +107,9 @@ test("Print appears once codes are generated and calls window.print", async () =
     screen.queryByRole("button", { name: "Print" }),
   ).not.toBeInTheDocument();
 
-  userEvent.click(screen.getByRole("button", { name: "Generate" }));
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
   await screen.findByText("Team Red — outfit #7");
 
   window.print = jest.fn();

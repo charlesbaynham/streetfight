@@ -15,6 +15,7 @@ import {
   emitUpdate,
   grantAllPermissions,
   makeUser,
+  actAndFlush,
 } from "./testUtils";
 
 // WebcamView, MapView and FullscreenButton are heavy children that fight
@@ -73,7 +74,7 @@ test("shows Loading... before user_info has resolved", async () => {
   // The 404 is expected and logged by sendAPIRequest itself; keep it out of
   // the test output.
   jest.spyOn(console, "dir").mockImplementation(() => {});
-  renderUserMode();
+  await actAndFlush(renderUserMode);
   expect(screen.getByText("Loading...")).toBeInTheDocument();
 
   await flushPendingEffects();
@@ -82,7 +83,7 @@ test("shows Loading... before user_info has resolved", async () => {
 test("shows onboarding when the player has no name, even though everything else is ready", async () => {
   grantAllPermissions();
   installFetchMock({ user_info: readyUser({ name: null }), user_shots: [] });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(
@@ -96,7 +97,7 @@ test("shows onboarding when the player has no name, even though everything else 
 test("shows onboarding when the game is not active, even though everything else is ready", async () => {
   grantAllPermissions();
   installFetchMock({ user_info: readyUser({ active: false }), user_shots: [] });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(
@@ -110,7 +111,7 @@ test("shows onboarding when the game is not active, even though everything else 
 test("shows onboarding when permissions aren't granted, even though everything else is ready", async () => {
   // grantAllPermissions() deliberately not called - permissions stay "prompt".
   installFetchMock({ user_info: readyUser(), user_shots: [] });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(
@@ -124,7 +125,7 @@ test("shows onboarding when permissions aren't granted, even though everything e
 test("shows the in-game HUD for a living player once everything is satisfied", async () => {
   grantAllPermissions();
   installFetchMock({ user_info: readyUser(), user_shots: [] });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() => expect(screen.getByText(/Ammo:/)).toBeInTheDocument());
   await flushPendingEffects();
@@ -151,7 +152,7 @@ test("a knocked-out player gets the knocked-out view, no fire button, and standa
       },
     ],
   });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(screen.getByText("You are knocked out")).toBeInTheDocument(),
@@ -186,7 +187,7 @@ test("a dead player gets the dead image, no fire button, and standalone scoreboa
       },
     ],
   });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(screen.getByAltText("You Died")).toBeInTheDocument(),
@@ -209,7 +210,7 @@ test("a dead player gets the dead image, no fire button, and standalone scoreboa
 test("firing the fire button changes the trigger passed to the webcam view", async () => {
   grantAllPermissions();
   installFetchMock({ user_info: readyUser(), user_shots: [] });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() =>
     expect(screen.getByAltText("Fire button")).toBeInTheDocument(),
@@ -236,14 +237,12 @@ test("a 'user' SSE update triggers a refetch of user_info", async () => {
       readyUser({ num_bullets: getAPICalls("user_info").length <= 1 ? 5 : 99 }),
     user_shots: [],
   });
-  renderUserMode();
+  await actAndFlush(renderUserMode);
 
   await waitFor(() => expect(screen.getByText(/x5/)).toBeInTheDocument());
   await flushPendingEffects();
 
-  await act(async () => {
-    emitUpdate("user", getEventSources()[0]);
-  });
+  await actAndFlush(() => emitUpdate("user", getEventSources()[0]));
 
   await waitFor(() => expect(screen.getByText(/x99/)).toBeInTheDocument());
   await flushPendingEffects();
@@ -252,7 +251,10 @@ test("a 'user' SSE update triggers a refetch of user_info", async () => {
 test("permissions are rechecked every 5s, and granting them moves the player off onboarding without a reload", async () => {
   jest.useFakeTimers();
   installFetchMock({ user_info: readyUser(), user_shots: [] });
-  // Permissions start ungranted, so onboarding is shown first.
+  // Permissions start ungranted, so onboarding is shown first. Not using
+  // actAndFlush here: it drains ticks via a real setTimeout, which never
+  // fires once fake timers are installed above - the waitFor below is
+  // fake-timer aware and drives the clock itself.
   renderUserMode();
 
   await waitFor(() =>

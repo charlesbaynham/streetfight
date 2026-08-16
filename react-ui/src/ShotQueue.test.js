@@ -8,6 +8,7 @@ import {
   getAPICalls,
   getLastAPICall,
   emitUpdate,
+  actAndFlush,
 } from "./testUtils";
 
 // ---------------------------------------------------------------------------
@@ -182,14 +183,17 @@ describe("ShotQueuePanel", () => {
       admin_get_shot_ai_review: () => NO_REVIEW_YET,
       admin_shot_hit_user: {},
       admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
       ...routeOverrides,
     });
-    render(
-      <MemoryRouter>
-        <ShotQueue />
-      </MemoryRouter>,
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
     );
     await screen.findByText("Shot 1 of 3:");
     // The header (queue length) and the shot itself (loaded async, through
@@ -207,44 +211,50 @@ describe("ShotQueuePanel", () => {
     await renderQueue();
 
     // Clamps at the start.
-    userEvent.click(screen.getByRole("button", { name: "Previous" }));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Previous" })),
+    );
     expect(screen.getByText("Shot 1 of 3:")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() =>
-      expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument(),
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
     );
-    userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() =>
-      expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument(),
-    );
+    expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument();
 
-    // Clamps at the end.
-    userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
+    );
     expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
 
-    userEvent.click(screen.getByRole("button", { name: "Previous" }));
-    await waitFor(() =>
-      expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument(),
+    // Clamps at the end.
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
     );
+    expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Previous" })),
+    );
+    expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument();
   });
 
   test("clamps the index down when the queue shrinks below it, rather than showing a blank panel", async () => {
     await renderQueue();
 
-    userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() =>
-      expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument(),
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
     );
-    userEvent.click(screen.getByRole("button", { name: "Next" }));
-    await waitFor(() =>
-      expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument(),
+    expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
     );
+    expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
 
     // The two later shots get adjudicated away elsewhere; the next queue
     // refresh (triggered here via SSE) reports only one shot left.
     shotIds = ["shot-1"];
-    emitUpdate("shots");
+    await actAndFlush(() => emitUpdate("shots"));
 
     await waitFor(() =>
       expect(screen.getByText("Shot 1 of 1:")).toBeInTheDocument(),
@@ -305,6 +315,24 @@ describe("ShotQueuePanel", () => {
     );
   });
 
+  test('"Bystander" posts admin_mark_shot_bystander for the shown shot, then refreshes', async () => {
+    await renderQueue();
+    const before = getAPICalls("admin_get_shots_info").length;
+
+    userEvent.click(screen.getByRole("button", { name: "Bystander" }));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_mark_shot_bystander").query).toEqual({
+        shot_id: "shot-1",
+      }),
+    );
+    await waitFor(() =>
+      expect(getAPICalls("admin_get_shots_info").length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+
   test('"Refund" posts admin_refund_shot for the shown shot, then refreshes', async () => {
     await renderQueue();
     const before = getAPICalls("admin_get_shots_info").length;
@@ -355,13 +383,16 @@ describe("ShotAiTags", () => {
       admin_get_shot_ai_review: () => aiReviewResponse,
       admin_shot_hit_user: {},
       admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
     });
-    render(
-      <MemoryRouter>
-        <ShotQueue />
-      </MemoryRouter>,
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
     );
     await screen.findByText("By Shooter of shot-1");
     await flushEffects();
@@ -489,7 +520,7 @@ describe("ShotAiTags", () => {
         },
       },
     };
-    emitUpdate("shots");
+    await actAndFlush(() => emitUpdate("shots"));
 
     await screen.findByText("Miss");
   });
