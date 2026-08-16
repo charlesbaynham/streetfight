@@ -5,10 +5,11 @@ import "bootstrap/dist/css/bootstrap.min.css";
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Container } from "react-bootstrap";
-import { Link } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 
 import { sendAPIRequest, setAPIErrorHandler } from "./utils";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
+import styles from "./AdminCommon.module.css";
 
 // POST wrapper for admin actions. The optional callback fires on success with
 // the parsed response body; failures show up in the AdminErrorLog box.
@@ -127,6 +128,23 @@ export function AdminLoginForm({ onSuccess }) {
   );
 }
 
+// One nav entry, sized as a button rather than a word of body text. `end` is
+// always set: none of the admin pages should light up because a sibling route
+// happens to sit below it in the path.
+function AdminNavLink({ to, children }) {
+  return (
+    <NavLink
+      to={to}
+      end
+      className={({ isActive }) =>
+        isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
+      }
+    >
+      {children}
+    </NavLink>
+  );
+}
+
 // Link to the shot queue with a live count of unchecked shots.
 function ShotQueueLink() {
   const [numShots, setNumShots] = useState(null);
@@ -142,21 +160,25 @@ function ShotQueueLink() {
   return (
     <>
       <UpdateListener update_type="shots" callback={update} />
-      <Link to="/admin/shots">
+      <AdminNavLink to="/admin/shots">
         Shot queue{numShots === null ? "" : ` (${numShots})`}
-      </Link>
+      </AdminNavLink>
     </>
   );
 }
 
 export function AdminNav() {
   return (
-    <p>
-      <Link to="/admin">Admin home</Link> | <ShotQueueLink /> |{" "}
-      <Link to="/admin/identity">Identity workbench</Link> |{" "}
-      <Link to="/admin/identity-overrides">Identity overrides</Link> |{" "}
-      <Link to="/">Player view</Link>
-    </p>
+    <nav className={styles.nav}>
+      <AdminNavLink to="/admin">Admin home</AdminNavLink>
+      <ShotQueueLink />
+      <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
+      <AdminNavLink to="/admin/identity-overrides">
+        Identity overrides
+      </AdminNavLink>
+      <AdminNavLink to="/admin/login">Admin login</AdminNavLink>
+      <AdminNavLink to="/">Player view</AdminNavLink>
+    </nav>
   );
 }
 
