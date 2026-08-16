@@ -182,6 +182,7 @@ describe("ShotQueuePanel", () => {
       admin_get_shot_ai_review: () => NO_REVIEW_YET,
       admin_shot_hit_user: {},
       admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
       ...routeOverrides,
@@ -305,6 +306,24 @@ describe("ShotQueuePanel", () => {
     );
   });
 
+  test('"Bystander" posts admin_mark_shot_bystander for the shown shot, then refreshes', async () => {
+    await renderQueue();
+    const before = getAPICalls("admin_get_shots_info").length;
+
+    userEvent.click(screen.getByRole("button", { name: "Bystander" }));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_mark_shot_bystander").query).toEqual({
+        shot_id: "shot-1",
+      }),
+    );
+    await waitFor(() =>
+      expect(getAPICalls("admin_get_shots_info").length).toBeGreaterThan(
+        before,
+      ),
+    );
+  });
+
   test('"Refund" posts admin_refund_shot for the shown shot, then refreshes', async () => {
     await renderQueue();
     const before = getAPICalls("admin_get_shots_info").length;
@@ -355,6 +374,7 @@ describe("ShotAiTags", () => {
       admin_get_shot_ai_review: () => aiReviewResponse,
       admin_shot_hit_user: {},
       admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
     });

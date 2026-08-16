@@ -427,6 +427,13 @@ async def admin_mark_shot_missed(shot_id):
     shot_auto_actions.process_queue_head(game_id)
 
 
+@admin_method(path="/admin_mark_shot_bystander", method="POST")
+async def admin_mark_shot_bystander(shot_id):
+    game_id = AdminInterface().get_shot_game_id(shot_id)
+    AdminInterface().mark_shot_bystander(shot_id)
+    shot_auto_actions.process_queue_head(game_id)
+
+
 @admin_method(path="/admin_set_ai_shot_review", method="POST")
 async def admin_set_ai_shot_review(game_id: UUID, enabled: bool):
     """Turn AI review of the shot queue on or off for a game.

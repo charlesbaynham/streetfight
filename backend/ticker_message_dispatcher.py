@@ -41,6 +41,7 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_BOTH = auto()
     ADMIN_SET_CIRCLE_DROP = auto()
     MISSED_SHOT = auto()
+    BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
 
 
@@ -134,6 +135,10 @@ TICKER_MESSAGES = {
     TickerMessageType.MISSED_SHOT: (
         TickerTarget.PRIVATE_USER,
         "Your shot missed! Try again...",
+    ),
+    TickerMessageType.BYSTANDER_SHOT: (
+        TickerTarget.PRIVATE_USER,
+        "You shot an innocent bystander! No damage done...",
     ),
     TickerMessageType.REFUNDED_SHOT: (
         TickerTarget.PRIVATE_USER,

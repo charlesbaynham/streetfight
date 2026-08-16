@@ -77,6 +77,17 @@ describe("shotStatus", () => {
     });
   });
 
+  test("checked + bystander", () => {
+    expect(
+      shotStatus(makeShot({ checked: true, result: "bystander" })),
+    ).toEqual({
+      state: "bystander",
+      emoji: "😲",
+      label: "You shot a bystander!",
+      sublabel: "Not a player - no damage done",
+    });
+  });
+
   test("legacy checked shot (result: null) with a target name infers a hit", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: null, target_name: "Ann" })),
