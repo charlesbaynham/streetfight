@@ -20,7 +20,7 @@ Attempt to match existing code styles where possible. Prefer self-documenting co
 
 For a feature that affects the backend or the frontend functionality, ensure to add unit tests. One caveat to this is: don't add unit tests that test very simple behaviour. For example, if you add a button that says "hello", do not add a unit test that says, "Does the button say 'hello'?" We can trust code that far.
 
-Keep the agent documentation up to date, such as this file and any other documentation for agents in the repository. 
+Keep the agent documentation up to date, such as this file and any other documentation for agents in the repository.
 
 It's an unpolished personal project (see `README.md`), so favour pragmatic,
 minimal changes over large refactors.
