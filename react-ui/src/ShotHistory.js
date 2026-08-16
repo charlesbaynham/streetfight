@@ -21,6 +21,7 @@ import scoreboardStyles from "./Scoreboard.module.css";
 
 import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
+import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
 
 const OPEN_EVENT = "streetfight:open-shot-history";
@@ -94,7 +95,13 @@ function StatusIcon({ status, className }) {
   );
 }
 
-function ShotThumbnail({ shotId, className }) {
+// A shot photo with the same crosshair the player aimed with drawn over its
+// centre. The shot always lands dead centre of the frame, so without the
+// marker there is nothing in the picture to say what was actually aimed at -
+// which matters most when the referee (or the AI) called a miss. `object-fit:
+// cover` crops evenly on both sides, so the centre of the photo stays at the
+// centre of the thumbnail.
+function ShotThumbnail({ shotId, className, wrapperClassName }) {
   const [image, setImage] = useState(null);
 
   useEffect(() => {
@@ -108,7 +115,16 @@ function ShotThumbnail({ shotId, className }) {
   }, [shotId]);
 
   if (!image) return <div className={className} />;
-  return <img className={className} src={image} alt="Your shot" />;
+  return (
+    <span
+      className={[styles.imageWrapper, wrapperClassName]
+        .filter(Boolean)
+        .join(" ")}
+    >
+      <img className={className} src={image} alt="Your shot" />
+      <img className={styles.crosshair} src={crosshairImg} alt="" />
+    </span>
+  );
 }
 
 export function formatShotTime(timeCreated) {
@@ -150,7 +166,11 @@ function ShotRow({ shot, onClick }) {
 
   return (
     <button className={styles.shotRow} onClick={onClick}>
-      <ShotThumbnail shotId={shot.id} className={styles.thumbnail} />
+      <ShotThumbnail
+        shotId={shot.id}
+        className={styles.thumbnail}
+        wrapperClassName={styles.thumbnailWrapper}
+      />
       <div className={styles.rowText}>
         <span>
           <StatusIcon status={status} className={styles.rowIcon} />{" "}
@@ -184,7 +204,11 @@ function ShotDetail({ shot, onBack }) {
           </>
         ) : null}
       </p>
-      <ShotThumbnail shotId={shot.id} className={styles.detailImage} />
+      <ShotThumbnail
+        shotId={shot.id}
+        className={styles.detailImage}
+        wrapperClassName={styles.detailImageWrapper}
+      />
       <p className={styles.rowTime}>{formatShotTime(shot.time_created)}</p>
     </div>
   );
@@ -207,7 +231,11 @@ function ShotNotifierBubble({ shotList }) {
       className={statusClasses(status, styles.bubble)}
       onClick={() => openShotHistory(latest.id)}
     >
-      <ShotThumbnail shotId={latest.id} className={styles.bubbleImage} />
+      <ShotThumbnail
+        shotId={latest.id}
+        className={styles.bubbleImage}
+        wrapperClassName={styles.bubbleImageWrapper}
+      />
       <StatusIcon status={status} className={styles.bubbleIcon} />
     </button>
   );

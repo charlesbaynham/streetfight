@@ -45,6 +45,44 @@
   display: block;
 }
 
+/* The photo and its crosshair, stacked. line-height: 0 stops the inline image
+   leaving a descender gap under itself inside the wrapper. */
+.imageWrapper {
+  position: relative;
+  display: block;
+  line-height: 0;
+}
+
+/* Sized off the shorter side so the marker stays square and inside the frame
+   whatever the photo's aspect ratio (the SVG letterboxes itself to fit) */
+.crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 60%;
+  height: 60%;
+  object-fit: contain;
+  opacity: 0.85;
+  pointer-events: none;
+  /* The marker is thin red lines: outline them so they stay readable against
+     a bright or red-ish photo */
+  filter: drop-shadow(0 0 1px rgba(0, 0, 0, 0.9));
+}
+
+.thumbnailWrapper {
+  flex-shrink: 0;
+}
+
+.detailImageWrapper {
+  width: 100%;
+}
+
+.bubbleImageWrapper {
+  width: 100%;
+  height: 100%;
+}
+
 .rowText {
   display: flex;
   flex-direction: column;
