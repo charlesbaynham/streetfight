@@ -5,10 +5,12 @@ import JoinQRCodes from "./JoinQRCodes";
 import { installFetchMock, getLastAPICall } from "./testUtils";
 
 const REPORT = {
+  team_channel: "hat",
   teams: [
     {
       team_id: "team-red",
       team_name: "Red",
+      team_colours: ["purple"],
       codes: [
         {
           slot: 7,
@@ -25,6 +27,7 @@ const REPORT = {
     {
       team_id: "team-blue",
       team_name: "Blue",
+      team_colours: ["green", "yellow"],
       codes: [
         {
           slot: 11,
@@ -58,6 +61,18 @@ test("Generate fetches admin_join_qr_codes and renders one QR per code with capt
   // The appearance is listed channel by channel
   expect(screen.getByText("tshirt: blue")).toBeInTheDocument();
   expect(screen.getAllByText("trousers: black")).toHaveLength(2);
+});
+
+test("each team heading names the colour its whole team wears", async () => {
+  installFetchMock({ admin_join_qr_codes: REPORT });
+  render(<JoinQRCodes game_id="game-1" />);
+
+  userEvent.click(screen.getByRole("button", { name: "Generate" }));
+
+  // One colour for the whole team...
+  await screen.findByText(/purple hats/);
+  // ...and a team too big for one colour says which comes next
+  expect(screen.getByText(/hats: green then yellow/)).toBeInTheDocument();
 });
 
 test("the slots-per-team input feeds the request", async () => {
