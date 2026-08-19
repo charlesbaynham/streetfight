@@ -175,6 +175,7 @@ function defaultRoutes(fixtures) {
     admin_set_ai_auto_actions: {},
     admin_reset_game: {},
     admin_create_team: {},
+    admin_set_team_name: {},
     admin_send_custom_ticker_message: {},
     admin_set_user_name: {},
     admin_add_user_to_team: {},
@@ -475,6 +476,30 @@ describe("GamePanel", () => {
       team_name: "Green",
     });
     expect(input).toHaveValue("");
+  });
+
+  test("renaming a team posts admin_set_team_name with the typed name", async () => {
+    await renderAdmin();
+
+    const teamSection = screen
+      .getByRole("heading", { level: 4, name: "Red" })
+      .closest("div");
+    const input = within(teamSection).getByRole("textbox", {
+      name: "team name",
+    });
+    userEvent.clear(input);
+    userEvent.type(input, "Crimson");
+    userEvent.click(
+      within(teamSection).getByRole("button", { name: "Rename team" }),
+    );
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_set_team_name")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_set_team_name").query).toEqual({
+      team_id: "team-red",
+      name: "Crimson",
+    });
   });
 
   test("teams and their players render", async () => {

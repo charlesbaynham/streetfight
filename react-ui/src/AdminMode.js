@@ -97,6 +97,42 @@ function UserControls({ user }) {
   );
 }
 
+function TeamSection({ team }) {
+  const [teamName, setTeamName] = useState(team.name);
+
+  useEffect(() => {
+    setTeamName(team.name);
+  }, [team.name]);
+
+  return (
+    <div>
+      <h4>{team.name}</h4>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          adminPost("admin_set_team_name", {
+            team_id: team.id,
+            name: teamName,
+          });
+        }}
+      >
+        <input
+          value={teamName}
+          aria-label="team name"
+          onChange={(e) => setTeamName(e.target.value)}
+          required
+        />{" "}
+        <button type="submit">Rename team</button>
+      </form>
+      <ul>
+        {team.users.map((user) => (
+          <UserControls key={user.id} user={user} />
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function GamePanel({ game }) {
   const [keepWeapons, setKeepWeapons] = useState(true);
   const newTeamInput = useRef(null);
@@ -187,14 +223,7 @@ function GamePanel({ game }) {
             <p>No teams yet - add one below.</p>
           ) : null}
           {game.teams.map((team) => (
-            <div key={team.id}>
-              <h4>{team.name}</h4>
-              <ul>
-                {team.users.map((user) => (
-                  <UserControls key={user.id} user={user} />
-                ))}
-              </ul>
-            </div>
+            <TeamSection key={team.id} team={team} />
           ))}
           <form
             onSubmit={(e) => {

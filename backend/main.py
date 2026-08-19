@@ -343,6 +343,12 @@ async def admin_create_team(game_id: UUID, team_name: str) -> UUID:
     return AdminInterface().create_team(game_id, team_name)
 
 
+@admin_method(path="/admin_set_team_name", method="POST")
+async def admin_set_team_name(team_id: UUID, name: str) -> None:
+    logger.info("Renaming team %s to '%s'", team_id, name)
+    AdminInterface().set_team_name(team_id=team_id, name=name)
+
+
 @admin_method(path="/admin_add_user_to_team", method="POST")
 async def admin_add_user_to_team(
     user_id: UUID, team_id: UUID, slot: Optional[int] = None
