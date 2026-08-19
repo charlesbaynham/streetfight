@@ -98,7 +98,11 @@ function UserControls({ user }) {
 }
 
 function TeamSection({ team }) {
-  const nameInput = useRef(null);
+  const [teamName, setTeamName] = useState(team.name);
+
+  useEffect(() => {
+    setTeamName(team.name);
+  }, [team.name]);
 
   return (
     <div>
@@ -108,14 +112,14 @@ function TeamSection({ team }) {
           e.preventDefault();
           adminPost("admin_set_team_name", {
             team_id: team.id,
-            name: nameInput.current.value,
+            name: teamName,
           });
         }}
       >
         <input
-          ref={nameInput}
-          defaultValue={team.name}
+          value={teamName}
           aria-label="team name"
+          onChange={(e) => setTeamName(e.target.value)}
           required
         />{" "}
         <button type="submit">Rename team</button>

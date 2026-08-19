@@ -253,7 +253,6 @@ class AdminInterface:
         user_ids = [user.id for user in team.users]
         game_id = team.game_id
         team.name = name
-        self._session.commit()
 
         self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
         for user_id in user_ids:
