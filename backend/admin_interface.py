@@ -247,6 +247,19 @@ class AdminInterface:
         return team.id
 
     @db_scoped
+    def set_team_name(self, team_id: UUID, name: str) -> None:
+        logger.info("AdminInterface - set_team_name %s %s", team_id, name)
+        team = self._get_team_orm(team_id)
+        user_ids = [user.id for user in team.users]
+        game_id = team.game_id
+        team.name = name
+        self._session.commit()
+
+        self._get_game_ticker(game_id=game_id).touch_game_ticker_tag()
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+    @db_scoped
     def _get_game_ticker(self, game_id: UUID) -> Ticker:
         return Ticker(game_id, user_id=None, session=self._session)
 

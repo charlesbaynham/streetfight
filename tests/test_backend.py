@@ -5,6 +5,7 @@ import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
+from backend.model import Team
 from backend.model import UserModel
 from backend.user_interface import UserInterface
 
@@ -169,6 +170,17 @@ def test_make_team(admin_api_client):
 
     assert response_team.status_code == 200
     return UUID(response_team.json())
+
+
+def test_rename_team(admin_api_client, db_session, one_team):
+    new_name = "Renamed team"
+
+    response = admin_api_client.post(
+        f"/api/admin_set_team_name?team_id={one_team}&name={new_name}"
+    )
+
+    assert response.is_success
+    assert db_session.get(Team, one_team).name == new_name
 
 
 def test_username_starts_empty(api_client):
