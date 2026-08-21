@@ -14,6 +14,14 @@ the photos and validate hits. It is a full-stack app:
 - **Frontend** — Create React App (`react-ui/`), a mobile-first PWA-style client.
 - Glued together by a root `package.json`, a Nix flake, and Docker Compose.
 
+## Planned work
+
+`docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
+the files each item lands in and the open questions still outstanding. Read it
+before starting anything substantial - several items are deliberately sequenced
+behind each other, and a few are "wire up what already exists" rather than the
+rewrite they sound like. Keep it current: when an item ships, say so there.
+
 ## Contributing
 
 Attempt to match existing code styles where possible. Prefer self-documenting code over verbose comments. Where a pattern has already been demonstrated elsewhere in the codebase, generalise and reuse it rather than minting a new, different version.
