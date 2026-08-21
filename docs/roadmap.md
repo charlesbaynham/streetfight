@@ -639,29 +639,111 @@ Doing that spike first is the highest-value thing here: it either solves most of
 the problem for 1% of the cost, or it produces a specific, defensible reason to
 go native.
 
-**What makes the native project tractable.** The backend is already a clean REST
-and SSE API with no coupling to the web client, so a native app replaces
-  `react-ui/` **only**. Nothing in `backend/` changes. `server/` (the Express
-  static server and proxy) stays for whatever web surface remains — the admin
-  interface in particular has no reason to become native, and is much better suited
-  to staying a web page.
+**What makes the native project tractable.** The backend is already a REST and
+SSE API with almost no coupling to the web client, and — the big one — **the
+admin interface never needs to be native**. `AdminMode`, `ShotQueue`,
+`AdminIdentity` and `IdentityDemo` are a desk job done on a phone or a laptop;
+they stay a web page, and `server/` keeps serving them. That is very nearly half
+the frontend excluded from the port before any work starts.
 
-**What has to be rewritten either way:** `MapView.js` is the big one (a
-custom-drawn map with georeferencing, the corner mini-map, and the circles), plus
-the camera and QR pipeline (`MyWebcam.js`, `QRParser.js`) and every view. What
-ports cleanly on the React Native path: the pure logic — `utils.js`, the map
-geometry in `venue.js`, `shotHistoryStore.js`, `UpdateListener.js`'s structure —
-and the React model itself. On the Flutter path, all of it is rewritten in Dart.
-The CSS Modules do not survive either route.
+### How big is it, measured
 
-**Recommendation: React Native with Expo.** It keeps the language and the React
-idioms this codebase is already written in, so the port is mechanical in places
-rather than a from-scratch rebuild; Expo has first-party modules aimed at exactly
-the three weaknesses (`expo-camera`, `expo-location` background updates,
-`expo-notifications`); and OTA updates avoid an app-store round trip for every
-iteration. Flutter's advantages — rendering consistency, a better story for
-custom-drawn UI like the map — are real but do not outweigh throwing away the
-existing JavaScript and the team's familiarity, for a personal project.
+`react-ui/src`, counted rather than guessed:
+
+| | Lines | Fate on the native path |
+| --- | --- | --- |
+| Admin-only JS | 3,223 | **Untouched.** Stays a web page. |
+| Player + shared JS | 3,359 | Ported. |
+| CSS Modules | 1,178 | Dead — RN has no CSS. Re-expressed as `StyleSheet`. |
+| `modernizr.js` (vendored) | 389 | Dead. |
+| Player-side tests | 2,887 | Migrated to `@testing-library/react-native`. |
+| Admin-side tests | 2,091 | Untouched. |
+
+**Ten of the twenty runtime dependencies are web-only** and need a replacement:
+`bootstrap` / `react-bootstrap`, `framer-motion`, `react-tooltip`,
+`react-zoom-pan-pinch`, `qr-scanner`, `use-sound`, `react-full-screen`,
+`add-to-homescreen`, `react-router-dom`, `react-qr-code`. Some of those swaps are
+upgrades — `expo-camera` does in a few lines what `MyWebcam.js` hand-rolls around
+iOS bugs, and its barcode scanner replaces `qr-scanner` outright.
+
+*(Aside: `@maplibre/maplibre-react-native` is already in `package.json` and
+imported nowhere — an abandoned experiment. Delete it.)*
+
+**`MapView.js` is the single hardest piece** and deserves its own estimate. It is
+not a map widget: it is a `div` with a `backgroundImage` whose
+`background-position` and `background-size` are computed from the venue's
+georeferencing, with absolutely-positioned dots at `left`/`bottom`, wrapped in
+`react-zoom-pan-pinch`, and laid out in three modes (corner, popped-out,
+expanded) by CSS. None of that mechanism exists in React Native. The geometry in
+`venue.js` ports untouched; the rendering is a rewrite on
+`react-native-gesture-handler` + `reanimated`. Budget two or three weekends for
+this component alone.
+
+**The one thing that genuinely does touch the backend.** Player identity is a
+signed session **cookie** (`request.session["UUID"]` in `backend/user_id.py`).
+That mostly survives in a native app's `fetch`, but it does *not* survive
+reliably in the two places this project actually needs: an `EventSource`
+polyfill, and a **background location task**, which runs in its own context while
+the app is asleep. So `get_user_id` needs to accept a bearer token as well as a
+cookie, issued at join and kept in `expo-secure-store`. It is a small change —
+but it is on the critical path for background GPS, which is the entire
+justification for going native, so it cannot be deferred. (It would also retire
+the `no_cookie_clients` IP-keyed fallback, which is the shakiest thing in that
+file and would misbehave with a party's worth of phones behind one carrier NAT.)
+
+**Framework: React Native with Expo**, if it happens at all. It keeps the
+language and the React idioms this codebase is already written in; Expo has
+first-party modules aimed at exactly the three weaknesses (`expo-camera`,
+`expo-location` background updates, `expo-notifications`); and OTA updates avoid
+an app-store round trip for every iteration. Flutter's advantages — rendering
+consistency, a better story for custom-drawn UI like the map — are real but do
+not outweigh throwing away the existing JavaScript, for a personal project.
+
+### Four ways to do it, and what each costs
+
+"Keep supporting the web version" can mean four quite different things, and the
+difficulty is decided almost entirely by which one:
+
+**D. A thin native shell — recommended.** An Expo app that wraps the existing web
+app in a `WebView` and adds *only* the two things the web cannot do: a background
+location task posting to `/api/set_location`, and push notifications. The game UI
+stays the web app, which keeps being maintained once rather than twice. Camera
+stays on the web path, so #13 still applies and the native-camera win is
+deferred. **~2–3 weekends**, most of it distribution faff rather than code.
+
+**A. Native player app; admin stays web.** The player web app is retired. Two
+codebases, no shared abstraction, no risk to admin. **~8–12 weekends** to reach
+parity — and parity is not the goal, so note that the features that motivate the
+whole exercise (background location, push) are perhaps a fifth of that number.
+Everything else is re-typing UI that already works.
+
+**C. Two frontends over a shared logic core.** As A, plus extracting the genuinely
+portable ~500 lines (`venue.js` geometry, the `utils.js` API layer,
+`shotHistoryStore.js`, `UpdateListener.js`'s protocol handling) into a module both
+consume, so the web player app survives as a fallback for people who will not
+install anything. **A + ~1 weekend**, plus a permanent duplication tax on every
+feature thereafter. The right answer only if the web player app must live.
+
+**B. One universal codebase via `react-native-web` / Expo web.** Sounds like the
+answer and is the trap: it requires rewriting every style anyway, has no answer
+for the `background-image` map, and the web output ends up *worse* than what
+exists today. **A + 30–50%**, for a downgrade. Don't.
+
+### The cost nobody counts
+
+**Distribution friction.** Today a guest scans a QR code and is playing in
+seconds. With a native app, every guest needs TestFlight (accept invite, install
+TestFlight, install the app) or an Android sideload — *before* the night, on the
+same critical path as the armbands and the printing, and it is a fresh way for
+somebody to turn up unable to play. For a fixed guest list this is survivable,
+but it should be weighed honestly against "background GPS is nicer", because it
+is a certain cost against a speculative benefit.
+
+**Recommendation: do the Wake Lock and Web Push spike first (days), then D
+(2–3 weekends) if background GPS still matters after a game with the spike in
+place.** Only consider A after playing a game on D and finding the camera to be
+the binding constraint — by which point there is real evidence about whether the
+install friction is tolerable.
 
 **"App stores" and "native" are separate decisions.** This is a private game for
 a known guest list, and public store distribution may be actively unhelpful:
