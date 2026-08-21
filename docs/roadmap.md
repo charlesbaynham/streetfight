@@ -57,15 +57,17 @@ software with a real deadline, which is not where it started on the list.
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
+| 9     | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
-| 9     | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
-| 10    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
-| 11    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
-| 12    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
-| 13    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
-| 14    | **#13** Higher-resolution capture           | —                            | A stopgap for #14, and cheap enough to be worth it anyway.                                                     |
-| 15    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
-| 16    | **#14** Native app                          | Months                       | Real fix for background support and the camera; supersedes #13. A decision to take after the game, not before. |
+| 10    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
+| 11    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
+| 12    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
+| 13    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
+| 14    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
+| 15    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
+| 16    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
+| 17    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
+| —     | **#14** Native app                          | **Parked**                   | Decided against: the Apple fee is unavoidable for iOS in any form. Analysis kept for whenever it is revisited. |
 
 ---
 
@@ -80,6 +82,11 @@ Recorded here so they are not re-litigated:
   night and not assigned by an admin.
 - **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
   rests on the one garment we supply. Follows from armbands-only; see #9.
+- **No native app and no app stores** (#14), for this run and by default. The
+  Apple Developer Program fee is unavoidable for iOS in *any* distribution form,
+  TestFlight included, and it is not worth paying for a party game. #14 stays on
+  file as a future extension; the capability work it was meant to unlock moves to
+  R3 and R4, which cost nothing.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -516,9 +523,13 @@ Also weigh the cost: shot images are stored base64 in a database column, so
 resolution multiplies straight into database size and upload time on a phone
 network mid-game.
 
-**Relationship to #14:** this is the stopgap. If the native app happens, all of
-it is thrown away. It is still worth doing, because #14 is months out and this is
-an afternoon.
+**Promoted now that #14 is parked.** This was written up as the stopgap for a
+native camera that is no longer coming, which makes it the only route to better
+photographs that exists. That matters more than it sounds: #4 is partly a
+question of whether the model can see the target at all, #5's erasures are mostly
+distant targets, and #11 wants the largest image available. Worth doing properly
+rather than as a holding action — including the `max_dimension` experiment, which
+is a one-line change that R1 can score.
 
 ---
 
@@ -561,11 +572,24 @@ benefits from #13 or #14.
 
 ---
 
-### #14 — A native app: React Native or Flutter
+### #14 — A native app: React Native or Flutter *(parked)*
 
-**The motivation.** Two real weaknesses, neither of which the current web app can
-fully fix: **background support** and **native camera access**. Both are worth
-having; both cost months.
+**Decided against, August 2026.** Not for the 19th, and not by default
+afterwards. The blocker is not the engineering estimate below but the fee: Apple
+charges for the Developer Program and there is **no free way to put an app on an
+iPhone**, TestFlight and ad-hoc distribution included. Expo's free tier is
+generous but it does not touch that — it covers building and updating, not the
+right to install. Android alone could be done for nothing by sideloading an APK,
+but an iPhone-less party game is not a game.
+
+Everything below is kept as-is, because the analysis is the expensive part and it
+will still be true whenever this is reconsidered. What it was *for* —
+background support — moves to **R3** and **R4**, which need no accounts and no
+fees.
+
+**The motivation was.** Two real weaknesses, neither of which the current web app
+can fully fix: **background support** and **native camera access**. Both are
+worth having; both cost months.
 
 **What "no background support" means concretely today.** The app is an
 add-to-home-screen PWA (`react-ui/src/AddToHomeScreen.js` plus
@@ -800,6 +824,41 @@ TestFlight expires it.
 **Timeline.** Not before 19 September, and not close. Post-game, and probably
 post-*next*-game — this is the kind of item that competes with everything else in
 this file for the same evenings. It supersedes #13 if it happens.
+
+---
+
+### R3 — Screen Wake Lock *(proposed, and now the answer rather than a spike)*
+
+`navigator.wakeLock.request("screen")` stops the phone locking itself while the
+app is in front — see #14 for the mechanics and the re-acquisition trap. Roughly
+thirty lines as a `useWakeLock()` hook mounted in `UserMode`, behind a toggle
+because a screen held awake is the biggest battery draw in the game.
+
+With #14 parked this stops being a step towards something and becomes the fix.
+It is also the only item in this file that could plausibly be built and tested in
+an evening before the 19th, and it removes a real irritation: the phone is being
+held as a weapon, and it keeps going to sleep.
+
+**Candidate for before the game**, alongside #4, if either evening exists.
+
+---
+
+### R4 — Service worker and Web Push *(proposed)*
+
+The notification half of what #14 was for: let the server wake a player's phone
+when the app is closed — "you have been shot", "the circle is closing". Needs a
+service worker, a `PushSubscription` with a VAPID key, storage against the `User`
+row, and a sender on the backend (`pywebpush`). Mechanics and the iOS
+home-screen-install constraint are written up under #14.
+
+Bigger than R3 and touching the backend, so **not before the 19th** — a service
+worker misconfigured on the night would be a poor trade for a notification. After
+the game, this is the largest single improvement available to the web app, and it
+costs nothing but time.
+
+Note it makes `AddToHomeScreen.js` mandatory for iPhone players rather than a
+nicety, which is a change to how the game is joined and worth deciding
+deliberately.
 
 ---
 
