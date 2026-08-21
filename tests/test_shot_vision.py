@@ -494,6 +494,28 @@ async def test_a_zoom_request_gets_exactly_one_more_turn():
 
 
 @pytest.mark.asyncio
+async def test_zoom_used_is_recorded_on_the_result():
+    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
+    )
+
+    assert result.zoom_used is True
+    assert result.to_dict()["zoom_used"] is True
+
+
+@pytest.mark.asyncio
+async def test_zoom_used_is_false_when_no_zoom_was_requested():
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
+
+    assert result.zoom_used is False
+    assert result.to_dict()["zoom_used"] is False
+
+
+@pytest.mark.asyncio
 async def test_the_second_turn_carries_the_first_exchange():
     client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
 

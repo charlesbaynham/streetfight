@@ -107,6 +107,7 @@ class ShotVisionResult:
         outcome_reason: str = "",
         slot: Optional[int] = None,
         confidence: float = 0.0,
+        zoom_used: bool = False,
     ):
         self.shot_hit_a_person = shot_hit_a_person
         self.channels = channels
@@ -115,6 +116,7 @@ class ShotVisionResult:
         self.outcome_reason = outcome_reason
         self.slot = slot
         self.confidence = confidence
+        self.zoom_used = zoom_used
 
     @property
     def is_hit(self) -> bool:
@@ -130,6 +132,7 @@ class ShotVisionResult:
             "is_hit": self.is_hit,
             "slot": self.slot,
             "reasoning": self.reasoning,
+            "zoom_used": self.zoom_used,
             "channels": {
                 name: dict(read.to_dict(), hex=hex_for(name, read.colour))
                 for name, read in self.channels.items()
@@ -604,8 +607,10 @@ async def review_image(
 
     raw = await client.complete(turns, schema)
 
+    zoom_used = False
     if wants_zoom(raw) and zoom_provider is not None:
         logger.info("Vision model asked for a zoom; sending the magnified centre")
+        zoom_used = True
         turns = turns + [
             {"role": "assistant", "text": json.dumps(raw)},
             {
@@ -619,4 +624,6 @@ async def review_image(
     elif wants_zoom(raw):
         logger.warning("Vision model asked for a zoom but none is available")
 
-    return classify(parse_result(raw, palettes), scheme)
+    result = classify(parse_result(raw, palettes), scheme)
+    result.zoom_used = zoom_used
+    return result

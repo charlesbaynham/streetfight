@@ -499,6 +499,46 @@ describe("ShotAiTags", () => {
     ).toBeInTheDocument();
   });
 
+  test("shows a zoom tag when the AI model used the zoom tool", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "armbands visible",
+          reasoning: "",
+          zoom_used: true,
+          channels: {},
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("HIT");
+    expect(screen.getByText("Zoomed in")).toBeInTheDocument();
+  });
+
+  test("shows no zoom tag when the AI model did not use the zoom tool", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "miss",
+          outcome_reason: "the shot did not land on anybody",
+          reasoning: "",
+          zoom_used: false,
+          channels: {},
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("Miss");
+    expect(screen.queryByText("Zoomed in")).not.toBeInTheDocument();
+  });
+
   test('refetches when a "shots" SSE update arrives, even though the shot id has not changed', async () => {
     aiReviewResponse = {
       status: 200,
