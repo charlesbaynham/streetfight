@@ -78,6 +78,8 @@ Recorded here so they are not re-litigated:
   player's own. See #9 for what that costs and what to do about it.
 - **Players pick their own colours from a pre-game web page** (#10), not on the
   night and not assigned by an admin.
+- **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
+  rests on the one garment we supply. Follows from armbands-only; see #9.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -105,9 +107,9 @@ every member of a team gets the same hat colour and no two teams share one. That
 only works if people turn up wearing a hat in a specific one of seven colours —
 which, with hats now bring-your-own, most will not.
 
-**Recommendation: move `TEAM_CHANNEL` to the armbands.** The armbands are the
-one garment we control, so they are the only channel guaranteed to be both
-present and the right colour. Making them the team marker means:
+**Decided: `TEAM_CHANNEL` moves to the armbands.** The armbands are the one
+garment we control, so they are the only channel guaranteed to be both present
+and the right colour. Making them the team marker means:
 
 - friend-or-foe at 30 m survives, and reads off the item that is easiest to see;
 - the allocation constraint lands on the channel that is never an erasure, so it
@@ -525,8 +527,8 @@ an afternoon.
 **The idea.** When the posterior from #5 — GPS prior included — leaves the top
 candidate below a threshold, or leaves two candidates tied, hand the case to a
 stronger model (Opus, or Gemini) together with everything the cheap pass could
-not use: the full-resolution photo, the zoom, the ranked candidate list _with
-their prior probabilities and their outfits_, and **reference photographs of each
+not use: the full-resolution photo, the zoom, the ranked candidate list *with
+their prior probabilities and their outfits*, and **reference photographs of each
 candidate taken at the start of the game**.
 
 This is the largest item in track A/C. It has three separable pieces:
@@ -569,40 +571,76 @@ having; both cost months.
 add-to-home-screen PWA (`react-ui/src/AddToHomeScreen.js` plus
 `react-ui/public/manifest.json`) with **no service worker**, so:
 
-- **the screen sleeps mid-game.** There is no Screen Wake Lock, so a player has
-  to keep tapping to stay live;
-- **the SSE stream dies when the app is backgrounded.** `UpdateListener.js`
-  reconnects on error after a timeout, but a backgrounded browser is not running
-  it — so ticker messages and circle warnings arrive only when the player
-  foregrounds the app;
-- **`MyWebcam.js` tears the camera stream down and back up on `visibilitychange`**,
-  and `MapView.js` pauses when hidden — sensible in a browser, but it means
-  position updates stop when the phone is in a pocket, which is most of the game;
+- **the screen sleeps mid-game.** There is no Screen Wake Lock, so the phone
+  locks itself while it is being held as a weapon, and the camera stream, the
+  SSE connection and the position watch all have to come back up afterwards;
+- **nothing is delivered while the app is backgrounded.** The recovery is
+  already handled well — `UpdateListener.js` has a keepalive watchdog that
+  restarts the stream when the counter desyncs or nothing has arrived for a
+  while, so a player who returns to the app is resynchronised. What cannot be
+  fixed from inside the page is that a suspended tab receives nothing *at the
+  time*, so ticker messages and circle warnings wait for the player to look;
 - **there are no push notifications at all**, so nothing can reach a player who
   is not looking at the screen. For a game about being ambushed in the street,
-  that is the biggest gap on this list.
+  that is the biggest gap on this list;
+- **the position watch stops when the page is suspended.** Note the app is
+  already doing the right thing here — `MapView.js` runs a three-tier watch
+  (expanded / foreground / background) that drops to `enableHighAccuracy: false`
+  and a 15 s upload interval once `document.hidden` — so this is a platform
+  ceiling, not a gap in the code. No browser keeps the callback firing once the
+  screen locks.
 
 **Try the cheap web fixes first — genuinely, before committing months.** Several
 of the above have web answers that are days rather than months of work:
 
-- **Screen Wake Lock API** — supported on modern Chrome and on iOS Safari 16.4+.
-  Fixes the sleeping screen outright.
-- **A service worker + Web Push** — Web Push works on iOS for _home-screen
-  installed_ PWAs from 16.4, which is exactly how this app is already installed.
-  Verify support at implementation time rather than trusting this note, but if it
-  holds, it covers the notification gap without leaving the web.
-- **Background geolocation is the one that genuinely does not have a web
-  answer.** No browser will keep feeding positions from a locked phone in a
-  pocket. If that is a hard requirement, it is the argument for going native, and
-  it should be *the* argument — not the camera, which #13 can partly address.
+**Screen Wake Lock** (`navigator.wakeLock.request("screen")`) asks the OS not to
+dim or lock the screen while the page is visible. It returns a sentinel object
+that the browser releases automatically whenever the tab is hidden, so it has to
+be re-acquired on `visibilitychange` — that re-acquisition is the part people
+forget. Secure context only, which this app already is. Supported on Chrome and,
+since 16.4, on iOS Safari.
+
+It buys exactly one thing, and it is the thing a player notices most: the phone
+stops locking itself mid-game. No more unlocking to fire, and no more tearing
+down and rebuilding the camera stream, the SSE connection and the position watch
+every time it sleeps. It does **not** run anything in the background — it only
+keeps the screen awake while the app is in front. Perhaps thirty lines as a
+`useWakeLock()` hook mounted in `UserMode`, and worth a toggle, since holding the
+screen on is the single biggest battery draw in the game.
+
+**Web Push** lets the *server* wake the phone with a notification when the app is
+closed. It needs four pieces, none of which exist yet: a **service worker** (the
+app has none) that handles the `push` event and calls `showNotification`; a
+`PushSubscription` obtained from `pushManager.subscribe()` with a VAPID public
+key; storage for those subscriptions against the `User` row; and a sender on the
+backend — `pywebpush` is the usual Python choice — that signs with the VAPID
+private key and posts to whatever endpoint the subscription names.
+
+For this game it closes the ambush gap: "you have been shot", "the circle is
+closing", "your shot was validated" can reach somebody whose phone is in their
+pocket. Two constraints worth knowing before planning around it. On iOS it works
+only for PWAs **installed to the home screen**, which makes
+`AddToHomeScreen.js` mandatory rather than a nicety, and permission must be
+requested from a user gesture. And a service worker only wakes *briefly*, to
+handle a push the server sent — it is not a background thread. It cannot poll,
+cannot hold the SSE stream open, and cannot read the GPS.
+
+**Background geolocation is the one with no web answer at all.** Neither of the
+above helps: a suspended page stops reporting positions, and a service worker has
+no geolocation access. So player positions go stale whenever a phone is pocketed
+between engagements — which matters beyond the map, because `location_context` is
+captured at shot time from those same stored positions and is exactly what the
+GPS prior in #5 leans on. Stale positions mean a weaker prior on every
+identification. If that is a hard requirement, it is the argument for going
+native, and it should be *the* argument — not the camera, which #13 can partly
+address.
 
 Doing that spike first is the highest-value thing here: it either solves most of
 the problem for 1% of the cost, or it produces a specific, defensible reason to
 go native.
 
 **What makes the native project tractable.** The backend is already a clean REST
-
-- SSE API with no coupling to the web client, so a native app replaces
+and SSE API with no coupling to the web client, so a native app replaces
   `react-ui/` **only**. Nothing in `backend/` changes. `server/` (the Express
   static server and proxy) stays for whatever web surface remains — the admin
   interface in particular has no reason to become native, and is much better suited
