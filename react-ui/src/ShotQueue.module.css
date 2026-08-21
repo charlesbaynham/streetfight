@@ -59,6 +59,11 @@
   border-color: #c0392b;
 }
 
+.tagZoom {
+  background: #e3ecfb;
+  border-color: #4a76c9;
+}
+
 .aiReason {
   font-size: 0.8em;
   color: #666;

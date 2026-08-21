@@ -76,6 +76,9 @@ function ShotAiTags({ shot_id }) {
       {listener}
       <div className={styles.tagRow}>
         <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>
+        {review.zoom_used ? (
+          <span className={`${styles.tag} ${styles.tagZoom}`}>Zoomed in</span>
+        ) : null}
         {Object.entries(review.channels || {}).map(([name, channel]) => (
           <span
             key={name}
