@@ -75,7 +75,8 @@ software with a real deadline, which is not where it started on the list.
 
 Recorded here so they are not re-litigated:
 
-- **The game is on 19 September 2026.**
+- **The game is on 19 September 2026, in Westminster.** House Absolute is in
+  Westminster, so #6, #7 and #12 are all the same venue.
 - **We provide the armbands only** (#9). Hats, tops and trousers are the
   player's own. See #9 for what that costs and what to do about it.
 - **Players pick their own colours from a pre-game web page** (#10), not on the
@@ -396,69 +397,130 @@ Today the second question is never asked when the first one fails.
 
 So the work is an integration-layer module (per the plan's rule that
 `backend/identity/` stays pure) that builds the candidate set from the shot's
-game, builds the `Prior` from `location_context`, calls `decode()`, and stores
-the ranked result alongside the existing review payload.
+game, turns `location_context` into the weighting described below, calls
+`decode()`, and stores the ranked result alongside the existing review payload.
 
-#### The prior must model staleness, not just distance
+#### Getting the probability model right
 
-A position is a measurement with an age, and the age matters as much as the
-distance. A player last seen 40 m away *four seconds ago* is a strong candidate;
-the same player last seen 40 m away *twenty minutes ago* tells us almost nothing,
-because they could be anywhere by now.
+An earlier draft of this section said "build a `Prior` weighted by proximity to
+the shooter". That is wrong, and wrong in a way that would have produced
+confidently incorrect answers. Proximity is **evidence**, not a prior, and the
+two must not be conflated.
 
-The rule that follows, and it is the important one: **staleness widens the
-uncertainty, it never removes the candidate.** An old fix is not evidence of
-absence. It is the absence of evidence, and those want opposite treatments.
+The quantity wanted is `P(T = x | image, location)` — the probability that player
+`x` is the person who was shot, given everything observed. Factorised, with the
+photograph and the position fixes treated as independent measurement channels:
 
-**Why this is not merely tidy.** The decoder ranks by prior × likelihood, so a
-zero prior is unrecoverable — no quality of colour match can climb back from it.
-Discarding stale players would therefore mean that a photograph reading their
-outfit *perfectly* still fails to identify them, purely because their phone was
-in their pocket. That is precisely the wrong failure, and it would be invisible:
-the decoder would report a confident answer naming somebody else.
+    P(T = x | image, location)  ∝  P(T = x) · P(image | T = x) · P(location | T = x)
 
-**A model that behaves correctly at both ends.** Treat the last fix as a
-distribution over where the player is *now*, widening with age:
+**1. `P(T = x)` — the structural prior. Flat, then adjusted for game rules.**
+Before looking at any evidence, what is known about who can have been shot? Only
+the rules: the target is not the shooter, is not already knocked out, and is
+unlikely — but *not* unable — to be a teammate. Note `hit_user` performs no team
+check, so friendly fire is mechanically possible; the teammate term should
+therefore be small and non-zero rather than an exclusion, for the same reason as
+the floor below. Beyond that the prior is flat. Proximity does **not** belong
+here.
 
-    sigma_eff(a)^2  =  sigma_fix^2  +  2 * D * a
+**2. `P(image | T = x)` — the vision likelihood.** What `decoder.decode` already
+computes from the reading and `x`'s codeword. Its misread and erasure rates
+should start from `identity_demo.simulate()`, and be replaced by measured rates
+once R2 has real adjudications to fit against.
+
+**3. `P(location | T = x)` — the location likelihood, which must be a ratio.**
+The generative story is: *if* `x` was the target, then `x` was inside the
+shooter's engagement envelope at the moment the photo was taken. So the question
+is not "how close is `x`" but "how much more likely is `x`'s observed fix under
+that hypothesis than under the alternative that `x` is simply somewhere in the
+game area":
+
+    Λ_x  =  P(fix_x | x was at the shooter at time t)  /  P(fix_x | x is anywhere)
+
+#### Why the distinction is not pedantry
+
+**The teammate case, which the naive version gets exactly backwards.** Under
+"prior ∝ proximity", a teammate standing at the shooter's shoulder receives the
+*highest* prior of anyone — when they should receive nearly the lowest. People
+stand near their teammates precisely *because* they are teammates. The correct
+factorisation kills this in the structural term, and no amount of proximity
+resurrects it.
+
+**Double counting.** Players cluster, and teammates move as a group. Using
+proximity as both the prior and the evidence counts one fact twice and yields
+overconfident posteriors — which is the failure mode that matters, because
+`confident_threshold` gates auto-actions.
+
+**Crowds.** The ratio form says something a raw proximity weight cannot: a player
+who is near the shooter *when everybody is near the shooter* is barely
+discriminated, while a uniquely close player is strongly discriminated. In a
+scrum the location evidence should go quiet, and under this form it does.
+
+**Calibration.** With every term a likelihood, the output is a genuine
+probability, so `confident_threshold` means what it says and R2 can check it. An
+ad-hoc proximity weight produces a score, not a probability, and thresholding a
+score is guesswork dressed up as inference.
+
+#### Staleness falls out of it
+
+A position is a measurement with an age. Treat the last fix as a distribution
+over where the player is *now*, widening with age:
+
+    sigma_eff(a)^2  =  sigma_fix^2  +  2 · D · a
 
 where `a` is the age of the fix, `sigma_fix` its reported accuracy, and `D` a
-diffusion constant chosen from a plausible movement speed. The prior weight is
-then the probability mass of that distribution falling within engagement range of
-the shooter, rather than a function of a point distance.
+diffusion constant from a plausible movement speed.
 
-The limiting behaviour is the point of it: as `a` grows, `sigma_eff` swamps the
-game area and every candidate's weight converges to the same number — a uniform
-prior. Which is exactly what `decoder.decode` already does when no prior is
-passed. So the staleness model is a smooth interpolation between a sharp GPS
-prior and the existing, tested, no-prior behaviour, and the degenerate case needs
-no special handling.
+Feed that into `Λ_x` and the desired behaviour appears without being bolted on:
+as the fix ages, numerator and denominator converge, `Λ_x → 1`, and the location
+term drops out of the product entirely — leaving the structural prior and the
+image evidence to decide. **Staleness widens the uncertainty; it never removes
+the candidate.** That the limiting case is correct without special-casing is the
+main evidence that the factorisation is the right one.
 
-**Floor it anyway.** Mix in a uniform component — `p = (1 - eps) * p_gps + eps *
-uniform` — so that no candidate can ever be driven to exactly zero by arithmetic.
-Cheap insurance against the unrecoverable case above.
+**Why a candidate must never reach zero.** The posterior is a product, so a zero
+in any term is unrecoverable — no quality of colour match climbs back from it. A
+stale player dropped from the candidate set means a photograph that reads their
+outfit *perfectly* still names somebody else, and does so confidently. Mix in a
+uniform floor, `p = (1 - eps) · p + eps · uniform`, as cheap insurance.
 
-**Three practical notes.**
+#### Implementation: the pure module does not change
 
-- **The timestamp is already there.** `User.location_timestamp` is returned by
-  `get_locations` and therefore already sits in every shot's `location_context`.
-  No schema change, no backfill; the ages of every fix in every historical shot
-  can be computed today.
-- **The accuracy is not, and should be.** `sendLocationUpdate` in `MapView.js`
-  sends latitude and longitude and throws `position.coords.accuracy` away — which
-  is `sigma_fix`, free, and already in the browser's hand. Without it every fix is
-  assumed equally good, and in Westminster it will not be: an urban-canyon fix can
-  be tens of metres out while an open-sky one is single figures. Adding it needs a
-  `location_accuracy` column, so it is a `resetdb`, so it wants doing at the same
-  time as any other model change.
-- **There is already a precedent in the codebase.** `MapView.js` fades other
-  players' dots with age — `TIME_UNTIL_TRANSPARENT = 5 * 60` — and, note, floors
-  the fade at `MIN_ALPHA = 0.5` rather than fading to nothing. That is the same
-  instinct as this section, already applied visually: an old dot is drawn
-  faintly, not erased. The five-minute timescale is a reasonable first guess for
-  `D` too.
+`decode(reading, candidates, prior)` computes the image likelihood internally and
+accepts a prior. Since `P(location | T = x)` is constant with respect to the
+image reading, it can be folded into what is passed:
 
-**Do not over-model it.** Staleness correlates with a phone being pocketed, which
+    prior_passed[x]  ∝  P(T = x) · Λ_x
+
+which is exact, and needs no change to `backend/identity/`. What is being handed
+over is "everything except the image evidence" — a pre-image posterior rather
+than a spatial weight. Say so at the call site; do not rename the tested module
+to suit the caller.
+
+#### Two fields worth capturing now
+
+Both are free, both are currently discarded, and both need a column and therefore
+a `resetdb` — so batch them with any other model change.
+
+- **`position.coords.accuracy`** — this is `sigma_fix`, and `sendLocationUpdate`
+  in `MapView.js` throws it away. Without it every fix is assumed equally good,
+  and in Westminster it will not be: an urban-canyon fix can be tens of metres
+  out where an open-sky one is single figures.
+- **The shooter's compass heading at the moment of the shot.** The engagement
+  envelope is currently isotropic — a disc — because the direction of aim is
+  unknown, which is exactly what plan §9 lists as future work under "shooter
+  orientation / aim as a stronger spatial prior". A heading turns the disc into a
+  cone and sharpens `Λ_x` considerably. Capture it now even if nothing consumes
+  it yet; it cannot be recovered afterwards.
+
+**Two things already in place.** `User.location_timestamp` is returned by
+`get_locations`, so the age of every fix is already inside every shot's
+`location_context` — no schema change, and the ages in historical shots can be
+computed today. And `MapView.js` already fades other players' dots with age
+(`TIME_UNTIL_TRANSPARENT = 5 * 60`), flooring at `MIN_ALPHA = 0.5` rather than
+fading to nothing: the same instinct, already applied visually, and a reasonable
+first guess at the timescale for `D`.
+
+**Do not over-model it.** Staleness correlates with a pocketed phone, which
 correlates with not being in an engagement — but a player who has just been
 photographed was probably out in the open. Resist adding behavioural terms until
 R2 has produced data to fit them against.
@@ -929,23 +991,18 @@ deliberately.
 
 Answers to these change the shape of the work, not just its order.
 
-1. **Is House Absolute in Westminster?** Assumed throughout: yes, and #6/#7/#12
-   are all the same venue. Worth confirming, because #12's map crop depends on
-   it. (Note `HOUSE_ABSOLUTE` is currently a landmark in the *resort* test venue,
-   and the PWA manifest reads "Streetfight by House Absolute", so the name
-   travels with the house rather than the place.)
-2. **Should the player-facing shot history name the target?** #2 gives the admin
+1. **Should the player-facing shot history name the target?** #2 gives the admin
    a name. Telling a shooter "CharlesBot thinks you hit Alice" before an admin has
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
    admin queue, and keep the player's view to hit / miss / bystander.
-3. **Do we ask players for a photo of themselves in their outfit at pick time?**
+2. **Do we ask players for a photo of themselves in their outfit at pick time?**
    Cheap to add to #10, verifies they actually have the clothes, and hands #11
    its reference photos. The cost is that it turns a fun colour-picker into
    something that asks for a photograph, and those photos then need a retention
    story.
-4. **How long do reference photos live?** Suggestion: deleted with the game.
-5. **Does the identification scheme survive three bring-your-own channels?** With
+3. **How long do reference photos live?** Suggestion: deleted with the game.
+4. **Does the identification scheme survive three bring-your-own channels?** With
    only armbands provided (#9), this is the biggest open risk to the whole
    identification idea on the night. #10 is the mitigation; R1/R2 will tell us
    afterwards how well it worked.
