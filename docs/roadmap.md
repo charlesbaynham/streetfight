@@ -4,9 +4,9 @@ The planned work, re-ordered from the order it was thought of into the order it
 wants doing. Nothing here is implemented yet: this file is the record of intent,
 not a changelog.
 
-Each item keeps its **original number** (`#1` … `#13`) so it can be matched back
+Each item keeps its **original number** (`#1` … `#14`) so it can be matched back
 to the list it came from. Items prefixed `R` are additions proposed while
-writing this up — see [Proposed additions](#proposed-additions).
+writing this up.
 
 Every software item names the files it lands in, because most of them are
 smaller than they sound: the pure identity module and the soft decoder already
@@ -15,47 +15,263 @@ rather than writing something new.
 
 ---
 
-## The three tracks
+## The date drives everything
 
-The list interleaves three kinds of work that proceed independently and are
-blocked by different things:
+**The next game is Saturday 19 September 2026.** That is four weeks out, and it
+changes the ordering completely: the logistics track has a hard, unmovable
+deadline and most of the recognition work does not. Anything that has to be
+bought, agreed with a landlord, printed, or worn by a person is on the critical
+path. Anything that only has to be true in the code can slip to after the game.
 
-| Track                          | What it is                                                   | What gates it                                                      |
-| ------------------------------ | ------------------------------------------------------------ | ------------------------------------------------------------------ |
-| **A. Recognition correctness** | CharlesBot is currently *wrong* in ways that break the game. | Nothing. Start now.                                                |
-| **B. Field logistics**         | Kit, locations, printing, the map.                           | Real-world lead times and the date of the next game.               |
-| **C. Capability**              | Escalation, reference photos, better photos.                 | Track A (it needs the posterior) and the kit decisions in track B. |
+**The safety valve.** `ai_auto_actions_enabled` defaults to off and is a
+separate toggle from `ai_shot_review_enabled`. So if the recognition work is not
+finished by the 19th, the game still runs: CharlesBot annotates the queue and the
+admin adjudicates every shot by hand, exactly as before. Nothing in track A is
+allowed to become a blocker for the night — it is all upside.
 
-Track B has the only *hard* deadline (a game night), and some of it has weeks of
-lead time — armbands have to be ordered before colours can be assigned, and
-colours have to be assigned before anything can be printed. So B's long-lead
-items start in parallel with A even though A is more urgent in engineering
-terms.
+### Working backwards from the 19th
+
+| By             | What must be true                                                                                                                          | Items        |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
+| **Now**        | Armbands ordered. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
+| **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
+| **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
+| **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
+| **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
+| **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
+
+The tightest link in that chain is **#10 → #8**: nobody can be handed an
+appearance card until they have chosen an appearance, and nobody can choose one
+until the page exists. That makes the colour-picking page the single piece of
+software with a real deadline, which is not where it started on the list.
 
 ## Priority order
 
-| Order | Item                                        | Track | Why here                                                                                |
-| ----- | ------------------------------------------- | ----- | --------------------------------------------------------------------------------------- |
-| 1     | **#4** False hits                           | A     | The game is unplayable with auto-actions on while this is live.                         |
-| 2     | **R2** Adjudication scorecard               | A     | Free labelled data; makes #4 and #5 measurable instead of vibes.                        |
-| 3     | **#5** Use every channel, not just armbands | A     | Wastes real information today and hands the admin "unable to tell".                     |
-| 4     | **#3** Ranked candidates in the review UI   | A     | The surface of #5; same piece of plumbing.                                              |
-| 5     | **#2** "CharlesBot thinks: hit on *name*"   | A     | Needs the name, so it needs #5/#3.                                                      |
-| 6     | **#1** "CharlesBot", not "AI"               | A     | Trivial and self-contained; ride it in with #2.                                         |
-| 7     | **#9** Buy armbands / decide on hats        | B     | Longest lead time of anything here, and #10 and #8 both wait on it.                     |
-| 8     | **#12** Redraw the Westminster map          | B     | Blocks #7 (drops must be placeable) and un-blocks the temporary test venue.             |
-| 9     | **#6** Find the pubs                        | B     | Feeds #8; independent of everything in track A.                                         |
-| 10    | **#7** Find the drop locations              | B     | Needs #12 to place them; feeds #8.                                                      |
-| 11    | **#10** Players pick their own colours      | B     | Needs #9 (you can only pick what exists) and drives #8's print run.                     |
-| 12    | **#8** Print the run                        | B     | Last logistics step: everything above becomes paper here.                               |
-| 13    | **#13** Higher-resolution capture           | C     | Raises the ceiling for #4/#5/#11, but they are worth doing at today's resolution first. |
-| 14    | **#11** Escalation to a stronger model      | C     | The largest single piece; needs #5's posterior and a new photo-capture flow.            |
+| Order | Item                                        | Deadline                     | Why here                                                                                                       |
+| ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| 1     | **#9** Buy armbands                         | Now                          | Longest lead time; #10 and #8 both wait on it. In flight.                                                      |
+| 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
+| 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
+| 4     | **#10** Colour-picking page                 | ~31 Aug build, live ~7 Sept  | The only software on the critical path. Also the mitigation for bring-your-own garments (see #9).              |
+| 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
+| 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
+| 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
+| 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
+| —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
+| 9     | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
+| 10    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
+| 11    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
+| 12    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
+| 13    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
+| 14    | **#13** Higher-resolution capture           | —                            | A stopgap for #14, and cheap enough to be worth it anyway.                                                     |
+| 15    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
+| 16    | **#14** Native app                          | Months                       | Real fix for background support and the camera; supersedes #13. A decision to take after the game, not before. |
+
+---
+
+## Decisions taken
+
+Recorded here so they are not re-litigated:
+
+- **The game is on 19 September 2026.**
+- **We provide the armbands only** (#9). Hats, tops and trousers are the
+  player's own. See #9 for what that costs and what to do about it.
+- **Players pick their own colours from a pre-game web page** (#10), not on the
+  night and not assigned by an admin.
+- **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
+  repository is public, so this publishes every hiding place to anyone who
+  thinks to look; accepted deliberately on the grounds that this is a game
+  between friends and the alternative is a second place to keep things in sync.
+
+---
+
+## Track B — the critical path
+
+### #9 — Buy armbands *(in flight)*
+
+**The constraint.** The palettes in `backend/identity/config.py` were chosen by
+optimising worst-case CIEDE2000 separation across three illuminants (daylight,
+warm-white LED, sodium street lighting) — see plan §9.1 and §12.4. Substituting
+"close enough" colours because that is what was in stock erodes the property the
+whole scheme rests on. Buy against the hex values, and where a real product
+misses, **record what was actually bought** so the palette can be re-checked
+rather than silently drifting.
+
+Needed: **7 armband colours** (the main palette).
+
+**The consequence of not providing hats.** `backend/identity/allocation.py`
+currently spends the hat channel (`TEAM_CHANNEL`) on telling teams apart by eye:
+every member of a team gets the same hat colour and no two teams share one. That
+only works if people turn up wearing a hat in a specific one of seven colours —
+which, with hats now bring-your-own, most will not.
+
+**Recommendation: move `TEAM_CHANNEL` to the armbands.** The armbands are the
+one garment we control, so they are the only channel guaranteed to be both
+present and the right colour. Making them the team marker means:
+
+- friend-or-foe at 30 m survives, and reads off the item that is easiest to see;
+- the allocation constraint lands on the channel that is never an erasure, so it
+  costs the decoder nothing;
+- the hat degrades gracefully into "a fourth channel when somebody happens to be
+  wearing one", which is what it will be in practice.
+
+This is a change to `TEAM_CHANNEL` in `backend/identity/config.py` and the tests
+around `allocate_team_slots`; the decoder is unaffected, since allocation is
+policy and not part of the code. **Do this before #10**, because the picking page
+has to show people the right constraint.
+
+**Risk to name out loud:** three of the four channels are now bring-your-own. The
+scheme's accuracy on the night depends on players actually owning and wearing the
+colours they picked. #10 is the mitigation — see below.
+
+---
+
+### #6 — Find the pubs near House Absolute
+
+**What.** A shortlist of pubs within a chosen radius of House Absolute, probably
+harvested from the existing Google Maps list (the Norby-playlist replacement)
+rather than assembled from scratch.
+
+**Start with the conversations, not the data.** The gating question is whether a
+landlord will keep a printed code behind the bar, and that answer arrives on
+human timescales. Getting a yes from four pubs is worth more than a perfect list
+of forty.
+
+**Getting the list out of Google Maps.** A saved list can be exported via Google
+Takeout (Saved → `.csv` of place URLs) or shared as a link; either way the useful
+output is name + lat/long per pub, which is exactly the shape of
+`Venue.landmarks` in `backend/venues.py`.
+
+**Per pub, record:** coordinates, opening hours on a Saturday night, and whether
+they have agreed.
+
+**Lands in:** `backend/venues.py` as landmarks on the Westminster venue.
+**Feeds:** #8, #12.
+
+---
+
+### #12 — Redraw the map for Westminster
+
+**Current state.** `ACTIVE_VENUE` in `backend/venues.py` is
+`VENUES["koyao_resort"]`, a temporary test venue, with a `TODO` saying to swap
+back before it is played for real. Kingston is the other entry. This item retires
+that `TODO`.
+
+**What a venue needs** (`Venue` / `VenueMap`):
+
+- the map image, dropped into `react-ui/src/images/` with one line added to
+  `react-ui/src/mapImages.js` (the `image` key resolves against it);
+- `width_px` / `height_px`;
+- two `MapReferencePoint`s (pixel *and* lat/long). Deriving them from a known
+  tile crop — as the resort venue does, using the top-left and bottom-right
+  pixels — is far more accurate than eyeballing two landmarks;
+- `corner_width_km` for the mini-map window. Westminster is a much bigger area
+  than the resort, so this wants choosing deliberately rather than copying;
+- the landmarks circles can be placed at (#6, #7).
+
+Nothing in `MapView.js` should need touching. `VenueMap.bounds` exists so the
+tests can check that every landmark actually lands on the image — keep that
+passing, and expect it to catch at least one coordinate typo.
+
+**Do this before #7**, since a drop that is not on the map cannot be used, and it
+is the natural place to sanity-check the game area's extent.
+
+---
+
+### #10 — Let players pick their own colours *(the software on the critical path)*
+
+**Current state.** `identity_admin.build_join_codes(game_id, slots_per_team)`
+pre-allocates a block of slots per team (one team-channel colour each, via
+`allocation.allocate_team_slots`) and mints one signed join URL **per slot**;
+`claim_join_slot()` claims whatever slot the scanned code carries. So today a
+player is handed an outfit, they do not choose one.
+
+**Suggested shape** (minimal change to what exists): keep the signed join code as
+the entry point, but let it carry the **team's block** rather than a single slot,
+and have the claim flow present the unclaimed slots in that block and take the
+player's pick. `build_join_codes` then mints one code per team instead of one per
+slot, which also makes the print run smaller.
+
+**What the page needs:**
+
+- the team's *unclaimed* slots rendered as outfits with colour swatches —
+  `hex_for()` and the swatch rendering in `AdminIdentity.js` / `IdentityDemo.js`
+  already exist to reuse;
+- an explanation that the armbands are fixed by the team (see #9) and the choice
+  is across the other three channels;
+- an **atomic** claim: several people will be picking at once on their phones,
+  and two players must never end up wearing the same codeword;
+- it must work **before the night** and before anybody has a `User` row — plan
+  §8.2 is explicit about this, and the whole point is that people need to know
+  what to wear in advance.
+
+**Self-selection is now load-bearing, not a nicety.** With only the armbands
+provided (#9), three channels depend on players owning the right colours. Letting
+someone choose the slot whose t-shirt, trousers and hat they *already have* is
+the single best lever on how accurate the identification is on the night. So the
+page should be built around "which of these can you actually wear on Saturday",
+not "which is prettiest".
+
+**Worth considering while building it:** ask each player to confirm they have the
+garments, and optionally to photograph themselves in the outfit. That
+verification is useful on its own — and it is exactly the reference-photo capture
+flow that #11 needs, obtained for free at the one moment every player is already
+engaged with the app.
+
+**Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move). **Feeds:** #8.
+
+---
+
+### #7 — Find new drop locations
+
+**What.** Places a QR code can be physically hidden that will not read, to a
+passer-by or a police officer, as somebody taping a device to street furniture.
+
+**Suggested criteria** to write down and apply consistently:
+
+- publicly accessible without trespass, and reachable at night;
+- unremarkable to leave something at — a pub garden, a noticeboard, a café, a
+  shop with permission — in preference to street furniture;
+- **nothing near a security-sensitive site.** In Westminster specifically this
+  rules out a great deal: government buildings, embassies, barracks, and station
+  or Tube infrastructure. This is the reason the item exists — treat it as a hard
+  exclusion zone drawn on the map in advance, not a judgement call made at 11pm;
+- sheltered enough that paper survives rain;
+- inside the game area and on the map (hence #12 first).
+
+**Mitigation to build into the print run** (#8): every card carries a line saying
+what it is and a contact number, so anyone who finds one gets an answer rather
+than a fright. Cheap, and it converts the failure mode from "incident" to
+"curiosity".
+
+**Lands in:** `backend/venues.py` as landmarks. **Depends on:** #12.
+**Feeds:** #8.
+
+---
+
+### #8 — Print everything
+
+**Three separate print runs**, all landing by ~12 September:
+
+1. **Drop codes** for the new locations (#7) — existing tooling:
+   `backend/generate_qr_items.py` plus the templates in
+   `backend/image_templates/`. Add the "this is a game, ring this number" line
+   from #7 to the template.
+2. **Pub handouts** (#6) — probably a different format: something a bar will
+   actually keep on display.
+3. **Player appearance cards** (#10) — what to wear, per player, plus their join
+   code. `build_join_codes` already returns `appearance` per slot for exactly
+   this.
+
+**If the schedule slips**, the drop codes are the ones with a hard dependency on
+physical placement; the appearance cards can be sent digitally as a fallback,
+since by then #10 has already told each player what they are wearing.
 
 ---
 
 ## Track A — recognition correctness
 
-### #4 — CharlesBot calls clear misses "hit" *(highest priority)*
+### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
 
 **Symptom.** Shots that visibly miss are reported as hits.
 
@@ -70,27 +286,26 @@ not a decoder problem.
 
 1. **The hit definition is written leniently.** The current prompt says
    _"Hitting any part of their clothing or hands or shoes counts as a hit. It is
-   only a miss if it entirely misses the person"_, which reads as an
-   invitation to count anything near a person. It never says the crosshair marks
-   a **single point** that must land **on** them. Rewrite it around the point:
-   the crosshair is one pixel; a hit is that pixel lying on the person's body or
-   clothing; beside them, above them, on the ground in front of them, or between
-   two people is a **miss**.
+   only a miss if it entirely misses the person"_, which reads as an invitation
+   to count anything near a person. It never says the crosshair marks a **single
+   point** that must land **on** them. Rewrite it around the point: the crosshair
+   is one pixel; a hit is that pixel lying on the person's body or clothing;
+   beside them, above them, on the ground in front of them, or between two people
+   is a **miss**.
 2. **The crosshair has a hole in the middle.** `_draw_aim_marker_on()`
    (`backend/image_processing.py`) draws four arms with a gap: `arm =
 max_dim // 20`, `gap = arm // 3`. On the 1024 px image that
    `prepare_for_vision()` sends, that is a ~34 px *empty square* at the exact
-   place the shot landed — and a distant target can be smaller than the hole.
-   The model is being asked "is the thing under the crosshair a person" while
-   the thing is hidden by the crosshair, and a person standing anywhere in that
-   gap looks "under" it. Try a small solid dot or a 1 px centre tick, and
-   re-measure.
-3. **The prompt applies pressure towards a decision.** _"You MUST ultimately
-   make a decision on whether the shot is hitting a person or not"_ pushes
-   towards a call, and the surrounding text gives no reason to prefer "miss"
-   when torn. State the asymmetry explicitly: a wrongly-called miss costs the
-   shooter one bullet; a wrongly-called hit takes a life off somebody who was
-   never shot. When in doubt, it is a miss.
+   place the shot landed — and a distant target can be smaller than the hole. The
+   model is being asked "is the thing under the crosshair a person" while the
+   thing is hidden by the crosshair, and anyone standing in that gap looks
+   "under" it. Try a small solid dot or a 1 px centre tick, and re-measure.
+3. **The prompt applies pressure towards a decision.** _"You MUST ultimately make
+   a decision on whether the shot is hitting a person or not"_ pushes towards a
+   call, and the surrounding text gives no reason to prefer "miss" when torn.
+   State the asymmetry explicitly: a wrongly-called miss costs the shooter one
+   bullet; a wrongly-called hit takes a life off somebody who was never shot.
+   When in doubt, it is a miss.
 4. **Let Python own the threshold.** In keeping with the module's stated
    principle (*the model observes; Python decides*), replace the boolean with an
    observation the model can actually see: where the crosshair sits relative to
@@ -99,43 +314,44 @@ max_dim // 20`, `gap = arm // 3`. On the 1024 px image that
    `classify()` then applies the rule, so tightening or loosening it is a
    constant in Python and a test, not a prompt rewrite.
 
-**Done when** the labelled set from **R2** shows the false-hit rate down to
-something an admin can live with, with the false-miss rate reported alongside it
-(this trade is the whole game; do not optimise one silently).
+**Done when** the replay set from R1 shows the false-hit rate down to something
+an admin can live with, with the false-miss rate reported alongside it (this
+trade is the whole game; do not optimise one silently).
 
-**Depends on:** nothing. **Feeds:** everything else in track A.
+**If it does not fit before the 19th**, leave `ai_auto_actions_enabled` off and
+play with CharlesBot annotating only. That is the pre-existing behaviour and it
+works.
 
 ---
 
-### R2 — Scorecard: what CharlesBot said vs what the admin decided *(proposed)*
+### R1 / R2 — Measure what CharlesBot gets wrong *(proposed)*
 
 Every shot already carries both halves of a labelled example:
 `Shot.ai_review` (the JSON verdict) and `Shot.result` (`"hit"` / `"miss"` /
-`"bystander"` / `"refunded"`, plus `target_user_id`). Nothing compares them.
+`"bystander"` / `"refunded"`, plus `target_user_id`). Nothing compares them. Every
+shot photo is also written to disk by `save_image()`
+(`backend/image_processing.py`).
 
-**The work:** an admin endpoint and a small page that reports, over a game or
-over all games: the confusion matrix of CharlesBot's outcome against the admin's,
-broken down by whether the zoom was used and by how many channels were readable;
-and the same numbers restricted to reviews above the auto-action confidence
-threshold, which is the number that decides whether `ai_auto_actions_enabled` is
-safe to switch on.
+**R1, before the game — the replay harness.** A script that points at saved shot
+images plus their admin verdicts and re-runs a prompt variant over them offline,
+reporting the confusion matrix. Small, and it is the difference between #4 taking
+an afternoon and #4 taking several game nights.
 
-**Why it comes second.** #4 and #5 are both "make the model less wrong" tasks,
-and there is currently no way to tell whether a prompt change helped. This is
-close to free — the data is already in the database — and it turns the rest of
-track A from guesswork into measurement. Every shot photo is also saved to disk
-by `save_image()` (`backend/image_processing.py`), so the same pairing gives an
-offline corpus to replay prompt variants against without touching a live game.
-
-**Done when** a prompt change can be scored against real photos before it ships.
+**R2, after the game — the scorecard.** The admin-facing version: an endpoint and
+a page reporting CharlesBot's outcome against the admin's over a game or all
+games, broken down by whether the zoom was used and by how many channels were
+readable, plus the same numbers restricted to reviews above the auto-action
+confidence threshold — which is the number that decides whether
+`ai_auto_actions_enabled` is safe to switch on. The 19th will generate more real
+data than everything to date, so build this to consume it.
 
 ---
 
 ### #5 — Two readable channels should still identify somebody
 
-**Symptom.** A distant shot read two of the four channels correctly. Two
-erasures is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot
-said it could not tell — because neither of the two was the armbands.
+**Symptom.** A distant shot read two of the four channels correctly. Two erasures
+is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot said it
+could not tell — because neither of the two was the armbands.
 
 **Why it does that.** `classify()` in `backend/shot_vision.py` treats the
 armbands as the *player marker*: bystanders do not wear armbands, so armbands
@@ -148,7 +364,8 @@ codeword, so the code vouches for nothing) — but it answers the wrong question
 **The fix is to split one question into two.**
 
 - **"Is this person a player at all?"** genuinely needs redundancy, and armbands
-  genuinely are strong evidence. Keep that — but as *evidence*, not as a gate.
+  genuinely are strong evidence — more so now that they are the one garment we
+  supply (#9). Keep that, but as *evidence*, not as a gate.
 - **"Which player is it?"** does **not** need the full codeword space. The
   candidate set is not the 34 usable slots, it is the handful of living players
   on other teams who were near the shooter — and two correctly-read channels
@@ -161,32 +378,28 @@ Today the second question is never asked when the first one fails.
 
 - `shot_vision.to_reading()` builds the `Reading` the soft decoder consumes. Its
   own docstring says nothing calls it yet.
-- `backend/identity/decoder.py` `decode()` takes a `Reading`, a candidate set,
-  and a `Prior`, and returns ranked posteriors plus `inconsistent` / `ambiguous`
-  / `confident` flags.
+- `backend/identity/decoder.py` `decode()` takes a `Reading`, a candidate set and
+  a `Prior`, and returns ranked posteriors plus `inconsistent` / `ambiguous` /
+  `confident` flags.
 - `Shot.location_context` already stores every player's position at the moment
   the shot was fired (`user_interface.submit_shot`), which is the GPS prior in
   plan §8.3 — no schema change needed.
 
 So the work is an integration-layer module (per the plan's rule that
-`backend/identity/` stays pure) that: builds the candidate set from the shot's
+`backend/identity/` stays pure) that builds the candidate set from the shot's
 game, builds the `Prior` from `location_context` (start with a Gaussian or
 inverse-distance in metres), calls `decode()`, and stores the ranked result
 alongside the existing review payload.
 
 **Keep the auto-action gate conservative.** `slot_candidates_from_review()`
-requires `k + 1` readable channels and is used by
-`backend/shot_auto_actions.py`. That gate is *right* for firing a hit
-automatically and should stay. What changes is that the admin's view is no
-longer limited to what the auto-actions are willing to act on: a two-channel
-read produces "if this is a player, it is most likely X (p = 0.8)" instead of
-silence.
+requires `k + 1` readable channels and is used by `backend/shot_auto_actions.py`.
+That gate is *right* for firing a hit automatically and should stay. What changes
+is that the admin's view is no longer limited to what the auto-actions are
+willing to act on: a two-channel read produces "if this is a player, it is most
+likely X (p = 0.8)" instead of silence.
 
 **Done when** a two-readable-channel photo produces a ranked candidate list, and
-the auto-action behaviour is unchanged.
-
-**Depends on:** nothing hard, but do #4 first so the input is trustworthy.
-**Feeds:** #3, #2, #11.
+the auto-action behaviour is unchanged. **Feeds:** #3, #2, #11.
 
 ---
 
@@ -211,9 +424,7 @@ Python) and extend the `admin_get_shot_ai_review` payload.
 
 **Also worth showing:** the `ambiguous` / `inconsistent` flags, since "two
 candidates are tied" is a different message to the admin than "the reading fits
-nobody".
-
-**Depends on:** #5.
+nobody". **Depends on:** #5.
 
 ---
 
@@ -225,11 +436,10 @@ nobody".
 `AI thinks: ${shot.ai_suggestion}` line in `react-ui/src/ShotHistory.js`
 (player-facing).
 
-**The backend piece.** The stored review holds a `slot`, not a name — the
-slot → user resolution currently lives in `shot_auto_actions._decide()`. Resolve
-it at read time in the review endpoint rather than denormalising a name into the
-stored JSON, so a later identity correction is reflected without rewriting
-history.
+**The backend piece.** The stored review holds a `slot`, not a name — the slot →
+user resolution currently lives in `shot_auto_actions._decide()`. Resolve it at
+read time in the review endpoint rather than denormalising a name into the stored
+JSON, so a later identity correction is reflected without rewriting history.
 
 **Wording needs to degrade gracefully**, since the name is often unknown:
 
@@ -241,10 +451,8 @@ history.
 | Not a player            | *CharlesBot thinks: that's a bystander, not a hit*           |
 | No person               | *CharlesBot thinks: miss*                                    |
 
-See the open question about whether the **player-facing** history should name
-the target at all.
-
-**Depends on:** #5 (for the name), #3 (same payload).
+See the open question about whether the **player-facing** history should name the
+target at all. **Depends on:** #5, #3.
 
 ---
 
@@ -264,168 +472,13 @@ module names (`ai_review`, `ai_review_state`, `ai_shot_review_enabled`,
 payloads and buy nothing. Worth one comment at each boundary saying that
 "CharlesBot" is the display name for the thing the code calls `ai_review`.
 
-Bundle this with #2 — the same lines change twice otherwise.
+Independent of everything else and about twenty minutes' work, so it can ship
+whenever — including before the game, since it touches nothing that could break
+the night.
 
 ---
 
-## Track B — field logistics
-
-### #9 — Buy armbands; decide about hats
-
-**The constraint.** The palettes in `backend/identity/config.py` were chosen by
-optimising worst-case CIEDE2000 separation across three illuminants (daylight,
-warm-white LED, sodium street lighting) — see plan §9.1 and §12.4. Substituting
-"close enough" colours because that is what was in stock erodes the property the
-whole scheme rests on. Buy against the hex values, and where a real product
-misses, record what was actually bought so the palette can be re-checked rather
-than silently drifting.
-
-Needed: **7 armband colours** (the main palette) and, if hats are provided,
-**7 hat colours**.
-
-**The hat decision is not cosmetic.** `backend/identity/allocation.py` spends the
-hat channel on telling teams apart by eye — every member of a team gets the same
-hat colour and no two teams share one. If hats are not provided, or are provided
-but not reliably worn, then:
-
-- the friend-or-foe-at-30m property disappears, and
-- the hat becomes an unreliable channel, i.e. an erasure much of the time, which
-  eats directly into the erasure budget that #5 is trying to spend better.
-
-If hats are dropped entirely, `TEAM_CHANNEL` should move to whichever channel
-*is* reliably provided (the armbands are the obvious candidate) rather than
-being left pointing at a garment nobody is wearing.
-
-**Done when** the kit is ordered and the actual colours are recorded against the
-palette.
-
----
-
-### #12 — Redraw the map for Westminster
-
-**Current state.** `ACTIVE_VENUE` in `backend/venues.py` is
-`VENUES["koyao_resort"]`, a temporary test venue, with a `TODO` saying to swap
-back before it is played for real. Kingston is the other entry.
-
-**What a venue needs** (`Venue` / `VenueMap`):
-
-- the map image, dropped into `react-ui/src/images/` with one line added to
-  `react-ui/src/mapImages.js` (the `image` key resolves against it);
-- `width_px` / `height_px`;
-- two `MapReferencePoint`s (pixel *and* lat/long). Deriving them from a known
-  tile crop — as the resort venue does — is far more accurate than eyeballing
-  two landmarks;
-- `corner_width_km` for the mini-map window;
-- the landmarks circles can be placed at.
-
-Nothing in `MapView.js` should need touching. `VenueMap.bounds` exists so the
-tests can check that every landmark actually lands on the image — keep that
-passing.
-
-**Do this before #7**, since a drop that is not on the map cannot be used, and it
-is the natural place to sanity-check the game area's extent.
-
----
-
-### #6 — Find the pubs near House Absolute
-
-**What.** A shortlist of pubs within a chosen radius of House Absolute, probably
-harvested from the existing Google Maps list (the Norby-playlist replacement)
-rather than assembled from scratch.
-
-**Getting the list out of Google Maps.** A saved list can be exported via Google
-Takeout (Saved → `.csv` of place URLs) or shared as a link; either way the useful
-output is name + lat/long per pub, which is the same shape as
-`Venue.landmarks`.
-
-**Per pub, the roadmap needs to know:** coordinates, opening hours on a game
-night, and whether they are willing to hold a printed code behind the bar. That
-last one is the actual gate — it is a conversation, not a data problem, and
-should start early.
-
-**Feeds:** #8 (they need something printed to hold), #12 (they become landmarks).
-
----
-
-### #7 — Find new drop locations
-
-**What.** Places a QR code can be physically hidden that will not read, to a
-passer-by or a police officer, as somebody taping a device to street furniture.
-
-**Suggested criteria** to write down and apply consistently:
-
-- publicly accessible without trespass, and reachable at night;
-- unremarkable to leave something at — a pub garden, a noticeboard, a café, a
-  shop with permission — in preference to street furniture;
-- **nothing near a security-sensitive site.** In Westminster specifically this
-  rules out a lot: government buildings, embassies, barracks, and station or
-  Tube infrastructure. This is the reason the item exists — treat it as a hard
-  exclusion list drawn on the map, not a judgement call made at 11pm;
-- sheltered enough that paper survives rain;
-- inside the game area and on the map (hence #12 first).
-
-**Mitigation to build into the print run** (#8): every card carries a line
-saying what it is and a contact number, so anyone who finds one gets an answer
-rather than a fright. Cheap, and it converts the failure mode from "incident" to
-"curiosity".
-
-**Depends on:** #12. **Feeds:** #8.
-
----
-
-### #10 — Let players pick their own colours
-
-**Current state.** `identity_admin.build_join_codes(game_id, slots_per_team)`
-pre-allocates a block of slots per team (one hat colour each, via
-`allocation.allocate_team_slots`) and mints one signed join URL **per slot**;
-`claim_join_slot()` claims whatever slot the scanned code carries. So today a
-player is handed an outfit, they do not choose one.
-
-**What "picking" implies.**
-
-- A pre-game page listing the team's *unclaimed* slots as outfits, with swatches
-  — `hex_for()` and the swatch rendering in `AdminIdentity.js` / `IdentityDemo.js`
-  already exist to reuse.
-- The hat is fixed by the team (see #9), so the choice is really across the other
-  three channels. Say so on the page, or it reads as a bug.
-- The claim must be **atomic**: two people cannot end up wearing the same
-  codeword, and this will be done by several people at once on their phones.
-- It must work **before the night**, and plan §8.2 is explicit that slots must be
-  pre-assignable before anybody has a `User` row — people need to know what to
-  wear in advance.
-
-**Suggested shape** (minimal change): keep the signed join code as the entry
-point, but let it carry the **team's block** rather than a single slot, and have
-the claim flow present the unclaimed slots in that block and take the player's
-pick. `build_join_codes` then mints one code per team instead of one per slot,
-which also makes the print run smaller.
-
-**Depends on:** #9 (you can only offer colours you have). **Feeds:** #8.
-
----
-
-### #8 — Print everything
-
-**Three separate print runs**, with different deadlines:
-
-1. **Drop codes** for the new locations (#7) — existing tooling:
-   `backend/generate_qr_items.py` plus the templates in
-   `backend/image_templates/`.
-2. **Pub handouts** (#6) — probably a different format: something a bar will
-   actually keep on display, plus the "this is a game, ring this number" line
-   from #7.
-3. **Player appearance cards** (#10) — what to wear, per player, plus their join
-   code. `build_join_codes` already returns `appearance` per slot for exactly
-   this.
-
-**Do last**, but note the run cannot start until #6, #7 and #10 have all
-resolved. If the schedule gets tight, the drop codes are the ones with a hard
-dependency on the locations; the appearance cards can be sent digitally as a
-fallback.
-
----
-
-## Track C — capability
+## Track C — after the game
 
 ### #13 — Better photos, if the platform now allows it
 
@@ -439,12 +492,12 @@ being broken on iOS, so iOS Safari is the binding constraint on any replacement.
 **Worth testing, roughly in order of payoff-to-risk:**
 
 - `track.getCapabilities()` → `applyConstraints()` to request the track's real
-  maximum instead of a hard-coded 2048.
+  maximum instead of a hard-coded 2048;
 - `ImageCapture.takePhoto()`, which grabs a full still rather than a preview
   frame — but check current Safari support before committing to it, and keep the
-  canvas path as the fallback.
-- An explicit quality argument to `toDataURL("image/jpeg", q)`; the default is
-  0.92 and is probably not what we want either way.
+  canvas path as the fallback;
+- an explicit quality argument to `toDataURL("image/jpeg", q)`; the default is
+  0.92 and is probably not what we want either way;
 - `<input type="file" accept="image/*" capture="environment">` as a last resort:
   full sensor resolution via the native camera app, at the cost of leaving the
   game UI, which likely makes it unusable for a shooting mechanic.
@@ -455,11 +508,15 @@ being broken on iOS, so iOS Safari is the binding constraint on any replacement.
 deliberately crops from the *original* (that is the whole point of the zoom), and
 the escalation path in #11 would want the largest image available. Raising
 `max_dimension` is a separate, cheaper experiment worth running alongside — and
-one that R2 can score.
+one that R1 can score.
 
 Also weigh the cost: shot images are stored base64 in a database column, so
 resolution multiplies straight into database size and upload time on a phone
 network mid-game.
+
+**Relationship to #14:** this is the stopgap. If the native app happens, all of
+it is thrown away. It is still worth doing, because #14 is months out and this is
+an afternoon.
 
 ---
 
@@ -472,22 +529,23 @@ not use: the full-resolution photo, the zoom, the ranked candidate list _with
 their prior probabilities and their outfits_, and **reference photographs of each
 candidate taken at the start of the game**.
 
-This is the largest item on the list. It has three separable pieces:
+This is the largest item in track A/C. It has three separable pieces:
 
 **(a) Reference photos of players — a prerequisite, and useful on its own.**
-There is no capture flow today. Needs: where the photo is taken (onboarding on
-the player's own phone, per `OnboardingView.js`, or admin-side at the start), a
-place to store it (following `Shot.image_base64`'s pattern is the pragmatic
-choice, at the cost of database size), and a deletion story — these are
-photographs of identifiable people, and they should not outlive the game. A
-game reset should take them with it.
+There is no capture flow today. Needs: where the photo is taken, a place to store
+it (following `Shot.image_base64`'s pattern is the pragmatic choice, at the cost
+of database size), and a deletion story — these are photographs of identifiable
+people and they should not outlive the game; a game reset should take them with
+it. **See #10:** the colour-picking page is the natural place to capture these,
+since it is the one moment every player is already in the app and thinking about
+what they will be wearing.
 
 **(b) The escalation trigger and the second client.** `backend/vision_client.py`
 is already model-agnostic and reads `OPENROUTER_MODEL` from the environment, so a
 second model is a second configured client rather than a new integration. The
 trigger belongs next to the decode from #5 — escalate on
 `not confident or ambiguous`, with its own threshold, and cap the candidate set
-by the GPS prior (top ~5) because each candidate adds a reference photo to the
+by the GPS prior (top ~5), because each candidate adds a reference photo to the
 request and the bill scales with it.
 
 **(c) The prompt for the escalated call is a different question.** The cheap pass
@@ -496,25 +554,93 @@ five people is this, or none of them", with the priors stated. Keep it in the
 same observe-then-decide shape: the model reports which candidate it matches and
 how sure it is, Python applies the threshold.
 
-**Why it is last.** It is a refinement of a pipeline that is currently
-misjudging hits (#4) and throwing away good reads (#5) — those are worth more
-per unit effort, and escalation built on top of an untrustworthy first pass will
-mostly escalate the wrong things. It also cannot be tuned without R2.
-
 **Depends on:** #5 (the posterior is its trigger), R2 (its threshold), and
-benefits from #13.
+benefits from #13 or #14.
 
 ---
 
-## Proposed additions
+### #14 — A native app: React Native or Flutter
 
-- **R2 — the adjudication scorecard**, above. Strongly recommended: it is nearly
-  free, and #4, #5, #11 and #13 all currently have no way to tell whether a
-  change helped.
-- **R1 — an offline replay harness** (a subset of R2): point a script at saved
-  shot images plus their admin verdicts and re-run a prompt variant over them
-  without a live game. Falls out of R2 almost for free, and is what makes #4
-  tractable in an afternoon rather than over several game nights.
+**The motivation.** Two real weaknesses, neither of which the current web app can
+fully fix: **background support** and **native camera access**. Both are worth
+having; both cost months.
+
+**What "no background support" means concretely today.** The app is an
+add-to-home-screen PWA (`react-ui/src/AddToHomeScreen.js` plus
+`react-ui/public/manifest.json`) with **no service worker**, so:
+
+- **the screen sleeps mid-game.** There is no Screen Wake Lock, so a player has
+  to keep tapping to stay live;
+- **the SSE stream dies when the app is backgrounded.** `UpdateListener.js`
+  reconnects on error after a timeout, but a backgrounded browser is not running
+  it — so ticker messages and circle warnings arrive only when the player
+  foregrounds the app;
+- **`MyWebcam.js` tears the camera stream down and back up on `visibilitychange`**,
+  and `MapView.js` pauses when hidden — sensible in a browser, but it means
+  position updates stop when the phone is in a pocket, which is most of the game;
+- **there are no push notifications at all**, so nothing can reach a player who
+  is not looking at the screen. For a game about being ambushed in the street,
+  that is the biggest gap on this list.
+
+**Try the cheap web fixes first — genuinely, before committing months.** Several
+of the above have web answers that are days rather than months of work:
+
+- **Screen Wake Lock API** — supported on modern Chrome and on iOS Safari 16.4+.
+  Fixes the sleeping screen outright.
+- **A service worker + Web Push** — Web Push works on iOS for _home-screen
+  installed_ PWAs from 16.4, which is exactly how this app is already installed.
+  Verify support at implementation time rather than trusting this note, but if it
+  holds, it covers the notification gap without leaving the web.
+- **Background geolocation is the one that genuinely does not have a web
+  answer.** No browser will keep feeding positions from a locked phone in a
+  pocket. If that is a hard requirement, it is the argument for going native, and
+  it should be *the* argument — not the camera, which #13 can partly address.
+
+Doing that spike first is the highest-value thing here: it either solves most of
+the problem for 1% of the cost, or it produces a specific, defensible reason to
+go native.
+
+**What makes the native project tractable.** The backend is already a clean REST
+
+- SSE API with no coupling to the web client, so a native app replaces
+  `react-ui/` **only**. Nothing in `backend/` changes. `server/` (the Express
+  static server and proxy) stays for whatever web surface remains — the admin
+  interface in particular has no reason to become native, and is much better suited
+  to staying a web page.
+
+**What has to be rewritten either way:** `MapView.js` is the big one (a
+custom-drawn map with georeferencing, the corner mini-map, and the circles), plus
+the camera and QR pipeline (`MyWebcam.js`, `QRParser.js`) and every view. What
+ports cleanly on the React Native path: the pure logic — `utils.js`, the map
+geometry in `venue.js`, `shotHistoryStore.js`, `UpdateListener.js`'s structure —
+and the React model itself. On the Flutter path, all of it is rewritten in Dart.
+The CSS Modules do not survive either route.
+
+**Recommendation: React Native with Expo.** It keeps the language and the React
+idioms this codebase is already written in, so the port is mechanical in places
+rather than a from-scratch rebuild; Expo has first-party modules aimed at exactly
+the three weaknesses (`expo-camera`, `expo-location` background updates,
+`expo-notifications`); and OTA updates avoid an app-store round trip for every
+iteration. Flutter's advantages — rendering consistency, a better story for
+custom-drawn UI like the map — are real but do not outweigh throwing away the
+existing JavaScript and the team's familiarity, for a personal project.
+
+**"App stores" and "native" are separate decisions.** This is a private game for
+a known guest list, and public store distribution may be actively unhelpful:
+
+- Apple requires a paid developer account (~£79/$99 a year) either way;
+- App Review is a plausible obstacle for a game whose core loop is photographing
+  people in the street — expect questions about user-generated content
+  moderation, and about the camera and background-location justifications;
+- **TestFlight and Android's internal-testing track distribute to a fixed list of
+  people without public review**, which is exactly the shape of this game.
+
+So: go native for the capabilities if the PWA spike says they are unreachable,
+but treat a public listing as a later, optional decision rather than the goal.
+
+**Timeline.** Not before 19 September, and not close. Post-game, and probably
+post-*next*-game — this is the kind of item that competes with everything else in
+this file for the same evenings. It supersedes #13 if it happens.
 
 ---
 
@@ -522,21 +648,23 @@ benefits from #13.
 
 Answers to these change the shape of the work, not just its order.
 
-1. **Is House Absolute in Westminster?** Assumed here: yes, #6/#7/#12 are all the
-   same venue and the next game is a Westminster game. Note `HOUSE_ABSOLUTE` is
-   currently a landmark in the *resort* test venue, so the name travels with the
-   base rather than the place.
+1. **Is House Absolute in Westminster?** Assumed throughout: yes, and #6/#7/#12
+   are all the same venue. Worth confirming, because #12's map crop depends on
+   it. (Note `HOUSE_ABSOLUTE` is currently a landmark in the *resort* test venue,
+   and the PWA manifest reads "Streetfight by House Absolute", so the name
+   travels with the house rather than the place.)
 2. **Should the player-facing shot history name the target?** #2 gives the admin
    a name. Telling a shooter "CharlesBot thinks you hit Alice" before an admin has
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
    admin queue, and keep the player's view to hit / miss / bystander.
-3. **When are the reference photos for #11 taken** — by the player at onboarding,
-   or by an admin at the start of the night? The second is better lit, better
-   framed and more likely to actually happen; the first scales without a queue at
-   the door.
-4. **How long do the reference photos live?** Suggestion: deleted with the game.
-5. **Does the trousers channel survive contact with self-selection (#10)?** The
-   trousers palette is already restricted to 5 colours because people wear what
-   they own. If players are picking outfits rather than being issued them, this
-   is the channel most likely to be wrong on the night.
+3. **Do we ask players for a photo of themselves in their outfit at pick time?**
+   Cheap to add to #10, verifies they actually have the clothes, and hands #11
+   its reference photos. The cost is that it turns a fun colour-picker into
+   something that asks for a photograph, and those photos then need a retention
+   story.
+4. **How long do reference photos live?** Suggestion: deleted with the game.
+5. **Does the identification scheme survive three bring-your-own channels?** With
+   only armbands provided (#9), this is the biggest open risk to the whole
+   identification idea on the night. #10 is the mitigation; R1/R2 will tell us
+   afterwards how well it worked.
