@@ -758,6 +758,45 @@ a known guest list, and public store distribution may be actively unhelpful:
 So: go native for the capabilities if the PWA spike says they are unreachable,
 but treat a public listing as a later, optional decision rather than the goal.
 
+### What it costs to run
+
+**Expo's free tier is comfortably enough** (checked August 2026): 15 iOS and 15
+Android builds *per month*, 1 concurrency on a low-priority queue, a 45-minute
+build timeout, and EAS Update to 1,000 monthly active users. A game with twenty
+players and a handful of builds a year is nowhere near any of those numbers. EAS
+is optional anyway — `expo-updates` can point at a self-hosted update server, and
+builds can be made locally with Xcode / Android Studio at no cost and no quota.
+EAS Build's real value is not needing a Mac.
+
+**The recurring cost is Apple's, not Expo's:** the Developer Program is ~£79/$99
+a year and is required even for TestFlight. Google Play is a one-off $25, or
+nothing at all if Android players sideload an APK.
+
+**Over-the-air updates do not remove the need to build.** An OTA update ships
+JavaScript and assets only; anything in the native layer needs a new binary:
+
+- adding or upgrading a native module — so each capability added after the first
+  build (`expo-notifications`, background `expo-location`) costs a build;
+- changing permissions or entitlements — `UIBackgroundModes`,
+  `ACCESS_BACKGROUND_LOCATION` and friends are native config;
+- Expo SDK upgrades. Updates are bound to a **runtime version**, so an update
+  built against a newer SDK is simply not served to an older binary — you cannot
+  OTA past an SDK bump;
+- store and OS requirements — Google Play mandates raising the target API level
+  annually or the app stops being installable;
+- **certificate and build expiry, which is the one that actually bites here.**
+  TestFlight builds expire 90 days after upload, and iOS distribution
+  certificates and provisioning profiles last a year. A game played once or twice
+  a year on TestFlight therefore needs a fresh build *every time*, even if not a
+  line of code changed. Confirm the current figures when planning, but budget for
+  a rebuild per game night rather than a rebuild per release.
+
+**On the shell path (D), OTA barely matters anyway.** The UI is served from our
+own web server, so a UI change is an ordinary deploy of the React app: live
+immediately, no runtime-version coupling, no MAU ceiling, no Expo involved. The
+shell would only be rebuilt when its native capabilities change — or when
+TestFlight expires it.
+
 **Timeline.** Not before 19 September, and not close. Post-game, and probably
 post-*next*-game — this is the kind of item that competes with everything else in
 this file for the same evenings. It supersedes #13 if it happens.
