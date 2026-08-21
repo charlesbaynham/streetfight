@@ -808,8 +808,8 @@ the frontend excluded from the port before any work starts.
 upgrades — `expo-camera` does in a few lines what `MyWebcam.js` hand-rolls around
 iOS bugs, and its barcode scanner replaces `qr-scanner` outright.
 
-*(Aside: `@maplibre/maplibre-react-native` is already in `package.json` and
-imported nowhere — an abandoned experiment. Delete it.)*
+*(Aside, now resolved: `@maplibre/maplibre-react-native` sat in `package.json`
+imported nowhere — an abandoned experiment. Removed in #127.)*
 
 **`MapView.js` is the single hardest piece** and deserves its own estimate. It is
 not a map widget: it is a `div` with a `backgroundImage` whose
