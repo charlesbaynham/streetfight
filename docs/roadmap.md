@@ -396,9 +396,72 @@ Today the second question is never asked when the first one fails.
 
 So the work is an integration-layer module (per the plan's rule that
 `backend/identity/` stays pure) that builds the candidate set from the shot's
-game, builds the `Prior` from `location_context` (start with a Gaussian or
-inverse-distance in metres), calls `decode()`, and stores the ranked result
-alongside the existing review payload.
+game, builds the `Prior` from `location_context`, calls `decode()`, and stores
+the ranked result alongside the existing review payload.
+
+#### The prior must model staleness, not just distance
+
+A position is a measurement with an age, and the age matters as much as the
+distance. A player last seen 40 m away *four seconds ago* is a strong candidate;
+the same player last seen 40 m away *twenty minutes ago* tells us almost nothing,
+because they could be anywhere by now.
+
+The rule that follows, and it is the important one: **staleness widens the
+uncertainty, it never removes the candidate.** An old fix is not evidence of
+absence. It is the absence of evidence, and those want opposite treatments.
+
+**Why this is not merely tidy.** The decoder ranks by prior × likelihood, so a
+zero prior is unrecoverable — no quality of colour match can climb back from it.
+Discarding stale players would therefore mean that a photograph reading their
+outfit *perfectly* still fails to identify them, purely because their phone was
+in their pocket. That is precisely the wrong failure, and it would be invisible:
+the decoder would report a confident answer naming somebody else.
+
+**A model that behaves correctly at both ends.** Treat the last fix as a
+distribution over where the player is *now*, widening with age:
+
+    sigma_eff(a)^2  =  sigma_fix^2  +  2 * D * a
+
+where `a` is the age of the fix, `sigma_fix` its reported accuracy, and `D` a
+diffusion constant chosen from a plausible movement speed. The prior weight is
+then the probability mass of that distribution falling within engagement range of
+the shooter, rather than a function of a point distance.
+
+The limiting behaviour is the point of it: as `a` grows, `sigma_eff` swamps the
+game area and every candidate's weight converges to the same number — a uniform
+prior. Which is exactly what `decoder.decode` already does when no prior is
+passed. So the staleness model is a smooth interpolation between a sharp GPS
+prior and the existing, tested, no-prior behaviour, and the degenerate case needs
+no special handling.
+
+**Floor it anyway.** Mix in a uniform component — `p = (1 - eps) * p_gps + eps *
+uniform` — so that no candidate can ever be driven to exactly zero by arithmetic.
+Cheap insurance against the unrecoverable case above.
+
+**Three practical notes.**
+
+- **The timestamp is already there.** `User.location_timestamp` is returned by
+  `get_locations` and therefore already sits in every shot's `location_context`.
+  No schema change, no backfill; the ages of every fix in every historical shot
+  can be computed today.
+- **The accuracy is not, and should be.** `sendLocationUpdate` in `MapView.js`
+  sends latitude and longitude and throws `position.coords.accuracy` away — which
+  is `sigma_fix`, free, and already in the browser's hand. Without it every fix is
+  assumed equally good, and in Westminster it will not be: an urban-canyon fix can
+  be tens of metres out while an open-sky one is single figures. Adding it needs a
+  `location_accuracy` column, so it is a `resetdb`, so it wants doing at the same
+  time as any other model change.
+- **There is already a precedent in the codebase.** `MapView.js` fades other
+  players' dots with age — `TIME_UNTIL_TRANSPARENT = 5 * 60` — and, note, floors
+  the fade at `MIN_ALPHA = 0.5` rather than fading to nothing. That is the same
+  instinct as this section, already applied visually: an old dot is drawn
+  faintly, not erased. The five-minute timescale is a reasonable first guess for
+  `D` too.
+
+**Do not over-model it.** Staleness correlates with a phone being pocketed, which
+correlates with not being in an engagement — but a player who has just been
+photographed was probably out in the open. Resist adding behavioural terms until
+R2 has produced data to fit them against.
 
 **Keep the auto-action gate conservative.** `slot_candidates_from_review()`
 requires `k + 1` readable channels and is used by `backend/shot_auto_actions.py`.
