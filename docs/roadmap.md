@@ -37,6 +37,7 @@ allowed to become a blocker for the night — it is all upside.
 | **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
+| **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded.               | R5           |
 | **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
 | **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
 
@@ -57,16 +58,17 @@ software with a real deadline, which is not where it started on the list.
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
-| 9     | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
+| 9     | **R5** Capture GPS accuracy and heading      | **Before the 19th**          | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline.             |
+| 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
-| 10    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
-| 11    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
-| 12    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
-| 13    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
-| 14    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
-| 15    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
-| 16    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
-| 17    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
+| 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
+| 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
+| 13    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
+| 14    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
+| 15    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
+| 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
+| 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
+| 18    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
 | —     | **#14** Native app                          | **Parked**                   | Decided against: the Apple fee is unavoidable for iOS in any form. Analysis kept for whenever it is revisited. |
 
 ---
@@ -498,19 +500,10 @@ to suit the caller.
 
 #### Two fields worth capturing now
 
-Both are free, both are currently discarded, and both need a column and therefore
-a `resetdb` — so batch them with any other model change.
-
-- **`position.coords.accuracy`** — this is `sigma_fix`, and `sendLocationUpdate`
-  in `MapView.js` throws it away. Without it every fix is assumed equally good,
-  and in Westminster it will not be: an urban-canyon fix can be tens of metres
-  out where an open-sky one is single figures.
-- **The shooter's compass heading at the moment of the shot.** The engagement
-  envelope is currently isotropic — a disc — because the direction of aim is
-  unknown, which is exactly what plan §9 lists as future work under "shooter
-  orientation / aim as a stronger spatial prior". A heading turns the disc into a
-  cone and sharpens `Λ_x` considerably. Capture it now even if nothing consumes
-  it yet; it cannot be recovered afterwards.
+`position.coords.accuracy` (which is `sigma_fix`) and the shooter's compass
+heading (which turns the envelope from a disc into a cone) are both discarded
+today and both unrecoverable after the fact. Written up as **R5**, which has to
+happen before the 19th for that reason.
 
 **Two things already in place.** `User.location_timestamp` is returned by
 `get_locations`, so the age of every fix is already inside every shot's
@@ -949,6 +942,73 @@ TestFlight expires it.
 **Timeline.** Not before 19 September, and not close. Post-game, and probably
 post-*next*-game — this is the kind of item that competes with everything else in
 this file for the same evenings. It supersedes #13 if it happens.
+
+---
+
+### R5 — Capture GPS accuracy and compass heading *(proposed — and this one has a deadline)*
+
+Two fields the app already has in its hand and throws away. Both are inputs to
+#5's probability model, and neither can be recovered after the fact.
+
+**Why this is the one post-game item that is not post-game.** Everything else in
+tracks A and C can be built in October against the data the 19th produces.
+This cannot: telemetry that was not recorded on the night does not exist, and the
+19th will be by far the largest body of real shots this game has ever generated —
+the data that R2 scores, that #4's prompt work is validated against, and that
+#5's diffusion constant is fitted to. Miss it and the next chance is the game
+after next.
+
+**The schema objection dissolves if it lands early.** Both fields need columns
+and therefore a `resetdb`, which is normally a reason to defer — but the database
+is being reset for the new game anyway. Done before game setup, the migration
+costs nothing.
+
+**The two halves have very different costs.** Take them separately.
+
+#### R5a — GPS accuracy *(cheap; do this)*
+
+`position.coords.accuracy` is already sitting in the `watchPosition` callback in
+`MapView.js` and is discarded by `sendLocationUpdate(lat, long)`. It is
+`sigma_fix` in #5's model — without it, every fix is assumed equally good, and in
+Westminster it will not be: an urban-canyon fix can be tens of metres out where
+an open-sky one is single figures.
+
+The path is short and entirely mechanical: send it, add a `location_accuracy`
+column to `User`, store it in `set_location`, and — the step easily missed —
+return it from `get_locations`, since that is what serialises into every shot's
+`location_context` and therefore what #5 will actually read.
+
+#### R5b — Compass heading at the moment of the shot *(fiddly; do if it fits)*
+
+This is what turns #5's engagement envelope from a disc into a cone, and it is
+the "shooter orientation / aim" item plan §9 already lists as future work. It is
+a property of the shot rather than of the player, so it belongs in a `heading`
+column on `Shot`, captured in `MyWebcam.js` at the moment of capture.
+
+**It is harder than it sounds, for three reasons worth knowing in advance.**
+
+- **Not `position.coords.heading`.** That is direction of *travel*, and it is
+  null when standing still — which is precisely when somebody is aiming.
+- **iOS needs an explicit permission.** `DeviceOrientationEvent.requestPermission()`
+  must be called from a user gesture, and the heading arrives as
+  `webkitCompassHeading`.
+- **Android needs the absolute event.** Plain `deviceorientation`'s `alpha` is
+  measured from an arbitrary origin; `deviceorientationabsolute` is the one that
+  means anything.
+
+**Where the permission goes.** `OnboardingView.js` already walks players up a
+gated ladder — camera, then location — using the request/check helper pair in
+`utils.js`. A third rung follows that existing pattern rather than inventing a
+new one.
+
+**It must degrade silently.** A denied, unsupported or simply absent heading has
+to store null and let the shot proceed exactly as now. Telemetry gathering must
+never be able to stop somebody firing on the night; #5's envelope just stays
+isotropic for those shots, which is where it is today anyway.
+
+**Nothing should consume either field before the game.** That is the whole point:
+capture now, use in October. Building the cone into #5 in the fortnight before
+the 19th would be exactly the wrong risk to take.
 
 ---
 
