@@ -61,6 +61,7 @@ software with a real deadline, which is not where it started on the list.
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | **Before the 19th**          | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline.             |
 | 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
+| 10b   | **R7** Reference photo as a kit check       | Before the 19th *if it fits* | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -91,6 +92,10 @@ Recorded here so they are not re-litigated:
   TestFlight included, and it is not worth paying for a party game. #14 stays on
   file as a future extension; the capability work it was meant to unlock moves to
   R3 and R4, which cost nothing.
+- **The reference photo is taken by the admin at the door on the night** (R7),
+  not by the player at pick time. It is a manual gate on whether people actually
+  wore what they said they would, so it has to be done by the person who can
+  send them home to change. Answers open question 2.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -247,11 +252,10 @@ the single best lever on how accurate the identification is on the night. So the
 page should be built around "which of these can you actually wear on Saturday",
 not "which is prettiest".
 
-**Worth considering while building it:** ask each player to confirm they have the
-garments, and optionally to photograph themselves in the outfit. That
-verification is useful on its own — and it is exactly the reference-photo capture
-flow that #11 needs, obtained for free at the one moment every player is already
-engaged with the app.
+**Do ask each player to confirm they have the garments.** Do **not** ask them to
+photograph themselves: that is deliberately deferred to R7, where the admin takes
+the photo at the door on the night. A self-taken photo verifies nothing, because
+the person submitting it is the person with a reason to fudge it.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move). **Feeds:** #8.
 
@@ -1051,6 +1055,58 @@ held as a weapon, and it keeps going to sleep.
 
 ---
 
+### R7 — The reference photo as a kit check, run through the shot AI *(proposed)*
+
+**Why the admin takes it, not the player.** The reference photo's first job is
+not to feed #11 — it is a **manual gate**. Three of the four channels are
+bring-your-own (#9), so the single largest risk to the night is somebody turning
+up in the wrong colours, or in something they called "green" that photographs
+khaki. Checking that is a job for the person standing at the door with the box of
+armbands, because they are the only one who can do anything about it: swap a
+garment, hand out a different armband, or record an override there and then. A
+photo the player takes of themselves at pick time verifies nothing, since the
+person submitting it is the person with a reason to fudge it. Hence: **at the
+door, on the night, by the admin, one person at a time.**
+
+**Why it should go through the vision pipeline.** Taking the photo is the check
+by eye. Running it through **the same prompt and the same machinery the real
+shots use** — `backend/shot_vision.py`, `backend/vision_client.py`, the identical
+prompt, no special-casing — is the check that matters, because it answers the
+only question that counts: *does this outfit actually decode to this person?*
+Doing it at the door means a failure is discovered while it is still fixable,
+rather than at 22:00 when the photo is of somebody running away.
+
+**It must not count as a shot.** No `Shot` row that can be adjudicated, no HP
+change, no ammo, no ticker entry, no place in the admin queue. Same code path,
+different sink.
+
+**What it gives us, in order of value:**
+
+1. a go/no-go per player at the door — recognised correctly, or fix it now;
+2. a real, per-player measurement of the recognition rate *before* the game
+   starts, which is the honest input to the go/no-go on `ai_auto_actions_enabled`
+   for the night (that decision currently rests on nothing);
+3. clean labelled data — image plus known ground-truth identity — which is
+   exactly what R1/R2 want and what §12's numbers were missing;
+4. the reference images #11 needs, obtained without asking players for anything.
+
+**Shape (not yet designed).** Probably an admin-mode capture that stores the
+image against the user and calls the existing review path with the result written
+somewhere that is not the shot queue. The interesting question is what to show
+the admin: the decoded identity plus per-channel confidences, so a marginal
+channel ("the trousers read as black at 0.4") is visible as a warning, not just a
+pass/fail.
+
+**Note the ordering trap:** this wants the identity to already be recorded, so it
+runs *after* #10's picks are in and the armbands are handed out — it is the last
+step at the door, not the first.
+
+**Lands in:** a new admin capture view, `backend/shot_vision.py` (reused as-is),
+and wherever the result is stored. **Feeds:** #11, R1/R2, and the auto-actions
+go/no-go. **Depends on:** #10.
+
+---
+
 ### R4 — Service worker and Web Push *(proposed)*
 
 The notification half of what #14 was for: let the server wake a player's phone
@@ -1079,11 +1135,10 @@ Answers to these change the shape of the work, not just its order.
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
    admin queue, and keep the player's view to hit / miss / bystander.
-2. **Do we ask players for a photo of themselves in their outfit at pick time?**
-   Cheap to add to #10, verifies they actually have the clothes, and hands #11
-   its reference photos. The cost is that it turns a fun colour-picker into
-   something that asks for a photograph, and those photos then need a retention
-   story.
+2. ~~**Do we ask players for a photo of themselves in their outfit at pick
+   time?**~~ **Answered: no.** The photo moves to the door on the night, taken by
+   the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
+   photo a check rather than a self-report.
 3. **How long do reference photos live?** Suggestion: deleted with the game.
 4. **Does the identification scheme survive three bring-your-own channels?** With
    only armbands provided (#9), this is the biggest open risk to the whole
