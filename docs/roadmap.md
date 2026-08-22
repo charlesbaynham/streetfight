@@ -51,6 +51,7 @@ software with a real deadline, which is not where it started on the list.
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1     | **#9** Buy armbands                         | Now                          | Longest lead time; #10 and #8 both wait on it. In flight.                                                      |
+| 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
 | 4     | **#10** Colour-picking page                 | ~31 Aug build, live ~7 Sept  | The only software on the critical path. Also the mitigation for bring-your-own garments (see #9).              |
@@ -135,6 +136,28 @@ has to show people the right constraint.
 **Risk to name out loud:** three of the four channels are now bring-your-own. The
 scheme's accuracy on the night depends on players actually owning and wearing the
 colours they picked. #10 is the mitigation — see below.
+
+---
+
+### R6 — Check the armband colours against the palette when they arrive *(proposed)*
+
+**Status: ordered, not yet delivered.** The armbands were bought against the hex
+values in `PALETTE_HEX["main"]` (`backend/identity/config.py`), but nobody has
+seen them yet, so nobody knows how close the dye actually is.
+
+**On delivery:** photograph the seven armbands together under the lighting they
+will be used in, compare against the hex values, and **update `PALETTE_HEX` to
+what was actually bought** rather than leaving the aspirational values in place.
+The palette was chosen by optimising worst-case CIEDE2000 separation across three
+illuminants (plan §9.1, §12.4); a silent substitution erodes exactly the property
+the scheme rests on, and a recorded one can at least be re-checked.
+
+If two of the delivered colours turn out to be closer than the design assumed,
+that is a palette problem to solve before the night, not a decoder problem.
+
+**Lands in:** `backend/identity/config.py` (`PALETTE_HEX`).
+**Blocks:** nothing hard, but it should be true before #8 prints anything that
+shows a colour swatch.
 
 ---
 
