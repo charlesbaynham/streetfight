@@ -24,15 +24,20 @@ from uuid import UUID
 from fastapi import HTTPException
 
 from .identity.config import DEFAULT_THRESHOLDS
+from .identity.config import default_scheme
 from .model import AI_REVIEW_STATE_DONE
+from .shot_identification import rank_candidates
 from .shot_vision import HIT_BYSTANDER
 from .shot_vision import HIT_PLAYER
 from .shot_vision import MISS
-from .shot_vision import slot_candidates_from_review
+from .shot_vision import confident_channel_count
 
 logger = logging.getLogger(__name__)
 
 CONFIDENT = DEFAULT_THRESHOLDS.confident_threshold
+
+# Built once: the scheme is fixed for the life of the process.
+DEFAULT_SCHEME = default_scheme()
 
 # The decisions _decide can reach; None means "leave it to the admin".
 _MISS = "miss"
@@ -93,10 +98,13 @@ def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
     """What to do with the queue head: (action, target_id), or None to stop.
 
     Only a completed review with top-level confidence >= CONFIDENT can act. A
-    hit additionally needs the stored channel reads to identify exactly one
-    assignable slot (see slot_candidates_from_review), held by exactly one user
-    in this game, who is alive and is not the shooter. Legacy reviews stored
-    without a confidence field parse as 0.0 and can never fire.
+    hit additionally needs at least k + 1 channels read confidently, and then
+    the reading to pick out one living, non-shooter candidate confidently and
+    without a tie -- see
+    backend.shot_identification.rank_candidates, which scores the reading
+    against what each candidate is *actually wearing* rather than decoding it
+    against the code. Legacy reviews stored without a confidence field parse as
+    0.0 and can never fire.
     """
     from .admin_interface import AdminInterface
 
@@ -124,20 +132,27 @@ def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
     if outcome != HIT_PLAYER:
         return None
 
-    candidates = slot_candidates_from_review(review)
-    if len(candidates) != 1:
+    # Keep the conservative readability gate the slot-decode path had. Scoring
+    # against candidates is *relative*: the posteriors are normalised, so with
+    # a small field even a hopeless reading hands somebody 1.0. The absolute
+    # question -- "did we actually read enough of this outfit to name anyone?"
+    # -- is not one the ranking can answer, so it stays a separate gate.
+    if confident_channel_count(review) < DEFAULT_SCHEME.code.k + 1:
         return None
-    slot = candidates[0]
 
-    holders = [
-        user
-        for user in AdminInterface().get_users_for_game(game_id)
-        if user.identity_slot == slot
-    ]
-    if len(holders) != 1:
+    users = AdminInterface().get_users_for_game(game_id)
+    ranked = rank_candidates(head, users, review)
+    if ranked is None:
         return None
-    target = holders[0]
-    if target.hit_points <= 0 or target.id == head.user_id:
+
+    # The same conservatism the slot-decode gate had, expressed against the
+    # posterior instead of the code: act only on a confident, untied ranking
+    # that nothing in the reading contradicts.
+    if not ranked.confident or ranked.ambiguous or ranked.inconsistent:
+        return None
+
+    target = next((u for u in users if u.id == ranked.best), None)
+    if target is None or target.hit_points <= 0 or target.id == head.user_id:
         return None
 
     return (_HIT, target.id)

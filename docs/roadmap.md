@@ -51,19 +51,21 @@ software with a real deadline, which is not where it started on the list.
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1     | **#9** Buy armbands                         | Now                          | Longest lead time; #10 and #8 both wait on it. In flight.                                                      |
+| 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
 | 4     | **#10** Colour-picking page                 | ~31 Aug build, live ~7 Sept  | The only software on the critical path. Also the mitigation for bring-your-own garments (see #9).              |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
+| 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | **Before the 19th**          | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline.             |
 | 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
+| 10b   | **R7** Reference photo as a kit check       | Before the 19th *if it fits* | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
-| 13    | **#5** Use every channel, not just armbands | —                            | Wastes real information today and hands the admin "unable to tell".                                            |
 | 14    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
 | 15    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
@@ -90,6 +92,23 @@ Recorded here so they are not re-litigated:
   TestFlight included, and it is not worth paying for a party game. #14 stays on
   file as a future extension; the capability work it was meant to unlock moves to
   R3 and R4, which cost nothing.
+- **The reference photo is taken by the admin at the door on the night** (R7),
+  not by the player at pick time. It is a manual gate on whether people actually
+  wore what they said they would, so it has to be done by the person who can
+  send them home to change. Answers open question 2.
+- **`TEAM_CHANNEL` stays on the hat**, reversing the earlier decision to move it
+  to the armbands. Each team bulk-buys hats in its colour; the armbands stay the
+  free per-player channel we set on the night. See #9 and plan §12.6 — no code
+  change, `TEAM_CHANNEL` is already `"hat"`.
+- **Auto-actions must work on the night.** They are the point of the recognition
+  work, not a bonus. This promotes **#5** onto the critical path, because the
+  code-decode path in `slot_candidates_from_review` cannot see a player who is
+  not wearing their exact codeword — which, with overrides or free choice, is
+  most of them.
+- **Players choose freely, seated as far apart as their wardrobe allows** (#10),
+  rather than picking a canonical slot or being held to a hard distance
+  threshold. Plan §12.6: everyone gets clothes they own, ~55% keep the full
+  `d = 3`, ~45% sit at 2, ~0.2% at 1.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -117,24 +136,64 @@ every member of a team gets the same hat colour and no two teams share one. That
 only works if people turn up wearing a hat in a specific one of seven colours —
 which, with hats now bring-your-own, most will not.
 
-**Decided: `TEAM_CHANNEL` moves to the armbands.** The armbands are the one
-garment we control, so they are the only channel guaranteed to be both present
-and the right colour. Making them the team marker means:
+**Reversed: `TEAM_CHANNEL` stays on the hat, and each team bulk-buys its hats.**
+An earlier draft of this section decided to move it to the armbands, on the
+grounds that the armbands are the one garment we control. That reasoning was
+right about the premise and wrong about the conclusion, and the numbers in plan
+§12.6 say so:
 
-- friend-or-foe at 30 m survives, and reads off the item that is easiest to see;
-- the allocation constraint lands on the channel that is never an erasure, so it
-  costs the decoder nothing;
-- the hat degrades gracefully into "a fourth channel when somebody happens to be
-  wearing one", which is what it will be in practice.
+- **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
+  garments determine the other two. Pinning *any* channel to the team leaves
+  exactly one bucket of five slots (four for black) — identical for hat, t-shirt
+  and armbands. The team-channel choice does not change capacity at all.
+- **It decides which garments a player has to source.** With the team on the
+  armbands, the five slots in a team each need a *different* hat colour, and
+  almost nobody owns a coloured hat. With the team on the hat, the hat is a
+  single bulk purchase — one person buys five caps — and the player sources only
+  a t-shirt and trousers, which are things people own.
+- **It is the difference between having a free channel and not having one.**
+  Teammates share the team colour, so if that colour is the armbands, then within
+  a team we have *no* channel left that we control — nothing to turn at handout
+  time to separate two players whose wardrobes collide. Putting the team on the
+  hat keeps the armband as a per-player variable we set on the night. That is the
+  real value of controlling the armbands: not more slots, but a knob that still
+  turns after everyone has chosen.
 
-This is a change to `TEAM_CHANNEL` in `backend/identity/config.py` and the tests
-around `allocate_team_slots`; the decoder is unaffected, since allocation is
-policy and not part of the code. **Do this before #10**, because the picking page
-has to show people the right constraint.
+Measured (§12.6): with the team on the armbands, a player can fully wear ~0.06 of
+their team's free slots and 46% wear at most one of their three garments as
+recorded. With the team on the hat, that becomes ~0.56 and 10%.
 
-**Risk to name out loud:** three of the four channels are now bring-your-own. The
-scheme's accuracy on the night depends on players actually owning and wearing the
-colours they picked. #10 is the mitigation — see below.
+**No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changes is
+the shopping list: seven armband colours (already ordered, #9) *plus* one hat
+colour per team, bought by the team.
+
+**Risk to name out loud:** two of the four channels are bring-your-own in the
+free sense (t-shirt, trousers), the hat is bring-your-own but bulk-bought to a
+single colour per team, and only the armbands are ours. The scheme's accuracy on
+the night still depends on players owning and wearing what they picked. #10 is
+the mitigation, and R7 is the check that it worked.
+
+---
+
+### R6 — Check the armband colours against the palette when they arrive *(proposed)*
+
+**Status: ordered, not yet delivered.** The armbands were bought against the hex
+values in `PALETTE_HEX["main"]` (`backend/identity/config.py`), but nobody has
+seen them yet, so nobody knows how close the dye actually is.
+
+**On delivery:** photograph the seven armbands together under the lighting they
+will be used in, compare against the hex values, and **update `PALETTE_HEX` to
+what was actually bought** rather than leaving the aspirational values in place.
+The palette was chosen by optimising worst-case CIEDE2000 separation across three
+illuminants (plan §9.1, §12.4); a silent substitution erodes exactly the property
+the scheme rests on, and a recorded one can at least be re-checked.
+
+If two of the delivered colours turn out to be closer than the design assumed,
+that is a palette problem to solve before the night, not a decoder problem.
+
+**Lands in:** `backend/identity/config.py` (`PALETTE_HEX`).
+**Blocks:** nothing hard, but it should be true before #8 prints anything that
+shows a colour swatch.
 
 ---
 
@@ -224,21 +283,24 @@ the single best lever on how accurate the identification is on the night. So the
 page should be built around "which of these can you actually wear on Saturday",
 not "which is prettiest".
 
-**Open question: how wide should the choice be?** The shape above keeps players
-picking from the pre-allocated slots. The wider version is to drop the slots and
-accept *any* outfit that is still distance 3 from every outfit already taken — the
-decoder is equally happy with either, since it only needs the pairwise distance.
-Plan §12.5 (`scripts/simulate_code_capacity.py`) prices the wider version:
-uniformly random free choice fits **28.5 players on average, worst case 25**,
-against the code's 35, and the final headcount is not known until the last player
-has picked. Whether that flexibility is worth ~6 players of capacity is undecided
-— see the trade-off laid out in §12.5.
+**Settled: the choice is free within the team, and seated by distance.** The
+player is not offered a list of canonical slots. They say which t-shirt and
+trouser colours they own; the backend seats them on the outfit that is as far as
+possible from everyone already placed, with the hat fixed to the team and the
+armband chosen by us. §12.5's capacity tax does not apply, because pinning the
+hat to the team partitions the space and prevents the stranding that causes it —
+inside a team, free choice and the code fit the same five players. See plan
+§12.6 for the numbers and open question 5 for the reasoning.
 
-**Worth considering while building it:** ask each player to confirm they have the
-garments, and optionally to photograph themselves in the outfit. That
-verification is useful on its own — and it is exactly the reference-photo capture
-flow that #11 needs, obtained for free at the one moment every player is already
-engaged with the app.
+**This depends on #5.** Freely chosen outfits are not codewords, so the
+code-decode path in `shot_vision.slot_candidates_from_review` cannot identify
+their wearers — and can confidently identify the *wrong* one. Auto-actions are
+required on the night, so #5 ships first.
+
+**Do ask each player to confirm they have the garments.** Do **not** ask them to
+photograph themselves: that is deliberately deferred to R7, where the admin takes
+the photo at the door on the night. A self-taken photo verifies nothing, because
+the person submitting it is the person with a reason to fudge it.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move). **Feeds:** #8.
 
@@ -369,7 +431,13 @@ data than everything to date, so build this to consume it.
 
 ---
 
-### #5 — Two readable channels should still identify somebody
+### #5 — Two readable channels should still identify somebody *(shipped)*
+
+**Shipped** as `backend/shot_identification.py`, with the auto-action hit path
+in `backend/shot_auto_actions.py` rewired onto it. What is *not* yet done is #3,
+the admin-facing surface: the ranking is computed and acted on, but the queue UI
+still shows only the old tags, so an admin cannot see the runners-up.
+
 
 **Symptom.** A distant shot read two of the four channels correctly. Two erasures
 is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot said it
@@ -1038,6 +1106,58 @@ held as a weapon, and it keeps going to sleep.
 
 ---
 
+### R7 — The reference photo as a kit check, run through the shot AI *(proposed)*
+
+**Why the admin takes it, not the player.** The reference photo's first job is
+not to feed #11 — it is a **manual gate**. Three of the four channels are
+bring-your-own (#9), so the single largest risk to the night is somebody turning
+up in the wrong colours, or in something they called "green" that photographs
+khaki. Checking that is a job for the person standing at the door with the box of
+armbands, because they are the only one who can do anything about it: swap a
+garment, hand out a different armband, or record an override there and then. A
+photo the player takes of themselves at pick time verifies nothing, since the
+person submitting it is the person with a reason to fudge it. Hence: **at the
+door, on the night, by the admin, one person at a time.**
+
+**Why it should go through the vision pipeline.** Taking the photo is the check
+by eye. Running it through **the same prompt and the same machinery the real
+shots use** — `backend/shot_vision.py`, `backend/vision_client.py`, the identical
+prompt, no special-casing — is the check that matters, because it answers the
+only question that counts: *does this outfit actually decode to this person?*
+Doing it at the door means a failure is discovered while it is still fixable,
+rather than at 22:00 when the photo is of somebody running away.
+
+**It must not count as a shot.** No `Shot` row that can be adjudicated, no HP
+change, no ammo, no ticker entry, no place in the admin queue. Same code path,
+different sink.
+
+**What it gives us, in order of value:**
+
+1. a go/no-go per player at the door — recognised correctly, or fix it now;
+2. a real, per-player measurement of the recognition rate *before* the game
+   starts, which is the honest input to the go/no-go on `ai_auto_actions_enabled`
+   for the night (that decision currently rests on nothing);
+3. clean labelled data — image plus known ground-truth identity — which is
+   exactly what R1/R2 want and what §12's numbers were missing;
+4. the reference images #11 needs, obtained without asking players for anything.
+
+**Shape (not yet designed).** Probably an admin-mode capture that stores the
+image against the user and calls the existing review path with the result written
+somewhere that is not the shot queue. The interesting question is what to show
+the admin: the decoded identity plus per-channel confidences, so a marginal
+channel ("the trousers read as black at 0.4") is visible as a warning, not just a
+pass/fail.
+
+**Note the ordering trap:** this wants the identity to already be recorded, so it
+runs *after* #10's picks are in and the armbands are handed out — it is the last
+step at the door, not the first.
+
+**Lands in:** a new admin capture view, `backend/shot_vision.py` (reused as-is),
+and wherever the result is stored. **Feeds:** #11, R1/R2, and the auto-actions
+go/no-go. **Depends on:** #10.
+
+---
+
 ### R4 — Service worker and Web Push *(proposed)*
 
 The notification half of what #14 was for: let the server wake a player's phone
@@ -1066,19 +1186,22 @@ Answers to these change the shape of the work, not just its order.
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
    admin queue, and keep the player's view to hit / miss / bystander.
-2. **Do we ask players for a photo of themselves in their outfit at pick time?**
-   Cheap to add to #10, verifies they actually have the clothes, and hands #11
-   its reference photos. The cost is that it turns a fun colour-picker into
-   something that asks for a photograph, and those photos then need a retention
-   story.
+2. ~~**Do we ask players for a photo of themselves in their outfit at pick
+   time?**~~ **Answered: no.** The photo moves to the door on the night, taken by
+   the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
+   photo a check rather than a self-report.
 3. **How long do reference photos live?** Suggestion: deleted with the game.
 4. **Does the identification scheme survive three bring-your-own channels?** With
    only armbands provided (#9), this is the biggest open risk to the whole
    identification idea on the night. #10 is the mitigation; R1/R2 will tell us
    afterwards how well it worked.
-5. **Is free choice of outfit worth the capacity it costs?** Letting players pick
-   any outfit still distance 3 from the ones taken, rather than one of the code's
-   own slots, fits 28.5 players on average and 25 in the worst case, against 35 —
-   and the headcount is not known until the last player has picked (plan §12.5).
-   Against that: it is the version most likely to get every player into clothes
-   they own, which is what #10 exists to achieve. Undecided.
+5. ~~**Is free choice of outfit worth the capacity it costs?**~~ **Answered:
+   yes, and it costs nothing here.** §12.5 measured free choice across the *whole*
+   space, where unlucky picks strand regions. Pinning the hat to the team
+   partitions the space into seven independent buckets of five and prevents that
+   stranding: inside a team, free choice and the code have identical capacity,
+   because `d >= 3` under a shared hat already forces distinct t-shirts, trousers
+   and armbands, and the trousers palette caps a team at five either way. What
+   free choice adds is that the five outfits can be chosen to fit the team's
+   actual wardrobes — 82.8% of players in clothes they own against the code's
+   57.4%. See plan §12.6.

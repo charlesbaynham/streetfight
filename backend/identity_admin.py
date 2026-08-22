@@ -99,9 +99,7 @@ def _word_to_appearance(word: Word, scheme: IdentityScheme) -> Dict[str, Optiona
     }
 
 
-def _effective_words(
-    users: List[UserModel], scheme: IdentityScheme
-) -> Dict[UUID, Word]:
+def effective_words(users: List[UserModel], scheme: IdentityScheme) -> Dict[UUID, Word]:
     """Effective words for the slot-holding subset of ``users``.
 
     Players with no slot are omitted entirely -- see the module docstring for
@@ -166,7 +164,7 @@ def build_report(game_id: UUID) -> dict:
 
     players = [_player_row(u, scheme) for u in users]
 
-    words = _effective_words(users, scheme)
+    words = effective_words(users, scheme)
     names_by_id = {u.id: u.name for u in users}
     nominal_min_distance = scheme.code.min_distance()
 
@@ -233,7 +231,7 @@ def _validate_slot_assignment(
         raise IdentityAdminError(str(e))
 
     if not force:
-        other_words = _effective_words(others, scheme)
+        other_words = effective_words(others, scheme)
         for other_id, other_word in other_words.items():
             if overlap_distance(word, other_word) == 0:
                 raise IdentityAdminError(f"identical outfit to {names_by_id[other_id]}")
@@ -391,7 +389,7 @@ def suggest_identity(request: IdentitySuggestRequest) -> dict:
     users = AdminInterface().get_users_for_game(request.game_id)  # 404s if missing
 
     others_users = [u for u in users if u.id != request.user_id]
-    others = _effective_words(others_users, scheme)
+    others = effective_words(others_users, scheme)
     names_by_id = {u.id: u.name for u in users}
 
     # Slots held by other in-game players -- the target's own current slot

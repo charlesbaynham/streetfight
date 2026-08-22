@@ -48,7 +48,10 @@ db_scoped = AdminScopeWrapper.db_scoped
 
 # What the auto-action drain needs to know about the head of a game's shot
 # queue -- deliberately not a ShotModel, so image_base64 is never loaded.
-QueueHead = namedtuple("QueueHead", ["id", "user_id", "ai_review_state", "ai_review"])
+QueueHead = namedtuple(
+    "QueueHead",
+    ["id", "user_id", "ai_review_state", "ai_review", "location_context"],
+)
 
 
 class CircleTypes(str, Enum):
@@ -111,10 +114,16 @@ class AdminInterface:
         Ordered by (time_created, id): timestamps have 1s resolution, so the id
         breaks ties deterministically. Selects columns only -- never
         image_base64, which the auto-action drain has no use for.
+        ``location_context`` is here because the drain's identification step
+        builds its location term from it (backend.shot_identification).
         """
         row = (
             self._session.query(
-                Shot.id, Shot.user_id, Shot.ai_review_state, Shot.ai_review
+                Shot.id,
+                Shot.user_id,
+                Shot.ai_review_state,
+                Shot.ai_review,
+                Shot.location_context,
             )
             .filter_by(game_id=game_id, checked=False)
             .order_by(Shot.time_created, Shot.id)
