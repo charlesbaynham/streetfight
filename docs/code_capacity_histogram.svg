@@ -1,0 +1,96 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" width="960" height="520" role="img" aria-label="Free choice of outfit fits 19-28% fewer players than the code does">
+
+  <style>
+    .surface { fill: #fcfcfb; }
+    .ink-primary { fill: #0b0b0b; }
+    .ink-secondary { fill: #52514e; }
+    .axis { stroke: #d7d6d1; }
+    .grid { stroke: #ebeae6; }
+    .s-constrained { fill: #2a78d6; }
+    .s-unconstrained { fill: #eb6834; }
+    .k-constrained { stroke: #2a78d6; }
+    .k-unconstrained { stroke: #eb6834; }
+    @media (prefers-color-scheme: dark) {
+      .surface { fill: #1a1a19; }
+      .ink-primary { fill: #ffffff; }
+      .ink-secondary { fill: #c3c2b7; }
+      .axis { stroke: #4a4945; }
+      .grid { stroke: #2c2b29; }
+      .s-constrained { fill: #3987e5; }
+      .s-unconstrained { fill: #d95926; }
+      .k-constrained { stroke: #3987e5; }
+      .k-unconstrained { stroke: #d95926; }
+    }
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+  </style>
+
+<rect class="surface" width="960" height="520"/>
+<text class="ink-primary" x="64" y="34" font-size="19" font-weight="600">Free choice of outfit fits 19-28% fewer players than the code does</text>
+<text class="ink-secondary" x="64" y="56" font-size="13">1000 random maximal packings per configuration, minimum Hamming distance 3. Dashed lines: the Reed-Solomon capacity.</text>
+<rect class="s-constrained" x="64" y="66" width="10" height="10" rx="2"/>
+<text class="ink-secondary" x="80" y="75" font-size="12">trousers constrained</text>
+<rect class="s-unconstrained" x="230.0" y="66" width="10" height="10" rx="2"/>
+<text class="ink-secondary" x="246.0" y="75" font-size="12">trousers unconstrained</text>
+<line class="grid" x1="64" y1="444.0" x2="936" y2="444.0" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="448.0" font-size="11" text-anchor="end">0%</text>
+<line class="grid" x1="64" y1="373.6" x2="936" y2="373.6" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="377.6" font-size="11" text-anchor="end">7%</text>
+<line class="grid" x1="64" y1="303.2" x2="936" y2="303.2" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="307.2" font-size="11" text-anchor="end">14%</text>
+<line class="grid" x1="64" y1="232.8" x2="936" y2="232.8" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="236.8" font-size="11" text-anchor="end">21%</text>
+<line class="grid" x1="64" y1="162.4" x2="936" y2="162.4" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="166.4" font-size="11" text-anchor="end">28%</text>
+<line class="grid" x1="64" y1="92.0" x2="936" y2="92.0" stroke-width="1"/>
+<text class="ink-secondary" x="56" y="96.0" font-size="11" text-anchor="end">35%</text>
+<rect class="s-constrained" x="66.0" y="439.0" width="13.4" height="5.0" rx="2"><title>trousers constrained: 25 players in 5 of 1000 runs (0.5%)</title></rect>
+<rect class="s-constrained" x="100.9" y="392.7" width="13.4" height="51.3" rx="2"><title>trousers constrained: 26 players in 51 of 1000 runs (5.1%)</title></rect>
+<rect class="s-constrained" x="135.8" y="299.2" width="13.4" height="144.8" rx="2"><title>trousers constrained: 27 players in 144 of 1000 runs (14.4%)</title></rect>
+<rect class="s-constrained" x="170.6" y="136.3" width="13.4" height="307.7" rx="2"><title>trousers constrained: 28 players in 306 of 1000 runs (30.6%)</title></rect>
+<rect class="s-constrained" x="205.5" y="123.2" width="13.4" height="320.8" rx="2"><title>trousers constrained: 29 players in 319 of 1000 runs (31.9%)</title></rect>
+<rect class="s-constrained" x="240.4" y="313.3" width="13.4" height="130.7" rx="2"><title>trousers constrained: 30 players in 130 of 1000 runs (13.0%)</title></rect>
+<rect class="s-constrained" x="275.3" y="404.8" width="13.4" height="39.2" rx="2"><title>trousers constrained: 31 players in 39 of 1000 runs (3.9%)</title></rect>
+<rect class="s-constrained" x="310.2" y="439.0" width="13.4" height="5.0" rx="2"><title>trousers constrained: 32 players in 5 of 1000 runs (0.5%)</title></rect>
+<rect class="s-constrained" x="345.0" y="443.0" width="13.4" height="1.0" rx="2"><title>trousers constrained: 33 players in 1 of 1000 runs (0.1%)</title></rect>
+<rect class="s-unconstrained" x="290.7" y="443.0" width="13.4" height="1.0" rx="2"><title>trousers unconstrained: 31 players in 1 of 1000 runs (0.1%)</title></rect>
+<rect class="s-unconstrained" x="325.6" y="419.9" width="13.4" height="24.1" rx="2"><title>trousers unconstrained: 32 players in 24 of 1000 runs (2.4%)</title></rect>
+<rect class="s-unconstrained" x="360.5" y="371.6" width="13.4" height="72.4" rx="2"><title>trousers unconstrained: 33 players in 72 of 1000 runs (7.2%)</title></rect>
+<rect class="s-unconstrained" x="395.4" y="241.9" width="13.4" height="202.1" rx="2"><title>trousers unconstrained: 34 players in 201 of 1000 runs (20.1%)</title></rect>
+<rect class="s-unconstrained" x="430.2" y="102.1" width="13.4" height="341.9" rx="2"><title>trousers unconstrained: 35 players in 340 of 1000 runs (34.0%)</title></rect>
+<rect class="s-unconstrained" x="465.1" y="216.7" width="13.4" height="227.3" rx="2"><title>trousers unconstrained: 36 players in 226 of 1000 runs (22.6%)</title></rect>
+<rect class="s-unconstrained" x="500.0" y="346.4" width="13.4" height="97.6" rx="2"><title>trousers unconstrained: 37 players in 97 of 1000 runs (9.7%)</title></rect>
+<rect class="s-unconstrained" x="534.9" y="410.8" width="13.4" height="33.2" rx="2"><title>trousers unconstrained: 38 players in 33 of 1000 runs (3.3%)</title></rect>
+<rect class="s-unconstrained" x="569.8" y="438.0" width="13.4" height="6.0" rx="2"><title>trousers unconstrained: 39 players in 6 of 1000 runs (0.6%)</title></rect>
+<line class="k-constrained" x1="430.2" y1="86" x2="430.2" y2="444" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text class="ink-primary" x="424.2" y="98" font-size="11" font-weight="600" text-anchor="end">RS 35</text>
+<line class="k-unconstrained" x1="918.6" y1="86" x2="918.6" y2="444" stroke-width="1.5" stroke-dasharray="4 3"/>
+<text class="ink-primary" x="924.6" y="98" font-size="11" font-weight="600" text-anchor="start">RS 49</text>
+<line class="axis" x1="64" y1="444" x2="936" y2="444" stroke-width="1"/>
+<text class="ink-secondary" x="81.4" y="460" font-size="11" text-anchor="middle">25</text>
+<text class="ink-secondary" x="116.3" y="460" font-size="11" text-anchor="middle">26</text>
+<text class="ink-secondary" x="151.2" y="460" font-size="11" text-anchor="middle">27</text>
+<text class="ink-secondary" x="186.1" y="460" font-size="11" text-anchor="middle">28</text>
+<text class="ink-secondary" x="221.0" y="460" font-size="11" text-anchor="middle">29</text>
+<text class="ink-secondary" x="255.8" y="460" font-size="11" text-anchor="middle">30</text>
+<text class="ink-secondary" x="290.7" y="460" font-size="11" text-anchor="middle">31</text>
+<text class="ink-secondary" x="325.6" y="460" font-size="11" text-anchor="middle">32</text>
+<text class="ink-secondary" x="360.5" y="460" font-size="11" text-anchor="middle">33</text>
+<text class="ink-secondary" x="395.4" y="460" font-size="11" text-anchor="middle">34</text>
+<text class="ink-secondary" x="430.2" y="460" font-size="11" text-anchor="middle">35</text>
+<text class="ink-secondary" x="465.1" y="460" font-size="11" text-anchor="middle">36</text>
+<text class="ink-secondary" x="500.0" y="460" font-size="11" text-anchor="middle">37</text>
+<text class="ink-secondary" x="534.9" y="460" font-size="11" text-anchor="middle">38</text>
+<text class="ink-secondary" x="569.8" y="460" font-size="11" text-anchor="middle">39</text>
+<text class="ink-secondary" x="604.6" y="460" font-size="11" text-anchor="middle">40</text>
+<text class="ink-secondary" x="639.5" y="460" font-size="11" text-anchor="middle">41</text>
+<text class="ink-secondary" x="674.4" y="460" font-size="11" text-anchor="middle">42</text>
+<text class="ink-secondary" x="709.3" y="460" font-size="11" text-anchor="middle">43</text>
+<text class="ink-secondary" x="744.2" y="460" font-size="11" text-anchor="middle">44</text>
+<text class="ink-secondary" x="779.0" y="460" font-size="11" text-anchor="middle">45</text>
+<text class="ink-secondary" x="813.9" y="460" font-size="11" text-anchor="middle">46</text>
+<text class="ink-secondary" x="848.8" y="460" font-size="11" text-anchor="middle">47</text>
+<text class="ink-secondary" x="883.7" y="460" font-size="11" text-anchor="middle">48</text>
+<text class="ink-secondary" x="918.6" y="460" font-size="11" text-anchor="middle">49</text>
+<text class="ink-secondary" x="500.0" y="494" font-size="12" text-anchor="middle">Players fitted before the space ran out</text>
+<text class="ink-secondary" x="16" y="268.0" font-size="12" text-anchor="middle" transform="rotate(-90 16 268.0)">Share of runs</text>
+</svg>

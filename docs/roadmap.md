@@ -224,6 +224,14 @@ the single best lever on how accurate the identification is on the night. So the
 page should be built around "which of these can you actually wear on Saturday",
 not "which is prettiest".
 
+**Do not widen this to "pick any outfit you like".** The tempting generalisation
+is to drop the pre-allocated slots entirely and accept any outfit that is still
+distance 3 from every outfit already taken — the decoder is happy with that. It
+is simulated in plan §12.5 (`scripts/simulate_code_capacity.py`): uniformly random
+free choice fits **28.5 players on average, worst case 25**, against the code's 35,
+and it cannot tell you in advance how many players will fit. Picking from the
+code's own slots keeps all 35, so keep the choice *within* the pre-allocated block.
+
 **Worth considering while building it:** ask each player to confirm they have the
 garments, and optionally to photograph themselves in the outfit. That
 verification is useful on its own — and it is exactly the reference-photo capture
