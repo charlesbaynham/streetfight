@@ -882,3 +882,119 @@ A fourth point worth simulating if the decision comes down to it: free choice th
 breaks ties towards the codeword lattice when the pick is otherwise arbitrary,
 which should recover part of the gap without constraining anybody who has a real
 preference.
+
+### 12.6 Simulation: what the team channel and free choice cost *with real wardrobes*
+
+§12.5 priced free choice as a pure packing problem: uniformly random picks over
+the whole outfit space. That is the right way to isolate the capacity tax, but it
+answers a question one step removed from the one #10 actually faces, because it
+models neither the team constraint nor the fact that a player can only wear
+clothes they own. This section adds both.
+
+**Wardrobe model.** Ownership probability per garment *per colour*, chosen to
+reflect that t-shirts are easy, the restricted trousers palette is common, and
+coloured hats are rare:
+
+| channel | probabilities |
+|---|---|
+| t-shirt | black .95, blue .80, red .55, green .45, purple .25, orange .15, yellow .15 |
+| trousers | blue .95, black .90, white .55, green .30, red .10 |
+| hat | black .30, blue .18, red .12, green .10, purple .06, orange .05, yellow .05 |
+
+These are estimates, not measurements. The ratios drive every conclusion below
+and are robust to reasonable changes; the absolute percentages are not.
+
+#### Which channel should carry the team
+
+Pinning any channel to the team leaves the same number of slots — five per colour,
+four for black — because the code is MDS with `k = 2`. Confirmed for hat, t-shirt
+and armbands alike. **The team-channel choice does not change capacity.** What it
+changes is which garments a player has to source:
+
+| | team on armbands | team on hat (bulk-bought) |
+|---|---|---|
+| mean free slots the player can fully wear | 0.06 | **0.56** |
+| mean BYO garments worn as recorded | 1.49 / 3 | **2.33 / 3** |
+| players wearing ≤ 1 of their 3 BYO garments | 46% | **10%** |
+
+The deeper reason to prefer the hat is structural rather than numerical.
+Teammates share the team colour by construction, so whichever channel carries the
+team is a channel we cannot vary *within* a team. Putting the team on the
+armbands spends the one garment we control and leaves nothing to adjust at
+handout time; putting it on the hat keeps the armband as a free per-player
+variable. Simulated with the armband as the team marker and the hat left to
+whatever players own, minimum pairwise distance ≥ 2 was reached in **1.7%** of
+20-player games, against **99.0%** with the roles the other way round.
+
+#### The team partition removes §12.5's capacity tax
+
+Within one team the hat is fixed, so `d >= 3` forces every pair to differ in
+t-shirt **and** trousers **and** armband. The trousers palette has five colours,
+so a team caps at five players — and the code's own bucket is exactly five
+mutually-distance-3 outfits using all five trousers colours. **Free choice and
+the code have identical capacity inside a team.**
+
+§12.5's tax comes from unstructured free choice stranding regions of the space.
+Pinning the hat to the team partitions the space into seven independent buckets
+and prevents exactly that stranding. So the ~25% capacity loss measured there
+does not apply to the design in #10 — it applies to the version of free choice
+that ignores teams.
+
+#### What free choice buys, at the same guarantee
+
+Percentage of players seated in clothes they actually own, all pairs at global
+`d >= 3`, team on the hat, armbands ours:
+
+| players | free choice | canonical RS slots |
+|---|---|---|
+| 15 | 68.6% | 48.4% |
+| 20 | 69.5% | 51.5% |
+| 25 | 67.7% | 52.9% |
+| 30 | 64.9% | 53.5% |
+| 35 | 61.9% | 51.6% |
+
+Restricted to teammates only (before the cross-team constraint bites), free
+choice reaches **82.8%** against the code's **57.4%** for teams of five, and the
+chance that a whole team of five is correctly kitted goes from **0.5%** to
+**26.6%**. Teams of four are markedly easier than teams of five: 94.1% against
+62.6%, whole team OK 77.0% against 8.5%.
+
+The canonical figure does not improve if the distance requirement is relaxed —
+the slot set is fixed, so a player either owns their slot's clothes or does not.
+
+#### Don't pick a threshold — maximise the distance you can get
+
+The strictly better policy is to seat each player as far from everyone already
+placed as their wardrobe allows, rather than enforcing a hard `d >= 3` and
+turning people away. Everyone then wears clothes they own, and the distance is
+whatever the wardrobes permit:
+
+| players | at `d = 1` | at `d = 2` | at `d >= 3` |
+|---|---|---|---|
+| 20 | 0.1% | 34.2% | **65.7%** |
+| 30 | 0.2% | 40.8% | **59.0%** |
+| 35 | 0.2% | 44.8% | **55.1%** |
+
+Roughly half the players keep the full `d = 3` guarantee, most of the rest sit at
+2, and almost nobody lands at 1 — while *everybody* is in clothes they own. That
+dominates both alternatives: it beats canonical slots on kit accuracy by ~45
+points and beats hard-threshold free choice by ~35, and it never refuses a player.
+
+#### The consequence for auto-actions
+
+Freely chosen outfits are **not codewords**. `shot_vision.slot_candidates_from_review`
+decodes a reading against the *code* and matches the result to `User.identity_slot`,
+so with non-canonical outfits it does not merely fail — it can match the wrong
+codeword and hand `shot_auto_actions` a confident misidentification.
+
+This is not really a cost of free choice. It is already true today: overrides
+exist precisely because guests do not turn up in their codeword, so any game with
+a single override has players the code-decode path cannot see. Free choice makes
+a latent problem universal and therefore unignorable.
+
+The fix is roadmap #5 — score the reading against the effective words of the
+living candidates, with the GPS prior, instead of decoding against the code. That
+also explains why `d = 2` is tolerable here: the candidate set is a handful of
+nearby living players on other teams, not all 35 outfits, and two channels
+discriminate sharply within a set that small. **If auto-actions are required on
+the night, #5 is on the critical path.**
