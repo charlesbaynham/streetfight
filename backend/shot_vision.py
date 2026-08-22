@@ -534,6 +534,66 @@ def _slot_of(scheme, symbols: List[Optional[int]]) -> Optional[int]:
     return assignable[0] if len(assignable) == 1 else None
 
 
+def _stored_channel(review_dict: dict, channel):
+    """``(colour, confidence)`` for one channel of a *stored* review payload.
+
+    ``colour`` is None when the payload says nothing usable about the channel -
+    a legacy payload, a missing entry, or a colour no longer in the palette.
+    """
+    stored = review_dict.get("channels")
+    if not isinstance(stored, dict):
+        return (None, 0.0)
+    read = stored.get(channel.name)
+    if not isinstance(read, dict):
+        return (None, 0.0)
+    colour = read.get("colour")
+    confidence = _clamped_confidence(read.get("confidence"))
+    if not isinstance(colour, str) or not channel.has_label(colour):
+        return (None, 0.0)
+    return (colour, confidence)
+
+
+def confident_channel_count(review_dict: dict, scheme=None) -> int:
+    """How many channels a *stored* review read at or above the confidence
+    threshold -- i.e. how many the code would treat as readable rather than
+    erased.
+
+    Split out of :func:`slot_candidates_from_review` because the auto-action
+    gate still wants this count even though identification no longer decodes
+    against the code: with only ``k`` readable positions an MDS code matches
+    some codeword for *any* reading, so a shakier read than that vouches for
+    nothing, whoever it is scored against.
+    """
+    scheme = scheme or default_scheme()
+    count = 0
+    for channel in scheme.channels:
+        colour, confidence = _stored_channel(review_dict, channel)
+        if colour is not None and confidence >= CONFIDENT_THRESHOLD:
+            count += 1
+    return count
+
+
+def reading_from_review(review_dict: dict, scheme=None) -> Reading:
+    """The soft decoder's :class:`Reading`, rebuilt from a *stored* review.
+
+    The counterpart of :func:`to_reading` for a payload that has been round
+    tripped through the database. Unlike
+    :func:`slot_candidates_from_review` this does **not** erase a channel for
+    being read with low confidence: the soft decoder weights by confidence
+    itself, and throwing the weak reads away before it sees them discards
+    exactly the marginal evidence it is designed to use.
+    """
+    scheme = scheme or default_scheme()
+    observations = []
+    for channel in scheme.channels:
+        colour, confidence = _stored_channel(review_dict, channel)
+        if colour is None:
+            observations.append(ChannelObservation.erasure())
+        else:
+            observations.append(ChannelObservation.best_guess(colour, confidence))
+    return Reading(observations)
+
+
 def slot_candidates_from_review(review_dict: dict, scheme=None) -> List[int]:
     """Candidate slots rebuilt from a *stored* review payload (``to_dict()``).
 

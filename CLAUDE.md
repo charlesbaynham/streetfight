@@ -44,6 +44,9 @@ minimal changes over large refactors.
     event triggering.
   - `user_interface.py` / `admin_interface.py` — game logic (player-facing and
     admin operations: shot validation, HP/ammo, weapons, circles, resets).
+  - `shot_identification.py` — which player a shot photograph shows: builds the
+    candidate set and the location term, and scores the reading against each
+    candidate's *effective word* via `identity/decoder.py`.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
@@ -191,6 +194,16 @@ Images are built from the Nix flake
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.
+- **The vision model never sees the code.** It is asked only what colour each
+  garment is and how sure it is; all the error correction happens
+  deterministically in Python. Identification (`backend/shot_identification.py`)
+  scores that reading against what each living candidate is *actually wearing*
+  (their slot plus any overrides), not against the codebook — so a player in a
+  non-canonical outfit is still identified, which the older
+  `shot_vision.slot_candidates_from_review` path cannot do. That path survives
+  only as the auto-action readability gate (`confident_channel_count`): with
+  only `k` readable channels an MDS code matches *some* codeword for any
+  reading, so it vouches for nothing however it is scored.
 - The colour scheme players wear lives in `backend/identity/config.py`
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See

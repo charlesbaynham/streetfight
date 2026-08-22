@@ -431,7 +431,13 @@ data than everything to date, so build this to consume it.
 
 ---
 
-### #5 — Two readable channels should still identify somebody
+### #5 — Two readable channels should still identify somebody *(shipped)*
+
+**Shipped** as `backend/shot_identification.py`, with the auto-action hit path
+in `backend/shot_auto_actions.py` rewired onto it. What is *not* yet done is #3,
+the admin-facing surface: the ranking is computed and acted on, but the queue UI
+still shows only the old tags, so an admin cannot see the runners-up.
+
 
 **Symptom.** A distant shot read two of the four channels correctly. Two erasures
 is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot said it
