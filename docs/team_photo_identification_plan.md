@@ -863,10 +863,22 @@ Readings:
   roughly what restricting them costs under the code. Free choice from the full
   palette fits about as many players as the code does with the restriction.
 
-The trade is therefore: **~6 players of capacity in exchange for letting people
-wear clothes they own.** For a game of ~30 that is close to the line, and the
-mitigation is obvious — free choice does not have to mean *uniformly random*
-choice. Offering each player a shortlist drawn from the code's own 35 slots (what
-roadmap #10 already proposes) keeps the full capacity; only "pick anything at all"
-pays the tax. A middle option worth simulating if it ever matters: offer free
-choice but break ties towards the codeword lattice when the pick is arbitrary.
+**The trade, stated plainly:** ~6 players of capacity in exchange for letting
+people wear clothes they own. For a game of ~30 that is close to the line, which
+is what makes it a real decision rather than an obvious one — a fully free choice
+is also the version most likely to get everyone into an outfit they actually
+possess, which is the single biggest lever on identification accuracy (roadmap
+#10).
+
+Three points on the spectrum, if the numbers are to be weighed against each other:
+
+1. **Pre-allocated slots** — 35 identities, known in advance, no choice.
+2. **Choose within the code's own slots** — still 35, and the player picks the
+   outfit they can best assemble from the ones the code offers.
+3. **Choose anything distance 3 away** — 28.5 on average, 25 worst case, headcount
+   unknown until the last player picks, and total freedom.
+
+A fourth point worth simulating if the decision comes down to it: free choice that
+breaks ties towards the codeword lattice when the pick is otherwise arbitrary,
+which should recover part of the gap without constraining anybody who has a real
+preference.
