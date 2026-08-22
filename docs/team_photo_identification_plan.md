@@ -828,3 +828,57 @@ Relevant prior art, for anyone revisiting this:
 - Low-pressure sodium street lighting is essentially monochromatic at 589 nm, so
   objects have almost no colour rendering under it. Most UK street lighting is now
   LED, so sodium is the worst case rather than the typical one.
+
+### 12.5 Simulation: what free choice of outfit costs
+
+The code hands each player the slot the algebra gives them. The alternative that
+keeps the same guarantee is **free choice**: let a player pick *any* outfit they
+like, so long as it is still Hamming distance >= 3 from every outfit already taken.
+The decoder does not care which of the two it gets — it only ever needs the
+pairwise distance, not the lattice — so the question is purely how much capacity
+free choice wastes when an unlucky early pick strands a region of the space.
+
+`scripts/simulate_code_capacity.py` measures it: 1000 trials, each repeatedly
+picking a uniformly random still-available outfit until none is left (a maximal
+random packing), for both trousers palettes.
+
+| Configuration | Space | Free choice (mean, sd) | Range over 1000 runs | Code | Fraction |
+|---|---|---|---|---|---|
+| trousers restricted to 5 | 1715 | **28.5** (1.2) | 25–33 | 35 | 81% |
+| trousers unrestricted (7) | 2401 | **35.1** (1.3) | 31–39 | 49 | 72% |
+
+![Capacity histogram](code_capacity_histogram.svg)
+
+Readings:
+
+- **Free choice costs about a fifth of the capacity with the trousers restricted,
+  and about a quarter without.** The distributions are tight — sd ~1.2 players —
+  so this is a reliable tax, not a tail risk.
+- **It never got lucky.** In 1000 runs, free choice with restricted trousers never
+  reached the code's 35, and only 18% of runs reached even 30.
+- **The floor is what matters for planning.** The worst run fitted 25 players.
+  Free choice cannot promise a headcount in advance: the number of players who fit
+  is not known until the last one has picked.
+- Unrestricting trousers buys ~6.6 players under free choice (28.5 -> 35.1), i.e.
+  roughly what restricting them costs under the code. Free choice from the full
+  palette fits about as many players as the code does with the restriction.
+
+**The trade, stated plainly:** ~6 players of capacity in exchange for letting
+people wear clothes they own. For a game of ~30 that is close to the line, which
+is what makes it a real decision rather than an obvious one — a fully free choice
+is also the version most likely to get everyone into an outfit they actually
+possess, which is the single biggest lever on identification accuracy (roadmap
+#10).
+
+Three points on the spectrum, if the numbers are to be weighed against each other:
+
+1. **Pre-allocated slots** — 35 identities, known in advance, no choice.
+2. **Choose within the code's own slots** — still 35, and the player picks the
+   outfit they can best assemble from the ones the code offers.
+3. **Choose anything distance 3 away** — 28.5 on average, 25 worst case, headcount
+   unknown until the last player picks, and total freedom.
+
+A fourth point worth simulating if the decision comes down to it: free choice that
+breaks ties towards the codeword lattice when the pick is otherwise arbitrary,
+which should recover part of the gap without constraining anybody who has a real
+preference.

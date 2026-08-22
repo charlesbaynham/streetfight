@@ -66,6 +66,10 @@ minimal changes over large refactors.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).
+- `scripts/` — standalone analysis tools, not part of the app.
+  `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
+  players pick outfits freely instead of taking the codeword the scheme assigns
+  (see `docs/team_photo_identification_plan.md` §12.5).
 - `tests/` — pytest suite (`test_backend.py`, `test_items.py`, `test_shots.py`,
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and

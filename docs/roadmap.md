@@ -252,6 +252,16 @@ the single best lever on how accurate the identification is on the night. So the
 page should be built around "which of these can you actually wear on Saturday",
 not "which is prettiest".
 
+**Open question: how wide should the choice be?** The shape above keeps players
+picking from the pre-allocated slots. The wider version is to drop the slots and
+accept *any* outfit that is still distance 3 from every outfit already taken — the
+decoder is equally happy with either, since it only needs the pairwise distance.
+Plan §12.5 (`scripts/simulate_code_capacity.py`) prices the wider version:
+uniformly random free choice fits **28.5 players on average, worst case 25**,
+against the code's 35, and the final headcount is not known until the last player
+has picked. Whether that flexibility is worth ~6 players of capacity is undecided
+— see the trade-off laid out in §12.5.
+
 **Do ask each player to confirm they have the garments.** Do **not** ask them to
 photograph themselves: that is deliberately deferred to R7, where the admin takes
 the photo at the door on the night. A self-taken photo verifies nothing, because
@@ -1144,3 +1154,9 @@ Answers to these change the shape of the work, not just its order.
    only armbands provided (#9), this is the biggest open risk to the whole
    identification idea on the night. #10 is the mitigation; R1/R2 will tell us
    afterwards how well it worked.
+5. **Is free choice of outfit worth the capacity it costs?** Letting players pick
+   any outfit still distance 3 from the ones taken, rather than one of the code's
+   own slots, fits 28.5 players on average and 25 in the worst case, against 35 —
+   and the headcount is not known until the last player has picked (plan §12.5).
+   Against that: it is the version most likely to get every player into clothes
+   they own, which is what #10 exists to achieve. Undecided.
