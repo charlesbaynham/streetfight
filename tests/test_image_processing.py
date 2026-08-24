@@ -144,8 +144,8 @@ def test_aim_marker_lines_reach_the_edges_of_the_frame():
     assert near_left_edge[0] > near_left_edge[2] + 20
 
     near_top_edge = marked.getpixel((centre_x, 5))
-    assert near_top_edge[2] > near_top_edge[0] + 20
-    assert near_top_edge[2] > near_top_edge[1] + 20
+    assert near_top_edge[0] > near_top_edge[1] + 20
+    assert near_top_edge[0] > near_top_edge[2] + 20
 
 
 def test_prepare_for_vision_downsizes_large_images(test_image_string):
@@ -266,14 +266,15 @@ def test_zoom_marks_the_aim_point():
     width, height = zoomed.size
     centre_x, centre_y = width // 2, height // 2
 
-    # Sampled away from the exact centre, clear of the other line and the
-    # green aim pixel, so this checks the guide lines' colour rather than
-    # their intersection.
-    red_line = zoomed.getpixel((width // 4, centre_y))
-    assert red_line[0] > red_line[1] + 20 and red_line[0] > red_line[2] + 20
+    # Sampled away from the exact centre, so this checks each line's colour
+    # rather than their intersection.
+    horizontal_line = zoomed.getpixel((width // 4, centre_y))
+    assert horizontal_line[0] > horizontal_line[1] + 20
+    assert horizontal_line[0] > horizontal_line[2] + 20
 
-    blue_line = zoomed.getpixel((centre_x, height // 4))
-    assert blue_line[2] > blue_line[0] + 20 and blue_line[2] > blue_line[1] + 20
+    vertical_line = zoomed.getpixel((centre_x, height // 4))
+    assert vertical_line[0] > vertical_line[1] + 20
+    assert vertical_line[0] > vertical_line[2] + 20
 
 
 def test_zoom_rejects_a_nonsense_factor():

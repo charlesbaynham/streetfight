@@ -229,15 +229,15 @@ def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
     return f"""You are looking at a photograph taken during a street game. A player \
 has photographed someone in order to "shoot" them.
 
-The photo has two thin guide lines drawn across it, a red horizontal line and a \
-blue vertical line, each spanning the whole image. They are guides only, there to \
-help you find the aim point -- IGNORE anything they merely pass over or touch \
-elsewhere in the frame. The single pixel where the two lines cross is repainted \
-green, and that one green pixel is the exact spot the shot landed. Only what is \
-at that one pixel matters.
+The photo has a thin red cross drawn across it -- one horizontal line and one \
+vertical line, each spanning the whole image. The lines themselves are guides \
+only, there to help you find the aim point -- IGNORE anything they merely pass \
+over or touch elsewhere in the frame. The single pixel at the centre of the \
+cross, where the two lines meet, is the exact spot the shot landed. Only what \
+is at that one pixel matters.
 
-Your job is to report what the person at the green pixel is wearing. Report only \
-what you can actually see. Do not guess.
+Your job is to report what the person at the centre of the cross is wearing. \
+Report only what you can actually see. Do not guess.
 
 You have the ability to request a zoomed-in view of this photograph if you reply \
 with {{"request_zoom": true}} and nothing else. The next turn will provide you an \
@@ -246,18 +246,18 @@ may do this once only, so spend it on a target that is too small or too far away
 to judge from the whole frame. If the image is merely blurred, a zoom will not \
 help.
 
-FIRST: did the shot hit a person? If the green pixel itself is on empty ground, a \
-wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
-even if the red or blue guide line passes over or right next to a person \
-elsewhere in the frame. The guide lines are not the hit; only the green pixel is.
+FIRST: did the shot hit a person? If the centre of the cross is on empty ground, \
+a wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
+even if one of the red lines passes over or right next to a person elsewhere in \
+the frame. The lines themselves are not the hit; only their centre point is.
 
 Some shots will be very close. For these, if it is difficult for you to tell \
 whether it is a hit or not, you may request a zoomed version of the image once. \
 You MUST ultimately make a decision on whether the shot is hitting a person or \
-not. It is a hit only if the green pixel itself lands on the person -- on their \
-clothing, hands, or shoes. It is a miss if the green pixel is on the background \
-instead -- ground, a wall, foliage, a street light -- even if that background is \
-right beside them.
+not. It is a hit only if the centre of the cross itself lands on the person -- \
+on their clothing, hands, or shoes. It is a miss if the centre point is on the \
+background instead -- ground, a wall, foliage, a street light -- even if that \
+background is right beside them.
 
 If the shot hit a person, answer these questions about THAT PERSON ONLY. There \
 are usually other people in the frame -- passers-by who are not in the game. \
@@ -287,11 +287,10 @@ Reply with JSON only, matching this shape:
 
 ZOOM_FOLLOW_UP = (
     "Here is the zoomed view: the middle 25% of the previous photograph, at "
-    "higher resolution. The same red horizontal / blue vertical guide lines and "
-    "green centre pixel mark the same aim point, redrawn for this cropped view -- "
-    "only the green pixel counts as the hit, exactly as before. This is your one "
-    "zoom, so answer in full now with the JSON described above. "
-    '"request_zoom" must be false in your reply.'
+    "higher resolution. The same red cross marks the same aim point, redrawn for "
+    "this cropped view -- only its centre pixel counts as the hit, exactly as "
+    "before. This is your one zoom, so answer in full now with the JSON described "
+    'above. "request_zoom" must be false in your reply.'
 )
 
 

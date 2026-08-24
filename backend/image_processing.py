@@ -116,20 +116,20 @@ def _to_base64(
 def _draw_aim_marker_on(image: Image.Image) -> None:
     """Draw the crosshair onto a PIL image, in place.
 
-    Two single-pixel-wide guide lines span the full frame -- red horizontal,
-    blue vertical -- so the marker survives downsizing and JPEG compression
-    even far from the centre, rather than the old short arms which could
-    visually touch a target without actually being over it (roadmap R1). The
-    lines are guides only: the single pixel where they cross is repainted
-    green, and that pixel alone is the aim point (see the vision prompt).
+    A single-pixel-wide red cross spans the full frame -- one horizontal line,
+    one vertical line -- so the marker survives downsizing and JPEG
+    compression even far from the centre, rather than the old short arms
+    which could visually touch a target without actually being over it
+    (roadmap R1). The lines themselves are guides only: the one pixel where
+    they cross is the aim point (see the vision prompt), nothing else they
+    happen to pass over.
     """
     draw = ImageDraw.Draw(image)
     width, height = image.size
     centre_x, centre_y = width // 2, height // 2
 
     draw.line([(0, centre_y), (width - 1, centre_y)], fill=(255, 0, 0), width=1)
-    draw.line([(centre_x, 0), (centre_x, height - 1)], fill=(0, 0, 255), width=1)
-    draw.point((centre_x, centre_y), fill=(0, 255, 0))
+    draw.line([(centre_x, 0), (centre_x, height - 1)], fill=(255, 0, 0), width=1)
 
 
 def draw_aim_marker(base64_image: str) -> str:
