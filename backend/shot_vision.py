@@ -227,10 +227,16 @@ def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
         )
 
     return f"""You are looking at a photograph taken during a street game. A player \
-has photographed someone in order to "shoot" them. The crosshair marks where the \
-shot landed.
+has photographed someone in order to "shoot" them.
 
-Your job is to report what the person at the crosshair is wearing. Report only \
+The photo has two thin guide lines drawn across it, a red horizontal line and a \
+blue vertical line, each spanning the whole image. They are guides only, there to \
+help you find the aim point -- IGNORE anything they merely pass over or touch \
+elsewhere in the frame. The single pixel where the two lines cross is repainted \
+green, and that one green pixel is the exact spot the shot landed. Only what is \
+at that one pixel matters.
+
+Your job is to report what the person at the green pixel is wearing. Report only \
 what you can actually see. Do not guess.
 
 You have the ability to request a zoomed-in view of this photograph if you reply \
@@ -240,15 +246,18 @@ may do this once only, so spend it on a target that is too small or too far away
 to judge from the whole frame. If the image is merely blurred, a zoom will not \
 help.
 
-FIRST: did the shot hit a person? If the crosshair is on empty ground, a wall, \
-the sky, or nobody in particular, set "{HIT_FIELD}" to false.
+FIRST: did the shot hit a person? If the green pixel itself is on empty ground, a \
+wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
+even if the red or blue guide line passes over or right next to a person \
+elsewhere in the frame. The guide lines are not the hit; only the green pixel is.
 
 Some shots will be very close. For these, if it is difficult for you to tell \
 whether it is a hit or not, you may request a zoomed version of the image once. \
 You MUST ultimately make a decision on whether the shot is hitting a person or \
-not. Hitting any part of their clothing or hands or shoes counts as a hit. It is \
-only a miss if it entirely misses the person and hits, for example, a building or \
-a street light.
+not. It is a hit only if the green pixel itself lands on the person -- on their \
+clothing, hands, or shoes. It is a miss if the green pixel is on the background \
+instead -- ground, a wall, foliage, a street light -- even if that background is \
+right beside them.
 
 If the shot hit a person, answer these questions about THAT PERSON ONLY. There \
 are usually other people in the frame -- passers-by who are not in the game. \
@@ -278,8 +287,10 @@ Reply with JSON only, matching this shape:
 
 ZOOM_FOLLOW_UP = (
     "Here is the zoomed view: the middle 25% of the previous photograph, at "
-    "higher resolution. The crosshair again marks where the shot landed. This is "
-    "your one zoom, so answer in full now with the JSON described above. "
+    "higher resolution. The same red horizontal / blue vertical guide lines and "
+    "green centre pixel mark the same aim point, redrawn for this cropped view -- "
+    "only the green pixel counts as the hit, exactly as before. This is your one "
+    "zoom, so answer in full now with the JSON described above. "
     '"request_zoom" must be false in your reply.'
 )
 

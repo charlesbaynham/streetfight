@@ -584,7 +584,8 @@ def test_the_prompt_explains_the_zoom_and_the_hit_rule():
     assert "middle 25% of the image in higher resolution" in prompt
     assert "You may do this once only" in prompt
     assert "You MUST ultimately make a decision" in prompt
-    assert "clothing or hands or shoes counts as a hit" in prompt
+    assert "on their clothing, hands, or shoes" in prompt
+    assert "only the green pixel" in prompt.lower()
 
 
 def test_the_buckets_cover_chinos():

@@ -121,6 +121,33 @@ def test_aim_marker_draws_something_in_the_middle(test_image_string):
     assert marked.crop(middle).tobytes() != original.crop(middle).tobytes()
 
 
+def test_aim_marker_lines_reach_the_edges_of_the_frame():
+    # The guide lines must span the whole photo, not just a short arm near the
+    # centre, so they stay visible after downsizing even far from the aim
+    # point.
+    import base64
+    from io import BytesIO
+
+    from PIL import Image
+
+    flat = Image.new("RGB", (800, 600), (128, 128, 128))
+    buffer = BytesIO()
+    flat.save(buffer, format="PNG")
+    data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
+
+    marked, _ = load_image(draw_aim_marker(data_url))
+    width, height = marked.size
+    centre_x, centre_y = width // 2, height // 2
+
+    near_left_edge = marked.getpixel((5, centre_y))
+    assert near_left_edge[0] > near_left_edge[1] + 20
+    assert near_left_edge[0] > near_left_edge[2] + 20
+
+    near_top_edge = marked.getpixel((centre_x, 5))
+    assert near_top_edge[2] > near_top_edge[0] + 20
+    assert near_top_edge[2] > near_top_edge[1] + 20
+
+
 def test_prepare_for_vision_downsizes_large_images(test_image_string):
     prepared = prepare_for_vision(test_image_string, max_dimension=64)
     image, _ = load_image(prepared)
@@ -197,11 +224,13 @@ def test_zoom_keeps_detail_that_the_plain_downsize_loses():
     plain, _ = load_image(prepare_for_vision(original, max_dimension=1024))
     zoomed, _ = load_image(zoom_image(original, max_dimension=1024))
 
-    # Contrast across the middle band: the stripes survive the zoom but are
-    # averaged away by the whole-frame downsize.
+    # Contrast across a band near the middle: the stripes survive the zoom but
+    # are averaged away by the whole-frame downsize. Offset from the exact
+    # centre row, which the aim marker's full-width horizontal line now paints
+    # solid, obscuring the stripe detail that row would otherwise show.
     def middle_contrast(image):
         grey = image.convert("L")
-        row = grey.height // 2
+        row = grey.height // 2 - 20
         values = [grey.getpixel((x, row)) for x in range(grey.width)]
         return max(values) - min(values)
 
@@ -214,7 +243,8 @@ def test_zoom_keeps_the_centre_not_some_other_part_of_the_frame():
     zoomed, _ = load_image(zoom_image(detailed_image(), max_dimension=1024))
     grey = zoomed.convert("L")
 
-    row = grey.height // 2
+    # A row offset from centre, clear of the aim marker's horizontal line.
+    row = grey.height // 2 - 20
     near_left = [grey.getpixel((x, row)) for x in range(10, 60)]
 
     assert max(near_left) - min(near_left) > 100
@@ -233,14 +263,17 @@ def test_zoom_marks_the_aim_point():
     data_url = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode()
 
     zoomed, _ = load_image(zoom_image(data_url, max_dimension=400))
-    grey = zoomed.convert("L")
+    width, height = zoomed.size
+    centre_x, centre_y = width // 2, height // 2
 
-    centre_band = [
-        grey.getpixel((x, grey.height // 2))
-        for x in range(grey.width // 4, 3 * grey.width // 4)
-    ]
+    # Sampled away from the exact centre, clear of the other line and the
+    # green aim pixel, so this checks the guide lines' colour rather than
+    # their intersection.
+    red_line = zoomed.getpixel((width // 4, centre_y))
+    assert red_line[0] > red_line[1] + 20 and red_line[0] > red_line[2] + 20
 
-    assert max(centre_band) - min(centre_band) > 100
+    blue_line = zoomed.getpixel((centre_x, height // 4))
+    assert blue_line[2] > blue_line[0] + 20 and blue_line[2] > blue_line[1] + 20
 
 
 def test_zoom_rejects_a_nonsense_factor():
