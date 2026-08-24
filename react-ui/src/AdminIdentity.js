@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { sendAPIRequest } from "./utils";
+import { Swatch, hexFor } from "./Swatch";
 
 import styles from "./AdminIdentity.module.css";
 
@@ -60,12 +61,6 @@ async function getJSON(endpoint, query_params) {
   return data;
 }
 
-function hexFor(channels, channelName, label) {
-  if (!label) return null;
-  const channel = channels.find((c) => c.name === channelName);
-  return (channel && channel.hex[label]) || null;
-}
-
 function distanceDescription(distance, closestPlayers) {
   const names = (closestPlayers || []).map((p) => p.name).join(", ") || null;
   if (distance >= 3) return "full guarantee";
@@ -81,28 +76,6 @@ function worstPair(pairs) {
     if (rankDiff !== 0) return rankDiff;
     return a.distance - b.distance;
   })[0];
-}
-
-// A single colour swatch. Unknown / outside-palette shows as a hatched "?"
-// square rather than being silently dropped.
-function Swatch({ hex, label, small }) {
-  const className = [
-    styles.swatch,
-    small ? styles.swatchSmall : "",
-    hex ? "" : styles.swatchUnknown,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <span
-      className={className}
-      style={hex ? { background: hex } : undefined}
-      title={label || "not in palette"}
-    >
-      {hex ? "" : "?"}
-    </span>
-  );
 }
 
 // One channel's cell in the player table: the effective (worn) colour, with

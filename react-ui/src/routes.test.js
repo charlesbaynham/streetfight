@@ -17,6 +17,7 @@ import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
+import AdminIdentity from "./AdminIdentity";
 import AdminLogin from "./AdminLogin";
 import { AdminPage } from "./AdminCommon";
 
@@ -160,6 +161,54 @@ describe("/admin/identity (AdminPage wrapping IdentityDemo)", () => {
     expect(
       screen.getByRole("heading", { name: "Identity code workbench" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("/admin/identity-overrides (AdminPage wrapping AdminIdentity)", () => {
+  test("mounts and shows the player table once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_list_games: [{ id: "game-1", teams: [{ name: "Red" }] }],
+      admin_identity_report: {
+        nominal_min_distance: 3,
+        effective_min_distance: null,
+        pairs: [],
+        free_slots: [2],
+        channels: [
+          {
+            name: "hat",
+            labels: ["red", "blue"],
+            hex: { red: "#ff0000", blue: "#0000ff" },
+          },
+        ],
+        players: [
+          {
+            user_id: "u1",
+            name: "Alice",
+            team_name: "Red",
+            slot: 1,
+            overridden: false,
+            overrides: {},
+            canonical_appearance: { hat: "red" },
+            effective_appearance: { hat: "red" },
+          },
+        ],
+      },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <AdminPage>
+          <AdminIdentity />
+        </AdminPage>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Identity overrides" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 });
 
