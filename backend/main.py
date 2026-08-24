@@ -1,5 +1,6 @@
 import logging
 import os
+import subprocess
 from contextlib import contextmanager
 from enum import Enum
 from functools import wraps
@@ -120,6 +121,35 @@ app.add_middleware(
 @router.get("/hello")
 async def hello():
     return {"msg": "Hello world!"}
+
+
+def _current_version() -> str:
+    """Which code this is running. Deployments have the revision baked into
+    the installed package at build time; when developing from a checkout
+    instead, ask git directly."""
+    version_file = Path(__file__).resolve().parent / "VERSION"
+    if version_file.exists():
+        version = version_file.read_text().strip()
+        if version:
+            return version
+
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=Path(__file__).resolve().parent.parent,
+            text=True,
+            stderr=subprocess.DEVNULL,
+        ).strip()
+    except Exception:
+        return "unknown"
+
+
+VERSION = _current_version()
+
+
+@router.get("/get_version")
+async def get_version() -> Dict[str, str]:
+    return {"version": VERSION}
 
 
 @router.get("/my_id")
