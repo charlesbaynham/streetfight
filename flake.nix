@@ -16,6 +16,12 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
+        # The revision this flake was evaluated from. Clean trees get `shortRev`;
+        # dirty ones get `dirtyShortRev`; anything else (e.g. a tarball) gets a
+        # placeholder. Baked into the backend package so a running server can
+        # say what code it is.
+        version = if self ? rev then self.shortRev else if self ? dirtyRev then self.dirtyShortRev else "unknown";
+
         backendPackage = pkgs.python3Packages.buildPythonPackage {
           pname = "backend";
           version = "0.1";
@@ -25,6 +31,11 @@
           pyproject = true;
           build-system = [ pkgs.python3Packages.setuptools ];
           propagatedBuildInputs = [ ];
+          # There is no .git next to the installed package at runtime, so the
+          # revision has to travel with it. Read by backend/main.py.
+          postInstall = ''
+            printf '%s' ${version} > "$out/${pkgs.python3Packages.python.sitePackages}/backend/VERSION"
+          '';
         };
 
         texDeps = with pkgs; (texlive.combine {

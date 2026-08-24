@@ -182,6 +182,26 @@ export function AdminNav() {
   );
 }
 
+// The git hash the backend reports for itself, shown small at the bottom of
+// every admin page so a screenshot of a problem says which code produced it.
+function VersionFooter() {
+  const [version, setVersion] = useState(null);
+
+  useEffect(() => {
+    sendAPIRequest("get_version", {}, "GET", ({ version }) =>
+      setVersion(version),
+    );
+  }, []);
+
+  if (!version) return null;
+
+  return (
+    <footer className={styles.versionFooter}>
+      version <code>{version}</code>
+    </footer>
+  );
+}
+
 // Gate + shared chrome for every admin page: checks the login cookie, shows
 // the login form if it is missing, and otherwise renders the nav bar, the admin
 // SSE connection (which live-updates everything below it) and the page itself.
@@ -216,6 +236,7 @@ export function AdminPage({ children }) {
       <AdminNav />
       <AdminErrorLog />
       {children}
+      <VersionFooter />
     </Container>
   );
 }
