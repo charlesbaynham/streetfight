@@ -224,7 +224,11 @@ describe("AdminErrorLog", () => {
   // any sendAPIRequest call made anywhere - including directly from a test,
   // as below - shows up in it.
   async function renderAuthedAdminPage() {
-    installFetchMock({ admin_is_authed: true, admin_get_shots_info: [] });
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      get_version: { version: "test-version" },
+    });
     await actAndFlush(() =>
       render(
         <MemoryRouter>

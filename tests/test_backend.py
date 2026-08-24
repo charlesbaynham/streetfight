@@ -22,6 +22,14 @@ def test_auth_default_to_false(api_client):
     assert response.json() == False
 
 
+def test_get_version(api_client):
+    """The version is a non-empty string (the git hash in dev; the endpoint
+    degrades to "unknown" where there is no checkout)."""
+    response = api_client.get("/api/get_version")
+    assert response.status_code == 200
+    assert response.json()["version"]
+
+
 def test_auth_denies_admin(api_client):
     response = api_client.get("/api/admin_list_games")
     assert response.status_code == 403
