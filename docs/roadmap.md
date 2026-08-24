@@ -398,6 +398,37 @@ max_dim // 20`, `gap = arm // 3`. On the 1024 px image that
    `classify()` then applies the rule, so tightening or loosening it is a
    constant in Python and a test, not a prompt rewrite.
 
+**Tried this session (2026-08-24): suspects 1 and 2, together.** The crosshair
+is now a single-pixel-wide red cross spanning the *entire* frame (no gap, no
+short arms that can visually touch a target without the true centre landing on
+it), and the prompt was rewritten around the single centre point per suspect 1
+("only the pixel at the centre of the cross matters", explicitly told to
+ignore anything the lines merely pass over). A first colour-coded version
+(red/blue lines + a green centre pixel, to make the exact point unmistakable)
+was tried and dropped: the single green pixel does not survive
+`prepare_for_vision`'s downsize and JPEG re-encode — it lands as a muddy grey,
+not identifiably green — so a uniform red cross is what actually ships.
+
+Replayed 5x over all 13 fixtures (65 trials, `google/gemini-3.7-flash-20260813`,
+0 errors; results at `tests/fixtures/shot_replay/replay_single_red_cross_run{1..5}.jsonl`).
+**No measurable improvement**: false-hit rate 5/40 (12%), false-miss rate 20/25
+(80%) — statistically identical to the original baseline. d91548d3, the
+flagship false hit, came back `hit_player` at 0.95 confidence in **5/5** runs
+(previously investigated as the marker-geometry bug; that bug is now fixed and
+made no difference here). Reasoning text each time claims the crosshair lands
+"directly on" the face/neck/forehead. Most other shots were equally consistent
+run to run (11/13 unanimous across all 5), so this is not sampling noise — the
+model has a *systematic* bias to call it a hit whenever the person is merely
+close to centre-frame, and rewording/redrawing the marker around a single
+point didn't move that bias. Likely reason: in this photo the subject really
+is near the geometric centre of the frame (the miss is by inches, in foliage
+above his head), which is exactly the kind of close call suspect 3
+(asymmetric pressure: "when in doubt, it is a miss") and especially suspect 4
+(replacing the hit/miss boolean with an observation like
+`on_body`/`touching_outline`/`clearly_beside`/`nobody_near` that Python can
+threshold) were aimed at. Suspects 3 and 4 are still untried — try those next,
+not more marker-geometry tweaks.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).
