@@ -335,4 +335,4 @@ def shot_from_user_in_team(user_in_team, test_image_string):
     ui.set_weapon_data(1, 6)
     ui.submit_shot(test_image_string)
 
-    return AdminInterface().get_unchecked_shots_ids()[0]
+    return AdminInterface().get_shots_ids()[0]

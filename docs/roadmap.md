@@ -421,6 +421,31 @@ images plus their admin verdicts and re-runs a prompt variant over them offline,
 reporting the confusion matrix. Small, and it is the difference between #4 taking
 an afternoon and #4 taking several game nights.
 
+**Status: harness built** as `scripts/replay_shot_reviews.py` — `audit` scores
+the reviews already stored in a database against the admin verdicts (free, no
+API calls), `replay` re-runs the real vision pipeline over the saved photos
+with a chosen model and prompt variant into a resumable JSONL, `score` turns a
+replay file into the same report, and `extract` dumps shots' photos to PNG for
+eyeballing the false hits. `export` writes shots to a fixture directory
+(photos + `manifest.json`) which the other subcommands read back via
+`--fixtures`; the first such set lives at `tests/fixtures/shot_replay/` (the
+six resort test shots of 2026-08-21), with per-shot `human_label`s that stand
+in for verdicts until the admin adjudicates. Prompt variants for #4 land in
+its `PROMPT_VARIANTS` registry.
+
+**What the first run found.** The live database held no admin verdicts at all
+(the queue was never adjudicated), so the fixture labels are by eye. Even so:
+a close-up the admin calls a **miss** (crosshair just top-left of the head)
+was reviewed as `hit_player` at 0.95 confidence — a confident false hit that
+would have auto-fired, i.e. #4 in the wild — and all four distant (~50 m)
+shots came back `hit_bystander` on exactly two readable channels (t-shirt +
+trousers; the armbands and hat are unresolvable at that range even through
+the zoom), so auto-actions would have auto-bystandered four real hits. To
+produce proper verdicts, the admin queue grew a **"Show adjudicated shots"**
+toggle and a per-shot **admin notes** field (`Shot.admin_notes`,
+`admin_get_shot_notes` / `admin_set_shot_notes`) so future exports carry real
+adjudications and the reasoning behind them.
+
 **R2, after the game — the scorecard.** The admin-facing version: an endpoint and
 a page reporting CharlesBot's outcome against the admin's over a game or all
 games, broken down by whether the zoom was used and by how many channels were

@@ -145,6 +145,11 @@ class Shot(Base):
     # "error". Text JSON matches how location_context is already stored.
     ai_review = Column(String, nullable=True)
 
+    # Free-text annotation from the admin explaining an adjudication. No game
+    # logic reads this: it exists so the reasoning behind each verdict survives
+    # for the offline replay harness (scripts/replay_shot_reviews.py).
+    admin_notes = Column(String, nullable=True)
+
 
 class Team(Base):
     """

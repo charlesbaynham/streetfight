@@ -362,6 +362,77 @@ describe("ShotQueuePanel", () => {
       }),
     );
   });
+
+  test("the show-adjudicated toggle asks the backend for checked shots too, defaulting to off", async () => {
+    await renderQueue();
+
+    expect(getLastAPICall("admin_get_shots_info").query.include_checked).toBe(
+      "false",
+    );
+
+    userEvent.click(screen.getByLabelText(/Show adjudicated shots/));
+
+    await waitFor(() =>
+      expect(
+        getLastAPICall("admin_get_shots_info").query.include_checked,
+      ).toBe("true"),
+    );
+  });
+
+  test("an adjudicated shot shows its verdict and no action buttons", async () => {
+    shotsById["shot-1"] = makeShotDetail("shot-1", {
+      checked: true,
+      result: "miss",
+    });
+    await renderQueue();
+
+    await screen.findByText("Adjudicated: Miss");
+    expect(
+      screen.queryByRole("button", { name: "Missed" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Bystander" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Refund" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Hit" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("an adjudicated hit names the target in its verdict", async () => {
+    shotsById["shot-1"] = makeShotDetail("shot-1", {
+      checked: true,
+      result: "hit",
+      target_user_id: "shot-1-target-blue",
+    });
+    await renderQueue();
+
+    await screen.findByText("Adjudicated: Hit on Target Blue");
+  });
+
+  test("notes load with the shot and save back to their endpoint", async () => {
+    await renderQueue({
+      admin_get_shot_notes: { notes: "crosshair is left of the head" },
+      admin_set_shot_notes: {},
+    });
+
+    const box = await screen.findByLabelText("Admin notes");
+    expect(box).toHaveValue("crosshair is left of the head");
+    expect(screen.getByRole("button", { name: "Notes saved" })).toBeDisabled();
+
+    await actAndFlush(() => userEvent.type(box, " - agreed"));
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Save notes" })),
+    );
+
+    expect(getLastAPICall("admin_set_shot_notes").query).toEqual({
+      shot_id: "shot-1",
+      notes: "crosshair is left of the head - agreed",
+    });
+    await screen.findByRole("button", { name: "Notes saved" });
+  });
 });
 
 // ---------------------------------------------------------------------------

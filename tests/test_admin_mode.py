@@ -1,5 +1,6 @@
 import io
 import zipfile
+from uuid import uuid4
 
 import pytest
 from fastapi.exceptions import HTTPException
@@ -187,6 +188,59 @@ def test_dump_images_returns_zip_download(admin_api_client, old_shot_prep):
         # One marked-up image per shot submitted in old_shot_prep
         assert len(names) == 2
         assert all(name.endswith(".png") for name in names)
+
+
+def test_shot_notes_roundtrip(admin_api_client, old_shot_prep):
+    _, _, _, shot_b = old_shot_prep
+
+    response = admin_api_client.get(
+        "/api/admin_get_shot_notes", params={"shot_id": str(shot_b)}
+    )
+    assert response.is_success
+    assert response.json() == {"notes": ""}
+
+    # Deliberately full of URL-hostile characters: notes are prose.
+    note = "Crosshair passes just above the head & into the leaves? A miss."
+    response = admin_api_client.post(
+        "/api/admin_set_shot_notes", params={"shot_id": str(shot_b), "notes": note}
+    )
+    assert response.is_success
+
+    response = admin_api_client.get(
+        "/api/admin_get_shot_notes", params={"shot_id": str(shot_b)}
+    )
+    assert response.json() == {"notes": note}
+
+
+def test_shot_notes_unknown_shot_404s(admin_api_client):
+    response = admin_api_client.get(
+        "/api/admin_get_shot_notes", params={"shot_id": str(uuid4())}
+    )
+    assert response.status_code == 404
+
+
+def test_shots_info_includes_checked_only_when_asked(
+    admin_api_client, db_session, user_in_team, test_image_string
+):
+    AdminInterface().award_user_ammo(user_in_team, 10)
+    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).submit_shot(test_image_string)
+    shot_id = db_session.query(Shot.id).one()[0]
+
+    def queue_ids(**params):
+        response = admin_api_client.get("/api/admin_get_shots_info", params=params)
+        assert response.is_success
+        return response.json()
+
+    assert queue_ids() == [str(shot_id)]
+
+    response = admin_api_client.post(
+        "/api/admin_mark_shot_missed", params={"shot_id": str(shot_id)}
+    )
+    assert response.is_success
+
+    assert queue_ids() == []
+    assert queue_ids(include_checked=True) == [str(shot_id)]
 
 
 def test_set_circle(admin_api_client, user_in_team):
