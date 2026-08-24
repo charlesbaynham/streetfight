@@ -553,15 +553,22 @@ class AdminInterface:
         return new_model
 
     @db_scoped
-    def get_unchecked_shots_ids(self) -> list[UUID]:
-        shot_ids = (
-            self._session.query(Shot.id)
-            .filter_by(checked=False)
-            .order_by(Shot.time_created)
-            .all()
-        )
+    def get_shots_ids(self, include_checked: bool = False) -> list[UUID]:
+        """Shot ids, oldest first. Checked shots are excluded unless asked for
+        -- the queue wants only what needs adjudicating, but reviewing a
+        finished game wants everything."""
+        query = self._session.query(Shot.id)
+        if not include_checked:
+            query = query.filter_by(checked=False)
+        return [shot_id[0] for shot_id in query.order_by(Shot.time_created).all()]
 
-        return [shot_id[0] for shot_id in shot_ids]
+    @db_scoped
+    def get_shot_notes(self, shot_id) -> str:
+        return self._get_shot_orm(shot_id).admin_notes or ""
+
+    @db_scoped
+    def set_shot_notes(self, shot_id, notes: str) -> None:
+        self._get_shot_orm(shot_id).admin_notes = notes
 
     def hit_user_by_admin(self, user_id, num=1):
         with UserInterface(user_id) as ui:

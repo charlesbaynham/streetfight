@@ -1,0 +1,287 @@
+{
+  "source": "sqlite:////tmp/opencode/streetfight-data.db",
+  "shots": [
+    {
+      "shot_id": "d91548d3-80b9-49a8-8c1c-166dab877a9a",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:27:09",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": "miss",
+      "label_note": "crosshair passes top-left of the head, in the leaves; admin-called miss",
+      "image": "d91548d3-80b9-49a8-8c1c-166dab877a9a.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.95,
+        "outcome": "hit_player",
+        "outcome_reason": "armbands visible",
+        "is_hit": true,
+        "slot": null,
+        "reasoning": "The crosshair directly hits the person sitting on the swing bench. He is clearly visible wearing a purple t-shirt, black patterned lower wear, a dark green cloth/wrap on his head, and a green tied band/cloth around his right upper arm.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.95,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.9,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": true,
+            "colour": "green",
+            "confidence": 0.8,
+            "hex": "#00A651"
+          },
+          "armbands": {
+            "visible": true,
+            "colour": "green",
+            "confidence": 0.75,
+            "hex": "#00A651"
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    },
+    {
+      "shot_id": "d1c4e6ad-3cdf-4455-9599-dc6d8eb434be",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:30:52",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": "miss",
+      "label_note": "player visibly left of the centre line; the centre lands on grass",
+      "image": "d1c4e6ad-3cdf-4455-9599-dc6d8eb434be.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.85,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The shot hits a person walking on the grass in the distance. They are wearing a purple top and black trousers.",
+        "zoom_used": true,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.85,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.8,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.85,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.9,
+            "hex": null
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    },
+    {
+      "shot_id": "d276f718-963f-418f-ad54-ac5c7d46c026",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:31:02",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": null,
+      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "image": "d276f718-963f-418f-ad54-ac5c7d46c026.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.85,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshairs hit a person walking on the grass. The person is wearing a purple top and black trousers with a light stripe down the side; no hat or armbands are clearly visible.",
+        "zoom_used": true,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.85,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.9,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.8,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.85,
+            "hex": null
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    },
+    {
+      "shot_id": "697899ee-0b8b-4d16-a248-7e13e21f1681",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:31:23",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": null,
+      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "image": "697899ee-0b8b-4d16-a248-7e13e21f1681.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.85,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair lands directly on the person's torso. They are wearing a purple t-shirt and black patterned shorts/sarong, with no hat or armbands clearly visible.",
+        "zoom_used": true,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.85,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.75,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    },
+    {
+      "shot_id": "eae22475-7979-417e-87db-9c809b310136",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:31:39",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": null,
+      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "image": "eae22475-7979-417e-87db-9c809b310136.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.85,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair directly hits a person wearing a purple top and dark black trousers/sarong. No hat or armbands are visible.",
+        "zoom_used": true,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.85,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.8,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.8,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.8,
+            "hex": null
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    },
+    {
+      "shot_id": "60bd2665-192a-4fb9-90b7-ae2ed25e0803",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-21 08:35:48",
+      "shooter": "Gaby",
+      "result": null,
+      "human_label": "hit",
+      "label_note": "centre squarely on the face",
+      "image": "60bd2665-192a-4fb9-90b7-ae2ed25e0803.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.95,
+        "outcome": "hit_player",
+        "outcome_reason": "armbands visible",
+        "is_hit": true,
+        "slot": null,
+        "reasoning": "The crosshair hits the person directly on the head. He is wearing a purple t-shirt, a blue cap/pack on his head, a green armband on his right arm, and a black patterned wrap/sarong around his legs.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "purple",
+            "confidence": 0.95,
+            "hex": "#6A1B9A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.9,
+            "hex": "#222222"
+          },
+          "hat": {
+            "visible": true,
+            "colour": "blue",
+            "confidence": 0.95,
+            "hex": "#0072CE"
+          },
+          "armbands": {
+            "visible": true,
+            "colour": "green",
+            "confidence": 0.95,
+            "hex": "#00A651"
+          }
+        }
+      },
+      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+    }
+  ]
+}

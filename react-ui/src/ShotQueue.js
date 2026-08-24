@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage, adminPost } from "./AdminCommon";
-import { getShotFromCache } from "./ShotCache";
+import { getShotFromCache, evictShotFromCache } from "./ShotCache";
 import UpdateListener from "./UpdateListener";
 import { Row, Col } from "react-bootstrap";
 
@@ -102,7 +102,70 @@ function ShotAiTags({ shot_id }) {
   );
 }
 
-// Candidate targets for a shot, nearest-first: every other player present in
+// What an adjudicated shot was marked as, for the history view.
+function verdictText(shot) {
+  if (shot.result === "hit") {
+    const target = shot.game.teams
+      .flatMap((team) => team.users)
+      .find((user) => user.id === shot.target_user_id);
+    return `Hit${target ? ` on ${target.name}` : ""}`;
+  }
+  return (
+    {
+      miss: "Miss",
+      bystander: "Bystander",
+      refunded: "Refunded",
+    }[shot.result] || shot.result
+  );
+}
+
+// The admin's free-text annotation of a shot: why the verdict is what it is.
+// No game logic reads these notes - they exist so the reasoning survives for
+// the offline replay harness (scripts/replay_shot_reviews.py). Fetched and
+// saved through their own endpoints rather than the shot model, because
+// ShotCache caches shot models permanently.
+function ShotNotes({ shot_id }) {
+  const [notes, setNotes] = useState(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    setNotes(null);
+    setDirty(false);
+    sendAPIRequest("admin_get_shot_notes", { shot_id }).then(
+      async (response) => {
+        if (!response.ok) return;
+        const body = await response.json();
+        setNotes(body.notes);
+      },
+    );
+  }, [shot_id]);
+
+  const save = useCallback(() => {
+    adminPost("admin_set_shot_notes", { shot_id, notes }).then((response) => {
+      if (response.ok) setDirty(false);
+    });
+  }, [shot_id, notes]);
+
+  if (notes === null) return null;
+
+  return (
+    <div className={styles.notesBox}>
+      <textarea
+        aria-label="Admin notes"
+        value={notes}
+        placeholder="Why is this a hit/miss? (for the record, not the game)"
+        onChange={(event) => {
+          setNotes(event.target.value);
+          setDirty(true);
+        }}
+      />
+      <button onClick={save} disabled={!dirty}>
+        {dirty ? "Save notes" : "Notes saved"}
+      </button>
+    </div>
+  );
+}
+
 // the shot's location context, with their distance from the shooter at the
 // moment it was taken. Excludes the shooter themselves.
 export function rankShotCandidates(shot_data) {
@@ -194,10 +257,15 @@ function ShotQueuePanel() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
   const [currentShotIdx, setCurrentShotIdx] = useState(0);
+  // Off by default: the queue's job during a game is only what needs
+  // adjudicating. On, it doubles as the history view for reviewing a game.
+  const [showChecked, setShowChecked] = useState(false);
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
-    sendAPIRequest("admin_get_shots_info").then(async (response) => {
+    sendAPIRequest("admin_get_shots_info", {
+      include_checked: showChecked,
+    }).then(async (response) => {
       if (!response.ok) return;
       const shot_ids = await response.json();
 
@@ -223,7 +291,7 @@ function ShotQueuePanel() {
         }),
       );
     });
-  }, [currentShotIdx]);
+  }, [currentShotIdx, showChecked]);
 
   // If current shot ID changes, load the shot from the cache into the state
   useEffect(() => {
@@ -238,29 +306,29 @@ function ShotQueuePanel() {
       adminPost("admin_shot_hit_user", {
         shot_id: shot_id,
         target_user_id: target_user_id,
-      }).then((_) => {
-        update();
-      });
+      })
+        .then((_) => evictShotFromCache(shot_id))
+        .then((_) => update());
     },
     [update],
   );
 
   const markShotMissed = useCallback(() => {
-    adminPost("admin_mark_shot_missed", { shot_id: shot.id }).then((_) => {
-      update();
-    });
+    adminPost("admin_mark_shot_missed", { shot_id: shot.id })
+      .then((_) => evictShotFromCache(shot.id))
+      .then((_) => update());
   }, [shot, update]);
 
   const markShotBystander = useCallback(() => {
-    adminPost("admin_mark_shot_bystander", { shot_id: shot.id }).then((_) => {
-      update();
-    });
+    adminPost("admin_mark_shot_bystander", { shot_id: shot.id })
+      .then((_) => evictShotFromCache(shot.id))
+      .then((_) => update());
   }, [shot, update]);
 
   const refundShot = useCallback(() => {
-    adminPost("admin_refund_shot", { shot_id: shot.id }).then((_) => {
-      update();
-    });
+    adminPost("admin_refund_shot", { shot_id: shot.id })
+      .then((_) => evictShotFromCache(shot.id))
+      .then((_) => update());
   }, [shot, update]);
 
   useEffect(update, [update]);
@@ -304,6 +372,14 @@ function ShotQueuePanel() {
         >
           Previous
         </button>
+        <label className={styles.showCheckedToggle}>
+          <input
+            type="checkbox"
+            checked={showChecked}
+            onChange={(event) => setShowChecked(event.target.checked)}
+          />
+          Show adjudicated shots
+        </label>
       </Row>
 
       {shot ? (
@@ -316,7 +392,13 @@ function ShotQueuePanel() {
                 alt="The next shot in the queue"
                 src={shot.image_base64}
               />
+              {shot.checked ? (
+                <p className={styles.verdict}>
+                  Adjudicated: {verdictText(shot)}
+                </p>
+              ) : null}
               <ShotAiTags shot_id={shot.id} />
+              <ShotNotes shot_id={shot.id} />
               <button
                 onClick={() =>
                   adminPost("admin_review_shot", { shot_id: shot.id })
@@ -327,50 +409,56 @@ function ShotQueuePanel() {
             </Col>
             <Col>
               <NearestPlayers shot_data={shot} />
-              {shot.game.teams.map((team, idx_team) => (
-                <div key={idx_team}>
-                  <h3>{team.name}</h3>
-                  <ul>
-                    {team.users.map((target_user, idx_target_user) => (
-                      <li key={idx_target_user ** 2 + idx_team ** 3}>
-                        {target_user.name}
-                        <button
-                          onClick={() => {
-                            hitUser(shot.id, target_user.id);
-                          }}
-                        >
-                          Hit
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
+              {shot.checked ? null : (
+                <>
+                  {shot.game.teams.map((team, idx_team) => (
+                    <div key={idx_team}>
+                      <h3>{team.name}</h3>
+                      <ul>
+                        {team.users.map((target_user, idx_target_user) => (
+                          <li key={idx_target_user ** 2 + idx_team ** 3}>
+                            {target_user.name}
+                            <button
+                              onClick={() => {
+                                hitUser(shot.id, target_user.id);
+                              }}
+                            >
+                              Hit
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </>
+              )}
             </Col>
           </Row>
-          <Row>
-            <button
-              onClick={() => {
-                markShotMissed();
-              }}
-            >
-              Missed
-            </button>
-            <button
-              onClick={() => {
-                markShotBystander();
-              }}
-            >
-              Bystander
-            </button>
-            <button
-              onClick={() => {
-                refundShot();
-              }}
-            >
-              Refund
-            </button>
-          </Row>
+          {shot.checked ? null : (
+            <Row>
+              <button
+                onClick={() => {
+                  markShotMissed();
+                }}
+              >
+                Missed
+              </button>
+              <button
+                onClick={() => {
+                  markShotBystander();
+                }}
+              >
+                Bystander
+              </button>
+              <button
+                onClick={() => {
+                  refundShot();
+                }}
+              >
+                Refund
+              </button>
+            </Row>
+          )}
         </>
       ) : null}
     </>

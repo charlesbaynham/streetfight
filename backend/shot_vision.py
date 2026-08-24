@@ -641,9 +641,18 @@ def slot_candidates_from_review(review_dict: dict, scheme=None) -> List[int]:
 
 
 async def review_image(
-    client, image_data_url: str, scheme=None, palettes=None, zoom_provider=None
+    client,
+    image_data_url: str,
+    scheme=None,
+    palettes=None,
+    zoom_provider=None,
+    prompt: Optional[str] = None,
 ) -> ShotVisionResult:
     """Review one prepared image, allowing the model a single zoom.
+
+    ``prompt`` overrides :func:`build_prompt` -- used by the offline replay
+    harness (scripts/replay_shot_reviews.py) to trial prompt variants against
+    saved shots; the live path leaves it as the default.
 
     ``zoom_provider`` is a zero-argument callable returning a magnified view of
     the shot, and is only invoked if the model asks for one. It is a callable
@@ -660,7 +669,7 @@ async def review_image(
     turns = [
         {
             "role": "user",
-            "text": build_prompt(palettes),
+            "text": prompt if prompt is not None else build_prompt(palettes),
             "image_data_url": image_data_url,
         }
     ]

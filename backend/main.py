@@ -411,8 +411,21 @@ async def admin_get_shots(limit=5):
 
 
 @admin_method("/admin_get_shots_info", method="GET")
-async def admin_get_shots_info() -> list[UUID]:
-    return AdminInterface().get_unchecked_shots_ids()
+async def admin_get_shots_info(include_checked: bool = False) -> list[UUID]:
+    return AdminInterface().get_shots_ids(include_checked=include_checked)
+
+
+@admin_method("/admin_get_shot_notes", method="GET")
+async def admin_get_shot_notes(shot_id: UUID) -> dict:
+    # Separate from the shot model itself for the same reason as the AI
+    # review: ShotCache caches shot models permanently, so anything editable
+    # must live behind its own endpoint.
+    return {"notes": AdminInterface().get_shot_notes(shot_id)}
+
+
+@admin_method(path="/admin_set_shot_notes", method="POST")
+async def admin_set_shot_notes(shot_id: UUID, notes: str):
+    AdminInterface().set_shot_notes(shot_id, notes)
 
 
 @admin_method("/admin_get_shot", method="GET")

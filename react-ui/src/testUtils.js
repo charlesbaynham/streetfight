@@ -350,6 +350,7 @@ function installFakeCaches() {
         store.set(String(key), value);
         return Promise.resolve();
       }),
+      delete: jest.fn((key) => Promise.resolve(store.delete(String(key)))),
     };
   }
 

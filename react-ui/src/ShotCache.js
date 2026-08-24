@@ -74,3 +74,11 @@ export async function getShotFromCache(shot_id) {
   inFlight.set(shot_id, request);
   return request;
 }
+
+// A shot's model stops being immutable the moment it is adjudicated: the
+// cached copy still says checked=false, so a history view would offer to
+// adjudicate it again. Evict on any action that resolves a shot.
+export async function evictShotFromCache(shot_id) {
+  const cache = await caches.open(CURRENT_CACHES.shots);
+  await cache.delete(shot_id);
+}
