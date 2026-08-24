@@ -166,7 +166,6 @@ function ShotNotes({ shot_id }) {
   );
 }
 
-
 // the shot's location context, with their distance from the shooter at the
 // moment it was taken. Excludes the shooter themselves.
 export function rankShotCandidates(shot_data) {

@@ -373,9 +373,9 @@ describe("ShotQueuePanel", () => {
     userEvent.click(screen.getByLabelText(/Show adjudicated shots/));
 
     await waitFor(() =>
-      expect(
-        getLastAPICall("admin_get_shots_info").query.include_checked,
-      ).toBe("true"),
+      expect(getLastAPICall("admin_get_shots_info").query.include_checked).toBe(
+        "true",
+      ),
     );
   });
 
