@@ -16,8 +16,8 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
 
-        # The revision this flake was evaluated from. Clean trees get `rev`;
-        # dirty ones get `dirtyRev`; anything else (e.g. a tarball) gets a
+        # The revision this flake was evaluated from. Clean trees get `shortRev`;
+        # dirty ones get `dirtyShortRev`; anything else (e.g. a tarball) gets a
         # placeholder. Baked into the backend package so a running server can
         # say what code it is.
         version = if self ? rev then self.shortRev else if self ? dirtyRev then self.dirtyShortRev else "unknown";
