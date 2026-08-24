@@ -427,11 +427,12 @@ API calls), `replay` re-runs the real vision pipeline over the saved photos
 with a chosen model and prompt variant into a resumable JSONL, `score` turns a
 replay file into the same report, and `extract` dumps shots' photos to PNG for
 eyeballing the false hits. `export` writes shots to a fixture directory
-(photos + `manifest.json`) which the other subcommands read back via
-`--fixtures`; the first such set lives at `tests/fixtures/shot_replay/` (the
-six resort test shots of 2026-08-21), with per-shot `human_label`s that stand
-in for verdicts until the admin adjudicates. Prompt variants for #4 land in
-its `PROMPT_VARIANTS` registry.
+(photos + `manifest.json`, including each shot's `admin_notes`) which the
+other subcommands read back via `--fixtures`; the live set lives at
+`tests/fixtures/shot_replay/` (thirteen resort test shots: the six of
+2026-08-21 plus seven of 2026-08-24), all with real admin verdicts and
+per-shot notes explaining what the vision agent should have returned. Prompt
+variants for #4 land in its `PROMPT_VARIANTS` registry.
 
 **What the first run found.** The live database held no admin verdicts at all
 (the queue was never adjudicated), so the fixture labels are by eye. Even so:

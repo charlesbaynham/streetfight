@@ -1,14 +1,15 @@
 {
-  "source": "sqlite:////tmp/opencode/streetfight-data.db",
+  "source": "sqlite:///data.db",
   "shots": [
     {
       "shot_id": "d91548d3-80b9-49a8-8c1c-166dab877a9a",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:27:09",
       "shooter": "Gaby",
-      "result": null,
-      "human_label": "miss",
-      "label_note": "crosshair passes top-left of the head, in the leaves; admin-called miss",
+      "result": "miss",
+      "admin_notes": "This shot missed. The crosshair is above the shoulder and to the left of the head of the person in the image. The correct answer for the channels, the T-shirt, trousers, hat, and armband is therefore unknown since there is no person at the centre of the crosshairs ",
+      "human_label": null,
+      "label_note": null,
       "image": "d91548d3-80b9-49a8-8c1c-166dab877a9a.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -45,17 +46,17 @@
             "hex": "#00A651"
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
     },
     {
       "shot_id": "d1c4e6ad-3cdf-4455-9599-dc6d8eb434be",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:30:52",
       "shooter": "Gaby",
-      "result": null,
-      "human_label": "miss",
-      "label_note": "player visibly left of the centre line; the centre lands on grass",
+      "result": "bystander",
+      "admin_notes": "The agent should certainly use the zoom tool for this image \n\nIt is difficult to tell whether this is actually a hit or not. I think it is just about a miss. I think the crosshair does not quite hit the person but it is very close. The person is wearing a purple t-shirt and black trousers and it is unclear what colour their hat and arm bands are \n\nThis is the kind of image that would probably get bumped up for review by the more powerful agent or possibly even ultimately to the admin ",
+      "human_label": null,
+      "label_note": null,
       "image": "d1c4e6ad-3cdf-4455-9599-dc6d8eb434be.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -92,17 +93,17 @@
             "hex": null
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
     },
     {
       "shot_id": "d276f718-963f-418f-ad54-ac5c7d46c026",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:31:02",
       "shooter": "Gaby",
-      "result": null,
+      "result": "hit",
+      "admin_notes": "The player has a purple T-shirt and black trousers. The hat and the armbands are not visible. However this is enough information for the image recognition so the image recognition should return:\n- unknown for the hat\n- unknown for the armbands\n- purple for the T-shirt\n- black for the trousers\n- hit a human but not necessarily a player\n\n\nWhether or not this is a player will be determined by the later algorithm, which uses the GPS coordinates and the valid codes. This is not something that the image recognition AI knows about \n\nThe agent should certainly use the zoom tool for this image \n\nThis is the kind of image that will probably be bumped up to the more powerful model for review against the reference photos ",
       "human_label": null,
-      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "label_note": null,
       "image": "d276f718-963f-418f-ad54-ac5c7d46c026.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -139,17 +140,17 @@
             "hex": null
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
     },
     {
       "shot_id": "697899ee-0b8b-4d16-a248-7e13e21f1681",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:31:23",
       "shooter": "Gaby",
-      "result": null,
+      "result": "hit",
+      "admin_notes": "In this image the cross hairs are squarely on the player so it does hit a person. The t-shirt is purple, the trousers are black. Whether the hat and the armbands are legible is unclear. I can just about see them when I look at the zoomed in image but it would be reasonable for the vision agent to return that they are unknown because there is some ambiguity there. Although they are just about visible they are both green \n\nThe agent should certainly use the zoom tool for this image ",
       "human_label": null,
-      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "label_note": null,
       "image": "697899ee-0b8b-4d16-a248-7e13e21f1681.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -186,17 +187,17 @@
             "hex": null
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
     },
     {
       "shot_id": "eae22475-7979-417e-87db-9c809b310136",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:31:39",
       "shooter": "Gaby",
-      "result": null,
+      "result": "hit",
+      "admin_notes": "As with the previous shot this is indeed on a person so it does hit a human target. The person has a purple t-shirt and black trousers. Again the armbands and the hats are arguably unclear. I can just about see them myself and they are both green but it would be perfectly reasonable for the agent to return unknown for those channels \n\nThe agent should certainly use its zoom tool for this image ",
       "human_label": null,
-      "label_note": "borderline: vertical line passes at the player right edge; needs the admin",
+      "label_note": null,
       "image": "eae22475-7979-417e-87db-9c809b310136.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -233,17 +234,17 @@
             "hex": null
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
     },
     {
       "shot_id": "60bd2665-192a-4fb9-90b7-ae2ed25e0803",
       "game_id": "37888587-4035-4c34-b41a-60962d71f669",
       "time": "2026-08-21 08:35:48",
       "shooter": "Gaby",
-      "result": null,
-      "human_label": "hit",
-      "label_note": "centre squarely on the face",
+      "result": "hit",
+      "admin_notes": "Hit. This hits the player in the forehead. He is a valid target, with purple shirt, black trousers, blue hat and green armbands\n\nThere is no need for the agent to use the zoom tool for this image ",
+      "human_label": null,
+      "label_note": null,
       "image": "60bd2665-192a-4fb9-90b7-ae2ed25e0803.jpg",
       "ai_review": {
         "shot_hit_a_person": true,
@@ -280,8 +281,301 @@
             "hex": "#00A651"
           }
         }
-      },
-      "labelled_by": "visual inspection, 2026-08-24 (not the admin)"
+      }
+    },
+    {
+      "shot_id": "e21af555-7aa1-4f9b-8912-5e22e8c3028f",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:37:14",
+      "shooter": "Charles",
+      "result": "bystander",
+      "admin_notes": "This shot does hit a human. The agent should probably use the zoom tool for this although it may be confident enough not to need to. The person has no visible armbands, no visible hat, no visible t-shirt, and her trousers are probably blue but they're also quite hard to tell so unknown would be a reasonable answer for that as well. This is actually a bystander but that's not something for the vision agent to decide. The vision agent just reports those channels and whether or not it hits a human ",
+      "human_label": null,
+      "label_note": null,
+      "image": "e21af555-7aa1-4f9b-8912-5e22e8c3028f.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.9,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair hits the person sitting on the wooden bench. She is wearing a bikini top (bare back) and teal/dark shorts, with tied-up hair and no hat or armbands.",
+        "zoom_used": true,
+        "channels": {
+          "tshirt": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.85,
+            "hex": null
+          },
+          "trousers": {
+            "visible": true,
+            "colour": null,
+            "confidence": 0.7,
+            "hex": null
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          }
+        }
+      }
+    },
+    {
+      "shot_id": "e26c7d08-f3d2-4739-946e-aba563edd3de",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:37:32",
+      "shooter": "Charles",
+      "result": "bystander",
+      "admin_notes": "This shot clearly does hit a human. The zoom tool is unnecessary. The human has green trousers, no shirt, no hat, and no arm bands ",
+      "human_label": null,
+      "label_note": null,
+      "image": "e26c7d08-f3d2-4739-946e-aba563edd3de.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.95,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair hits a person sitting on a wooden bench. She is wearing a bikini top with a bare back, dark teal-green trousers/shorts, no hat, and no armbands.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "green",
+            "confidence": 0.9,
+            "hex": "#00A651"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          }
+        }
+      }
+    },
+    {
+      "shot_id": "73a492de-7afe-44e3-a2dd-9ca84ffb12fc",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:37:40",
+      "shooter": "Charles",
+      "result": "miss",
+      "admin_notes": "This shot misses a human. It is close but it doesn't quite hit them. It goes to the right of their head and above their right shoulder and actually hits the sea past them. There is therefore no information about shirts, hats, arm bands, or trousers because there is no person in the centre of the crosshair ",
+      "human_label": null,
+      "label_note": null,
+      "image": "73a492de-7afe-44e3-a2dd-9ca84ffb12fc.jpg",
+      "ai_review": {
+        "shot_hit_a_person": false,
+        "confidence": 0.95,
+        "outcome": "miss",
+        "outcome_reason": "the shot did not land on anybody",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The center of the crosshair lands in the open water to the right of the person, missing them entirely.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "trousers": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          }
+        }
+      }
+    },
+    {
+      "shot_id": "bd21e28a-bc84-4fa0-910a-e65b940fb8d7",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:42:56",
+      "shooter": "Charles",
+      "result": "miss",
+      "admin_notes": "This image hits a tree. It therefore does not hit any player and the answer for the four channels is unknown. The agent could use the zoom tool if it wanted to here but the answer should be that it does not hit a person. this image should not be sent to the more powerful agent because it clearly misses. ",
+      "human_label": null,
+      "label_note": null,
+      "image": "bd21e28a-bc84-4fa0-910a-e65b940fb8d7.jpg",
+      "ai_review": null
+    },
+    {
+      "shot_id": "25063242-305d-4683-8081-11ba4b522197",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:43:06",
+      "shooter": "Charles",
+      "result": "bystander",
+      "admin_notes": "This image clearly hits a person. There is no need to use the zoom tool. However the person has no armbands, no shirt, no hat, and their legs are not visible and therefore their trousers are unknown. This is enough information that its person should be identified as a bystander and this image should therefore not be escalated. ",
+      "human_label": null,
+      "label_note": null,
+      "image": "25063242-305d-4683-8081-11ba4b522197.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.99,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair lands directly on the man's chin/neck. He is shirtless, bald with no hat or armbands, and trousers are completely out of frame.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": false,
+            "colour": null,
+            "confidence": 1.0,
+            "hex": null
+          },
+          "trousers": {
+            "visible": false,
+            "colour": null,
+            "confidence": 1.0,
+            "hex": null
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 1.0,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          }
+        }
+      }
+    },
+    {
+      "shot_id": "c3d2d6db-4c08-4fac-b8d0-707bd985f228",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:43:16",
+      "shooter": "Charles",
+      "result": "miss",
+      "admin_notes": "This image does not hit anybody. There is nobody in the image. There is no need to escalate this image. The answer is that it misses and it has unknown for all the channels. The agent may want to use the zoom tool. That's fine but this should not be escalated ",
+      "human_label": null,
+      "label_note": null,
+      "image": "c3d2d6db-4c08-4fac-b8d0-707bd985f228.jpg",
+      "ai_review": {
+        "shot_hit_a_person": false,
+        "confidence": 0.99,
+        "outcome": "miss",
+        "outcome_reason": "the shot did not land on anybody",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshairs are centered on the open view of the sea and distant islands above an empty lounge chair on the lawn, with no person present.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "trousers": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.0,
+            "hex": null
+          }
+        }
+      }
+    },
+    {
+      "shot_id": "5e9441f2-b5a7-41e6-99a8-15f520e61c8f",
+      "game_id": "37888587-4035-4c34-b41a-60962d71f669",
+      "time": "2026-08-24 06:48:22",
+      "shooter": "Charles",
+      "result": "hit",
+      "admin_notes": "This image clearly hits a person. There is no need to use the zoom tool. The person is wearing blue trousers and a black bikini (not a t-shirt but that counts). They are not wearing armbands and they do not have a hat ",
+      "human_label": null,
+      "label_note": null,
+      "image": "5e9441f2-b5a7-41e6-99a8-15f520e61c8f.jpg",
+      "ai_review": {
+        "shot_hit_a_person": true,
+        "confidence": 0.95,
+        "outcome": "hit_bystander",
+        "outcome_reason": "armbands hidden and too few other garments readable to check the code",
+        "is_hit": false,
+        "slot": null,
+        "reasoning": "The crosshair clearly hits the person's torso/waistband. She is wearing a black bikini top and green shorts, with no hat or armbands.",
+        "zoom_used": false,
+        "channels": {
+          "tshirt": {
+            "visible": true,
+            "colour": "black",
+            "confidence": 0.95,
+            "hex": "#1A1A1A"
+          },
+          "trousers": {
+            "visible": true,
+            "colour": "green",
+            "confidence": 0.9,
+            "hex": "#00A651"
+          },
+          "hat": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          },
+          "armbands": {
+            "visible": false,
+            "colour": null,
+            "confidence": 0.95,
+            "hex": null
+          }
+        }
+      }
     }
   ]
 }
