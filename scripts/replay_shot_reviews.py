@@ -148,6 +148,7 @@ def _load_fixture_shots(fixtures_dir: str):
                 "game_id": entry.get("game_id"),
                 "time": entry.get("time"),
                 "truth": entry.get("result") or entry.get("human_label"),
+                "admin_notes": entry.get("admin_notes"),
                 "ai_review_state": (
                     AI_REVIEW_STATE_DONE if entry.get("ai_review") else None
                 ),
@@ -399,6 +400,7 @@ def cmd_export(args) -> None:
                     "time": str(shot.time_created),
                     "shooter": shot.user.name,
                     "result": shot.result,
+                    "admin_notes": shot.admin_notes,
                     "human_label": None,
                     "label_note": None,
                     "image": filename,
