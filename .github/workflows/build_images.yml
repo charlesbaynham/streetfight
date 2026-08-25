@@ -26,7 +26,7 @@ jobs:
     - uses: cachix/cachix-action@v17
       with:
         name: streetfight
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build frontend docker image
@@ -65,7 +65,7 @@ jobs:
     - uses: cachix/cachix-action@v17
       with:
         name: streetfight
-        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build backend docker image
