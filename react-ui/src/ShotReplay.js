@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
-import { verdictText } from "./ShotQueue";
+import { verdictText, zoomTag } from "./ShotQueue";
 import { Row, Col } from "react-bootstrap";
 
 import styles from "./ShotReplay.module.css";
@@ -43,11 +43,7 @@ function ReplayResult({ review }) {
         <span className={tagStyles.tag}>
           confidence {Math.round(100 * (review.confidence || 0))}%
         </span>
-        {review.zoom_used ? (
-          <span className={`${tagStyles.tag} ${tagStyles.tagZoom}`}>
-            Zoomed in
-          </span>
-        ) : null}
+        {zoomTag(review)}
         {Object.entries(review.channels || {}).map(([name, channel]) => (
           <span
             key={name}
@@ -70,6 +66,59 @@ function ReplayResult({ review }) {
         {review.reasoning ? ` - ${review.reasoning}` : null}
       </p>
     </>
+  );
+}
+
+// Every turn exchanged with the model on one replay, and what it said back --
+// the debugging counterpart of ReplayResult's parsed summary. Collapsed by
+// default; a raw-JSON toggle swaps the per-turn cards for the whole
+// transcript pretty-printed, for pasting elsewhere.
+function TranscriptView({ transcript }) {
+  const [raw, setRaw] = useState(false);
+
+  if (!transcript || transcript.length === 0) return null;
+
+  return (
+    <details className={styles.transcript}>
+      <summary>
+        Full model transcript ({transcript.length} exchange
+        {transcript.length === 1 ? "" : "s"})
+      </summary>
+      <label className={styles.rawToggle}>
+        <input
+          type="checkbox"
+          checked={raw}
+          onChange={(event) => setRaw(event.target.checked)}
+        />
+        Prettified JSON
+      </label>
+      {raw ? (
+        <pre className={styles.transcriptJson}>
+          {JSON.stringify(transcript, null, 2)}
+        </pre>
+      ) : (
+        transcript.map((exchange, exchangeIndex) => (
+          <div key={exchangeIndex} className={styles.exchange}>
+            <p className={styles.exchangeTitle}>Exchange {exchangeIndex + 1}</p>
+            {exchange.turns.map((turn, turnIndex) => (
+              <div key={turnIndex} className={styles.turn}>
+                <span className={styles.turnRole}>
+                  {turn.role}
+                  {turn.has_image ? " (+ image)" : ""}
+                </span>
+                <pre className={styles.turnText}>{turn.text}</pre>
+              </div>
+            ))}
+            <div className={styles.turn}>
+              <span className={styles.turnRole}>reply</span>
+              <pre className={styles.turnText}>
+                {JSON.stringify(exchange.reply, null, 2)}
+              </pre>
+            </div>
+          </div>
+        ))
+      )}
+    </details>
   );
 }
 
@@ -179,6 +228,7 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
               </p>
             ) : null}
             <ReplayResult review={result.review} />
+            <TranscriptView transcript={result.review.transcript} />
           </div>
         ) : null}
       </div>

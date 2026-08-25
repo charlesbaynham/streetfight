@@ -64,6 +64,10 @@ async def test_a_successful_review_is_stored(db_session, shot_from_user_in_team)
     assert stored["review"]["outcome"] == shot_vision.HIT_PLAYER
     assert stored["review"]["is_hit"] is True
     assert stored["review"]["channels"]["tshirt"]["colour"] == "black"
+    assert stored["review"]["zoom_count"] == 0
+    # The full turn-by-turn transcript is the replay workbench's, not stored
+    # against every live shot
+    assert "transcript" not in stored["review"]
 
 
 @pytest.mark.asyncio
@@ -342,6 +346,27 @@ async def test_a_replay_threads_the_custom_prompt_and_zoom_choice(
     # always_zoom=False runs the screening flow; this model answered in full on
     # the first turn, so the zoom is never produced
     assert client.images_sent[-1] != "data:image/jpeg;base64,Z"
+
+
+@pytest.mark.asyncio
+async def test_a_replay_returns_the_full_transcript(
+    mocker, db_session, shot_from_user_in_team
+):
+    # Unlike a stored live review, the replay workbench's answer carries every
+    # turn exchanged with the model -- that is the point of the workbench.
+    mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+    client = FakeVisionClient(reply=[small_person_reply(), hit_reply()])
+
+    review = await ai_shot_review.replay_shot_review(
+        shot_from_user_in_team, client, prompt="A made-up prompt"
+    )
+
+    assert len(review["transcript"]) == 2
+    assert review["transcript"][0]["turns"][0]["text"] == "A made-up prompt"
+    assert review["transcript"][1]["reply"]["shot_hit_a_person"] is True
+    assert review["zoom_count"] == 1
 
 
 def test_replay_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):

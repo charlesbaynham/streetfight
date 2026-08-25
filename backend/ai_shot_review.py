@@ -148,7 +148,9 @@ async def replay_shot_review(
 
     Unlike :func:`review_shot` this stores nothing, fires no update events and
     runs no auto-actions: it is the admin replay workbench's scratch pad, not
-    part of the game.
+    part of the game. The reply carries the full turn-by-turn transcript
+    (``include_transcript=True``) so the workbench can show exactly what was
+    sent and said back -- a live review's stored payload leaves it out.
     """
     from .admin_interface import AdminInterface
 
@@ -157,7 +159,7 @@ async def replay_shot_review(
         result = await _review_image_data(
             image_base64, client, prompt=prompt, always_zoom=always_zoom
         )
-    return result.to_dict()
+    return result.to_dict(include_transcript=True)
 
 
 async def review_shot(shot_id: UUID, client=None) -> None:

@@ -51,6 +51,23 @@ const hitReview = {
   slot: 7,
   reasoning: "clear view of the target",
   zoom_used: true,
+  zoom_count: 1,
+  transcript: [
+    {
+      turns: [
+        { role: "user", text: "The screening question", has_image: true },
+      ],
+      reply: { person_fills_less_than_half: true },
+    },
+    {
+      turns: [
+        { role: "user", text: "The screening question", has_image: true },
+        { role: "assistant", text: '{"person_fills_less_than_half": true}' },
+        { role: "user", text: "Here is another image", has_image: true },
+      ],
+      reply: { shot_hit_a_person: true, confidence: 0.9 },
+    },
+  ],
   channels: {
     tshirt: { visible: true, colour: "black", confidence: 0.9, hex: "#1A1A1A" },
     trousers: {
@@ -144,6 +161,44 @@ test("replaying a selected shot posts the edited prompt and shows the reading", 
 
   expect(screen.getByText("HIT")).toBeInTheDocument();
   expect(screen.getByText(/clear view of the target/)).toBeInTheDocument();
+});
+
+test("shows how many times the zoom was spent, and the full model transcript", async () => {
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(screen.getByText("Zoomed in ×1")).toBeInTheDocument();
+  expect(
+    screen.getByText("Full model transcript (2 exchanges)"),
+  ).toBeInTheDocument();
+  // The turn-by-turn view, collapsed by default: each turn's text and the
+  // raw reply for that exchange
+  expect(screen.getAllByText("The screening question").length).toBeGreaterThan(
+    0,
+  );
+  expect(screen.getByText("Here is another image")).toBeInTheDocument();
+
+  // The prettified-JSON toggle dumps the whole transcript instead
+  fireEvent.click(screen.getByLabelText("Prettified JSON"));
+  expect(
+    screen.getByText(/"person_fills_less_than_half": true/),
+  ).toBeInTheDocument();
 });
 
 test("a replay disagreeing with the admin's verdict says so", async () => {

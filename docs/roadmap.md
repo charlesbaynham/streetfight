@@ -525,6 +525,18 @@ screening gate. Single run, not the 5x done for the earlier variants — worth
 repeating before fully trusting the rate, but it confirms the screening gate
 did not reintroduce the false-hit problem it was built to avoid.
 
+**Admin visibility (2026-08-25):** two zooms sharing one `zoom_used` bool made
+it impossible to tell from the queue or the replay workbench whether a shot
+spent one zoom or two, and the workbench showed only the parsed final reading
+-- nothing of what was actually said turn by turn. `ShotVisionResult` grew
+`zoom_count` (0/1/2, `to_dict()` always) and `transcript` (every turn sent
+plus the raw reply, `to_dict(include_transcript=True)` -- opt-in so a live
+review's stored payload does not carry it on every shot). The queue and
+workbench tags now read "Zoomed in ×N" (`ShotQueue.zoomTag`, falling back to
+a bare "Zoomed in" for reviews stored before this); the workbench also gets a
+collapsible "Full model transcript" per replayed shot, with a "Prettified
+JSON" toggle that dumps the whole exchange instead of the per-turn cards.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

@@ -5,6 +5,8 @@ No network and no database: every test either builds a reply by hand or feeds
 one through :class:`FakeVisionClient`.
 """
 
+import json
+
 import pytest
 
 from backend import shot_vision as sv
@@ -493,7 +495,9 @@ async def test_a_small_person_gets_the_zoom_on_the_second_turn():
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
     assert result.zoom_used is True
+    assert result.zoom_count == 1
     assert result.to_dict()["zoom_used"] is True
+    assert result.to_dict()["zoom_count"] == 1
 
 
 @pytest.mark.asyncio
@@ -529,7 +533,9 @@ async def test_a_person_filling_the_screen_gets_no_zoom():
     assert len(client.calls) == 2
     assert result.outcome == sv.HIT_PLAYER
     assert result.zoom_used is False
+    assert result.zoom_count == 0
     assert result.to_dict()["zoom_used"] is False
+    assert result.to_dict()["zoom_count"] == 0
     # The second turn asks for the reading instead of offering another image
     last_turn = client.calls[1]["turns"][-1]
     assert last_turn.get("image_data_url") is None
@@ -596,6 +602,7 @@ async def test_a_still_small_person_gets_a_second_zoom():
     # Final follow-up asks for the full reading
     assert "no more zooms" in client.calls[2]["turns"][-1]["text"].lower()
     assert result.zoom_used is True
+    assert result.zoom_count == 2
     assert result.slot == 8
 
 
@@ -617,6 +624,44 @@ async def test_max_two_zooms_is_enforced():
     assert levels == [1, 2]
     assert len(client.calls) == 3
     assert result.zoom_used is True
+    assert result.zoom_count == 2
+
+
+@pytest.mark.asyncio
+async def test_the_transcript_records_every_exchange():
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert len(result.transcript) == 3
+    # Each entry is a complete, self-contained record of that request: the
+    # cumulative turns sent (image reduced to a marker) and the raw reply.
+    assert result.transcript[0]["turns"][0]["has_image"] is True
+    assert result.transcript[0]["reply"] == SMALL_PERSON
+    assert result.transcript[1]["reply"] == SMALL_PERSON
+    assert result.transcript[2]["reply"] == reply_for(appearance_of(8))
+    # Later entries include the earlier ones as assistant/user turns
+    assert len(result.transcript[1]["turns"]) == 3
+    assert len(result.transcript[2]["turns"]) == 5
+    assert result.transcript[2]["turns"][-1]["has_image"] is True
+    # No raw base64 image data leaks into the transcript
+    assert "data:zoom" not in json.dumps(result.transcript)
+
+
+@pytest.mark.asyncio
+async def test_transcript_is_omitted_from_to_dict_by_default_but_available_on_request():
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: "data:zoom"
+    )
+
+    assert "transcript" not in result.to_dict()
+    assert result.to_dict(include_transcript=True)["transcript"] == result.transcript
 
 
 def test_screening_requests_zoom_only_on_an_explicit_true():
@@ -680,6 +725,12 @@ async def test_always_zoom_sends_both_views_in_one_call():
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
     assert result.zoom_used is True
+    assert result.zoom_count == 1
+    # Both turns and the one reply, in a single transcript entry
+    assert len(result.transcript) == 1
+    assert len(result.transcript[0]["turns"]) == 2
+    assert all(turn["has_image"] for turn in result.transcript[0]["turns"])
+    assert result.transcript[0]["reply"] == reply_for(appearance_of(8))
 
 
 def test_the_always_zoom_prompt_skips_the_screening_question():
