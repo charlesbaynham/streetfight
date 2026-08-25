@@ -3,11 +3,13 @@
 // the admin's verdicts.
 
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
 import {
   actAndFlush,
+  emitUpdate,
+  getAPICalls,
   getLastAPICall,
   installFetchMock,
   makeGame,
@@ -67,11 +69,19 @@ const hitReview = {
   },
 };
 
+function visionImagesFor(shotId) {
+  return {
+    full: `data:image/jpeg;base64,vision-full-${shotId}`,
+    zoomed: `data:image/jpeg;base64,vision-zoomed-${shotId}`,
+  };
+}
+
 function installWorkshopMock(shotsById, extra = {}) {
   installFetchMock({
     admin_is_authed: true,
     admin_get_shots_info: Object.keys(shotsById),
     admin_get_shot: ({ query }) => shotsById[query.shot_id],
+    admin_get_shot_vision_images: ({ query }) => visionImagesFor(query.shot_id),
     admin_get_default_vision_prompt: { prompt: "The live prompt" },
     admin_replay_shot_review: hitReview,
     ...extra,
@@ -191,4 +201,140 @@ test("a failed replay is shown against the shot", async () => {
   );
 
   expect(screen.getByText(/Replay failed: 502/)).toBeInTheDocument();
+});
+
+describe("vision-formatted images", () => {
+  test("each shot card shows the two vision images (full + zoomed) with correct src", async () => {
+    installWorkshopMock({ "shot-1": makeShotDetail() });
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    // Vision images are fetched per shot_id and rendered side-by-side
+    expect(
+      await screen.findByAltText("Full frame as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-full-shot-1");
+    expect(
+      screen.getByAltText("Zoomed centre as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed-shot-1");
+    expect(
+      screen.getByText("Full frame (as vision sees it)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Zoomed centre (as vision sees it)"),
+    ).toBeInTheDocument();
+
+    expect(getLastAPICall("admin_get_shot_vision_images").query).toEqual({
+      shot_id: "shot-1",
+    });
+  });
+
+  test("renders both vision images for every shot in the list", async () => {
+    installWorkshopMock({
+      "shot-1": makeShotDetail({ id: "shot-1" }),
+      "shot-2": {
+        ...makeShotDetail({ id: "shot-2" }),
+        id: "shot-2",
+        user: { ...user, name: "Second Shooter" },
+      },
+    });
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    expect(
+      await screen.findAllByAltText("Full frame as vision sees it"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByAltText("Zoomed centre as vision sees it"),
+    ).toHaveLength(2);
+    expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(2);
+  });
+
+  test("does not refetch vision images on a shots SSE update", async () => {
+    installWorkshopMock({ "shot-1": makeShotDetail() });
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    await screen.findByAltText("Full frame as vision sees it");
+    const before = getAPICalls("admin_get_shot_vision_images").length;
+
+    await actAndFlush(() => emitUpdate("shots"));
+
+    // Vision images are deterministic from the stored shot, not from queue state
+    expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(before);
+  });
+
+  test("stale vision images are cleared when the card switches to a different shot", async () => {
+    // Test the isolated component directly: it must not show the previous
+    // shot's images while the new fetch is in flight.
+    const { ShotVisionImages } = await import("./ShotReplay");
+
+    let resolveFirst;
+    let resolveSecond;
+    installFetchMock({
+      admin_get_shot_vision_images: ({ query }) => {
+        if (query.shot_id === "shot-1") {
+          return new Promise((resolve) => {
+            resolveFirst = () => resolve(visionImagesFor("shot-1"));
+          });
+        }
+        if (query.shot_id === "shot-2") {
+          return new Promise((resolve) => {
+            resolveSecond = () => resolve(visionImagesFor("shot-2"));
+          });
+        }
+        return visionImagesFor(query.shot_id);
+      },
+    });
+
+    const { rerender } = await actAndFlush(() =>
+      render(<ShotVisionImages shot_id="shot-1" />),
+    );
+
+    expect(screen.getByText("Loading vision images...")).toBeInTheDocument();
+
+    // Switch to shot-2 before shot-1 resolves — must clear and not show stale
+    await actAndFlush(() => rerender(<ShotVisionImages shot_id="shot-2" />));
+
+    // Still loading for shot-2, not the old shot-1 image
+    expect(screen.getByText("Loading vision images...")).toBeInTheDocument();
+
+    // Resolve shot-2 first
+    await actAndFlush(() => {
+      resolveSecond();
+      return new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(
+      await screen.findByAltText("Full frame as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-full-shot-2");
+
+    // Now resolve the stale first request — it must not overwrite shot-2
+    await actAndFlush(() => {
+      resolveFirst();
+      return new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(screen.getByAltText("Full frame as vision sees it")).toHaveAttribute(
+      "src",
+      "data:image/jpeg;base64,vision-full-shot-2",
+    );
+  });
 });

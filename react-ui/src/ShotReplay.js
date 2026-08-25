@@ -73,13 +73,73 @@ function ReplayResult({ review }) {
   );
 }
 
+// Vision-formatted images: two copies as the model sees them -- full frame and
+// zoomed centre crop, both with the aim marker and downscaled to 1024px.
+// Fetched from admin_get_shot_vision_images, which formats identically to the
+// pipeline (prepare_for_vision + zoom_image).
+export function ShotVisionImages({ shot_id }) {
+  const [images, setImages] = useState(null);
+
+  useEffect(() => {
+    setImages(null);
+    if (!shot_id) return;
+    let cancelled = false;
+    sendAPIRequest("admin_get_shot_vision_images", { shot_id }).then(
+      async (response) => {
+        if (cancelled) return;
+        if (!response.ok) return;
+        const body = await response.json();
+        if (!cancelled) setImages(body);
+      },
+    );
+    return () => {
+      cancelled = true;
+    };
+  }, [shot_id]);
+
+  if (!images)
+    return <p className={styles.visionLoading}>Loading vision images...</p>;
+
+  return (
+    <div className={styles.visionImages}>
+      <div className={styles.visionImageWrapper}>
+        <img
+          className={styles.visionImg}
+          alt="Full frame as vision sees it"
+          src={images.full}
+        />
+        <span className={styles.visionLabel}>
+          Full frame (as vision sees it)
+        </span>
+      </div>
+      <div className={styles.visionImageWrapper}>
+        <img
+          className={styles.visionImg}
+          alt="Zoomed centre as vision sees it"
+          src={images.zoomed}
+        />
+        <span className={styles.visionLabel}>
+          Zoomed centre (as vision sees it)
+        </span>
+      </div>
+    </div>
+  );
+}
+
 // One selectable shot: thumbnail, shooter, the admin's verdict if there is
 // one, and whatever the last replay run said about it.
 function ShotCard({ shot_id, selected, onToggle, result }) {
   const [shot, setShot] = useState(null);
 
   useEffect(() => {
-    getShotFromCache(shot_id).then(setShot);
+    setShot(null);
+    let cancelled = false;
+    getShotFromCache(shot_id).then((s) => {
+      if (!cancelled) setShot(s);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [shot_id]);
 
   if (!shot) return <div className={styles.card}>Loading...</div>;
@@ -97,15 +157,11 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
       <label className={styles.cardPicker} onClick={(e) => e.stopPropagation()}>
         <input type="checkbox" checked={selected} onChange={onToggle} />
       </label>
-      <img
-        className={styles.thumbnail}
-        alt={`Shot by ${shot.user.name}`}
-        src={shot.image_base64}
-      />
       <div className={styles.cardBody}>
         <em>
           {shot.user.name} - {new Date(shot.time_created).toLocaleString()}
         </em>
+        <ShotVisionImages shot_id={shot_id} />
         {shot.checked ? (
           <p className={tagStyles.verdict}>Adjudicated: {verdictText(shot)}</p>
         ) : (
