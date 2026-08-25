@@ -1,5 +1,9 @@
 {
   description = "Simple npm+python environment";
+  nixConfig = {
+    extra-substituters = [ "https://streetfight.cachix.org" ];
+    extra-trusted-public-keys = [ "streetfight.cachix.org-1:KzTe/3Xxx4mgAPgJzfScKkIoinUwN/VZFPo34B5vtsc=" ];
+  };
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   inputs.cattle.url = "git+https://github.com/charlesbaynham/nix-proxmox-cattle?ref=v1";

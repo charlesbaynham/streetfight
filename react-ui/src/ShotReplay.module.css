@@ -1,0 +1,64 @@
+.promptBox {
+  width: 100%;
+  min-height: 20em;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.5em 0 1em 0;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.card {
+  display: flex;
+  gap: 1em;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5em;
+  cursor: pointer;
+}
+
+.cardSelected {
+  border-color: #0072ce;
+  background: #f0f6fb;
+}
+
+.cardPicker {
+  align-self: flex-start;
+  padding-top: 0.5em;
+}
+
+.cardPicker input {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.thumbnail {
+  width: 10em;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.cardBody {
+  flex: 1;
+  cursor: default;
+}
+
+.replayError {
+  color: red;
+}
+
+.disagreement {
+  color: red;
+  font-weight: bold;
+}

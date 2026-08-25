@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
+import ShotReplay from "./ShotReplay";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -30,6 +31,10 @@ const router = createBrowserRouter([
   {
     path: "admin/shots",
     element: <ShotQueue />,
+  },
+  {
+    path: "admin/replay",
+    element: <ShotReplay />,
   },
   {
     path: "admin/identity",

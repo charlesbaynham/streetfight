@@ -357,6 +357,10 @@ since by then #10 has already told each player what they are wearing.
 
 ### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
 
+**Status: fixed on the replay set (2026-08-25) by making the zoom mandatory**
+— false-hit rate 0/40 over 5 replay runs, false-miss rate unchanged; details
+at the bottom of this section. Awaiting confirmation on real game data.
+
 **Symptom.** Shots that visibly miss are reported as hits.
 
 **Where it is decided.** `backend/shot_vision.py`: the model answers
@@ -398,6 +402,105 @@ max_dim // 20`, `gap = arm // 3`. On the 1024 px image that
    `classify()` then applies the rule, so tightening or loosening it is a
    constant in Python and a test, not a prompt rewrite.
 
+**Tried this session (2026-08-24): suspects 1 and 2, together.** The crosshair
+is now a single-pixel-wide red cross spanning the *entire* frame (no gap, no
+short arms that can visually touch a target without the true centre landing on
+it), and the prompt was rewritten around the single centre point per suspect 1
+("only the pixel at the centre of the cross matters", explicitly told to
+ignore anything the lines merely pass over). A first colour-coded version
+(red/blue lines + a green centre pixel, to make the exact point unmistakable)
+was tried and dropped: the single green pixel does not survive
+`prepare_for_vision`'s downsize and JPEG re-encode — it lands as a muddy grey,
+not identifiably green — so a uniform red cross is what actually ships.
+
+Replayed 5x over all 13 fixtures (65 trials, `google/gemini-3.7-flash-20260813`,
+0 errors; results at `tests/fixtures/shot_replay/replay_single_red_cross_run{1..5}.jsonl`).
+**No measurable improvement**: false-hit rate 5/40 (12%), false-miss rate 20/25
+(80%) — statistically identical to the original baseline. d91548d3, the
+flagship false hit, came back `hit_player` at 0.95 confidence in **5/5** runs
+(previously investigated as the marker-geometry bug; that bug is now fixed and
+made no difference here). Reasoning text each time claims the crosshair lands
+"directly on" the face/neck/forehead. Most other shots were equally consistent
+run to run (11/13 unanimous across all 5), so this is not sampling noise — the
+model has a *systematic* bias to call it a hit whenever the person is merely
+close to centre-frame, and rewording/redrawing the marker around a single
+point didn't move that bias. Likely reason: in this photo the subject really
+is near the geometric centre of the frame (the miss is by inches, in foliage
+above his head), which is exactly the kind of close call suspect 3
+(asymmetric pressure: "when in doubt, it is a miss") and especially suspect 4
+(replacing the hit/miss boolean with an observation like
+`on_body`/`touching_outline`/`clearly_beside`/`nobody_near` that Python can
+threshold) were aimed at. Suspects 3 and 4 are still untried — try those next,
+not more marker-geometry tweaks.
+
+**Also tried this session: suspects 3 and 4, folded into one prompt variant.**
+`backend/shot_vision.build_prompt` was refactored to take the hit/miss
+decision paragraph as a `decision_rule` parameter (default unchanged), so a
+variant can swap it without duplicating the rest of the template. Added
+`scripts/replay_shot_reviews.PROMPT_VARIANTS["boundary_scale"]`: instead of a
+bare yes/no, it asks the model to place the cross's centre point into one of
+four buckets -- *clearly hitting*, *on the boundary but just hitting*, *on the
+boundary but just missing*, *miles away* -- and states the asymmetry
+explicitly (a wrongly-called miss costs one bullet; a wrongly-called hit takes
+a life from somebody never shot), telling the model to prefer "just missing"
+when genuinely torn between the two boundary buckets. Same JSON contract, so
+this is a pure reasoning-scaffold change.
+
+Replayed 5x over all 13 fixtures (65 trials, 1 transient empty-reply error
+retried and resolved; results at
+`tests/fixtures/shot_replay/replay_boundary_scale_run{1..5}.jsonl`). **Still no
+measurable improvement**, and the numbers are eerily exact: false-hit rate
+5/40 (12%), false-miss rate 20/25 (80%) -- eleven of thirteen shots landed the
+same outcome, run for run, as the plain single-red-cross variant above.
+d91548d3 is `hit_player` at 0.95 confidence in all 5 runs here too, and in all
+15 runs across both variants it **never once requests the zoom** — it isn't
+torn between the boundary buckets, it just doesn't perceive that the centre
+point is off the person at all. That rules out "the model is unsure but the
+prompt doesn't reward saying so" as the explanation; asymmetric framing and an
+explicit tie-breaker only help when the model registers a tie in the first
+place.
+
+At this point three independently-worded prompts (the original arms-with-a-gap
+marker, the single-point red cross, and the four-bucket boundary scale) have
+all landed on the *same* false-hit and false-miss ids at the *same* rates.
+That points away from prompt wording entirely and toward one of: (a) a
+resolution/perception limit -- the true aim point in this photo is only a few
+percent of the frame width from the person, plausibly below what the vision
+encoder can localise reliably at 1024px after JPEG compression, so nothing
+written in English fixes it; or (b) making the zoom mandatory rather than
+optional, since the model's self-assessed certainty is not tracking its actual
+accuracy here (0.95 confidence on a shot it gets wrong every time). Try (b)
+before spending more session time on further prompt rewording -- it's a
+one-line change (drop the "if it is difficult to tell" gate and always take
+the zoom) and directly tests the "it never asks because it never doubts itself"
+theory.
+
+**Tried 2026-08-25: (b), the mandatory zoom — and it worked.** `review_image`
+grew an `always_zoom` mode (`backend/shot_vision.py`): the full frame and the
+zoomed centre go in a *single* call as two user turns (one API call, so the
+zoom no longer costs a second round-trip), the prompt tells the model both
+views are already in front of it and `request_zoom` must be false, and the
+reply is final. Replayed 5x over all 13 fixtures (65 trials,
+`google/gemini-3.7-flash-20260813`, 3 transient empty-reply errors retried and
+resolved; results at
+`tests/fixtures/shot_replay/replay_always_zoom_run{1..5}.jsonl`). **False-hit
+rate 0/40 (0%) — down from 5/40 in every previous variant — with the
+false-miss rate unchanged at 20/25 (80%).** d91548d3, the flagship false hit
+that survived all three prompt rewordings at 0.95 confidence, is now called
+`miss` in 5/5 runs at 0.98 confidence, with reasoning that finally sees the
+geometry: "the centre of the cross lands on the background foliage and sea to
+the left of the person's head". The hypothesis was right: the model never
+asked for the zoom because it never doubted itself, and with the zoom always
+in front of it the aim point is no longer below its perception limit. The four
+remaining false misses are unchanged and are *not* the model's error — they
+are `classify()`'s two-readable-channels → `hit_bystander` mapping (the
+model's channel observations match the admin notes exactly; whether that
+mapping should instead escalate to a stronger reviewer is the separate
+question in the 2026-08-24 handover), not a prompt problem.
+**Shipped:** the live path (`backend/ai_shot_review.review_shot`) now passes
+`always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
+old behaviour survives as the `optional_zoom` variant for comparison runs.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).
@@ -427,11 +530,21 @@ API calls), `replay` re-runs the real vision pipeline over the saved photos
 with a chosen model and prompt variant into a resumable JSONL, `score` turns a
 replay file into the same report, and `extract` dumps shots' photos to PNG for
 eyeballing the false hits. `export` writes shots to a fixture directory
-(photos + `manifest.json`) which the other subcommands read back via
-`--fixtures`; the first such set lives at `tests/fixtures/shot_replay/` (the
-six resort test shots of 2026-08-21), with per-shot `human_label`s that stand
-in for verdicts until the admin adjudicates. Prompt variants for #4 land in
-its `PROMPT_VARIANTS` registry.
+(photos + `manifest.json`, including each shot's `admin_notes`) which the
+other subcommands read back via `--fixtures`; the live set lives at
+`tests/fixtures/shot_replay/` (thirteen resort test shots: the six of
+2026-08-21 plus seven of 2026-08-24), all with real admin verdicts and
+per-shot notes explaining what the vision agent should have returned. Prompt
+variants for #4 land in its `PROMPT_VARIANTS` registry.
+
+**In-browser counterpart (2026-08-25):** the admin "Shot replay" workbench
+(`/admin/replay`, `react-ui/src/ShotReplay.js`) fires any selection of the
+shots actually in the database through the same pipeline with the prompt
+editable on the fly (`admin_replay_shot_review`, plus
+`admin_get_default_vision_prompt` to seed the textarea). It stores nothing and
+flags where the reading disagrees with the admin's verdict — the quick
+half of the harness, for trialling a prompt edit before measuring it properly
+with `replay`.
 
 **What the first run found.** The live database held no admin verdicts at all
 (the queue was never adjudicated), so the fixture labels are by eye. Even so:
