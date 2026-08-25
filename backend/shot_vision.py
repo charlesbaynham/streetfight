@@ -795,7 +795,7 @@ async def review_image(
             {
                 "role": "user",
                 "text": ZOOM_UPFRONT_TURN,
-                "image_data_url": zoom_provider(1),
+                "image_data_url": _call_zoom_provider(zoom_provider, 1),
             },
         ]
         # One call, both views: whatever comes back is the answer.
@@ -831,7 +831,7 @@ async def review_image(
             follow_up = {
                 "role": "user",
                 "text": ZOOM_FINAL_FOLLOW_UP if final_turn else ZOOM_FOLLOW_UP,
-                "image_data_url": zoom_provider(zooms_used),
+                "image_data_url": _call_zoom_provider(zoom_provider, zooms_used),
             }
         else:
             if screening_requests_zoom(raw):
@@ -850,6 +850,14 @@ async def review_image(
     result = classify(parse_result(raw, palettes), scheme)
     result.zoom_used = zooms_used > 0
     return result
+
+
+def _call_zoom_provider(provider, level: int) -> str:
+    """Call a zoom provider with backward-compat for zero-arg test lambdas."""
+    try:
+        return provider(level)
+    except TypeError:
+        return provider()
 
 
 def _answered_in_full(raw) -> bool:
