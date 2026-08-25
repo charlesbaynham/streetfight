@@ -52,7 +52,7 @@ HIT_FIELD = "shot_hit_a_person"
 
 # The model asks for a closer look by setting this. It gets one.
 ZOOM_FIELD = "request_zoom"
-ZOOM_FACTOR = 4
+ZOOM_FACTOR = 8
 
 # Outcomes. Only HIT_PLAYER counts against a player's hit points. Shown to the
 # admin as advice -- and, when a game's AI-review toggle is on, acted on for the
@@ -257,13 +257,13 @@ def build_prompt(
     if zoom_offered:
         zoom_paragraph = """You have the ability to request a zoomed-in view of this photograph if you reply \
 with {"request_zoom": true} and nothing else. The next turn will provide you an \
-image that contains only the middle 25% of the image in higher resolution. You \
+image that contains only the middle 12.5% of the image in higher resolution. You \
 may do this once only, so spend it on a target that is too small or too far away \
 to judge from the whole frame. If the image is merely blurred, a zoom will not \
 help."""
     else:
         zoom_paragraph = """You are shown this photograph twice: the first image is the whole frame, and \
-the second is a zoomed-in view containing only the middle 25% of it in higher \
+the second is a zoomed-in view containing only the middle 12.5% of it in higher \
 resolution, with the same red cross redrawn at the same aim point -- only its \
 centre pixel counts, exactly as in the full frame. Use whichever view is \
 clearer, and trust the zoomed one when they disagree. The zoom is already in \
@@ -333,7 +333,7 @@ Reply with JSON only, matching this shape:
 
 
 ZOOM_FOLLOW_UP = (
-    "Here is the zoomed view: the middle 25% of the previous photograph, at "
+    "Here is the zoomed view: the middle 12.5% of the previous photograph, at "
     "higher resolution. The same red cross marks the same aim point, redrawn for "
     "this cropped view -- only its centre pixel counts as the hit, exactly as "
     "before. This is your one zoom, so answer in full now with the JSON described "
@@ -343,7 +343,7 @@ ZOOM_FOLLOW_UP = (
 # The second turn of the always-zoom path: the zoomed view, sent whether or not
 # the model would have asked for it.
 ZOOM_UPFRONT_TURN = (
-    "Here is the zoomed view promised above: the middle 25% of the first "
+    "Here is the zoomed view promised above: the middle 12.5% of the first "
     "photograph, at higher resolution, with the same red cross redrawn at the "
     "same aim point. Answer in full now with the JSON described above; "
     '"request_zoom" must be false in your reply.'
