@@ -501,6 +501,19 @@ question in the 2026-08-24 handover), not a prompt problem.
 `always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
 old behaviour survives as the `optional_zoom` variant for comparison runs.
 
+**Updated 2026-08-25 (later): the zoom is now gated on a screening question,
+not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 4`)
+the remaining failure mode was close shots that actually miss being called
+hits, so `review_image`'s default flow changed again: turn one asks only "does
+the person fill less than half of the screen?"
+(`person_fills_less_than_half`); that reply is discarded and turn two is either
+the zoomed view (small target) or a plain request for the full reading. The
+`request_zoom` field is gone — the model never chooses the zoom, it only ever
+answers how big the person is. `always_zoom=True` survives for replay
+comparisons; the harness's `baseline` variant tracks the screening flow and
+`optional_zoom` is retired. Not yet replay-scored — run `baseline` vs
+`always_zoom` over the fixtures before trusting it.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

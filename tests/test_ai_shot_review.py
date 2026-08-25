@@ -41,6 +41,11 @@ def hit_reply(slot=7):
     }
 
 
+def small_person_reply():
+    """The screening answer that spends the zoom."""
+    return {shot_vision.SCREENING_FIELD: True}
+
+
 def game_of(shot_id):
     return AdminInterface().get_shot_model(shot_id).game_id
 
@@ -83,7 +88,7 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
     spy = mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
-    client = FakeVisionClient(reply=hit_reply())
+    client = FakeVisionClient(reply=[small_person_reply(), hit_reply()])
 
     await ai_shot_review.review_shot(shot_from_user_in_team, client)
 
@@ -97,20 +102,37 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
 
 
 @pytest.mark.asyncio
-async def test_the_zoom_is_always_produced_whether_or_not_the_model_asks(
+async def test_the_zoom_is_produced_when_the_person_fills_less_than_half_the_screen(
     mocker, db_session, shot_from_user_in_team
 ):
-    # Roadmap #4: the model calls close misses hits at full confidence without
-    # ever asking for the zoom, so the zoom is no longer its choice.
+    # The screening question, not the model's self-assessed confidence, decides
+    # whether the zoom is spent: a small target gets the closer look.
     spy = mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
 
     await ai_shot_review.review_shot(
-        shot_from_user_in_team, FakeVisionClient(hit_reply())
+        shot_from_user_in_team,
+        FakeVisionClient([small_person_reply(), hit_reply()]),
     )
 
     spy.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_the_zoom_is_not_produced_when_the_person_fills_the_screen(
+    mocker, db_session, shot_from_user_in_team
+):
+    spy = mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team,
+        FakeVisionClient([{shot_vision.SCREENING_FIELD: False}, hit_reply()]),
+    )
+
+    spy.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -317,7 +339,8 @@ async def test_a_replay_threads_the_custom_prompt_and_zoom_choice(
     )
 
     assert client.calls[0]["turns"][0]["text"] == "A made-up prompt"
-    # always_zoom=False: the zoom is not produced unless the model asks
+    # always_zoom=False runs the screening flow; this model answered in full on
+    # the first turn, so the zoom is never produced
     assert client.images_sent[-1] != "data:image/jpeg;base64,Z"
 
 
@@ -362,7 +385,7 @@ def test_default_prompt_endpoint(admin_api_client):
     response = admin_api_client.get("/api/admin_get_default_vision_prompt")
 
     assert response.status_code == 200
-    assert "request_zoom" in response.json()["prompt"]
+    assert shot_vision.SCREENING_FIELD in response.json()["prompt"]
 
 
 def test_vision_images_endpoint_returns_full_and_zoomed(

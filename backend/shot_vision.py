@@ -50,9 +50,20 @@ CONFIDENT_THRESHOLD = DEFAULT_THRESHOLDS.confident_threshold
 # only a shot that entirely misses the person is a miss.
 HIT_FIELD = "shot_hit_a_person"
 
-# The model asks for a closer look by setting this. It gets one.
-ZOOM_FIELD = "request_zoom"
 ZOOM_FACTOR = 8
+
+# The first question the model answers, before anything else: does the person
+# fill less than half of the screen? That answer -- not the model's
+# self-assessed certainty -- decides whether the zoom is spent. Replay trials
+# (roadmap #4) showed the model calls a close miss a hit at 0.95 confidence and
+# never once asks for the zoom that makes the truth obvious, so the choice is
+# framed as something it can actually see: how big the person is.
+SCREENING_FIELD = "person_fills_less_than_half"
+
+# The zoom may be spent at most this many times on one shot: the screening
+# question is asked on the full frame and repeated on the first zoom, and a
+# target still small after that gets one final, closer view.
+MAX_ZOOMS = 2
 
 # Outcomes. Only HIT_PLAYER counts against a player's hit points. Shown to the
 # admin as advice -- and, when a game's AI-review toggle is on, acted on for the
@@ -157,10 +168,6 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
         "type": "object",
         "properties": {
             HIT_FIELD: {"type": "boolean"},
-            # Asking for the zoom through the reply rather than a provider
-            # tool-call API: OPENROUTER_MODEL is meant to be swapped freely, and
-            # a boolean in the JSON works on every model.
-            ZOOM_FIELD: {"type": "boolean"},
             "reasoning": {"type": "string"},
             "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             "channels": {
@@ -187,30 +194,41 @@ def build_schema(palettes: Optional[Dict[str, List[str]]] = None) -> dict:
                 "additionalProperties": False,
             },
         },
-        "required": [HIT_FIELD, ZOOM_FIELD, "reasoning", "confidence", "channels"],
+        "required": [HIT_FIELD, "reasoning", "confidence", "channels"],
         "additionalProperties": False,
     }
 
 
-def wants_zoom(raw) -> bool:
-    """Whether a raw reply is a request for a closer look.
+def build_screening_schema() -> dict:
+    """The first turn's schema: the screening question and nothing else.
 
-    Checked *before* :func:`parse_result`, because a model asking for the zoom
-    will not have filled in the channels yet and ``parse_result`` is right to
-    reject a reply that has not.
+    Asking for it through the reply rather than a provider tool-call API:
+    OPENROUTER_MODEL is meant to be swapped freely, and a boolean in the JSON
+    works on every model.
     """
-    return isinstance(raw, dict) and raw.get(ZOOM_FIELD) is True
+    return {
+        "type": "object",
+        "properties": {SCREENING_FIELD: {"type": "boolean"}},
+        "required": [SCREENING_FIELD],
+        "additionalProperties": False,
+    }
 
 
-_HIT_TEST = f"""FIRST: did the shot hit a person? If the centre of the cross is on empty ground, \
+def screening_requests_zoom(raw) -> bool:
+    """Whether a first-turn reply says the person fills less than half the screen.
+
+    Checked *before* :func:`parse_result`, because a screening reply has not
+    filled in the channels yet and ``parse_result`` is right to reject one.
+    Anything but an explicit true means no zoom -- including a model that
+    skipped the screening and answered in full, which the caller accepts as-is.
+    """
+    return isinstance(raw, dict) and raw.get(SCREENING_FIELD) is True
+
+
+_HIT_TEST = f"""Did the shot hit a person? If the centre of the cross is on empty ground, \
 a wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
 even if one of the red lines passes over or right next to a person elsewhere in \
 the frame. The lines themselves are not the hit; only their centre point is."""
-
-_ZOOM_OPTIONAL_SENTENCES = """Some shots will be very close. For these, if it is \
-difficult for you to tell whether it is a hit or not, you may request a zoomed \
-version of the image once. You MUST ultimately make a decision on whether the \
-shot is hitting a person or not."""
 
 _ZOOM_UPFRONT_SENTENCES = """You MUST ultimately make a decision on whether the \
 shot is hitting a person or not -- the zoomed view is already in front of you \
@@ -221,10 +239,10 @@ the person -- on their clothing, hands, or shoes. It is a miss if the centre \
 point is on the background instead -- ground, a wall, foliage, a street light \
 -- even if that background is right beside them."""
 
-DEFAULT_DECISION_RULE = f"{_HIT_TEST}\n\n{_ZOOM_OPTIONAL_SENTENCES} {_HIT_DEFINITION}"
+DEFAULT_DECISION_RULE = f"{_HIT_TEST}\n\n{_HIT_DEFINITION}"
 
-# The same rule for when the zoom is provided up front rather than on request:
-# identical except that there is nothing left to ask for.
+# The same rule for when the zoom is provided up front rather than gated on the
+# screening question: identical except that there is nothing left to ask for.
 UPFRONT_ZOOM_DECISION_RULE = (
     f"{_HIT_TEST}\n\n{_ZOOM_UPFRONT_SENTENCES} {_HIT_DEFINITION}"
 )
@@ -243,10 +261,11 @@ def build_prompt(
     it without duplicating the rest of the template (channel questions,
     colour buckets, JSON shape).
 
-    ``zoom_offered`` selects the zoom wording: the model is either *offered* a
-    zoom it may request once (the default), or told the zoomed view is already
-    in front of it (the always-zoom path in :func:`review_image`), in which
-    case the default decision rule drops the request sentences to match.
+    ``zoom_offered`` selects the zoom wording: with the default the model is
+    *screened* first -- its opening reply answers only "does the person fill
+    less than half of the screen?", and that answer decides whether the second
+    turn carries the zoomed view -- or it is told the zoomed view is already in
+    front of it (the always-zoom path in :func:`review_image`).
     """
     palettes = palettes or channel_palettes()
     if decision_rule is None:
@@ -255,19 +274,20 @@ def build_prompt(
         )
 
     if zoom_offered:
-        zoom_paragraph = """You have the ability to request a zoomed-in view of this photograph if you reply \
-with {"request_zoom": true} and nothing else. The next turn will provide you an \
-image that contains only the middle 12.5% of the image in higher resolution. You \
-may do this once only, so spend it on a target that is too small or too far away \
-to judge from the whole frame. If the image is merely blurred, a zoom will not \
-help."""
+        zoom_paragraph = f"""FIRST, before any of the questions below: does the person at \
+the centre of the cross fill less than half of the screen? Reply to this \
+message with {{"{SCREENING_FIELD}": true}} or {{"{SCREENING_FIELD}": false}} \
+and nothing else. If they fill less than half, your reply is discarded and \
+the next turn shows you a zoomed-in view of the middle of the photograph at \
+higher resolution, and asks you the same question again -- a still-smaller \
+target gets one final, closer view. Once the person fills at least half of \
+the screen, or the zooms run out, you answer in full."""
     else:
         zoom_paragraph = """You are shown this photograph twice: the first image is the whole frame, and \
 the second is a zoomed-in view containing only the middle 12.5% of it in higher \
 resolution, with the same red cross redrawn at the same aim point -- only its \
 centre pixel counts, exactly as in the full frame. Use whichever view is \
-clearer, and trust the zoomed one when they disagree. The zoom is already in \
-front of you, so "request_zoom" must be false in your reply."""
+clearer, and trust the zoomed one when they disagree."""
 
     buckets = "\n".join(
         f"- {colour}: {note}"
@@ -323,7 +343,6 @@ Some colour names cover a range, so use these buckets:
 Reply with JSON only, matching this shape:
 {{
   "{HIT_FIELD}": true,
-  "request_zoom": false,
   "reasoning": "one or two sentences on what you can and cannot see",
   "confidence": 0.9,
   "channels": {{
@@ -332,21 +351,41 @@ Reply with JSON only, matching this shape:
 }}"""
 
 
+# The turn after a zoom while a further zoom is still available: the screening
+# question is repeated on the closer view.
 ZOOM_FOLLOW_UP = (
-    "Here is the zoomed view: the middle 12.5% of the previous photograph, at "
-    "higher resolution. The same red cross marks the same aim point, redrawn for "
-    "this cropped view -- only its centre pixel counts as the hit, exactly as "
-    "before. This is your one zoom, so answer in full now with the JSON described "
-    'above. "request_zoom" must be false in your reply.'
+    "Here is another image: the middle 12.5% of the previous one, at higher "
+    "resolution. The same red cross marks the same aim point, redrawn for this "
+    "cropped view -- only its centre pixel counts as the hit, exactly as "
+    "before. Answer the same question again for this view: does the person now "
+    f'fill less than half of the screen? Reply with {{"{SCREENING_FIELD}": '
+    f'true}} or {{"{SCREENING_FIELD}": false}} and nothing else. If they still '
+    "fill less than half, you will be shown one final, closer view; otherwise "
+    "you will be asked to answer in full."
+)
+
+# The turn after the last zoom: no further views, so the full reading is due.
+ZOOM_FINAL_FOLLOW_UP = (
+    "Here is the final view: the middle 12.5% of the previous one, closer "
+    "still, with the same red cross redrawn at the same aim point -- only its "
+    "centre pixel counts, exactly as before. There are no more zooms. Answer "
+    "in full now with the JSON described above."
+)
+
+# The second turn when the person fills at least half the screen: no zoom, just
+# the request for the full reading.
+FULL_READING_REQUEST = (
+    "The person fills at least half of the screen, so the photograph you "
+    "already have is enough. Now answer in full with the JSON described above."
+)
 )
 
 # The second turn of the always-zoom path: the zoomed view, sent whether or not
-# the model would have asked for it.
+# the screening would have asked for it.
 ZOOM_UPFRONT_TURN = (
     "Here is the zoomed view promised above: the middle 12.5% of the first "
     "photograph, at higher resolution, with the same red cross redrawn at the "
-    "same aim point. Answer in full now with the JSON described above; "
-    '"request_zoom" must be false in your reply.'
+    "same aim point. Answer in full now with the JSON described above."
 )
 
 
@@ -715,27 +754,29 @@ async def review_image(
     prompt: Optional[str] = None,
     always_zoom: bool = False,
 ) -> ShotVisionResult:
-    """Review one prepared image, allowing the model a single zoom.
+    """Review one prepared image, spending the zoom only on a small target.
 
     ``prompt`` overrides :func:`build_prompt` -- used by the offline replay
     harness (scripts/replay_shot_reviews.py) to trial prompt variants against
     saved shots; the live path leaves it as the default.
 
-    ``zoom_provider`` is a zero-argument callable returning a magnified view of
-    the shot. By default it is only invoked if the model asks for a zoom. It is
-    a callable rather than a second image argument so the cost of producing the
-    zoom is not paid on the shots that do not need it -- and so the caller can
-    cut it from the *original* photo, which is the whole point (see
-    :func:`~backend.image_processing.zoom_image`).
+    ``zoom_provider`` is a callable taking the zoom level (1, 2, ...) and
+    returning a magnified view of the shot, so each further zoom compounds the
+    factor against the *original* photo. It is a callable rather than an image
+    argument so the cost of producing a zoom is not paid on the shots that do
+    not need it -- and so the caller can cut it from the original photo, which
+    is the whole point (see :func:`~backend.image_processing.zoom_image`).
 
-    With ``always_zoom`` the zoom stops being the model's choice: both views go
-    in a single call and the reply is final. Roadmap #4's replay runs showed
-    the model's self-assessed certainty does not track its accuracy -- it calls
-    a close miss a hit at 0.95 confidence and never once asks for the zoom that
-    makes the truth obvious -- so the harness trials this mode before the live
-    path adopts it.
+    The default flow: turn one asks only the screening question -- does the
+    person fill less than half of the screen? -- and the reply decides turn
+    two. A small target gets the zoomed view and the question is repeated
+    there, allowing one further zoom (``MAX_ZOOMS`` in total); anything else is
+    asked for the full reading. Screening replies are discarded; a model that
+    skips the screening and answers in full is accepted as-is.
 
-    The one-zoom limit is enforced here rather than trusted to the prompt.
+    With ``always_zoom`` the zoom stops being gated on the screening: the full
+    frame and the first zoom go in a single call and the reply is final. Kept
+    for the replay harness's comparison runs.
     """
     palettes = palettes or channel_palettes()
     schema = build_schema(palettes)
@@ -754,7 +795,7 @@ async def review_image(
             {
                 "role": "user",
                 "text": ZOOM_UPFRONT_TURN,
-                "image_data_url": zoom_provider(),
+                "image_data_url": zoom_provider(1),
             },
         ]
         # One call, both views: whatever comes back is the answer.
@@ -771,25 +812,46 @@ async def review_image(
         }
     ]
 
-    raw = await client.complete(turns, schema)
+    raw = await client.complete(turns, build_screening_schema())
+    zooms_used = 0
 
-    zoom_used = False
-    if wants_zoom(raw) and zoom_provider is not None:
-        logger.info("Vision model asked for a zoom; sending the magnified centre")
-        zoom_used = True
-        turns = turns + [
-            {"role": "assistant", "text": json.dumps(raw)},
-            {
+    while not _answered_in_full(raw):
+        if (
+            screening_requests_zoom(raw)
+            and zoom_provider is not None
+            and zooms_used < MAX_ZOOMS
+        ):
+            zooms_used += 1
+            logger.info(
+                "Target fills less than half the screen; sending zoom %s/%s",
+                zooms_used,
+                MAX_ZOOMS,
+            )
+            final_turn = zooms_used == MAX_ZOOMS
+            follow_up = {
                 "role": "user",
-                "text": ZOOM_FOLLOW_UP,
-                "image_data_url": zoom_provider(),
-            },
-        ]
-        # Whatever comes back now is the answer: the model has had its one look.
-        raw = await client.complete(turns, schema)
-    elif wants_zoom(raw):
-        logger.warning("Vision model asked for a zoom but none is available")
+                "text": ZOOM_FINAL_FOLLOW_UP if final_turn else ZOOM_FOLLOW_UP,
+                "image_data_url": zoom_provider(zooms_used),
+            }
+        else:
+            if screening_requests_zoom(raw):
+                logger.warning("Target is small but no further zoom is available")
+            follow_up = {"role": "user", "text": FULL_READING_REQUEST}
+            final_turn = True
+
+        turns = turns + [{"role": "assistant", "text": json.dumps(raw)}, follow_up]
+        raw = await client.complete(
+            turns, schema if final_turn else build_screening_schema()
+        )
+        if final_turn:
+            # Whatever comes back now is the answer.
+            break
 
     result = classify(parse_result(raw, palettes), scheme)
-    result.zoom_used = zoom_used
+    result.zoom_used = zooms_used > 0
     return result
+
+
+def _answered_in_full(raw) -> bool:
+    """Whether a reply skipped the screening and gave the full reading."""
+    return isinstance(raw, dict) and HIT_FIELD in raw and SCREENING_FIELD not in raw

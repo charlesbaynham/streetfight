@@ -544,7 +544,7 @@ async def admin_review_shot(shot_id: UUID):
 class _ReplayRequest(BaseModel):
     shot_id: UUID
     prompt: Optional[str] = None
-    always_zoom: bool = True
+    always_zoom: bool = False
 
 
 @admin_method(path="/admin_replay_shot_review", method="POST")
@@ -552,8 +552,8 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
     """Fire one shot through the vision pipeline and return the reading.
 
     The admin replay workbench: same pipeline as a real review (aim marker,
-    resize, mandatory zoom), but with the prompt customisable on the fly and
-    nothing stored -- no state changes, no events, no auto-actions.
+    resize, screening-gated zoom), but with the prompt customisable on the fly
+    and nothing stored -- no state changes, no events, no auto-actions.
     """
     client = get_vision_client()
     if client is None:

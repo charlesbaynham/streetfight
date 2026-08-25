@@ -456,25 +456,26 @@ def test_serialised_erasure_has_no_swatch():
 
 @pytest.mark.asyncio
 async def test_review_image_runs_the_whole_pipeline():
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
 
     result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
     # The image and the real prompt reached the client
-    assert client.images_sent == ["data:image/jpeg;base64,AAAA"]
+    assert client.images_sent == ["data:image/jpeg;base64,AAAA"] * 2
     assert "unknown" in client.calls[0]["turns"][0]["text"]
 
 
-# -- the one zoom the model may ask for --------------------------------------
+# -- the screening question, and the zoom it spends ---------------------------
 
-ZOOM_REQUEST = {"request_zoom": True}
+SMALL_PERSON = {sv.SCREENING_FIELD: True}
+BIG_PERSON = {sv.SCREENING_FIELD: False}
 
 
 @pytest.mark.asyncio
-async def test_a_zoom_request_gets_exactly_one_more_turn():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
+async def test_a_small_person_gets_the_zoom_on_the_second_turn():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
 
     result = await sv.review_image(
         client,
@@ -491,101 +492,111 @@ async def test_a_zoom_request_gets_exactly_one_more_turn():
     ]
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
-
-
-@pytest.mark.asyncio
-async def test_zoom_used_is_recorded_on_the_result():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
-
-    result = await sv.review_image(
-        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
-    )
-
     assert result.zoom_used is True
     assert result.to_dict()["zoom_used"] is True
 
 
 @pytest.mark.asyncio
-async def test_zoom_used_is_false_when_no_zoom_was_requested():
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
-
-    result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
-
-    assert result.zoom_used is False
-    assert result.to_dict()["zoom_used"] is False
-
-
-@pytest.mark.asyncio
-async def test_the_second_turn_carries_the_first_exchange():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
-
-    await sv.review_image(client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom")
-
-    roles = [turn["role"] for turn in client.calls[1]["turns"]]
-    assert roles == ["user", "assistant", "user"]
-    assert "one zoom" in client.calls[1]["turns"][-1]["text"]
-
-
-@pytest.mark.asyncio
-async def test_the_zoom_is_not_produced_unless_it_is_asked_for():
-    calls = []
-
-    def zoom_provider():
-        calls.append(1)
-        return "data:zoom"
-
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
-
-    await sv.review_image(client, "data:...", SCHEME, zoom_provider=zoom_provider)
-
-    assert calls == []
-
-
-@pytest.mark.asyncio
-async def test_only_one_zoom_is_ever_granted():
-    # A model that keeps asking gets its second reply used as the answer.
-    second = reply_for(appearance_of(8))
-    second["request_zoom"] = True
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, second])
+async def test_a_screening_reply_is_never_parsed_as_a_reading():
+    # Even if the model over-answers the first turn, a small target means the
+    # reply is discarded and replaced by the zoom.
+    eager = dict(reply_for(appearance_of(1)), **SMALL_PERSON)
+    client = FakeVisionClient(reply=[eager, reply_for(appearance_of(8))])
 
     result = await sv.review_image(
         client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
     )
 
     assert len(client.calls) == 2
-    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
 
 
 @pytest.mark.asyncio
-async def test_a_zoom_request_with_no_zoom_available_is_an_error_not_a_hang():
-    client = FakeVisionClient(reply=ZOOM_REQUEST)
+async def test_a_person_filling_the_screen_gets_no_zoom():
+    produced = []
 
-    with pytest.raises(sv.ShotVisionError):
-        await sv.review_image(client, "data:...", SCHEME)
+    def zoom_provider():
+        produced.append(1)
+        return "data:zoom"
+
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert produced == []
+    assert len(client.calls) == 2
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
+    assert result.to_dict()["zoom_used"] is False
+    # The second turn asks for the reading instead of offering another image
+    last_turn = client.calls[1]["turns"][-1]
+    assert last_turn.get("image_data_url") is None
+    assert "answer in full" in last_turn["text"]
+
+
+@pytest.mark.asyncio
+async def test_the_second_turn_carries_the_first_exchange():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
+
+    await sv.review_image(client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom")
+
+    roles = [turn["role"] for turn in client.calls[1]["turns"]]
+    assert roles == ["user", "assistant", "user"]
+    assert "Here is another image" in client.calls[1]["turns"][-1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_a_full_reply_on_the_first_turn_is_accepted_as_is():
+    # A model that ignores the screening and answers in full is not forced
+    # through a second call.
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
+    )
 
     assert len(client.calls) == 1
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
 
 
-def test_wants_zoom_only_fires_on_an_explicit_true():
-    assert sv.wants_zoom({"request_zoom": True})
-    assert not sv.wants_zoom({"request_zoom": False})
-    assert not sv.wants_zoom({})
-    assert not sv.wants_zoom("nope")
+@pytest.mark.asyncio
+async def test_a_small_person_with_no_zoom_available_still_gets_a_reading():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(client, "data:...", SCHEME)
+
+    assert len(client.calls) == 2
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
 
 
-def test_the_schema_lets_the_model_ask():
-    assert sv.build_schema()["properties"]["request_zoom"] == {"type": "boolean"}
+def test_screening_requests_zoom_only_on_an_explicit_true():
+    assert sv.screening_requests_zoom({sv.SCREENING_FIELD: True})
+    assert not sv.screening_requests_zoom({sv.SCREENING_FIELD: False})
+    assert not sv.screening_requests_zoom({})
+    assert not sv.screening_requests_zoom("nope")
 
 
-def test_the_prompt_explains_the_zoom_and_the_hit_rule():
+def test_the_screening_schema_asks_the_one_question():
+    schema = sv.build_screening_schema()
+
+    assert schema["properties"] == {sv.SCREENING_FIELD: {"type": "boolean"}}
+    # ...and the full-reading schema does not: it is answered on a later turn
+    assert sv.SCREENING_FIELD not in sv.build_schema()["properties"]
+    assert "request_zoom" not in sv.build_schema()["properties"]
+
+
+def test_the_prompt_leads_with_the_screening_question():
     prompt = sv.build_prompt()
 
-    assert '{"request_zoom": true}' in prompt
-    assert "middle 12.5% of the image in higher resolution" in prompt
-    assert "You may do this once only" in prompt
-    assert "You MUST ultimately make a decision" in prompt
+    assert "fill less than half of the screen" in prompt
+    assert prompt.index(sv.SCREENING_FIELD) < prompt.index("Reply with JSON only")
+    # The full-reading contract is still there for the second turn
     assert "on their clothing, hands, or shoes" in prompt
-    assert "centre of the cross" in prompt.lower()
+    assert "request_zoom" not in prompt
 
 
 def test_the_buckets_cover_chinos():
@@ -625,11 +636,12 @@ async def test_always_zoom_sends_both_views_in_one_call():
     assert result.zoom_used is True
 
 
-def test_the_always_zoom_prompt_does_not_offer_what_is_already_given():
+def test_the_always_zoom_prompt_skips_the_screening_question():
     prompt = sv.build_prompt(zoom_offered=False)
 
-    assert "You may do this once only" not in prompt
-    assert '"request_zoom" must be false' in prompt
+    # Both views are already in front of the model, so there is nothing to ask
+    assert sv.SCREENING_FIELD not in prompt
+    assert "request_zoom" not in prompt
     # The hit rule itself is unchanged
     assert "on their clothing, hands, or shoes" in prompt
     assert "You MUST ultimately make a decision" in prompt

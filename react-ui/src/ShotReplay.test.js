@@ -137,7 +137,9 @@ test("replaying a selected shot posts the edited prompt and shows the reading", 
   expect(call.body).toEqual({
     shot_id: "shot-1",
     prompt: "A customised prompt",
-    always_zoom: true,
+    // The default matches the live pipeline: the zoom is screening-gated,
+    // not sent up front.
+    always_zoom: false,
   });
 
   expect(screen.getByText("HIT")).toBeInTheDocument();

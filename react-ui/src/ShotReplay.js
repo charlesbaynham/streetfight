@@ -190,7 +190,7 @@ function ShotReplayPanel() {
   const [shotIds, setShotIds] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [prompt, setPrompt] = useState(null);
-  const [alwaysZoom, setAlwaysZoom] = useState(true);
+  const [alwaysZoom, setAlwaysZoom] = useState(false);
   const [results, setResults] = useState({});
   const [running, setRunning] = useState(false);
 

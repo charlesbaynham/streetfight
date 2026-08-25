@@ -96,10 +96,6 @@ boundary, but just hitting". Set it to false for "on the boundary, but just \
 missing" or "miles away". If the centre point lands on foliage, an object, or \
 empty ground, that is a miss even if a person is standing right next to it.
 
-Some shots will be very close. For these, if it is difficult to place the \
-centre point into one of the four buckets, you may request a zoomed version of \
-the image once. You MUST still end up choosing one of the four buckets and \
-setting "{shot_vision.HIT_FIELD}" accordingly -- do not leave it undecided. \
 When genuinely torn between "just hitting" and "just missing", pick "just \
 missing": a wrongly-called miss costs the shooter one bullet, but a \
 wrongly-called hit takes a life from somebody who was never shot."""
@@ -116,7 +112,8 @@ class PromptVariant(NamedTuple):
     the prompt text; None means whatever ``shot_vision.build_prompt`` currently
     produces, so a replay always scores what the live pipeline would have said.
     ``always_zoom`` is passed through to ``shot_vision.review_image``: the zoom
-    is sent up front whether the model asks or not.
+    is sent up front whether the screening answer says the target is small or
+    not.
     """
 
     build_prompt: Optional[Callable] = None
@@ -124,17 +121,18 @@ class PromptVariant(NamedTuple):
 
 
 # Prompt variants for roadmap #4 land here. "baseline" is the live pipeline's
-# own prompt and zoom behaviour -- since the always-zoom trial shipped, that
-# means the zoom is sent up front. "optional_zoom" preserves the pre-change
-# behaviour (the model must ask) for comparison runs.
+# own prompt and zoom behaviour: the screening question (does the person fill
+# less than half of the screen?) decides whether the zoom is spent.
+# "always_zoom" preserves the previous live behaviour -- both views up front in
+# a single call -- for comparison runs.
 PROMPT_VARIANTS = {
-    "baseline": PromptVariant(always_zoom=True),
-    "optional_zoom": PromptVariant(),
+    "baseline": PromptVariant(),
     "boundary_scale": PromptVariant(build_prompt=_boundary_scale_prompt),
-    # Roadmap #4, the experiment that worked: the false hits never requested
-    # the zoom because they never doubted themselves, so the zoom is sent
-    # whether they ask or not. Identical to "baseline"; kept under its own name
-    # because that is what the replay_always_zoom_run*.jsonl files record.
+    # Roadmap #4, the experiment that worked before the screening question
+    # replaced it: the false hits never requested the zoom because they never
+    # doubted themselves, so the zoom was sent whether they asked or not. Kept
+    # under its own name because that is what the replay_always_zoom_run*.jsonl
+    # files record.
     "always_zoom": PromptVariant(always_zoom=True),
 }
 
@@ -491,8 +489,10 @@ async def _replay_one(shot: dict, client, prompt, semaphore, always_zoom: bool) 
         try:
             prepared = prepare_for_vision(draw_aim_marker(shot["image_base64"]))
 
-            def zoom_provider():
-                return zoom_image(shot["image_base64"], factor=shot_vision.ZOOM_FACTOR)
+            def zoom_provider(level):
+                return zoom_image(
+                    shot["image_base64"], factor=shot_vision.ZOOM_FACTOR**level
+                )
 
             result = await shot_vision.review_image(
                 client,
