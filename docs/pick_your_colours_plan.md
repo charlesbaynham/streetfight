@@ -22,28 +22,19 @@ ships and the roadmap entry is updated.
 | **C8** One QR per team | Not started |
 | **C9** Docs | Not started |
 
-## Do this first
+## Verification state
 
-**C1 and C2 were committed without a verified test run.** The agents that wrote
-them reported passing, then died on an API session limit before a final run could
-be confirmed first-hand. Before building on them:
+**Everything committed here is green on CI** (PR #135): all four `test` jobs,
+`build_backend`, `build_frontend`, `prettier` and `check-fixme`. C1 and C2 were
+written by agents that died on an API session limit before a run could be
+confirmed first-hand, so this was an open question for a while — CI has settled
+it. Nothing needs re-verifying before starting C3.
 
-```bash
-python -m pytest tests/test_identity_allocation.py tests/test_identity_scheme.py \
-                 tests/test_schema_sync.py tests/test_join_codes.py \
-                 tests/test_admin_identity.py -q
-cd react-ui && CI=true npx react-scripts test --watchAll=false
-```
-
-Static review found nothing wrong (`_get_team_orm` and `logger` both exist in
-`admin_interface.py`; the `assign_team_colours` capacity guard is sound including
-the duplicate- and stale-pinned-colour edge cases), but that is not a test run.
-Fix anything that falls over before starting C3.
-
-Note `tests/test_admin_identity.py` and `tests/test_join_codes.py` showed
-intermittent flakiness that one agent reproduced on **unmodified baseline code**,
-so a lone failure there is likely pre-existing and environmental. Confirm against
-`git stash && pytest && git stash pop` before chasing it.
+Worth knowing anyway: `tests/test_admin_identity.py` and `tests/test_join_codes.py`
+showed intermittent flakiness during development that one agent reproduced on
+**unmodified baseline code**. A lone failure there is likely pre-existing and
+environmental — confirm with `git stash && pytest && git stash pop` before
+chasing it.
 
 ## Lessons from wave 1 — read before dispatching agents
 
