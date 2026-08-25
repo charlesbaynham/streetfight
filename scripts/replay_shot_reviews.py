@@ -38,6 +38,8 @@ import os
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Dict
+from typing import List
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,12 +67,52 @@ load_env_vars()
 TRUTH_VALUES = ("hit", "miss", "bystander", "refunded")
 AI_OUTCOMES = {HIT_PLAYER: "hit", HIT_BYSTANDER: "bystander", MISS: "miss"}
 
+# Roadmap #4 suspects 3+4: instead of a bare "did it hit" boolean, make the
+# model place the cross's centre point into four buckets spanning clearly-hit
+# to clearly-miss, with the two boundary buckets explicitly naming which side
+# of "hit" they're on -- and break a genuine tie towards "miss" (the cheaper
+# wrong answer). Same JSON contract as the default rule, so parsing is
+# unchanged; only the reasoning scaffold differs.
+BOUNDARY_SCALE_RULE = f"""FIRST: did the shot hit a person? Judge this by placing the centre point of \
+the cross into one of these four buckets:
+
+- clearly hitting: the centre point is unambiguously on the person's body or \
+clothing, with room to spare on every side.
+- on the boundary, but just hitting: the centre point is right at the edge of \
+the person -- on their outline, or on the very edge of their clothing -- close \
+enough that if you had to bet, you would bet it is on them.
+- on the boundary, but just missing: the centre point is right at the edge but \
+just outside the person -- beside them, touching their outline from the \
+outside, or in the gap between two people -- close enough that if you had to \
+bet, you would bet it is not on them.
+- miles away: there is clear space between the centre point and any person, or \
+there is nobody near it at all.
+
+Set "{shot_vision.HIT_FIELD}" to true for "clearly hitting" or "on the \
+boundary, but just hitting". Set it to false for "on the boundary, but just \
+missing" or "miles away". If the centre point lands on foliage, an object, or \
+empty ground, that is a miss even if a person is standing right next to it.
+
+Some shots will be very close. For these, if it is difficult to place the \
+centre point into one of the four buckets, you may request a zoomed version of \
+the image once. You MUST still end up choosing one of the four buckets and \
+setting "{shot_vision.HIT_FIELD}" accordingly -- do not leave it undecided. \
+When genuinely torn between "just hitting" and "just missing", pick "just \
+missing": a wrongly-called miss costs the shooter one bullet, but a \
+wrongly-called hit takes a life from somebody who was never shot."""
+
+
+def _boundary_scale_prompt(palettes: Dict[str, List[str]]) -> str:
+    return shot_vision.build_prompt(palettes, decision_rule=BOUNDARY_SCALE_RULE)
+
+
 # Prompt variants for roadmap #4 land here. "baseline" is None, i.e. whatever
 # shot_vision.build_prompt currently produces, so a replay always scores what
 # the live pipeline would have said. A variant is a callable taking the
 # channel palettes and returning the prompt text.
 PROMPT_VARIANTS = {
     "baseline": None,
+    "boundary_scale": _boundary_scale_prompt,
 }
 
 # Scoring a historical shot against the *current* user table cannot reproduce

@@ -429,6 +429,48 @@ above his head), which is exactly the kind of close call suspect 3
 threshold) were aimed at. Suspects 3 and 4 are still untried — try those next,
 not more marker-geometry tweaks.
 
+**Also tried this session: suspects 3 and 4, folded into one prompt variant.**
+`backend/shot_vision.build_prompt` was refactored to take the hit/miss
+decision paragraph as a `decision_rule` parameter (default unchanged), so a
+variant can swap it without duplicating the rest of the template. Added
+`scripts/replay_shot_reviews.PROMPT_VARIANTS["boundary_scale"]`: instead of a
+bare yes/no, it asks the model to place the cross's centre point into one of
+four buckets -- *clearly hitting*, *on the boundary but just hitting*, *on the
+boundary but just missing*, *miles away* -- and states the asymmetry
+explicitly (a wrongly-called miss costs one bullet; a wrongly-called hit takes
+a life from somebody never shot), telling the model to prefer "just missing"
+when genuinely torn between the two boundary buckets. Same JSON contract, so
+this is a pure reasoning-scaffold change.
+
+Replayed 5x over all 13 fixtures (65 trials, 1 transient empty-reply error
+retried and resolved; results at
+`tests/fixtures/shot_replay/replay_boundary_scale_run{1..5}.jsonl`). **Still no
+measurable improvement**, and the numbers are eerily exact: false-hit rate
+5/40 (12%), false-miss rate 20/25 (80%) -- eleven of thirteen shots landed the
+same outcome, run for run, as the plain single-red-cross variant above.
+d91548d3 is `hit_player` at 0.95 confidence in all 5 runs here too, and in all
+15 runs across both variants it **never once requests the zoom** — it isn't
+torn between the boundary buckets, it just doesn't perceive that the centre
+point is off the person at all. That rules out "the model is unsure but the
+prompt doesn't reward saying so" as the explanation; asymmetric framing and an
+explicit tie-breaker only help when the model registers a tie in the first
+place.
+
+At this point three independently-worded prompts (the original arms-with-a-gap
+marker, the single-point red cross, and the four-bucket boundary scale) have
+all landed on the *same* false-hit and false-miss ids at the *same* rates.
+That points away from prompt wording entirely and toward one of: (a) a
+resolution/perception limit -- the true aim point in this photo is only a few
+percent of the frame width from the person, plausibly below what the vision
+encoder can localise reliably at 1024px after JPEG compression, so nothing
+written in English fixes it; or (b) making the zoom mandatory rather than
+optional, since the model's self-assessed certainty is not tracking its actual
+accuracy here (0.95 confidence on a shot it gets wrong every time). Try (b)
+before spending more session time on further prompt rewording -- it's a
+one-line change (drop the "if it is difficult to tell" gate and always take
+the zoom) and directly tests the "it never asks because it never doubts itself"
+theory.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

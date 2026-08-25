@@ -202,9 +202,34 @@ def wants_zoom(raw) -> bool:
     return isinstance(raw, dict) and raw.get(ZOOM_FIELD) is True
 
 
-def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
-    """The instructions sent alongside the photo."""
+DEFAULT_DECISION_RULE = f"""FIRST: did the shot hit a person? If the centre of the cross is on empty ground, \
+a wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
+even if one of the red lines passes over or right next to a person elsewhere in \
+the frame. The lines themselves are not the hit; only their centre point is.
+
+Some shots will be very close. For these, if it is difficult for you to tell \
+whether it is a hit or not, you may request a zoomed version of the image once. \
+You MUST ultimately make a decision on whether the shot is hitting a person or \
+not. It is a hit only if the centre of the cross itself lands on the person -- \
+on their clothing, hands, or shoes. It is a miss if the centre point is on the \
+background instead -- ground, a wall, foliage, a street light -- even if that \
+background is right beside them."""
+
+
+def build_prompt(
+    palettes: Optional[Dict[str, List[str]]] = None,
+    decision_rule: Optional[str] = None,
+) -> str:
+    """The instructions sent alongside the photo.
+
+    ``decision_rule`` is the paragraph(s) telling the model how to turn the
+    cross's position into a hit/miss call -- pulled out as a parameter so
+    roadmap #4's prompt variants (``scripts/replay_shot_reviews.py``) can swap
+    it without duplicating the rest of the template (channel questions,
+    colour buckets, JSON shape).
+    """
     palettes = palettes or channel_palettes()
+    decision_rule = decision_rule or DEFAULT_DECISION_RULE
 
     buckets = "\n".join(
         f"- {colour}: {note}"
@@ -246,18 +271,7 @@ may do this once only, so spend it on a target that is too small or too far away
 to judge from the whole frame. If the image is merely blurred, a zoom will not \
 help.
 
-FIRST: did the shot hit a person? If the centre of the cross is on empty ground, \
-a wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
-even if one of the red lines passes over or right next to a person elsewhere in \
-the frame. The lines themselves are not the hit; only their centre point is.
-
-Some shots will be very close. For these, if it is difficult for you to tell \
-whether it is a hit or not, you may request a zoomed version of the image once. \
-You MUST ultimately make a decision on whether the shot is hitting a person or \
-not. It is a hit only if the centre of the cross itself lands on the person -- \
-on their clothing, hands, or shoes. It is a miss if the centre point is on the \
-background instead -- ground, a wall, foliage, a street light -- even if that \
-background is right beside them.
+{decision_rule}
 
 If the shot hit a person, answer these questions about THAT PERSON ONLY. There \
 are usually other people in the frame -- passers-by who are not in the game. \
