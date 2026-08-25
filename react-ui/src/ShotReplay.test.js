@@ -81,8 +81,7 @@ function installWorkshopMock(shotsById, extra = {}) {
     admin_is_authed: true,
     admin_get_shots_info: Object.keys(shotsById),
     admin_get_shot: ({ query }) => shotsById[query.shot_id],
-    admin_get_shot_vision_images: ({ query }) =>
-      visionImagesFor(query.shot_id),
+    admin_get_shot_vision_images: ({ query }) => visionImagesFor(query.shot_id),
     admin_get_default_vision_prompt: { prompt: "The live prompt" },
     admin_replay_shot_review: hitReview,
     ...extra,
@@ -217,16 +216,18 @@ describe("vision-formatted images", () => {
     );
 
     // Vision images are fetched per shot_id and rendered side-by-side
-    expect(await screen.findByAltText("Full frame as vision sees it")).toHaveAttribute(
-      "src",
-      "data:image/jpeg;base64,vision-full-shot-1",
-    );
-    expect(screen.getByAltText("Zoomed centre as vision sees it")).toHaveAttribute(
-      "src",
-      "data:image/jpeg;base64,vision-zoomed-shot-1",
-    );
-    expect(screen.getByText("Full frame (as vision sees it)")).toBeInTheDocument();
-    expect(screen.getByText("Zoomed centre (as vision sees it)")).toBeInTheDocument();
+    expect(
+      await screen.findByAltText("Full frame as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-full-shot-1");
+    expect(
+      screen.getByAltText("Zoomed centre as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed-shot-1");
+    expect(
+      screen.getByText("Full frame (as vision sees it)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Zoomed centre (as vision sees it)"),
+    ).toBeInTheDocument();
 
     expect(getLastAPICall("admin_get_shot_vision_images").query).toEqual({
       shot_id: "shot-1",
@@ -236,7 +237,11 @@ describe("vision-formatted images", () => {
   test("renders both vision images for every shot in the list", async () => {
     installWorkshopMock({
       "shot-1": makeShotDetail({ id: "shot-1" }),
-      "shot-2": { ...makeShotDetail({ id: "shot-2" }), id: "shot-2", user: { ...user, name: "Second Shooter" } },
+      "shot-2": {
+        ...makeShotDetail({ id: "shot-2" }),
+        id: "shot-2",
+        user: { ...user, name: "Second Shooter" },
+      },
     });
 
     await actAndFlush(() =>
@@ -247,8 +252,12 @@ describe("vision-formatted images", () => {
       ),
     );
 
-    expect(await screen.findAllByAltText("Full frame as vision sees it")).toHaveLength(2);
-    expect(screen.getAllByAltText("Zoomed centre as vision sees it")).toHaveLength(2);
+    expect(
+      await screen.findAllByAltText("Full frame as vision sees it"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByAltText("Zoomed centre as vision sees it"),
+    ).toHaveLength(2);
     expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(2);
   });
 
@@ -313,10 +322,9 @@ describe("vision-formatted images", () => {
       return new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(await screen.findByAltText("Full frame as vision sees it")).toHaveAttribute(
-      "src",
-      "data:image/jpeg;base64,vision-full-shot-2",
-    );
+    expect(
+      await screen.findByAltText("Full frame as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-full-shot-2");
 
     // Now resolve the stale first request — it must not overwrite shot-2
     await actAndFlush(() => {
