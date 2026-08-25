@@ -576,7 +576,7 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
     Two images are returned:
     - full: the whole frame with aim marker, downscaled to 1024px max (what
       prepare_for_vision produces)
-    - zoomed: the centre 25% of the original, cropped and upscaled to 1024px
+    - zoomed: the centre 12.5% of the original, cropped and upscaled to 1024px
       with a fresh aim marker (what zoom_image produces)
 
     Both are JPEG data URLs ready to render in <img>.
@@ -588,7 +588,7 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
         image_processing.draw_aim_marker(original)
     )
 
-    # Zoomed frame: centre 25% crop from ORIGINAL, upscale to 1024px, aim marker
+    # Zoomed frame: centre 12.5% crop from ORIGINAL, upscale to 1024px, aim marker
     zoomed = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR)
 
     return {"full": full, "zoomed": zoomed}

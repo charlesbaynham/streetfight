@@ -183,7 +183,7 @@ def prepare_for_vision(
 
 
 def zoom_image(
-    base64_image: str, factor: int = 4, max_dimension: int = 1024, quality: int = 85
+    base64_image: str, factor: int = 8, max_dimension: int = 1024, quality: int = 85
 ) -> str:
     """The centre of a photo, magnified: crop 1/``factor`` of each dimension.
 
@@ -213,7 +213,7 @@ def zoom_image(
         cropped = cropped.convert("RGB")
 
     # Scale back up to the same output size the un-zoomed image was sent at, so
-    # the model sees the target four times larger rather than a small crop.
+    # the model sees the target eight times larger rather than a small crop.
     longest = max(cropped.size)
     if longest != max_dimension and longest > 0:
         scale = max_dimension / longest

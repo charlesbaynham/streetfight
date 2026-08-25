@@ -581,7 +581,7 @@ def test_the_prompt_explains_the_zoom_and_the_hit_rule():
     prompt = sv.build_prompt()
 
     assert '{"request_zoom": true}' in prompt
-    assert "middle 25% of the image in higher resolution" in prompt
+    assert "middle 12.5% of the image in higher resolution" in prompt
     assert "You may do this once only" in prompt
     assert "You MUST ultimately make a decision" in prompt
     assert "on their clothing, hands, or shoes" in prompt
