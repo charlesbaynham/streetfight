@@ -263,7 +263,13 @@ class UserInterface:
         team.users.append(self.get_user())
 
     @db_scoped
-    def join_team_and_claim_slot(self, team_id: UUID, slot: int):
+    def join_team_and_claim_slot(
+        self,
+        team_id: UUID,
+        slot: int,
+        overrides_json: Optional[str] = None,
+        wardrobe_json: Optional[str] = None,
+    ):
         """Join ``team_id`` and claim identity ``slot`` in one transaction.
 
         Unlike join_team this never auto-creates the team: join codes are
@@ -271,6 +277,10 @@ class UserInterface:
         provisioning request. The slot-holder check is re-run here, inside
         the same transaction as the write, so two players scanning the same
         code can't both claim it - the loser gets a 409.
+
+        Claiming a slot rewrites the whole identity, so a canonical claim
+        (which passes neither ``overrides_json`` nor ``wardrobe_json``) clears
+        any previous overrides and wardrobe. That is deliberate and symmetric.
         """
         team = self._session.query(Team).filter_by(id=team_id).first()
 
@@ -295,7 +305,8 @@ class UserInterface:
         user = self.get_user()
         team.users.append(user)
         user.identity_slot = slot
-        user.identity_overrides = None
+        user.identity_overrides = overrides_json
+        user.identity_wardrobe = wardrobe_json
 
     @db_scoped
     def submit_shot(self, image_base64: str):

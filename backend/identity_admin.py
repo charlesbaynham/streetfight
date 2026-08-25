@@ -84,8 +84,9 @@ class IdentitySuggestRequest(pydantic.BaseModel):
 # ---------------------------------------------------------------------------
 
 
-def _parse_overrides(raw: Optional[str]) -> Optional[Dict[str, Optional[str]]]:
-    """The stored JSON text back into a sparse overrides dict, or None."""
+def _parse_json_column(raw: Optional[str]) -> Optional[Dict]:
+    """A stored JSON-text column (identity_overrides, identity_wardrobe) back
+    into its dict, or None."""
     if raw is None:
         return None
     return json.loads(raw)
@@ -110,14 +111,15 @@ def effective_words(users: List[UserModel], scheme: IdentityScheme) -> Dict[UUID
         if user.identity_slot is None:
             continue
         codeword = scheme.codeword_of_slot(user.identity_slot)
-        overrides = _parse_overrides(user.identity_overrides) or {}
+        overrides = _parse_json_column(user.identity_overrides) or {}
         words[user.id] = effective_word(codeword, overrides, scheme.channels)
     return words
 
 
 def _player_row(user: UserModel, scheme: IdentityScheme) -> dict:
     """The report/response shape for one player."""
-    overrides = _parse_overrides(user.identity_overrides)
+    overrides = _parse_json_column(user.identity_overrides)
+    wardrobe = _parse_json_column(user.identity_wardrobe)
 
     canonical_appearance = None
     effective_appearance = None
@@ -133,6 +135,7 @@ def _player_row(user: UserModel, scheme: IdentityScheme) -> dict:
         "team_name": user.team_name,
         "slot": user.identity_slot,
         "overrides": overrides,
+        "wardrobe": wardrobe,
         "canonical_appearance": canonical_appearance,
         "effective_appearance": effective_appearance,
         "overridden": bool(overrides),

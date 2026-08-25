@@ -268,6 +268,16 @@ class AdminInterface:
             trigger_update_event("user", user_id)
 
     @db_scoped
+    def set_team_identity_colour(self, team_id: UUID, colour: str) -> None:
+        """Pin a team's TEAM_CHANNEL colour. Once set, join code generation
+        for this team must reuse it rather than re-deriving from
+        allocate_team_slots, so adding a new team doesn't re-colour teams
+        that have already picked."""
+        logger.info("AdminInterface - set_team_identity_colour %s %s", team_id, colour)
+        team = self._get_team_orm(team_id)
+        team.identity_colour = colour
+
+    @db_scoped
     def _get_game_ticker(self, game_id: UUID) -> Ticker:
         return Ticker(game_id, user_id=None, session=self._session)
 

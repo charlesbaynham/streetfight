@@ -170,6 +170,13 @@ class Team(Base):
     users = relationship("User", lazy=True, back_populates="team")
     shots = relationship("Shot", lazy=True, back_populates="team")
 
+    # The label this team wears in TEAM_CHANNEL, pinned the first time its
+    # join code is generated. Stored rather than derived: it used to be
+    # re-derived from allocate_team_slots(scheme, len(teams), slots_per_team,
+    # ...) on every call, so adding a new team silently re-coloured every
+    # team that had already picked. None until a join code has been built.
+    identity_colour = Column(String, nullable=True)
+
 
 user_item_association_table = Table(
     "association_table",
@@ -227,6 +234,9 @@ class User(Base):
     # the assignment. Stored as JSON text, same pattern as Shot.ai_review;
     # null means no overrides. Only meaningful when identity_slot is set.
     identity_overrides = Column(String, nullable=True)
+    # The colours the player declared they own, {channel_name: [label, ...]}
+    # as JSON text, same pattern as identity_overrides. Null before they pick.
+    identity_wardrobe = Column(String, nullable=True)
 
     shots = relationship(
         "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
@@ -396,6 +406,7 @@ class UserModel(pydantic.BaseModel):
 
     identity_slot: Optional[int] = None
     identity_overrides: Optional[str] = None
+    identity_wardrobe: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
@@ -405,6 +416,7 @@ class TeamModel(pydantic.BaseModel):
     name: str
     game_id: UUID
     users: List[UserModel]
+    identity_colour: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
