@@ -573,6 +573,52 @@ async def test_a_small_person_with_no_zoom_available_still_gets_a_reading():
     assert result.zoom_used is False
 
 
+@pytest.mark.asyncio
+async def test_a_still_small_person_gets_a_second_zoom():
+    levels = []
+
+    def zoom_provider(level):
+        levels.append(level)
+        return f"data:zoom{level}"
+
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert levels == [1, 2]
+    assert len(client.calls) == 3
+    # First zoom follow-up repeats the screening question
+    assert "same question again" in client.calls[1]["turns"][-1]["text"]
+    # Final follow-up asks for the full reading
+    assert "no more zooms" in client.calls[2]["turns"][-1]["text"].lower()
+    assert result.zoom_used is True
+    assert result.slot == 8
+
+
+@pytest.mark.asyncio
+async def test_max_two_zooms_is_enforced():
+    levels = []
+
+    def zoom_provider(level):
+        levels.append(level)
+        return f"data:zoom{level}"
+
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert levels == [1, 2]
+    assert len(client.calls) == 3
+    assert result.zoom_used is True
+
+
 def test_screening_requests_zoom_only_on_an_explicit_true():
     assert sv.screening_requests_zoom({sv.SCREENING_FIELD: True})
     assert not sv.screening_requests_zoom({sv.SCREENING_FIELD: False})

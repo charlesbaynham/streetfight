@@ -378,7 +378,6 @@ FULL_READING_REQUEST = (
     "The person fills at least half of the screen, so the photograph you "
     "already have is enough. Now answer in full with the JSON described above."
 )
-)
 
 # The second turn of the always-zoom path: the zoomed view, sent whether or not
 # the screening would have asked for it.

@@ -502,14 +502,16 @@ question in the 2026-08-24 handover), not a prompt problem.
 old behaviour survives as the `optional_zoom` variant for comparison runs.
 
 **Updated 2026-08-25 (later): the zoom is now gated on a screening question,
-not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 4`)
+not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 8`)
 the remaining failure mode was close shots that actually miss being called
 hits, so `review_image`'s default flow changed again: turn one asks only "does
 the person fill less than half of the screen?"
 (`person_fills_less_than_half`); that reply is discarded and turn two is either
-the zoomed view (small target) or a plain request for the full reading. The
-`request_zoom` field is gone — the model never chooses the zoom, it only ever
-answers how big the person is. `always_zoom=True` survives for replay
+the zoomed view (small target, with the same question repeated) or a plain
+request for the full reading. A still-small target after the first zoom gets
+one final, closer view (`MAX_ZOOMS = 2`, compounding as `ZOOM_FACTOR**level`).
+The `request_zoom` field is gone — the model never chooses the zoom, it only
+ever answers how big the person is. `always_zoom=True` survives for replay
 comparisons; the harness's `baseline` variant tracks the screening flow and
 `optional_zoom` is retired. Not yet replay-scored — run `baseline` vs
 `always_zoom` over the fixtures before trusting it.
