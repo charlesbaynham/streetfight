@@ -76,9 +76,7 @@ function ShotAiTags({ shot_id }) {
       {listener}
       <div className={styles.tagRow}>
         <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>
-        {review.zoom_used ? (
-          <span className={`${styles.tag} ${styles.tagZoom}`}>Zoomed in</span>
-        ) : null}
+        {zoomTag(review)}
         {Object.entries(review.channels || {}).map(([name, channel]) => (
           <span
             key={name}
@@ -100,6 +98,23 @@ function ShotAiTags({ shot_id }) {
       </p>
     </>
   );
+}
+
+// The zoom tag: how many times the zoom was spent (0, 1 or 2). Older stored
+// reviews only ever recorded a zoom_used bool, so fall back to that rather
+// than showing a wrong count.
+export function zoomTag(review) {
+  if (review.zoom_count) {
+    return (
+      <span className={`${styles.tag} ${styles.tagZoom}`}>
+        Zoomed in ×{review.zoom_count}
+      </span>
+    );
+  }
+  if (review.zoom_used) {
+    return <span className={`${styles.tag} ${styles.tagZoom}`}>Zoomed in</span>;
+  }
+  return null;
 }
 
 // What an adjudicated shot was marked as, for the history view.

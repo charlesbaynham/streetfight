@@ -502,17 +502,40 @@ question in the 2026-08-24 handover), not a prompt problem.
 old behaviour survives as the `optional_zoom` variant for comparison runs.
 
 **Updated 2026-08-25 (later): the zoom is now gated on a screening question,
-not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 4`)
+not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 8`)
 the remaining failure mode was close shots that actually miss being called
 hits, so `review_image`'s default flow changed again: turn one asks only "does
 the person fill less than half of the screen?"
 (`person_fills_less_than_half`); that reply is discarded and turn two is either
-the zoomed view (small target) or a plain request for the full reading. The
-`request_zoom` field is gone — the model never chooses the zoom, it only ever
-answers how big the person is. `always_zoom=True` survives for replay
+the zoomed view (small target, with the same question repeated) or a plain
+request for the full reading. A still-small target after the first zoom gets
+one final, closer view (`MAX_ZOOMS = 2`, compounding as `ZOOM_FACTOR**level`).
+The `request_zoom` field is gone — the model never chooses the zoom, it only
+ever answers how big the person is. `always_zoom=True` survives for replay
 comparisons; the harness's `baseline` variant tracks the screening flow and
-`optional_zoom` is retired. Not yet replay-scored — run `baseline` vs
-`always_zoom` over the fixtures before trusting it.
+`optional_zoom` is retired.
+
+**Replay-scored 2026-08-25:** one run of `baseline` over all 13 fixtures
+(`tests/fixtures/shot_replay/replay_screening_gate_run1.jsonl`) — **false-hit
+rate 0/8 (0%), false-miss rate 4/5 (80%)**, matching the always-zoom numbers
+this variant replaces. d91548d3, the flagship false hit, is `miss` at 0.99
+confidence. The four false misses are the same `hit_bystander` mapping noted
+above (armbands hidden, other channels incomplete), not a regression from the
+screening gate. Single run, not the 5x done for the earlier variants — worth
+repeating before fully trusting the rate, but it confirms the screening gate
+did not reintroduce the false-hit problem it was built to avoid.
+
+**Admin visibility (2026-08-25):** two zooms sharing one `zoom_used` bool made
+it impossible to tell from the queue or the replay workbench whether a shot
+spent one zoom or two, and the workbench showed only the parsed final reading
+-- nothing of what was actually said turn by turn. `ShotVisionResult` grew
+`zoom_count` (0/1/2, `to_dict()` always) and `transcript` (every turn sent
+plus the raw reply, `to_dict(include_transcript=True)` -- opt-in so a live
+review's stored payload does not carry it on every shot). The queue and
+workbench tags now read "Zoomed in ×N" (`ShotQueue.zoomTag`, falling back to
+a bare "Zoomed in" for reviews stored before this); the workbench also gets a
+collapsible "Full model transcript" per replayed shot, with a "Prettified
+JSON" toggle that dumps the whole exchange instead of the per-turn cards.
 
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this

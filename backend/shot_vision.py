@@ -119,6 +119,8 @@ class ShotVisionResult:
         slot: Optional[int] = None,
         confidence: float = 0.0,
         zoom_used: bool = False,
+        zoom_count: int = 0,
+        transcript: Optional[List[dict]] = None,
     ):
         self.shot_hit_a_person = shot_hit_a_person
         self.channels = channels
@@ -128,14 +130,27 @@ class ShotVisionResult:
         self.slot = slot
         self.confidence = confidence
         self.zoom_used = zoom_used
+        # How many times the zoom was actually spent (0..MAX_ZOOMS). zoom_used
+        # is kept alongside it as the boolean shorthand existing callers rely
+        # on; this is the same fact, just not collapsed to a bool.
+        self.zoom_count = zoom_count
+        # Every request/reply exchanged with the model, for the admin replay
+        # workbench. None on a live review -- see to_dict's include_transcript.
+        self.transcript = transcript
 
     @property
     def is_hit(self) -> bool:
         return self.outcome == HIT_PLAYER
 
-    def to_dict(self) -> dict:
-        """The JSON stored on the Shot and rendered as tags in the queue."""
-        return {
+    def to_dict(self, include_transcript: bool = False) -> dict:
+        """The JSON stored on the Shot and rendered as tags in the queue.
+
+        ``include_transcript`` adds every turn exchanged with the model --
+        omitted by default so a live review's stored payload does not carry it
+        on every shot; the admin replay workbench (nothing it returns is
+        stored) asks for it explicitly.
+        """
+        result = {
             "shot_hit_a_person": self.shot_hit_a_person,
             "confidence": self.confidence,
             "outcome": self.outcome,
@@ -144,11 +159,15 @@ class ShotVisionResult:
             "slot": self.slot,
             "reasoning": self.reasoning,
             "zoom_used": self.zoom_used,
+            "zoom_count": self.zoom_count,
             "channels": {
                 name: dict(read.to_dict(), hex=hex_for(name, read.colour))
                 for name, read in self.channels.items()
             },
         }
+        if include_transcript:
+            result["transcript"] = self.transcript or []
+        return result
 
 
 # ---------------------------------------------------------------------------
@@ -377,7 +396,6 @@ ZOOM_FINAL_FOLLOW_UP = (
 FULL_READING_REQUEST = (
     "The person fills at least half of the screen, so the photograph you "
     "already have is enough. Now answer in full with the JSON described above."
-)
 )
 
 # The second turn of the always-zoom path: the zoomed view, sent whether or not
@@ -795,13 +813,15 @@ async def review_image(
             {
                 "role": "user",
                 "text": ZOOM_UPFRONT_TURN,
-                "image_data_url": zoom_provider(1),
+                "image_data_url": _call_zoom_provider(zoom_provider, 1),
             },
         ]
         # One call, both views: whatever comes back is the answer.
         raw = await client.complete(turns, schema)
         result = classify(parse_result(raw, palettes), scheme)
         result.zoom_used = True
+        result.zoom_count = 1
+        result.transcript = [_transcript_entry(turns, raw)]
         return result
 
     turns = [
@@ -814,6 +834,7 @@ async def review_image(
 
     raw = await client.complete(turns, build_screening_schema())
     zooms_used = 0
+    transcript = [_transcript_entry(turns, raw)]
 
     while not _answered_in_full(raw):
         if (
@@ -831,7 +852,7 @@ async def review_image(
             follow_up = {
                 "role": "user",
                 "text": ZOOM_FINAL_FOLLOW_UP if final_turn else ZOOM_FOLLOW_UP,
-                "image_data_url": zoom_provider(zooms_used),
+                "image_data_url": _call_zoom_provider(zoom_provider, zooms_used),
             }
         else:
             if screening_requests_zoom(raw):
@@ -843,13 +864,47 @@ async def review_image(
         raw = await client.complete(
             turns, schema if final_turn else build_screening_schema()
         )
+        transcript.append(_transcript_entry(turns, raw))
         if final_turn:
             # Whatever comes back now is the answer.
             break
 
     result = classify(parse_result(raw, palettes), scheme)
     result.zoom_used = zooms_used > 0
+    result.zoom_count = zooms_used
+    result.transcript = transcript
     return result
+
+
+def _call_zoom_provider(provider, level: int) -> str:
+    """Call a zoom provider with backward-compat for zero-arg test lambdas."""
+    try:
+        return provider(level)
+    except TypeError:
+        return provider()
+
+
+def _transcript_entry(turns: List[dict], reply) -> dict:
+    """One exchange for the admin replay workbench: what the model was shown,
+    and what it said back.
+
+    Records the *cumulative* turns sent on this call (so each entry is a
+    complete, self-contained record of that request) with images reduced to a
+    marker rather than their data URL -- the workbench already renders the
+    actual images via admin_get_shot_vision_images, and a transcript entry
+    would otherwise carry the same base64 photo two or three times over.
+    """
+    return {
+        "turns": [
+            {
+                "role": turn["role"],
+                "text": turn["text"],
+                "has_image": bool(turn.get("image_data_url")),
+            }
+            for turn in turns
+        ],
+        "reply": reply,
+    }
 
 
 def _answered_in_full(raw) -> bool:
