@@ -131,12 +131,14 @@ async def review_shot(shot_id: UUID, client=None) -> None:
             # Cut the zoom from the *original*, not from `prepared`. The resize
             # above has already discarded the camera resolution that makes a
             # distant target readable, which is the only reason to zoom at all.
-            # Only called if the model asks, so an unzoomed shot costs nothing.
+            # The zoom is always sent: replay trials (roadmap #4) showed the
+            # model calls close misses hits at full confidence precisely because
+            # it never doubts itself enough to ask for the zoom.
             def zoom_provider():
                 return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
 
             result = await shot_vision.review_image(
-                client, prepared, zoom_provider=zoom_provider
+                client, prepared, zoom_provider=zoom_provider, always_zoom=True
             )
         payload = result.to_dict()
         logger.info(

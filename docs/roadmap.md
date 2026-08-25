@@ -357,6 +357,10 @@ since by then #10 has already told each player what they are wearing.
 
 ### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
 
+**Status: fixed on the replay set (2026-08-25) by making the zoom mandatory**
+— false-hit rate 0/40 over 5 replay runs, false-miss rate unchanged; details
+at the bottom of this section. Awaiting confirmation on real game data.
+
 **Symptom.** Shots that visibly miss are reported as hits.
 
 **Where it is decided.** `backend/shot_vision.py`: the model answers
@@ -470,6 +474,32 @@ before spending more session time on further prompt rewording -- it's a
 one-line change (drop the "if it is difficult to tell" gate and always take
 the zoom) and directly tests the "it never asks because it never doubts itself"
 theory.
+
+**Tried 2026-08-25: (b), the mandatory zoom — and it worked.** `review_image`
+grew an `always_zoom` mode (`backend/shot_vision.py`): the full frame and the
+zoomed centre go in a *single* call as two user turns (one API call, so the
+zoom no longer costs a second round-trip), the prompt tells the model both
+views are already in front of it and `request_zoom` must be false, and the
+reply is final. Replayed 5x over all 13 fixtures (65 trials,
+`google/gemini-3.7-flash-20260813`, 3 transient empty-reply errors retried and
+resolved; results at
+`tests/fixtures/shot_replay/replay_always_zoom_run{1..5}.jsonl`). **False-hit
+rate 0/40 (0%) — down from 5/40 in every previous variant — with the
+false-miss rate unchanged at 20/25 (80%).** d91548d3, the flagship false hit
+that survived all three prompt rewordings at 0.95 confidence, is now called
+`miss` in 5/5 runs at 0.98 confidence, with reasoning that finally sees the
+geometry: "the centre of the cross lands on the background foliage and sea to
+the left of the person's head". The hypothesis was right: the model never
+asked for the zoom because it never doubted itself, and with the zoom always
+in front of it the aim point is no longer below its perception limit. The four
+remaining false misses are unchanged and are *not* the model's error — they
+are `classify()`'s two-readable-channels → `hit_bystander` mapping (the
+model's channel observations match the admin notes exactly; whether that
+mapping should instead escalate to a stronger reviewer is the separate
+question in the 2026-08-24 handover), not a prompt problem.
+**Shipped:** the live path (`backend/ai_shot_review.review_shot`) now passes
+`always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
+old behaviour survives as the `optional_zoom` variant for comparison runs.
 
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this

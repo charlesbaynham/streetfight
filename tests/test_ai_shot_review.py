@@ -83,7 +83,7 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
     spy = mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
-    client = FakeVisionClient(reply=[{"request_zoom": True}, hit_reply()])
+    client = FakeVisionClient(reply=hit_reply())
 
     await ai_shot_review.review_shot(shot_from_user_in_team, client)
 
@@ -97,16 +97,20 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
 
 
 @pytest.mark.asyncio
-async def test_no_zoom_is_produced_when_the_model_does_not_ask(
+async def test_the_zoom_is_always_produced_whether_or_not_the_model_asks(
     mocker, db_session, shot_from_user_in_team
 ):
-    spy = mocker.patch("backend.ai_shot_review.zoom_image")
+    # Roadmap #4: the model calls close misses hits at full confidence without
+    # ever asking for the zoom, so the zoom is no longer its choice.
+    spy = mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
 
     await ai_shot_review.review_shot(
         shot_from_user_in_team, FakeVisionClient(hit_reply())
     )
 
-    spy.assert_not_called()
+    spy.assert_called_once()
 
 
 @pytest.mark.asyncio

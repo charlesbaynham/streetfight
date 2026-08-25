@@ -592,6 +592,49 @@ def test_the_buckets_cover_chinos():
     assert "beige" in sv.build_prompt()
 
 
+# -- the always-zoom mode ----------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_always_zoom_sends_both_views_in_one_call():
+    calls = []
+
+    def zoom_provider():
+        calls.append(1)
+        return "data:image/jpeg;base64,ZOOMED"
+
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_provider=zoom_provider,
+        always_zoom=True,
+    )
+
+    # The zoom is produced without being asked for, and costs one call, not two
+    assert calls == [1]
+    assert len(client.calls) == 1
+    assert client.images_sent == [
+        "data:image/jpeg;base64,WIDE",
+        "data:image/jpeg;base64,ZOOMED",
+    ]
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
+    assert result.zoom_used is True
+
+
+def test_the_always_zoom_prompt_does_not_offer_what_is_already_given():
+    prompt = sv.build_prompt(zoom_offered=False)
+
+    assert "You may do this once only" not in prompt
+    assert '"request_zoom" must be false' in prompt
+    # The hit rule itself is unchanged
+    assert "on their clothing, hands, or shoes" in prompt
+    assert "You MUST ultimately make a decision" in prompt
+
+
 @pytest.mark.parametrize(
     "text",
     [
