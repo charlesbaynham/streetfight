@@ -7,17 +7,11 @@ env:
   REGISTRY: ghcr.io
   IMAGE_NAME_PREFIX: ${{ github.repository }}
 
-# The frontend and backend jobs build with Nix and follow "Install Nix" with
-# the Magic Nix Cache. It stores build results in the GitHub Actions cache, so
-# pull requests get the cache too. install-nix-action adds the runner to
-# trusted-users by default, which is what lets the caching daemon register
-# itself as a substituter.
-#
-# Paths already available from the upstream cache (cache.nixos.org) are
-# deliberately not re-cached, so what this actually saves is the project's own
-# closure: the Python environment, the frontend build and the LXC tarball.
-# The reusable template job also uses the public streetfight Cachix cache; its
-# token is passed only to that job below.
+# Every job here builds with Nix. Results are cached in the public streetfight
+# Cachix cache (https://app.cachix.org/cache/streetfight): pulls are
+# anonymous, pushes use CACHIX_AUTH_TOKEN when available. The flake's
+# nixConfig declares the same substituter so local builds also hit the cache
+# without extra setup.
 
 jobs:
   build_frontend:
@@ -29,11 +23,10 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v31
-    - name: Set up the Nix binary cache
-      uses: DeterminateSystems/magic-nix-cache-action@v14
+    - uses: cachix/cachix-action@v17
       with:
-        # Not on FlakeHub; without this it tries to authenticate against it.
-        use-flakehub: false
+        name: streetfight
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build frontend docker image
@@ -69,11 +62,10 @@ jobs:
     - uses: actions/checkout@v2
     - name: Install Nix
       uses: cachix/install-nix-action@v31
-    - name: Set up the Nix binary cache
-      uses: DeterminateSystems/magic-nix-cache-action@v14
+    - uses: cachix/cachix-action@v17
       with:
-        # Not on FlakeHub; without this it tries to authenticate against it.
-        use-flakehub: false
+        name: streetfight
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
     - name: Compute Docker-safe branch tag
       run: echo "BRANCH_TAG=$(echo "$GITHUB_REF" | sed 's|refs/heads/||' | sed 's|/|-|g')" >> "$GITHUB_ENV"
     - name: Build backend docker image
