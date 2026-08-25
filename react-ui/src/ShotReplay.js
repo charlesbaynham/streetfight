@@ -97,7 +97,8 @@ function ShotVisionImages({ shot_id }) {
     };
   }, [shot_id]);
 
-  if (!images) return <p className={styles.visionLoading}>Loading vision images...</p>;
+  if (!images)
+    return <p className={styles.visionLoading}>Loading vision images...</p>;
 
   return (
     <div className={styles.visionImages}>
@@ -107,7 +108,9 @@ function ShotVisionImages({ shot_id }) {
           alt="Full frame as vision sees it"
           src={images.full}
         />
-        <span className={styles.visionLabel}>Full frame (as vision sees it)</span>
+        <span className={styles.visionLabel}>
+          Full frame (as vision sees it)
+        </span>
       </div>
       <div className={styles.visionImageWrapper}>
         <img
@@ -115,7 +118,9 @@ function ShotVisionImages({ shot_id }) {
           alt="Zoomed centre as vision sees it"
           src={images.zoomed}
         />
-        <span className={styles.visionLabel}>Zoomed centre (as vision sees it)</span>
+        <span className={styles.visionLabel}>
+          Zoomed centre (as vision sees it)
+        </span>
       </div>
     </div>
   );
