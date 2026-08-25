@@ -3,6 +3,8 @@
 import pytest
 
 from backend.identity.allocation import allocate_team_slots
+from backend.identity.allocation import assign_team_colours
+from backend.identity.allocation import colour_capacity
 from backend.identity.allocation import group_slots_by_channel
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
@@ -114,3 +116,45 @@ def test_more_slots_than_the_scheme_has_is_an_error():
 def test_nonsense_requests_are_rejected(n_teams, slots_per_team):
     with pytest.raises(ValueError):
         allocate_team_slots(SCHEME, n_teams, slots_per_team, TEAM_CHANNEL)
+
+
+def test_assign_team_colours_keeps_pinned_teams_and_colours_the_rest_freshly():
+    existing = {"reds": "red", "blues": "blue", "newcomers": None}
+
+    assigned = assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+    assert assigned["reds"] == "red"
+    assert assigned["blues"] == "blue"
+    assert assigned["newcomers"] not in {"red", "blue"}
+
+
+def test_assign_team_colours_rejects_more_teams_than_the_channel_has_colours():
+    existing = {
+        f"team{i}": None for i in range(len(colour_capacity(SCHEME, TEAM_CHANNEL)) + 1)
+    }
+
+    with pytest.raises(ValueError):
+        assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+
+def test_assign_team_colours_on_a_fresh_game_follows_the_bucket_order():
+    buckets = group_slots_by_channel(SCHEME, TEAM_CHANNEL)
+    existing = {f"team{i}": None for i in range(len(buckets))}
+
+    assigned = assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+    assert [assigned[f"team{i}"] for i in range(len(buckets))] == [
+        label for label, _ in buckets
+    ]
+
+
+def test_colour_capacity_matches_group_slots_by_channel_bucket_sizes():
+    capacity = colour_capacity(SCHEME, TEAM_CHANNEL)
+
+    assert capacity == {
+        label: len(slots)
+        for label, slots in group_slots_by_channel(SCHEME, TEAM_CHANNEL)
+    }
+    assert capacity["black"] == BUCKET_SIZE - 1
+    non_black = {label: size for label, size in capacity.items() if label != "black"}
+    assert set(non_black.values()) == {BUCKET_SIZE}

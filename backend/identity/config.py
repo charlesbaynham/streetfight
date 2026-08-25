@@ -50,6 +50,13 @@ CHANNEL_PALETTES = {"trousers": TROUSERS_PALETTE}
 # knows nor cares.
 TEAM_CHANNEL = "hat"
 
+# The channel we hand out at the gate (roadmap #9), and therefore choose
+# ourselves rather than leaving to a guest's wardrobe. Together with
+# TEAM_CHANNEL that makes the "wardrobe questions" -- the channels a player's
+# own clothes must answer -- exactly ``channels - {TEAM_CHANNEL,
+# PROVIDED_CHANNEL}``.
+PROVIDED_CHANNEL = "armbands"
+
 # The minimum distance the code must achieve. d = 3 over 4 channels gives the
 # [4,2,3] Reed-Solomon code: correct two erasures, or one misread, or one
 # erasure plus detect one misread. See the upgrade ladder in
@@ -88,6 +95,40 @@ COLOUR_BUCKETS = {
     "white": "includes cream and beige (e.g. chinos)",
 }
 
+# Estimated ownership probability per garment *per colour* (plan §12.6): these
+# are estimates, not measurements -- the ratios drive the ranking below, the
+# absolute percentages do not. Used to break ties towards rare outfits: a
+# colour few players own is a colour few passers-by wear, which generalises
+# plan §11.1's hard all-black exclusion (all-black is simply the extreme of
+# "common") into a graded preference rather than a single forbidden case.
+COLOUR_COMMONNESS = {
+    "tshirt": {
+        "black": 0.95,
+        "blue": 0.80,
+        "red": 0.55,
+        "green": 0.45,
+        "purple": 0.25,
+        "orange": 0.15,
+        "yellow": 0.15,
+    },
+    "trousers": {
+        "blue": 0.95,
+        "black": 0.90,
+        "white": 0.55,
+        "green": 0.30,
+        "red": 0.10,
+    },
+    "hat": {
+        "black": 0.30,
+        "blue": 0.18,
+        "red": 0.12,
+        "green": 0.10,
+        "purple": 0.06,
+        "orange": 0.05,
+        "yellow": 0.05,
+    },
+}
+
 # Decoder flag thresholds (tune per field experience).
 DEFAULT_THRESHOLDS = DecoderThresholds(
     confident_threshold=0.6,
@@ -105,6 +146,17 @@ def hex_for(channel_name: str, colour: str):
     """The hex for a colour *in a given channel*, or None if it isn't in it."""
     key = "trousers" if channel_name in CHANNEL_PALETTES else "main"
     return PALETTE_HEX[key].get(colour)
+
+
+def commonness_for(channel_name: str, colour: str) -> float:
+    """How common this colour is in that garment, 0..1. Unknown -> 0.5.
+
+    The neutral default keeps a colour or channel absent from
+    :data:`COLOUR_COMMONNESS` (e.g. a new palette entry, or ``armbands``,
+    which has no wardrobe data because it is provided rather than worn-in)
+    from silently sorting to an extreme.
+    """
+    return COLOUR_COMMONNESS.get(channel_name, {}).get(colour, 0.5)
 
 
 def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
