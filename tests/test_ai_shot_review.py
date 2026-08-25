@@ -363,9 +363,16 @@ async def test_a_replay_returns_the_full_transcript(
         shot_from_user_in_team, client, prompt="A made-up prompt"
     )
 
-    assert len(review["transcript"]) == 2
-    assert review["transcript"][0]["turns"][0]["text"] == "A made-up prompt"
-    assert review["transcript"][1]["reply"]["shot_hit_a_person"] is True
+    # A flat, chronological conversation: prompt, screening reply, the zoom
+    # follow-up, then the full reading -- nothing repeated turn to turn.
+    assert [entry["role"] for entry in review["transcript"]] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    assert review["transcript"][0]["text"] == "A made-up prompt"
+    assert review["transcript"][3]["reply"]["shot_hit_a_person"] is True
     assert review["zoom_count"] == 1
 
 
@@ -424,10 +431,13 @@ def test_vision_images_endpoint_returns_full_and_zoomed(
     data = response.json()
     assert "full" in data
     assert "zoomed" in data
+    assert "zoomed2" in data
     assert data["full"].startswith("data:image/jpeg;base64,")
     assert data["zoomed"].startswith("data:image/jpeg;base64,")
-    # Full and zoomed should be different (zoom crops the center)
+    assert data["zoomed2"].startswith("data:image/jpeg;base64,")
+    # Full, zoomed and zoomed2 should all differ (each crops closer in)
     assert data["full"] != data["zoomed"]
+    assert data["zoomed"] != data["zoomed2"]
 
 
 def test_vision_images_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):

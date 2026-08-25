@@ -53,18 +53,11 @@ const hitReview = {
   zoom_used: true,
   zoom_count: 1,
   transcript: [
+    { role: "user", text: "The screening question", has_image: true },
+    { role: "assistant", reply: { person_fills_less_than_half: true } },
+    { role: "user", text: "Here is another image", has_image: true },
     {
-      turns: [
-        { role: "user", text: "The screening question", has_image: true },
-      ],
-      reply: { person_fills_less_than_half: true },
-    },
-    {
-      turns: [
-        { role: "user", text: "The screening question", has_image: true },
-        { role: "assistant", text: '{"person_fills_less_than_half": true}' },
-        { role: "user", text: "Here is another image", has_image: true },
-      ],
+      role: "assistant",
       reply: { shot_hit_a_person: true, confidence: 0.9 },
     },
   ],
@@ -90,6 +83,7 @@ function visionImagesFor(shotId) {
   return {
     full: `data:image/jpeg;base64,vision-full-${shotId}`,
     zoomed: `data:image/jpeg;base64,vision-zoomed-${shotId}`,
+    zoomed2: `data:image/jpeg;base64,vision-zoomed2-${shotId}`,
   };
 }
 
@@ -185,20 +179,19 @@ test("shows how many times the zoom was spent, and the full model transcript", a
 
   expect(screen.getByText("Zoomed in ×1")).toBeInTheDocument();
   expect(
-    screen.getByText("Full model transcript (2 exchanges)"),
+    screen.getByText("Full model transcript (4 turns)"),
   ).toBeInTheDocument();
-  // The turn-by-turn view, collapsed by default: each turn's text and the
-  // raw reply for that exchange
-  expect(screen.getAllByText("The screening question").length).toBeGreaterThan(
-    0,
-  );
+  // The flat, chronological view, collapsed by default: each turn's text or
+  // reply, in the order they were actually exchanged -- nothing repeated
+  expect(screen.getByText("The screening question")).toBeInTheDocument();
   expect(screen.getByText("Here is another image")).toBeInTheDocument();
-
-  // The prettified-JSON toggle dumps the whole transcript instead
-  fireEvent.click(screen.getByLabelText("Prettified JSON"));
   expect(
     screen.getByText(/"person_fills_less_than_half": true/),
   ).toBeInTheDocument();
+
+  // The prettified-JSON toggle dumps the whole transcript instead
+  fireEvent.click(screen.getByLabelText("Prettified JSON"));
+  expect(screen.getByText(/"shot_hit_a_person": true/)).toBeInTheDocument();
 });
 
 test("a replay disagreeing with the admin's verdict says so", async () => {
@@ -261,7 +254,7 @@ test("a failed replay is shown against the shot", async () => {
 });
 
 describe("vision-formatted images", () => {
-  test("each shot card shows the two vision images (full + zoomed) with correct src", async () => {
+  test("shows only the full frame before any replay has run", async () => {
     installWorkshopMock({ "shot-1": makeShotDetail() });
 
     await actAndFlush(() =>
@@ -272,26 +265,84 @@ describe("vision-formatted images", () => {
       ),
     );
 
-    // Vision images are fetched per shot_id and rendered side-by-side
+    // Nothing is known yet about whether a zoom followed, so only the full
+    // frame shows -- not the zoom images the endpoint also returns.
     expect(
       await screen.findByAltText("Full frame as vision sees it"),
     ).toHaveAttribute("src", "data:image/jpeg;base64,vision-full-shot-1");
     expect(
-      screen.getByAltText("Zoomed centre as vision sees it"),
-    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed-shot-1");
-    expect(
       screen.getByText("Full frame (as vision sees it)"),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Zoomed centre (as vision sees it)"),
-    ).toBeInTheDocument();
+      screen.queryByAltText(/Zoom \d centre as vision sees it/),
+    ).not.toBeInTheDocument();
 
     expect(getLastAPICall("admin_get_shot_vision_images").query).toEqual({
       shot_id: "shot-1",
     });
   });
 
-  test("renders both vision images for every shot in the list", async () => {
+  test("shows only as many zoom images as the replay actually spent", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      { admin_replay_shot_review: { ...hitReview, zoom_count: 1 } },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Replay 1 selected shot" }),
+      ),
+    );
+
+    expect(
+      screen.getByAltText("Zoom 1 centre as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed-shot-1");
+    expect(
+      screen.queryByAltText("Zoom 2 centre as vision sees it"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("shows both zoom images when the replay spent a second zoom", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      { admin_replay_shot_review: { ...hitReview, zoom_count: 2 } },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Replay 1 selected shot" }),
+      ),
+    );
+
+    expect(
+      screen.getByAltText("Zoom 1 centre as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed-shot-1");
+    expect(
+      screen.getByAltText("Zoom 2 centre as vision sees it"),
+    ).toHaveAttribute("src", "data:image/jpeg;base64,vision-zoomed2-shot-1");
+  });
+
+  test("renders the full frame for every shot in the list", async () => {
     installWorkshopMock({
       "shot-1": makeShotDetail({ id: "shot-1" }),
       "shot-2": {
@@ -311,9 +362,6 @@ describe("vision-formatted images", () => {
 
     expect(
       await screen.findAllByAltText("Full frame as vision sees it"),
-    ).toHaveLength(2);
-    expect(
-      screen.getAllByAltText("Zoomed centre as vision sees it"),
     ).toHaveLength(2);
     expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(2);
   });

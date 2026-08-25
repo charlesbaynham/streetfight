@@ -571,15 +571,20 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
 
 @admin_method("/admin_get_shot_vision_images", method="GET")
 async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
-    """Return the shot image formatted exactly as the vision model sees it.
+    """Return the shot image formatted exactly as the vision model sees it, at
+    every zoom level the pipeline can reach.
 
-    Two images are returned:
+    Three images are returned:
     - full: the whole frame with aim marker, downscaled to 1024px max (what
       prepare_for_vision produces)
     - zoomed: the centre 12.5% of the original, cropped and upscaled to 1024px
-      with a fresh aim marker (what zoom_image produces)
+      with a fresh aim marker -- the first zoom (what zoom_image produces)
+    - zoomed2: the centre 12.5% of *that*, i.e. 1/ZOOM_FACTOR**2 of the
+      original -- the second zoom, spent only if the first wasn't enough
 
-    Both are JPEG data URLs ready to render in <img>.
+    Which of these a replay actually used is ShotVisionResult.zoom_count, not
+    anything about the shot itself, so the caller decides how many to show.
+    All three are JPEG data URLs ready to render in <img>.
     """
     original = AdminInterface().get_shot_image_base64(shot_id)
 
@@ -588,10 +593,13 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
         image_processing.draw_aim_marker(original)
     )
 
-    # Zoomed frame: centre 12.5% crop from ORIGINAL, upscale to 1024px, aim marker
+    # Zoomed frames: successive centre crops from ORIGINAL, each upscaled to
+    # 1024px with its own aim marker, compounding as ZOOM_FACTOR**level exactly
+    # as backend.ai_shot_review's zoom_provider does.
     zoomed = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR)
+    zoomed2 = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR**2)
 
-    return {"full": full, "zoomed": zoomed}
+    return {"full": full, "zoomed": zoomed, "zoomed2": zoomed2}
 
 
 @admin_method("/admin_get_default_vision_prompt", method="GET")

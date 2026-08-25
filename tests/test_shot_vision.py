@@ -628,7 +628,7 @@ async def test_max_two_zooms_is_enforced():
 
 
 @pytest.mark.asyncio
-async def test_the_transcript_records_every_exchange():
+async def test_the_transcript_is_a_flat_append_only_conversation():
     client = FakeVisionClient(
         reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
     )
@@ -637,17 +637,17 @@ async def test_the_transcript_records_every_exchange():
         client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
     )
 
-    assert len(result.transcript) == 3
-    # Each entry is a complete, self-contained record of that request: the
-    # cumulative turns sent (image reduced to a marker) and the raw reply.
-    assert result.transcript[0]["turns"][0]["has_image"] is True
-    assert result.transcript[0]["reply"] == SMALL_PERSON
+    # One entry per turn actually exchanged -- nothing sent earlier is
+    # repeated when a later turn is added, unlike the cumulative turns list
+    # each API call is made with.
+    roles = [entry["role"] for entry in result.transcript]
+    assert roles == ["user", "assistant", "user", "assistant", "user", "assistant"]
+    assert result.transcript[0]["has_image"] is True
     assert result.transcript[1]["reply"] == SMALL_PERSON
-    assert result.transcript[2]["reply"] == reply_for(appearance_of(8))
-    # Later entries include the earlier ones as assistant/user turns
-    assert len(result.transcript[1]["turns"]) == 3
-    assert len(result.transcript[2]["turns"]) == 5
-    assert result.transcript[2]["turns"][-1]["has_image"] is True
+    assert result.transcript[3]["reply"] == SMALL_PERSON
+    assert result.transcript[5]["reply"] == reply_for(appearance_of(8))
+    assert result.transcript[2]["has_image"] is True
+    assert result.transcript[4]["has_image"] is True
     # No raw base64 image data leaks into the transcript
     assert "data:zoom" not in json.dumps(result.transcript)
 
@@ -726,11 +726,16 @@ async def test_always_zoom_sends_both_views_in_one_call():
     assert result.slot == 8
     assert result.zoom_used is True
     assert result.zoom_count == 1
-    # Both turns and the one reply, in a single transcript entry
-    assert len(result.transcript) == 1
-    assert len(result.transcript[0]["turns"]) == 2
-    assert all(turn["has_image"] for turn in result.transcript[0]["turns"])
-    assert result.transcript[0]["reply"] == reply_for(appearance_of(8))
+    # Both turns, then the one reply -- there is no separate assistant echo
+    # in between, since they went in a single call
+    assert [entry["role"] for entry in result.transcript] == [
+        "user",
+        "user",
+        "assistant",
+    ]
+    assert result.transcript[0]["has_image"] is True
+    assert result.transcript[1]["has_image"] is True
+    assert result.transcript[2]["reply"] == reply_for(appearance_of(8))
 
 
 def test_the_always_zoom_prompt_skips_the_screening_question():
