@@ -821,7 +821,9 @@ async def review_image(
         result = classify(parse_result(raw, palettes), scheme)
         result.zoom_used = True
         result.zoom_count = 1
-        result.transcript = [_transcript_entry(turns, raw)]
+        result.transcript = [_transcript_turn(turn) for turn in turns] + [
+            {"role": "assistant", "reply": raw}
+        ]
         return result
 
     turns = [
@@ -834,7 +836,7 @@ async def review_image(
 
     raw = await client.complete(turns, build_screening_schema())
     zooms_used = 0
-    transcript = [_transcript_entry(turns, raw)]
+    transcript = [_transcript_turn(turns[0]), {"role": "assistant", "reply": raw}]
 
     while not _answered_in_full(raw):
         if (
@@ -861,10 +863,11 @@ async def review_image(
             final_turn = True
 
         turns = turns + [{"role": "assistant", "text": json.dumps(raw)}, follow_up]
+        transcript.append(_transcript_turn(follow_up))
         raw = await client.complete(
             turns, schema if final_turn else build_screening_schema()
         )
-        transcript.append(_transcript_entry(turns, raw))
+        transcript.append({"role": "assistant", "reply": raw})
         if final_turn:
             # Whatever comes back now is the answer.
             break
@@ -884,26 +887,21 @@ def _call_zoom_provider(provider, level: int) -> str:
         return provider()
 
 
-def _transcript_entry(turns: List[dict], reply) -> dict:
-    """One exchange for the admin replay workbench: what the model was shown,
-    and what it said back.
+def _transcript_turn(turn: dict) -> dict:
+    """One user turn for the admin replay workbench's transcript.
 
-    Records the *cumulative* turns sent on this call (so each entry is a
-    complete, self-contained record of that request) with images reduced to a
-    marker rather than their data URL -- the workbench already renders the
-    actual images via admin_get_shot_vision_images, and a transcript entry
-    would otherwise carry the same base64 photo two or three times over.
+    The conversation is append-only -- nothing sent earlier is ever revised --
+    so the transcript is a single flat, chronological list rather than a
+    snapshot of the cumulative turns replayed on every call: that would show
+    the same early turns over and over, once per later exchange. The image is
+    reduced to a marker rather than its data URL -- the workbench already
+    renders the actual images via admin_get_shot_vision_images, and a
+    transcript entry would otherwise carry the same base64 photo repeatedly.
     """
     return {
-        "turns": [
-            {
-                "role": turn["role"],
-                "text": turn["text"],
-                "has_image": bool(turn.get("image_data_url")),
-            }
-            for turn in turns
-        ],
-        "reply": reply,
+        "role": turn["role"],
+        "text": turn["text"],
+        "has_image": bool(turn.get("image_data_url")),
     }
 
 

@@ -537,6 +537,20 @@ a bare "Zoomed in" for reviews stored before this); the workbench also gets a
 collapsible "Full model transcript" per replayed shot, with a "Prettified
 JSON" toggle that dumps the whole exchange instead of the per-turn cards.
 
+**Refined 2026-08-25 (later):** two follow-up fixes once this was actually
+used. First, the vision-images panel showed the full frame and one zoom crop
+unconditionally, regardless of whether a zoom was actually spent -- now it
+shows only the full frame until a replay runs, then exactly as many zoom
+crops as `zoom_count` says were used (`admin_get_shot_vision_images` grew a
+`zoomed2` alongside `zoomed`). Second, `transcript` was a list of *cumulative*
+snapshots -- each exchange repeating every earlier turn verbatim before
+adding its own -- which read as duplication once printed as JSON. The
+conversation is append-only (nothing sent earlier is ever revised), so
+`transcript` is now that flat chronological list directly: one entry per
+turn, user prompts as text and assistant replies as the parsed JSON, with
+nothing repeated. (Also checked: each turn already sends its text before its
+image in the message content, which is what you want for prompt caching.)
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).
