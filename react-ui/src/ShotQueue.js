@@ -103,7 +103,7 @@ function ShotAiTags({ shot_id }) {
 }
 
 // What an adjudicated shot was marked as, for the history view.
-function verdictText(shot) {
+export function verdictText(shot) {
   if (shot.result === "hit") {
     const target = shot.game.teams
       .flatMap((team) => team.users)

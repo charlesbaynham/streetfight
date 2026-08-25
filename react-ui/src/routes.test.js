@@ -15,6 +15,7 @@ import { installFetchMock } from "./testUtils";
 import UserMode from "./UserMode";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
+import ShotReplay from "./ShotReplay";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminLogin from "./AdminLogin";
@@ -138,6 +139,26 @@ describe("/admin/shots (ShotQueue)", () => {
     // to shot_ids.length - 1 = -1, so the heading reads "Shot 0 of 0:"
     // rather than "Shot 1 of 0:".
     expect(screen.getByText("Shot 0 of 0:")).toBeInTheDocument();
+  });
+});
+
+describe("/admin/replay (ShotReplay)", () => {
+  test("mounts and shows the workbench once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_get_default_vision_prompt: { prompt: "The live prompt" },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Shot replay workbench" }),
+    ).toBeInTheDocument();
   });
 });
 

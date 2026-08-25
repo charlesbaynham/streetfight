@@ -38,6 +38,11 @@ import os
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Callable
+from typing import Dict
+from typing import List
+from typing import NamedTuple
+from typing import Optional
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -65,12 +70,72 @@ load_env_vars()
 TRUTH_VALUES = ("hit", "miss", "bystander", "refunded")
 AI_OUTCOMES = {HIT_PLAYER: "hit", HIT_BYSTANDER: "bystander", MISS: "miss"}
 
-# Prompt variants for roadmap #4 land here. "baseline" is None, i.e. whatever
-# shot_vision.build_prompt currently produces, so a replay always scores what
-# the live pipeline would have said. A variant is a callable taking the
-# channel palettes and returning the prompt text.
+# Roadmap #4 suspects 3+4: instead of a bare "did it hit" boolean, make the
+# model place the cross's centre point into four buckets spanning clearly-hit
+# to clearly-miss, with the two boundary buckets explicitly naming which side
+# of "hit" they're on -- and break a genuine tie towards "miss" (the cheaper
+# wrong answer). Same JSON contract as the default rule, so parsing is
+# unchanged; only the reasoning scaffold differs.
+BOUNDARY_SCALE_RULE = f"""FIRST: did the shot hit a person? Judge this by placing the centre point of \
+the cross into one of these four buckets:
+
+- clearly hitting: the centre point is unambiguously on the person's body or \
+clothing, with room to spare on every side.
+- on the boundary, but just hitting: the centre point is right at the edge of \
+the person -- on their outline, or on the very edge of their clothing -- close \
+enough that if you had to bet, you would bet it is on them.
+- on the boundary, but just missing: the centre point is right at the edge but \
+just outside the person -- beside them, touching their outline from the \
+outside, or in the gap between two people -- close enough that if you had to \
+bet, you would bet it is not on them.
+- miles away: there is clear space between the centre point and any person, or \
+there is nobody near it at all.
+
+Set "{shot_vision.HIT_FIELD}" to true for "clearly hitting" or "on the \
+boundary, but just hitting". Set it to false for "on the boundary, but just \
+missing" or "miles away". If the centre point lands on foliage, an object, or \
+empty ground, that is a miss even if a person is standing right next to it.
+
+Some shots will be very close. For these, if it is difficult to place the \
+centre point into one of the four buckets, you may request a zoomed version of \
+the image once. You MUST still end up choosing one of the four buckets and \
+setting "{shot_vision.HIT_FIELD}" accordingly -- do not leave it undecided. \
+When genuinely torn between "just hitting" and "just missing", pick "just \
+missing": a wrongly-called miss costs the shooter one bullet, but a \
+wrongly-called hit takes a life from somebody who was never shot."""
+
+
+def _boundary_scale_prompt(palettes: Dict[str, List[str]]) -> str:
+    return shot_vision.build_prompt(palettes, decision_rule=BOUNDARY_SCALE_RULE)
+
+
+class PromptVariant(NamedTuple):
+    """A replay experiment: the prompt to send, and how the zoom is handled.
+
+    ``build_prompt`` is a callable taking the channel palettes and returning
+    the prompt text; None means whatever ``shot_vision.build_prompt`` currently
+    produces, so a replay always scores what the live pipeline would have said.
+    ``always_zoom`` is passed through to ``shot_vision.review_image``: the zoom
+    is sent up front whether the model asks or not.
+    """
+
+    build_prompt: Optional[Callable] = None
+    always_zoom: bool = False
+
+
+# Prompt variants for roadmap #4 land here. "baseline" is the live pipeline's
+# own prompt and zoom behaviour -- since the always-zoom trial shipped, that
+# means the zoom is sent up front. "optional_zoom" preserves the pre-change
+# behaviour (the model must ask) for comparison runs.
 PROMPT_VARIANTS = {
-    "baseline": None,
+    "baseline": PromptVariant(always_zoom=True),
+    "optional_zoom": PromptVariant(),
+    "boundary_scale": PromptVariant(build_prompt=_boundary_scale_prompt),
+    # Roadmap #4, the experiment that worked: the false hits never requested
+    # the zoom because they never doubted themselves, so the zoom is sent
+    # whether they ask or not. Identical to "baseline"; kept under its own name
+    # because that is what the replay_always_zoom_run*.jsonl files record.
+    "always_zoom": PromptVariant(always_zoom=True),
 }
 
 # Scoring a historical shot against the *current* user table cannot reproduce
@@ -148,6 +213,7 @@ def _load_fixture_shots(fixtures_dir: str):
                 "game_id": entry.get("game_id"),
                 "time": entry.get("time"),
                 "truth": entry.get("result") or entry.get("human_label"),
+                "admin_notes": entry.get("admin_notes"),
                 "ai_review_state": (
                     AI_REVIEW_STATE_DONE if entry.get("ai_review") else None
                 ),
@@ -399,6 +465,7 @@ def cmd_export(args) -> None:
                     "time": str(shot.time_created),
                     "shooter": shot.user.name,
                     "result": shot.result,
+                    "admin_notes": shot.admin_notes,
                     "human_label": None,
                     "label_note": None,
                     "image": filename,
@@ -418,7 +485,7 @@ def cmd_export(args) -> None:
     print(f"Exported {len(entries)} shots to {out_dir}")
 
 
-async def _replay_one(shot: dict, client, prompt, semaphore) -> dict:
+async def _replay_one(shot: dict, client, prompt, semaphore, always_zoom: bool) -> dict:
     """One shot through the real pipeline: marker, resize, review, one zoom."""
     async with semaphore:
         try:
@@ -428,7 +495,11 @@ async def _replay_one(shot: dict, client, prompt, semaphore) -> dict:
                 return zoom_image(shot["image_base64"], factor=shot_vision.ZOOM_FACTOR)
 
             result = await shot_vision.review_image(
-                client, prepared, zoom_provider=zoom_provider, prompt=prompt
+                client,
+                prepared,
+                zoom_provider=zoom_provider,
+                prompt=prompt,
+                always_zoom=always_zoom,
             )
             return {"review": result.to_dict()}
         except Exception as e:  # a failed shot is data, not a crash
@@ -441,8 +512,12 @@ def cmd_replay(args) -> None:
         raise SystemExit(
             f"unknown variant {args.variant!r}; known: {sorted(PROMPT_VARIANTS)}"
         )
-    prompt_builder = PROMPT_VARIANTS[args.variant]
-    prompt = prompt_builder(shot_vision.channel_palettes()) if prompt_builder else None
+    variant = PROMPT_VARIANTS[args.variant]
+    prompt = (
+        variant.build_prompt(shot_vision.channel_palettes())
+        if variant.build_prompt
+        else None
+    )
 
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -471,7 +546,10 @@ def cmd_replay(args) -> None:
 
     async def run_all():
         return await asyncio.gather(
-            *(_replay_one(shot, client, prompt, semaphore) for shot in todo)
+            *(
+                _replay_one(shot, client, prompt, semaphore, variant.always_zoom)
+                for shot in todo
+            )
         )
 
     outcomes = asyncio.run(run_all())

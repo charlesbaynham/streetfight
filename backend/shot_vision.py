@@ -202,9 +202,72 @@ def wants_zoom(raw) -> bool:
     return isinstance(raw, dict) and raw.get(ZOOM_FIELD) is True
 
 
-def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
-    """The instructions sent alongside the photo."""
+_HIT_TEST = f"""FIRST: did the shot hit a person? If the centre of the cross is on empty ground, \
+a wall, foliage, the sky, or nobody in particular, set "{HIT_FIELD}" to false -- \
+even if one of the red lines passes over or right next to a person elsewhere in \
+the frame. The lines themselves are not the hit; only their centre point is."""
+
+_ZOOM_OPTIONAL_SENTENCES = """Some shots will be very close. For these, if it is \
+difficult for you to tell whether it is a hit or not, you may request a zoomed \
+version of the image once. You MUST ultimately make a decision on whether the \
+shot is hitting a person or not."""
+
+_ZOOM_UPFRONT_SENTENCES = """You MUST ultimately make a decision on whether the \
+shot is hitting a person or not -- the zoomed view is already in front of you \
+for exactly that."""
+
+_HIT_DEFINITION = """It is a hit only if the centre of the cross itself lands on \
+the person -- on their clothing, hands, or shoes. It is a miss if the centre \
+point is on the background instead -- ground, a wall, foliage, a street light \
+-- even if that background is right beside them."""
+
+DEFAULT_DECISION_RULE = f"{_HIT_TEST}\n\n{_ZOOM_OPTIONAL_SENTENCES} {_HIT_DEFINITION}"
+
+# The same rule for when the zoom is provided up front rather than on request:
+# identical except that there is nothing left to ask for.
+UPFRONT_ZOOM_DECISION_RULE = (
+    f"{_HIT_TEST}\n\n{_ZOOM_UPFRONT_SENTENCES} {_HIT_DEFINITION}"
+)
+
+
+def build_prompt(
+    palettes: Optional[Dict[str, List[str]]] = None,
+    decision_rule: Optional[str] = None,
+    zoom_offered: bool = True,
+) -> str:
+    """The instructions sent alongside the photo.
+
+    ``decision_rule`` is the paragraph(s) telling the model how to turn the
+    cross's position into a hit/miss call -- pulled out as a parameter so
+    roadmap #4's prompt variants (``scripts/replay_shot_reviews.py``) can swap
+    it without duplicating the rest of the template (channel questions,
+    colour buckets, JSON shape).
+
+    ``zoom_offered`` selects the zoom wording: the model is either *offered* a
+    zoom it may request once (the default), or told the zoomed view is already
+    in front of it (the always-zoom path in :func:`review_image`), in which
+    case the default decision rule drops the request sentences to match.
+    """
     palettes = palettes or channel_palettes()
+    if decision_rule is None:
+        decision_rule = (
+            DEFAULT_DECISION_RULE if zoom_offered else UPFRONT_ZOOM_DECISION_RULE
+        )
+
+    if zoom_offered:
+        zoom_paragraph = """You have the ability to request a zoomed-in view of this photograph if you reply \
+with {"request_zoom": true} and nothing else. The next turn will provide you an \
+image that contains only the middle 25% of the image in higher resolution. You \
+may do this once only, so spend it on a target that is too small or too far away \
+to judge from the whole frame. If the image is merely blurred, a zoom will not \
+help."""
+    else:
+        zoom_paragraph = """You are shown this photograph twice: the first image is the whole frame, and \
+the second is a zoomed-in view containing only the middle 25% of it in higher \
+resolution, with the same red cross redrawn at the same aim point -- only its \
+centre pixel counts, exactly as in the full frame. Use whichever view is \
+clearer, and trust the zoomed one when they disagree. The zoom is already in \
+front of you, so "request_zoom" must be false in your reply."""
 
     buckets = "\n".join(
         f"- {colour}: {note}"
@@ -227,28 +290,21 @@ def build_prompt(palettes: Optional[Dict[str, List[str]]] = None) -> str:
         )
 
     return f"""You are looking at a photograph taken during a street game. A player \
-has photographed someone in order to "shoot" them. The crosshair marks where the \
-shot landed.
+has photographed someone in order to "shoot" them.
 
-Your job is to report what the person at the crosshair is wearing. Report only \
-what you can actually see. Do not guess.
+The photo has a thin red cross drawn across it -- one horizontal line and one \
+vertical line, each spanning the whole image. The lines themselves are guides \
+only, there to help you find the aim point -- IGNORE anything they merely pass \
+over or touch elsewhere in the frame. The single pixel at the centre of the \
+cross, where the two lines meet, is the exact spot the shot landed. Only what \
+is at that one pixel matters.
 
-You have the ability to request a zoomed-in view of this photograph if you reply \
-with {{"request_zoom": true}} and nothing else. The next turn will provide you an \
-image that contains only the middle 25% of the image in higher resolution. You \
-may do this once only, so spend it on a target that is too small or too far away \
-to judge from the whole frame. If the image is merely blurred, a zoom will not \
-help.
+Your job is to report what the person at the centre of the cross is wearing. \
+Report only what you can actually see. Do not guess.
 
-FIRST: did the shot hit a person? If the crosshair is on empty ground, a wall, \
-the sky, or nobody in particular, set "{HIT_FIELD}" to false.
+{zoom_paragraph}
 
-Some shots will be very close. For these, if it is difficult for you to tell \
-whether it is a hit or not, you may request a zoomed version of the image once. \
-You MUST ultimately make a decision on whether the shot is hitting a person or \
-not. Hitting any part of their clothing or hands or shoes counts as a hit. It is \
-only a miss if it entirely misses the person and hits, for example, a building or \
-a street light.
+{decision_rule}
 
 If the shot hit a person, answer these questions about THAT PERSON ONLY. There \
 are usually other people in the frame -- passers-by who are not in the game. \
@@ -278,8 +334,18 @@ Reply with JSON only, matching this shape:
 
 ZOOM_FOLLOW_UP = (
     "Here is the zoomed view: the middle 25% of the previous photograph, at "
-    "higher resolution. The crosshair again marks where the shot landed. This is "
-    "your one zoom, so answer in full now with the JSON described above. "
+    "higher resolution. The same red cross marks the same aim point, redrawn for "
+    "this cropped view -- only its centre pixel counts as the hit, exactly as "
+    "before. This is your one zoom, so answer in full now with the JSON described "
+    'above. "request_zoom" must be false in your reply.'
+)
+
+# The second turn of the always-zoom path: the zoomed view, sent whether or not
+# the model would have asked for it.
+ZOOM_UPFRONT_TURN = (
+    "Here is the zoomed view promised above: the middle 25% of the first "
+    "photograph, at higher resolution, with the same red cross redrawn at the "
+    "same aim point. Answer in full now with the JSON described above; "
     '"request_zoom" must be false in your reply.'
 )
 
@@ -647,6 +713,7 @@ async def review_image(
     palettes=None,
     zoom_provider=None,
     prompt: Optional[str] = None,
+    always_zoom: bool = False,
 ) -> ShotVisionResult:
     """Review one prepared image, allowing the model a single zoom.
 
@@ -655,16 +722,46 @@ async def review_image(
     saved shots; the live path leaves it as the default.
 
     ``zoom_provider`` is a zero-argument callable returning a magnified view of
-    the shot, and is only invoked if the model asks for one. It is a callable
-    rather than a second image argument so the cost of producing the zoom is not
-    paid on the shots that do not need it -- and so the caller can cut it from
-    the *original* photo, which is the whole point (see
+    the shot. By default it is only invoked if the model asks for a zoom. It is
+    a callable rather than a second image argument so the cost of producing the
+    zoom is not paid on the shots that do not need it -- and so the caller can
+    cut it from the *original* photo, which is the whole point (see
     :func:`~backend.image_processing.zoom_image`).
+
+    With ``always_zoom`` the zoom stops being the model's choice: both views go
+    in a single call and the reply is final. Roadmap #4's replay runs showed
+    the model's self-assessed certainty does not track its accuracy -- it calls
+    a close miss a hit at 0.95 confidence and never once asks for the zoom that
+    makes the truth obvious -- so the harness trials this mode before the live
+    path adopts it.
 
     The one-zoom limit is enforced here rather than trusted to the prompt.
     """
     palettes = palettes or channel_palettes()
     schema = build_schema(palettes)
+
+    if always_zoom and zoom_provider is not None:
+        turns = [
+            {
+                "role": "user",
+                "text": (
+                    prompt
+                    if prompt is not None
+                    else build_prompt(palettes, zoom_offered=False)
+                ),
+                "image_data_url": image_data_url,
+            },
+            {
+                "role": "user",
+                "text": ZOOM_UPFRONT_TURN,
+                "image_data_url": zoom_provider(),
+            },
+        ]
+        # One call, both views: whatever comes back is the answer.
+        raw = await client.complete(turns, schema)
+        result = classify(parse_result(raw, palettes), scheme)
+        result.zoom_used = True
+        return result
 
     turns = [
         {
