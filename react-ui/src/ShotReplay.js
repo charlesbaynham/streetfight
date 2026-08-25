@@ -77,7 +77,7 @@ function ReplayResult({ review }) {
 // zoomed centre crop, both with the aim marker and downscaled to 1024px.
 // Fetched from admin_get_shot_vision_images, which formats identically to the
 // pipeline (prepare_for_vision + zoom_image).
-function ShotVisionImages({ shot_id }) {
+export function ShotVisionImages({ shot_id }) {
   const [images, setImages] = useState(null);
 
   useEffect(() => {
