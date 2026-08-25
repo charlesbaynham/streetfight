@@ -81,14 +81,20 @@ function ShotVisionImages({ shot_id }) {
   const [images, setImages] = useState(null);
 
   useEffect(() => {
+    setImages(null);
     if (!shot_id) return;
+    let cancelled = false;
     sendAPIRequest("admin_get_shot_vision_images", { shot_id }).then(
       async (response) => {
+        if (cancelled) return;
         if (!response.ok) return;
         const body = await response.json();
-        setImages(body);
+        if (!cancelled) setImages(body);
       },
     );
+    return () => {
+      cancelled = true;
+    };
   }, [shot_id]);
 
   if (!images) return <p className={styles.visionLoading}>Loading vision images...</p>;
@@ -121,7 +127,14 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
   const [shot, setShot] = useState(null);
 
   useEffect(() => {
-    getShotFromCache(shot_id).then(setShot);
+    setShot(null);
+    let cancelled = false;
+    getShotFromCache(shot_id).then((s) => {
+      if (!cancelled) setShot(s);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [shot_id]);
 
   if (!shot) return <div className={styles.card}>Loading...</div>;

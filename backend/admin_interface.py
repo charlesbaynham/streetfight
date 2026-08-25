@@ -108,6 +108,20 @@ class AdminInterface:
         return row[0]
 
     @db_scoped
+    def get_shot_image_base64(self, shot_id) -> str:
+        """Just the image for a shot, without loading the whole model.
+
+        The vision-images endpoint only needs the base64 data; loading a
+        ShotModel would also instantiate the GameModel via ShotModel.game
+        and its teams/users.
+        404s if the shot is unknown.
+        """
+        row = self._session.query(Shot.image_base64).filter_by(id=shot_id).first()
+        if not row:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+        return row[0]
+
+    @db_scoped
     def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
         """The oldest unchecked shot in a game, or None if the queue is empty.
 

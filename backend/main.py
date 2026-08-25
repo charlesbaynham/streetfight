@@ -581,10 +581,7 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
 
     Both are JPEG data URLs ready to render in <img>.
     """
-    from .admin_interface import AdminInterface
-
-    shot_model = AdminInterface().get_shot_model(shot_id=shot_id)
-    original = shot_model.image_base64
+    original = AdminInterface().get_shot_image_base64(shot_id)
 
     # Full frame: aim marker + downscale to 1024px max
     full = image_processing.prepare_for_vision(
