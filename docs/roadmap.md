@@ -513,8 +513,17 @@ one final, closer view (`MAX_ZOOMS = 2`, compounding as `ZOOM_FACTOR**level`).
 The `request_zoom` field is gone — the model never chooses the zoom, it only
 ever answers how big the person is. `always_zoom=True` survives for replay
 comparisons; the harness's `baseline` variant tracks the screening flow and
-`optional_zoom` is retired. Not yet replay-scored — run `baseline` vs
-`always_zoom` over the fixtures before trusting it.
+`optional_zoom` is retired.
+
+**Replay-scored 2026-08-25:** one run of `baseline` over all 13 fixtures
+(`tests/fixtures/shot_replay/replay_screening_gate_run1.jsonl`) — **false-hit
+rate 0/8 (0%), false-miss rate 4/5 (80%)**, matching the always-zoom numbers
+this variant replaces. d91548d3, the flagship false hit, is `miss` at 0.99
+confidence. The four false misses are the same `hit_bystander` mapping noted
+above (armbands hidden, other channels incomplete), not a regression from the
+screening gate. Single run, not the 5x done for the earlier variants — worth
+repeating before fully trusting the rate, but it confirms the screening gate
+did not reintroduce the false-hit problem it was built to avoid.
 
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
