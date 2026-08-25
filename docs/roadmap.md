@@ -609,6 +609,18 @@ toggle and a per-shot **admin notes** field (`Shot.admin_notes`,
 `admin_get_shot_notes` / `admin_set_shot_notes`) so future exports carry real
 adjudications and the reasoning behind them.
 
+**Model-family sweep (2026-08-25, blocked on a key):** `scripts/replay_shot_reviews.py`
+grew `replay_to_file`, the reusable core of `cmd_replay`, and a new
+`scripts/benchmark_vision_family.py` drives it over a list of models --
+every size OpenRouter currently lists under Qwen3-VL (235B-A22B, 32B,
+30B-A3B, 8B, instruct and thinking variants) plus the pipeline's own default
+`google/gemini-3.7-flash-20260813` -- writing one resumable JSONL per model
+under `--out-dir` and printing a side-by-side accuracy table plus a tool-use
+tally (JSON-schema/parse failures, empty replies, rejected requests). See
+`docs/vision_model_family_benchmark_2026-08-25.md` for the model list, how to
+run it, and why no run has actually happened yet (no `OPENROUTER_API_KEY` in
+the sandbox this was written in).
+
 **R2, after the game — the scorecard.** The admin-facing version: an endpoint and
 a page reporting CharlesBot's outcome against the admin's over a game or all
 games, broken down by whether the zoom was used and by how many channels were

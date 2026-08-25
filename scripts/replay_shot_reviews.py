@@ -507,6 +507,72 @@ async def _replay_one(shot: dict, client, prompt, semaphore, always_zoom: bool) 
             return {"error": str(e) or e.__class__.__name__}
 
 
+def replay_to_file(
+    shots: List[dict],
+    client,
+    prompt,
+    variant_name: str,
+    always_zoom: bool,
+    out_path: Path,
+    limit: Optional[int] = None,
+    concurrency: int = 2,
+) -> int:
+    """Replay ``shots`` through ``client``, appending outcomes to ``out_path``.
+
+    Resumable: shot ids already present in ``out_path`` are skipped, which is
+    what lets :mod:`scripts.benchmark_vision_family` and ``cmd_replay`` share
+    this without either re-paying for a model's already-replayed shots.
+    Returns the number of errored outcomes just written.
+    """
+    done_ids = set()
+    if out_path.exists():
+        for line in out_path.read_text().splitlines():
+            if line.strip():
+                done_ids.add(json.loads(line)["shot_id"])
+
+    todo = [shot for shot in shots if shot["shot_id"] not in done_ids]
+    if limit:
+        todo = todo[:limit]
+    print(
+        f"{len(shots)} shots, {len(done_ids)} already replayed, "
+        f"{len(todo)} to do (model={client.model}, variant={variant_name})"
+    )
+    if not todo:
+        return 0
+
+    semaphore = asyncio.Semaphore(concurrency)
+
+    async def run_all():
+        return await asyncio.gather(
+            *(
+                _replay_one(shot, client, prompt, semaphore, always_zoom)
+                for shot in todo
+            )
+        )
+
+    outcomes = asyncio.run(run_all())
+
+    with out_path.open("a") as out_file:
+        for shot, outcome in zip(todo, outcomes):
+            out_file.write(
+                json.dumps(
+                    {
+                        "shot_id": shot["shot_id"],
+                        "game_id": shot["game_id"],
+                        "time": shot["time"],
+                        "truth": shot["truth"],
+                        "model": client.model,
+                        "variant": variant_name,
+                        **outcome,
+                    }
+                )
+                + "\n"
+            )
+    errors = sum(1 for outcome in outcomes if "error" in outcome)
+    print(f"Wrote {len(outcomes)} results to {out_path} ({errors} errors)")
+    return errors
+
+
 def cmd_replay(args) -> None:
     if args.variant not in PROMPT_VARIANTS:
         raise SystemExit(
@@ -524,54 +590,17 @@ def cmd_replay(args) -> None:
         raise SystemExit("OPENROUTER_API_KEY is not set; cannot replay")
     client = OpenRouterVisionClient(api_key=api_key, model=args.model)
 
-    out_path = Path(args.out)
-    done_ids = set()
-    if out_path.exists():
-        for line in out_path.read_text().splitlines():
-            if line.strip():
-                done_ids.add(json.loads(line)["shot_id"])
-
     shots = _load_source(args, with_images=True)
-    todo = [shot for shot in shots if shot["shot_id"] not in done_ids]
-    if args.limit:
-        todo = todo[: args.limit]
-    print(
-        f"{len(shots)} shots, {len(done_ids)} already replayed, "
-        f"{len(todo)} to do (model={client.model}, variant={args.variant})"
+    replay_to_file(
+        shots,
+        client,
+        prompt,
+        args.variant,
+        variant.always_zoom,
+        Path(args.out),
+        limit=args.limit,
+        concurrency=args.concurrency,
     )
-    if not todo:
-        return
-
-    semaphore = asyncio.Semaphore(args.concurrency)
-
-    async def run_all():
-        return await asyncio.gather(
-            *(
-                _replay_one(shot, client, prompt, semaphore, variant.always_zoom)
-                for shot in todo
-            )
-        )
-
-    outcomes = asyncio.run(run_all())
-
-    with out_path.open("a") as out_file:
-        for shot, outcome in zip(todo, outcomes):
-            out_file.write(
-                json.dumps(
-                    {
-                        "shot_id": shot["shot_id"],
-                        "game_id": shot["game_id"],
-                        "time": shot["time"],
-                        "truth": shot["truth"],
-                        "model": client.model,
-                        "variant": args.variant,
-                        **outcome,
-                    }
-                )
-                + "\n"
-            )
-    errors = sum(1 for outcome in outcomes if "error" in outcome)
-    print(f"Wrote {len(outcomes)} results to {out_path} ({errors} errors)")
 
 
 def cmd_score(args) -> None:
