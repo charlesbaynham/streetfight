@@ -105,6 +105,59 @@ def enqueue_reviews(shot_ids, client=None) -> int:
     return sum(1 for shot_id in shot_ids if enqueue_review(shot_id, client))
 
 
+async def _review_image_data(
+    image_base64: str,
+    client,
+    prompt: Optional[str] = None,
+    always_zoom: bool = True,
+) -> "shot_vision.ShotVisionResult":
+    """One shot photo through the vision pipeline: marker, resize, review.
+
+    The aim marker tells the model where the shot landed; the resize keeps the
+    image bill sane. The zoom is cut from the *original*, not from the prepared
+    image -- the resize has already discarded the camera resolution that makes
+    a distant target readable, which is the only reason to zoom at all. It is
+    always sent (``always_zoom``): replay trials (roadmap #4) showed the model
+    calls close misses hits at full confidence precisely because it never
+    doubts itself enough to ask for the zoom.
+    """
+    prepared = prepare_for_vision(draw_aim_marker(image_base64))
+
+    def zoom_provider():
+        return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
+
+    return await shot_vision.review_image(
+        client,
+        prepared,
+        zoom_provider=zoom_provider,
+        prompt=prompt,
+        always_zoom=always_zoom,
+    )
+
+
+async def replay_shot_review(
+    shot_id: UUID,
+    client,
+    prompt: Optional[str] = None,
+    always_zoom: bool = True,
+) -> dict:
+    """Review one shot on demand -- with a custom prompt if given -- and hand
+    the reading straight back.
+
+    Unlike :func:`review_shot` this stores nothing, fires no update events and
+    runs no auto-actions: it is the admin replay workbench's scratch pad, not
+    part of the game.
+    """
+    from .admin_interface import AdminInterface
+
+    image_base64 = AdminInterface().get_shot_model(shot_id).image_base64
+    async with _get_semaphore():
+        result = await _review_image_data(
+            image_base64, client, prompt=prompt, always_zoom=always_zoom
+        )
+    return result.to_dict()
+
+
 async def review_shot(shot_id: UUID, client=None) -> None:
     """Review one shot and store the result. Never raises."""
     from .admin_interface import AdminInterface
@@ -124,22 +177,7 @@ async def review_shot(shot_id: UUID, client=None) -> None:
     payload = None
     try:
         async with _get_semaphore():
-            # The aim marker tells the model where the shot landed; the resize
-            # keeps the image bill sane.
-            prepared = prepare_for_vision(draw_aim_marker(image_base64))
-
-            # Cut the zoom from the *original*, not from `prepared`. The resize
-            # above has already discarded the camera resolution that makes a
-            # distant target readable, which is the only reason to zoom at all.
-            # The zoom is always sent: replay trials (roadmap #4) showed the
-            # model calls close misses hits at full confidence precisely because
-            # it never doubts itself enough to ask for the zoom.
-            def zoom_provider():
-                return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
-
-            result = await shot_vision.review_image(
-                client, prepared, zoom_provider=zoom_provider, always_zoom=True
-            )
+            result = await _review_image_data(image_base64, client)
         payload = result.to_dict()
         logger.info(
             "Shot %s reviewed: %s (%s)", shot_id, result.outcome, result.outcome_reason

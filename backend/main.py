@@ -89,6 +89,7 @@ setup_logging()
 
 from . import ai_shot_review
 from . import shot_auto_actions
+from . import shot_vision
 from . import sse_event_streams
 from .admin_auth import is_admin_authed
 from .admin_auth import mark_admin_authed
@@ -102,6 +103,7 @@ from .model import ShotModel
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
+from .vision_client import get_vision_client
 
 app = FastAPI()
 router = APIRouter()
@@ -536,6 +538,40 @@ async def admin_review_shot(shot_id: UUID):
     if ai_shot_review.enqueue_review(shot_id) is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
     return {"queued": True}
+
+
+class _ReplayRequest(BaseModel):
+    shot_id: UUID
+    prompt: Optional[str] = None
+    always_zoom: bool = True
+
+
+@admin_method(path="/admin_replay_shot_review", method="POST")
+async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
+    """Fire one shot through the vision pipeline and return the reading.
+
+    The admin replay workbench: same pipeline as a real review (aim marker,
+    resize, mandatory zoom), but with the prompt customisable on the fly and
+    nothing stored -- no state changes, no events, no auto-actions.
+    """
+    client = get_vision_client()
+    if client is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    try:
+        return await ai_shot_review.replay_shot_review(
+            request.shot_id,
+            client,
+            prompt=request.prompt or None,
+            always_zoom=request.always_zoom,
+        )
+    except Exception as e:
+        raise HTTPException(502, f"Replay failed: {e}")
+
+
+@admin_method("/admin_get_default_vision_prompt", method="GET")
+async def admin_get_default_vision_prompt() -> dict:
+    """The prompt the live pipeline currently uses, to seed the workbench's."""
+    return {"prompt": shot_vision.build_prompt()}
 
 
 @admin_method("/admin_get_locations", method="GET")

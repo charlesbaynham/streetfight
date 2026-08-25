@@ -286,6 +286,85 @@ def test_disabling_the_toggle_returns_no_backlog(db_session, shot_from_user_in_t
     assert AdminInterface().is_ai_shot_review_enabled(game_id) is False
 
 
+# -- the replay workbench -----------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_replay_returns_the_reading_without_storing_anything(
+    db_session, shot_from_user_in_team
+):
+    client = FakeVisionClient(reply=hit_reply())
+
+    review = await ai_shot_review.replay_shot_review(shot_from_user_in_team, client)
+
+    assert review["outcome"] == shot_vision.HIT_PLAYER
+    shot = db_session.query(Shot).filter_by(id=shot_from_user_in_team).one()
+    assert shot.ai_review_state is None
+    assert shot.checked is False
+
+
+@pytest.mark.asyncio
+async def test_a_replay_threads_the_custom_prompt_and_zoom_choice(
+    mocker, db_session, shot_from_user_in_team
+):
+    mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+    client = FakeVisionClient(reply=hit_reply())
+
+    await ai_shot_review.replay_shot_review(
+        shot_from_user_in_team, client, prompt="A made-up prompt", always_zoom=False
+    )
+
+    assert client.calls[0]["turns"][0]["text"] == "A made-up prompt"
+    # always_zoom=False: the zoom is not produced unless the model asks
+    assert client.images_sent[-1] != "data:image/jpeg;base64,Z"
+
+
+def test_replay_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):
+    response = api_client.post(
+        "/api/admin_replay_shot_review", json={"shot_id": str(shot_from_user_in_team)}
+    )
+
+    assert response.status_code == 403
+
+
+def test_replay_endpoint_without_a_key_is_a_clear_error(
+    no_api_key, admin_api_client, shot_from_user_in_team
+):
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review", json={"shot_id": str(shot_from_user_in_team)}
+    )
+
+    assert response.status_code == 503
+    assert "OPENROUTER_API_KEY" in response.json()["detail"]
+
+
+def test_replay_endpoint_returns_the_reading(
+    mocker, monkeypatch, admin_api_client, shot_from_user_in_team
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    mocker.patch(
+        "backend.main.get_vision_client",
+        return_value=FakeVisionClient(reply=hit_reply()),
+    )
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review",
+        json={"shot_id": str(shot_from_user_in_team), "prompt": "Custom prompt"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["outcome"] == shot_vision.HIT_PLAYER
+
+
+def test_default_prompt_endpoint(admin_api_client):
+    response = admin_api_client.get("/api/admin_get_default_vision_prompt")
+
+    assert response.status_code == 200
+    assert "request_zoom" in response.json()["prompt"]
+
+
 # -- submit_shot now hands back an id ---------------------------------------
 
 

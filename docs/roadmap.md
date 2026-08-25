@@ -537,6 +537,15 @@ other subcommands read back via `--fixtures`; the live set lives at
 per-shot notes explaining what the vision agent should have returned. Prompt
 variants for #4 land in its `PROMPT_VARIANTS` registry.
 
+**In-browser counterpart (2026-08-25):** the admin "Shot replay" workbench
+(`/admin/replay`, `react-ui/src/ShotReplay.js`) fires any selection of the
+shots actually in the database through the same pipeline with the prompt
+editable on the fly (`admin_replay_shot_review`, plus
+`admin_get_default_vision_prompt` to seed the textarea). It stores nothing and
+flags where the reading disagrees with the admin's verdict — the quick
+half of the harness, for trialling a prompt edit before measuring it properly
+with `replay`.
+
 **What the first run found.** The live database held no admin verdicts at all
 (the queue was never adjudicated), so the fixture labels are by eye. Even so:
 a close-up the admin calls a **miss** (crosshair just top-left of the head)
