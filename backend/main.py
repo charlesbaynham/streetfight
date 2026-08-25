@@ -88,6 +88,7 @@ load_env_vars()
 setup_logging()
 
 from . import ai_shot_review
+from . import image_processing
 from . import shot_auto_actions
 from . import shot_vision
 from . import sse_event_streams
@@ -566,6 +567,34 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
         )
     except Exception as e:
         raise HTTPException(502, f"Replay failed: {e}")
+
+
+@admin_method("/admin_get_shot_vision_images", method="GET")
+async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
+    """Return the shot image formatted exactly as the vision model sees it.
+
+    Two images are returned:
+    - full: the whole frame with aim marker, downscaled to 1024px max (what
+      prepare_for_vision produces)
+    - zoomed: the centre 25% of the original, cropped and upscaled to 1024px
+      with a fresh aim marker (what zoom_image produces)
+
+    Both are JPEG data URLs ready to render in <img>.
+    """
+    from .admin_interface import AdminInterface
+
+    shot_model = AdminInterface().get_shot_model(shot_id=shot_id)
+    original = shot_model.image_base64
+
+    # Full frame: aim marker + downscale to 1024px max
+    full = image_processing.prepare_for_vision(
+        image_processing.draw_aim_marker(original)
+    )
+
+    # Zoomed frame: centre 25% crop from ORIGINAL, upscale to 1024px, aim marker
+    zoomed = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR)
+
+    return {"full": full, "zoomed": zoomed}
 
 
 @admin_method("/admin_get_default_vision_prompt", method="GET")

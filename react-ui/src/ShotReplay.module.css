@@ -54,6 +54,42 @@
   cursor: default;
 }
 
+.visionImages {
+  display: flex;
+  gap: 0.5em;
+  margin: 0.5em 0;
+  flex-wrap: wrap;
+}
+
+.visionImageWrapper {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.visionImg {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.visionLabel {
+  font-size: 0.75em;
+  color: #555;
+  margin-top: 0.2em;
+  text-align: center;
+}
+
+.visionLoading {
+  font-style: italic;
+  color: #666;
+  font-size: 0.85em;
+}
+
 .replayError {
   color: red;
 }

@@ -365,6 +365,41 @@ def test_default_prompt_endpoint(admin_api_client):
     assert "request_zoom" in response.json()["prompt"]
 
 
+def test_vision_images_endpoint_returns_full_and_zoomed(
+    admin_api_client, shot_from_user_in_team
+):
+    response = admin_api_client.get(
+        f"/api/admin_get_shot_vision_images?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert "full" in data
+    assert "zoomed" in data
+    assert data["full"].startswith("data:image/jpeg;base64,")
+    assert data["zoomed"].startswith("data:image/jpeg;base64,")
+    # Full and zoomed should be different (zoom crops the center)
+    assert data["full"] != data["zoomed"]
+
+
+def test_vision_images_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):
+    response = api_client.get(
+        f"/api/admin_get_shot_vision_images?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.status_code == 403
+
+
+def test_vision_images_endpoint_404s_on_unknown_shot(admin_api_client):
+    from uuid import uuid4
+
+    response = admin_api_client.get(
+        f"/api/admin_get_shot_vision_images?shot_id={uuid4()}"
+    )
+
+    assert response.status_code == 404
+
+
 # -- submit_shot now hands back an id ---------------------------------------
 
 
