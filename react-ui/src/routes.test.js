@@ -13,6 +13,7 @@ import { MemoryRouter } from "react-router-dom";
 import { installFetchMock } from "./testUtils";
 
 import UserMode from "./UserMode";
+import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
@@ -82,6 +83,39 @@ describe("/ (UserMode)", () => {
     );
 
     expect(screen.getByText("Loading...")).toBeInTheDocument();
+  });
+});
+
+describe("/pick (PickOutfit)", () => {
+  test("mounts and shows the team header once join_options resolves", async () => {
+    installFetchMock({
+      join_options: {
+        team_id: "team-1",
+        team_name: "Reds",
+        team_colour: "red",
+        team_channel: "hat",
+        provided_channel: "armbands",
+        wardrobe_channels: ["tshirt", "trousers"],
+        channels: [
+          { name: "tshirt", labels: ["black"], hex: { black: "#222222" } },
+          { name: "trousers", labels: ["black"], hex: { black: "#222222" } },
+          { name: "hat", labels: ["red"], hex: { red: "#B00020" } },
+          { name: "armbands", labels: ["red"], hex: { red: "#B00020" } },
+        ],
+        colour_notes: {},
+        you: null,
+      },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter initialEntries={["/pick?j=ABC123"]}>
+        <PickOutfit />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Team Reds" }),
+    ).toBeInTheDocument();
   });
 });
 

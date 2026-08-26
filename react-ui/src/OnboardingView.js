@@ -38,7 +38,7 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
   </button>
 );
 
-function NameEntry({ user }) {
+function NameEntry({ user, className }) {
   const [nameBoxValue, setNameBoxValue] = useState(user.name ? user.name : "");
 
   const setUserName = useCallback(() => {
@@ -56,7 +56,9 @@ function NameEntry({ user }) {
   return (
     <motion.div
       layout
-      className={styles.stackedItem + (done ? " " + styles.done : "")}
+      className={[styles.stackedItem, done ? styles.done : "", className || ""]
+        .filter(Boolean)
+        .join(" ")}
     >
       <input
         className={styles.nameInput}
@@ -73,6 +75,8 @@ function NameEntry({ user }) {
     </motion.div>
   );
 }
+
+export { NameEntry };
 
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
