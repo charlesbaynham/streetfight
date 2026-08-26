@@ -837,6 +837,7 @@ async def review_image(
     raw = await client.complete(turns, build_screening_schema())
     zooms_used = 0
     transcript = [_transcript_turn(turns[0]), _assistant_turn(raw, client)]
+    reasoning_details = client.last_reasoning_details
 
     while not _answered_in_full(raw):
         if (
@@ -862,11 +863,15 @@ async def review_image(
             follow_up = {"role": "user", "text": FULL_READING_REQUEST}
             final_turn = True
 
-        turns = turns + [{"role": "assistant", "text": json.dumps(raw)}, follow_up]
+        turns = turns + [
+            _previous_answer_turn(raw, reasoning_details),
+            follow_up,
+        ]
         transcript.append(_transcript_turn(follow_up))
         raw = await client.complete(
             turns, schema if final_turn else build_screening_schema()
         )
+        reasoning_details = client.last_reasoning_details
         transcript.append(_assistant_turn(raw, client))
         if final_turn:
             # Whatever comes back now is the answer.
@@ -903,6 +908,22 @@ def _transcript_turn(turn: dict) -> dict:
         "text": turn["text"],
         "has_image": bool(turn.get("image_data_url")),
     }
+
+
+def _previous_answer_turn(raw: dict, reasoning_details: Optional[List[dict]]) -> dict:
+    """The prior reply, as the assistant turn fed back into the next call.
+
+    Carries ``reasoning_details`` (see :attr:`~backend.vision_client.
+    VisionClient.last_reasoning_details`) when the model returned any --
+    without it, a "thinking" model has no way to continue reasoning from the
+    screening turn and instead starts over from nothing but this bare JSON
+    answer, which measurably degrades the quality of the turns that follow
+    (this is what the zoom follow-ups above are for).
+    """
+    turn = {"role": "assistant", "text": json.dumps(raw)}
+    if reasoning_details:
+        turn["reasoning_details"] = reasoning_details
+    return turn
 
 
 def _assistant_turn(raw: dict, client) -> dict:
