@@ -152,6 +152,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
+| `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
 
 ## Deployment (brief)

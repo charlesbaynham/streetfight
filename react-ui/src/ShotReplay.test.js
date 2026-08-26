@@ -150,12 +150,41 @@ test("replaying a selected shot posts the edited prompt and shows the reading", 
     shot_id: "shot-1",
     prompt: "A customised prompt",
     // The default matches the live pipeline: the zoom is screening-gated,
-    // not sent up front.
+    // not sent up front, and no reasoning-effort override is sent.
     always_zoom: false,
+    reasoning_effort: null,
   });
 
   expect(screen.getByText("HIT")).toBeInTheDocument();
   expect(screen.getByText(/clear view of the target/)).toBeInTheDocument();
+});
+
+test("a chosen reasoning effort is sent as the override", async () => {
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  fireEvent.change(screen.getByLabelText("Reasoning effort"), {
+    target: { value: "high" },
+  });
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(getLastAPICall("admin_replay_shot_review").body.reasoning_effort).toBe(
+    "high",
+  );
 });
 
 test("shows how many times the zoom was spent, and the full model transcript", async () => {

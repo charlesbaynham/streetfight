@@ -545,6 +545,7 @@ class _ReplayRequest(BaseModel):
     shot_id: UUID
     prompt: Optional[str] = None
     always_zoom: bool = False
+    reasoning_effort: Optional[str] = None
 
 
 @admin_method(path="/admin_replay_shot_review", method="POST")
@@ -554,8 +555,10 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
     The admin replay workbench: same pipeline as a real review (aim marker,
     resize, screening-gated zoom), but with the prompt customisable on the fly
     and nothing stored -- no state changes, no events, no auto-actions.
+    ``reasoning_effort`` overrides OPENROUTER_REASONING_EFFORT for this replay
+    only, for trialling reasoning depth against real shots.
     """
-    client = get_vision_client()
+    client = get_vision_client(reasoning_effort=request.reasoning_effort)
     if client is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
     try:
