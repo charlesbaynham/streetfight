@@ -29,7 +29,8 @@ import pydantic
 
 from . import ticker_message_dispatcher as tk
 from .admin_interface import AdminInterface
-from .identity.allocation import allocate_team_slots
+from .identity.allocation import assign_team_colours
+from .identity.allocation import colour_capacity
 from .identity.config import TEAM_CHANNEL
 from .identity.config import default_scheme
 from .identity.config import hex_for
@@ -42,7 +43,7 @@ from .identity.overrides import pairwise_distances
 from .identity.overrides import suggest_free_channels
 from .identity.scheme import IdentityScheme
 from .join_codes import JoinCodeModel
-from .join_codes import make_join_url
+from .join_codes import make_team_join_url
 from .model import UserModel
 from .user_interface import UserInterface
 
@@ -332,22 +333,27 @@ def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
 # ---------------------------------------------------------------------------
 
 
-def build_join_codes(game_id: UUID, slots_per_team: int) -> dict:
-    """Signed join QR URLs for a game: N slots per team, one hat colour each.
+def build_join_codes(game_id: UUID) -> dict:
+    """One signed *team* join QR per team, each pinned to its own hat colour.
 
-    Teams are ordered by creation time and allocated whole
-    :data:`~backend.identity.config.TEAM_CHANNEL` colour groups
-    (:func:`~backend.identity.allocation.allocate_team_slots`), so every member
-    of a team wears the same hat and no two teams share a hat colour. The
-    allocation is deterministic, so reprinting yields the same codes. Each code
-    carries the slot's canonical appearance so the admin can pack the right
-    clothing with each card, and each team reports the colours it covers -
-    ``team_colours[0]`` is the colour to buy hats in, and a second entry means
-    the block was too big for one colour to cover.
+    Teams are ordered by creation time (:meth:`AdminInterface.get_teams_for_game`)
+    and coloured via :func:`~backend.identity.allocation.assign_team_colours`,
+    which honours any colour a team already has (``Team.identity_colour``) and
+    only assigns fresh colours to teams that don't. **Generating these codes
+    therefore writes to the database on what looks like a GET** - this is
+    deliberate, not an oversight: it is the moment the admin commits a team to
+    its hat colour, and it is idempotent after the first call (calling again,
+    even after adding a new team, leaves every already-coloured team exactly
+    as it was - see ``assign_team_colours``'s docstring for why). There is no
+    separate "pin now" step; if there were, it would be a footgun on game
+    night - an admin who forgot to press it before printing cards would print
+    colours that later generation could still reshuffle.
+
+    A player scans the printed code and picks their own outfit from the
+    team's colour (see the C4 endpoints) rather than being handed a fixed
+    slot - contrast :func:`make_join_url`, the older per-slot code that
+    ``claim_join_slot`` still serves unchanged.
     """
-    if slots_per_team < 1:
-        raise IdentityAdminError("slots_per_team must be at least 1")
-
     scheme = default_scheme()
     teams = AdminInterface().get_teams_for_game(game_id)  # 404s if game missing
 
@@ -355,27 +361,29 @@ def build_join_codes(game_id: UUID, slots_per_team: int) -> dict:
         raise IdentityAdminError("game has no teams - create the teams first")
 
     try:
-        allocations = allocate_team_slots(
-            scheme, len(teams), slots_per_team, TEAM_CHANNEL
+        colours = assign_team_colours(
+            scheme, TEAM_CHANNEL, {t.id: t.identity_colour for t in teams}
         )
     except ValueError as e:
         raise IdentityAdminError(str(e))
 
+    capacity = colour_capacity(scheme, TEAM_CHANNEL)
+    admin = AdminInterface()
+
     out = []
-    for team, allocation in zip(teams, allocations):
+    for team in teams:
+        colour = colours[team.id]
+        if team.identity_colour != colour:
+            admin.set_team_identity_colour(team.id, colour)
+
         out.append(
             {
                 "team_id": team.id,
                 "team_name": team.name,
-                "team_colours": allocation.labels,
-                "codes": [
-                    {
-                        "slot": slot,
-                        "encoded_url": make_join_url(game_id, team.id, slot),
-                        "appearance": scheme.appearance_of_slot(slot),
-                    }
-                    for slot in allocation.slots
-                ],
+                "team_colour": colour,
+                "team_colour_hex": hex_for(TEAM_CHANNEL, colour),
+                "capacity": capacity[colour],
+                "encoded_url": make_team_join_url(game_id, team.id),
             }
         )
 

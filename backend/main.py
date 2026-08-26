@@ -244,17 +244,14 @@ class _EncodedJoinCode(BaseModel):
     data: str
 
 
-@router.post("/join_game")
-async def join_game(
-    encoded_code: _EncodedJoinCode,
-    user_id=Depends(get_user_id),
-):
-    """Join a team and claim an identity slot by scanning a signed join code.
-
-    The body is ``{"data": <url-or-b64>}``, same shape as collect_item.
+def _decoded_join_code(data: str) -> JoinCodeModel:
+    """Decode and signature-check a join code, the way every join-code
+    endpoint must. Raises the same ``HTTPException``s ``join_game`` always
+    has, so later endpoints (e.g. ``join_options``) can reuse this rather
+    than re-deriving the checks.
     """
     try:
-        code = JoinCodeModel.from_base64(encoded_code.data)
+        code = JoinCodeModel.from_base64(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
@@ -264,9 +261,30 @@ async def join_game(
             403, f"The scanned join code is invalid - error {code_validation_error}"
         )
 
+    return code
+
+
+@router.post("/join_game")
+async def join_game(
+    encoded_code: _EncodedJoinCode,
+    user_id=Depends(get_user_id),
+):
+    """Join a team by scanning a signed join code.
+
+    The body is ``{"data": <url-or-b64>}``, same shape as collect_item. A
+    code with a concrete ``slot`` claims it immediately (unchanged). A *team*
+    code (``slot is None``) writes nothing - it hands back ``needs_pick`` so
+    the frontend can route the player to the outfit-picking flow instead.
+    """
+    code = _decoded_join_code(encoded_code.data)
+
     logger.info(
         "User %s joining team %s with slot %s", user_id, code.team_id, code.slot
     )
+
+    if code.slot is None:
+        team = AdminInterface().get_team_model(code.team_id)  # 404s if missing
+        return {"needs_pick": True, "team_id": team.id, "team_name": team.name}
 
     with _identity_admin_errors():
         return identity_admin.claim_join_slot(user_id, code)
@@ -814,11 +832,12 @@ async def admin_identity_report(game_id: UUID) -> dict:
 
 
 @admin_method(path="/admin_join_qr_codes", method="GET")
-async def admin_join_qr_codes(game_id: UUID, slots_per_team: int = 8) -> dict:
-    """Signed join QR URLs for every team in a game: scanning one joins that
-    team and claims that identity slot. Deterministic, so reprints match."""
+async def admin_join_qr_codes(game_id: UUID) -> dict:
+    """One signed team join QR per team: scanning it lets a player pick their
+    own outfit in that team's colour. See ``identity_admin.build_join_codes``
+    for why this GET writes (it pins each team's hat colour)."""
     with _identity_admin_errors():
-        return identity_admin.build_join_codes(game_id, slots_per_team)
+        return identity_admin.build_join_codes(game_id)
 
 
 @admin_method(path="/admin_identity_set", method="POST")
