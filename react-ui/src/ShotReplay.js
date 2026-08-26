@@ -251,6 +251,9 @@ function ShotReplayPanel() {
   const [selected, setSelected] = useState(new Set());
   const [prompt, setPrompt] = useState(null);
   const [alwaysZoom, setAlwaysZoom] = useState(false);
+  // "" means no override -- the live pipeline's OPENROUTER_REASONING_EFFORT
+  // setting (or none at all) applies, exactly as it does for a real review.
+  const [reasoningEffort, setReasoningEffort] = useState("");
   const [results, setResults] = useState({});
   const [running, setRunning] = useState(false);
 
@@ -295,6 +298,7 @@ function ShotReplayPanel() {
           shot_id,
           prompt,
           always_zoom: alwaysZoom,
+          reasoning_effort: reasoningEffort || null,
         }).then(async (response) => {
           if (response.ok) {
             setResult(shot_id, {
@@ -310,7 +314,7 @@ function ShotReplayPanel() {
         });
       }),
     ).then(() => setRunning(false));
-  }, [selected, prompt, alwaysZoom, setResult]);
+  }, [selected, prompt, alwaysZoom, reasoningEffort, setResult]);
 
   return (
     <>
@@ -358,6 +362,23 @@ function ShotReplayPanel() {
                 onChange={(event) => setAlwaysZoom(event.target.checked)}
               />
               Always send the zoomed view
+            </label>
+            <label>
+              Reasoning effort{" "}
+              <select
+                aria-label="Reasoning effort"
+                value={reasoningEffort}
+                onChange={(event) => setReasoningEffort(event.target.value)}
+              >
+                <option value="">Pipeline default</option>
+                <option value="none">none</option>
+                <option value="minimal">minimal</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="xhigh">xhigh</option>
+                <option value="max">max</option>
+              </select>
             </label>
             <button
               onClick={() => setSelected(new Set(shotIds))}

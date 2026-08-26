@@ -424,6 +424,26 @@ def test_replay_endpoint_returns_the_reading(
     assert response.json()["outcome"] == shot_vision.HIT_PLAYER
 
 
+def test_replay_endpoint_passes_reasoning_effort_override_through(
+    mocker, monkeypatch, admin_api_client, shot_from_user_in_team
+):
+    # The workbench's per-replay override, independent of whatever
+    # OPENROUTER_REASONING_EFFORT is set to for the live pipeline.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    get_client = mocker.patch(
+        "backend.main.get_vision_client",
+        return_value=FakeVisionClient(reply=hit_reply()),
+    )
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review",
+        json={"shot_id": str(shot_from_user_in_team), "reasoning_effort": "high"},
+    )
+
+    assert response.status_code == 200
+    get_client.assert_called_once_with(reasoning_effort="high")
+
+
 def test_default_prompt_endpoint(admin_api_client):
     response = admin_api_client.get("/api/admin_get_default_vision_prompt")
 

@@ -577,6 +577,42 @@ measurably degrades multi-turn (zoomed) cases. `VisionClient` gained
 each follow-up turn via `_previous_answer_turn`, and `_as_message` passes it
 through to OpenRouter unmodified.
 
+**Reasoning-effort knob added, and measured (2026-08-26).** Looking at a real
+production shot's transcript raised a further question: the displayed
+reasoning read as if it decided the hit, then filled in colours with no
+visible deliberation. Live calls through the real pipeline (screening-gated,
+`google/gemini-3.7-flash-20260813`) confirmed this is genuine, unrelated to
+the bug above -- Gemini's `reasoning` is a short **thought summary** (Google's
+term: a synopsis, not the raw chain-of-thought), and its length tracked
+`usage.completion_tokens_details.reasoning_tokens` exactly on every call, so
+nothing was being truncated in flight. `OPENROUTER_REASONING_EFFORT`
+(`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`) now requests a deeper
+one via OpenRouter's `reasoning: {"effort": ...}` parameter -- unset by
+default (identical behaviour to before), overridable per replay in the
+workbench regardless of the env setting.
+
+Measured on 3 fixture shots (one each of miss/hit/bystander ground truth),
+gated flow, Gemini only, one run per effort level:
+
+| effort | final-turn reasoning chars (3 shots) | verdict vs. `unset` |
+| --- | --- | --- |
+| unset | 219 / 355 / 259 | -- |
+| low | 0 / 0 / 0 | same outcome every time |
+| medium | 238 / 319 / 485 | same outcome every time |
+| high | 485 / 1465 / 1855 | same outcome every time |
+
+Two findings, both from real data, not the 3-shot sample size: **`low` is
+worse than doing nothing** -- it suppressed the visible summary to zero chars
+on every single call while still spending real `reasoning_tokens` (72-271)
+computing it, so if transparency is the goal, never configure `low`. **`high`
+gives the long, multi-paragraph, per-channel deliberation** the admin UI was
+missing (2-6x `unset`'s length), at a modest cost increase (~$0.006-0.008 vs
+~$0.005-0.008 per shot review, all three calls). None of the three shots'
+*verdicts* changed across any effort level -- one (`697899ee`, a hit
+misread as `hit_bystander`) stayed wrong at every level, so effort is a
+narration-depth and transparency knob here, not a demonstrated accuracy fix;
+that needs the full replay-set treatment (R1) to say anything at N > 3.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

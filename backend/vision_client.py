@@ -126,10 +126,21 @@ class OpenRouterVisionClient(VisionClient):
         api_key: str,
         model: Optional[str] = None,
         timeout: Optional[float] = None,
+        reasoning_effort: Optional[str] = None,
     ):
         self.api_key = api_key
         self.model = model or os.getenv("OPENROUTER_MODEL") or DEFAULT_MODEL
         self.timeout = timeout if timeout is not None else _timeout_from_env()
+        # None (the long-standing default) sends no "reasoning" request
+        # parameter at all -- whatever effort the model applies unprompted.
+        # Falls back to OPENROUTER_REASONING_EFFORT so the live pipeline is
+        # configurable without a code change; the replay workbench overrides
+        # it per request regardless of the env setting.
+        self.reasoning_effort = _normalize_reasoning_effort(
+            reasoning_effort
+            if reasoning_effort is not None
+            else os.getenv("OPENROUTER_REASONING_EFFORT")
+        )
         self._last_reasoning: Optional[str] = None
         self._last_reasoning_details: Optional[List[dict]] = None
 
@@ -158,6 +169,8 @@ class OpenRouterVisionClient(VisionClient):
                 },
             },
         }
+        if self.reasoning_effort:
+            payload["reasoning"] = {"effort": self.reasoning_effort}
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
@@ -314,6 +327,31 @@ def _content_of(body: dict):
         raise VisionError(f"unexpected response shape: {str(body)[:200]}")
 
 
+# OpenRouter's own vocabulary for the "reasoning" request parameter's
+# "effort" key (docs/use-cases/reasoning-tokens). Not every model honours
+# every level, but these are the values OpenRouter itself accepts.
+VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
+
+
+def _normalize_reasoning_effort(value: Optional[str]) -> Optional[str]:
+    """A validated, lowercased reasoning-effort level, or None.
+
+    None means "send no reasoning-effort override" -- OpenRouter's own
+    default, whatever the model applies unprompted. That has been this
+    pipeline's behaviour all along, so it stays the default here: this only
+    ever *adds* a request parameter, never removes one.
+    """
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    if normalized not in VALID_REASONING_EFFORTS:
+        logger.warning(
+            "Ignoring unrecognised reasoning effort %r; sending no override", value
+        )
+        return None
+    return normalized
+
+
 def _timeout_from_env() -> float:
     raw = os.getenv("OPENROUTER_TIMEOUT_SECONDS")
     if not raw:
@@ -329,14 +367,18 @@ def _timeout_from_env() -> float:
         return DEFAULT_TIMEOUT_SECONDS
 
 
-def get_vision_client() -> Optional[VisionClient]:
+def get_vision_client(reasoning_effort: Optional[str] = None) -> Optional[VisionClient]:
     """The configured client, or None if there is no API key.
 
     Returning None rather than raising is deliberate: with no key the feature
     is simply switched off, and the shot queue must behave exactly as it did
     before.
+
+    ``reasoning_effort`` overrides ``OPENROUTER_REASONING_EFFORT`` for this
+    client -- the replay workbench's per-request knob; the live queue calls
+    this with no argument and gets the env-configured (or unset) default.
     """
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         return None
-    return OpenRouterVisionClient(api_key=api_key)
+    return OpenRouterVisionClient(api_key=api_key, reasoning_effort=reasoning_effort)
