@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
-import { verdictText } from "./ShotQueue";
+import { verdictText, zoomTag } from "./ShotQueue";
 import { Row, Col } from "react-bootstrap";
 
 import styles from "./ShotReplay.module.css";
@@ -43,11 +43,7 @@ function ReplayResult({ review }) {
         <span className={tagStyles.tag}>
           confidence {Math.round(100 * (review.confidence || 0))}%
         </span>
-        {review.zoom_used ? (
-          <span className={`${tagStyles.tag} ${tagStyles.tagZoom}`}>
-            Zoomed in
-          </span>
-        ) : null}
+        {zoomTag(review)}
         {Object.entries(review.channels || {}).map(([name, channel]) => (
           <span
             key={name}
@@ -73,11 +69,67 @@ function ReplayResult({ review }) {
   );
 }
 
-// Vision-formatted images: two copies as the model sees them -- full frame and
-// zoomed centre crop, both with the aim marker and downscaled to 1024px.
+// Every turn exchanged with the model on one replay, and what it said back --
+// the debugging counterpart of ReplayResult's parsed summary. A flat,
+// chronological conversation (the model never revises an earlier turn, so
+// nothing here is ever repeated), collapsed by default. A raw-JSON toggle
+// dumps the same list pretty-printed, for pasting elsewhere.
+function TranscriptView({ transcript }) {
+  const [raw, setRaw] = useState(false);
+
+  if (!transcript || transcript.length === 0) return null;
+
+  return (
+    <details className={styles.transcript}>
+      <summary>
+        Full model transcript ({transcript.length} turn
+        {transcript.length === 1 ? "" : "s"})
+      </summary>
+      <label className={styles.rawToggle}>
+        <input
+          type="checkbox"
+          checked={raw}
+          onChange={(event) => setRaw(event.target.checked)}
+        />
+        Prettified JSON
+      </label>
+      {raw ? (
+        <pre className={styles.transcriptJson}>
+          {JSON.stringify(transcript, null, 2)}
+        </pre>
+      ) : (
+        transcript.map((turn, turnIndex) => (
+          <div key={turnIndex} className={styles.turn}>
+            <span className={styles.turnRole}>
+              {turn.role}
+              {turn.has_image ? " (+ image)" : ""}
+            </span>
+            {turn.reasoning ? (
+              <details className={styles.turnReasoning}>
+                <summary>Model reasoning</summary>
+                <pre className={styles.turnReasoningText}>{turn.reasoning}</pre>
+              </details>
+            ) : null}
+            <pre className={styles.turnText}>
+              {turn.role === "assistant"
+                ? JSON.stringify(turn.reply, null, 2)
+                : turn.text}
+            </pre>
+          </div>
+        ))
+      )}
+    </details>
+  );
+}
+
+// Vision-formatted images, in the order the model actually saw them: the full
+// frame, then one card per zoom actually spent (zoomCount, 0-2) -- not just
+// the two the pipeline is *capable* of, which said nothing about what a given
+// replay did. Before a replay has run (zoomCount undefined) only the full
+// frame is shown, since nothing is known yet about whether a zoom followed.
 // Fetched from admin_get_shot_vision_images, which formats identically to the
 // pipeline (prepare_for_vision + zoom_image).
-export function ShotVisionImages({ shot_id }) {
+export function ShotVisionImages({ shot_id, zoomCount }) {
   const [images, setImages] = useState(null);
 
   useEffect(() => {
@@ -100,6 +152,8 @@ export function ShotVisionImages({ shot_id }) {
   if (!images)
     return <p className={styles.visionLoading}>Loading vision images...</p>;
 
+  const zoomImages = [images.zoomed, images.zoomed2].slice(0, zoomCount || 0);
+
   return (
     <div className={styles.visionImages}>
       <div className={styles.visionImageWrapper}>
@@ -112,16 +166,18 @@ export function ShotVisionImages({ shot_id }) {
           Full frame (as vision sees it)
         </span>
       </div>
-      <div className={styles.visionImageWrapper}>
-        <img
-          className={styles.visionImg}
-          alt="Zoomed centre as vision sees it"
-          src={images.zoomed}
-        />
-        <span className={styles.visionLabel}>
-          Zoomed centre (as vision sees it)
-        </span>
-      </div>
+      {zoomImages.map((src, zoomIndex) => (
+        <div key={zoomIndex} className={styles.visionImageWrapper}>
+          <img
+            className={styles.visionImg}
+            alt={`Zoom ${zoomIndex + 1} centre as vision sees it`}
+            src={src}
+          />
+          <span className={styles.visionLabel}>
+            Zoom {zoomIndex + 1} centre (as vision sees it)
+          </span>
+        </div>
+      ))}
     </div>
   );
 }
@@ -161,7 +217,10 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
         <em>
           {shot.user.name} - {new Date(shot.time_created).toLocaleString()}
         </em>
-        <ShotVisionImages shot_id={shot_id} />
+        <ShotVisionImages
+          shot_id={shot_id}
+          zoomCount={result && result.review ? result.review.zoom_count : 0}
+        />
         {shot.checked ? (
           <p className={tagStyles.verdict}>Adjudicated: {verdictText(shot)}</p>
         ) : (
@@ -179,6 +238,7 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
               </p>
             ) : null}
             <ReplayResult review={result.review} />
+            <TranscriptView transcript={result.review.transcript} />
           </div>
         ) : null}
       </div>
@@ -190,7 +250,10 @@ function ShotReplayPanel() {
   const [shotIds, setShotIds] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [prompt, setPrompt] = useState(null);
-  const [alwaysZoom, setAlwaysZoom] = useState(true);
+  const [alwaysZoom, setAlwaysZoom] = useState(false);
+  // "" means no override -- the live pipeline's OPENROUTER_REASONING_EFFORT
+  // setting (or none at all) applies, exactly as it does for a real review.
+  const [reasoningEffort, setReasoningEffort] = useState("");
   const [results, setResults] = useState({});
   const [running, setRunning] = useState(false);
 
@@ -235,6 +298,7 @@ function ShotReplayPanel() {
           shot_id,
           prompt,
           always_zoom: alwaysZoom,
+          reasoning_effort: reasoningEffort || null,
         }).then(async (response) => {
           if (response.ok) {
             setResult(shot_id, {
@@ -250,7 +314,7 @@ function ShotReplayPanel() {
         });
       }),
     ).then(() => setRunning(false));
-  }, [selected, prompt, alwaysZoom, setResult]);
+  }, [selected, prompt, alwaysZoom, reasoningEffort, setResult]);
 
   return (
     <>
@@ -298,6 +362,23 @@ function ShotReplayPanel() {
                 onChange={(event) => setAlwaysZoom(event.target.checked)}
               />
               Always send the zoomed view
+            </label>
+            <label>
+              Reasoning effort{" "}
+              <select
+                aria-label="Reasoning effort"
+                value={reasoningEffort}
+                onChange={(event) => setReasoningEffort(event.target.value)}
+              >
+                <option value="">Pipeline default</option>
+                <option value="none">none</option>
+                <option value="minimal">minimal</option>
+                <option value="low">low</option>
+                <option value="medium">medium</option>
+                <option value="high">high</option>
+                <option value="xhigh">xhigh</option>
+                <option value="max">max</option>
+              </select>
             </label>
             <button
               onClick={() => setSelected(new Set(shotIds))}

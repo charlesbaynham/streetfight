@@ -98,3 +98,80 @@
   color: red;
   font-weight: bold;
 }
+
+.transcript {
+  margin-top: 0.5em;
+  font-size: 0.85em;
+}
+
+.transcript summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.rawToggle {
+  display: block;
+  margin: 0.4em 0;
+  cursor: pointer;
+}
+
+.rawToggle input {
+  margin-right: 0.3em;
+}
+
+.exchange {
+  border-top: 1px solid #ddd;
+  padding: 0.4em 0;
+}
+
+.exchangeTitle {
+  font-weight: bold;
+  margin: 0 0 0.3em 0;
+}
+
+.turn {
+  margin: 0.3em 0;
+}
+
+.turnRole {
+  display: block;
+  font-weight: bold;
+  color: #555;
+  text-transform: capitalize;
+}
+
+.turnReasoning {
+  margin: 0.2em 0;
+}
+
+.turnReasoning summary {
+  cursor: pointer;
+  font-style: italic;
+  color: #555;
+}
+
+.turnReasoningText {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  background: #fbf6e9;
+  border: 1px solid #e9dfc0;
+  border-radius: 4px;
+  padding: 0.4em;
+  margin: 0.2em 0;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.turnText,
+.transcriptJson {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.4em;
+  margin: 0.2em 0;
+  font-size: 0.9em;
+}

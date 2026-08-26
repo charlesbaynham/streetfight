@@ -109,7 +109,7 @@ async def _review_image_data(
     image_base64: str,
     client,
     prompt: Optional[str] = None,
-    always_zoom: bool = True,
+    always_zoom: bool = False,
 ) -> "shot_vision.ShotVisionResult":
     """One shot photo through the vision pipeline: marker, resize, review.
 
@@ -117,14 +117,16 @@ async def _review_image_data(
     image bill sane. The zoom is cut from the *original*, not from the prepared
     image -- the resize has already discarded the camera resolution that makes
     a distant target readable, which is the only reason to zoom at all. It is
-    always sent (``always_zoom``): replay trials (roadmap #4) showed the model
-    calls close misses hits at full confidence precisely because it never
-    doubts itself enough to ask for the zoom.
+    spent only when the model's screening answer says the person fills less
+    than half of the screen; ``always_zoom`` keeps the previous
+    both-views-up-front behaviour for replay comparisons.
     """
     prepared = prepare_for_vision(draw_aim_marker(image_base64))
 
-    def zoom_provider():
-        return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
+    def zoom_provider(level):
+        # Each level compounds the factor against the original, so the second
+        # zoom is ZOOM_FACTOR**2 into the camera's full resolution.
+        return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR**level)
 
     return await shot_vision.review_image(
         client,
@@ -139,14 +141,16 @@ async def replay_shot_review(
     shot_id: UUID,
     client,
     prompt: Optional[str] = None,
-    always_zoom: bool = True,
+    always_zoom: bool = False,
 ) -> dict:
     """Review one shot on demand -- with a custom prompt if given -- and hand
     the reading straight back.
 
     Unlike :func:`review_shot` this stores nothing, fires no update events and
     runs no auto-actions: it is the admin replay workbench's scratch pad, not
-    part of the game.
+    part of the game. The reply carries the full turn-by-turn transcript
+    (``include_transcript=True``) so the workbench can show exactly what was
+    sent and said back -- a live review's stored payload leaves it out.
     """
     from .admin_interface import AdminInterface
 
@@ -155,7 +159,7 @@ async def replay_shot_review(
         result = await _review_image_data(
             image_base64, client, prompt=prompt, always_zoom=always_zoom
         )
-    return result.to_dict()
+    return result.to_dict(include_transcript=True)
 
 
 async def review_shot(shot_id: UUID, client=None) -> None:

@@ -570,7 +570,7 @@ describe("ShotAiTags", () => {
     ).toBeInTheDocument();
   });
 
-  test("shows a zoom tag when the AI model used the zoom tool", async () => {
+  test("shows a zoom tag with no count for a legacy review (zoom_used only)", async () => {
     aiReviewResponse = {
       status: 200,
       body: {
@@ -588,6 +588,28 @@ describe("ShotAiTags", () => {
 
     await screen.findByText("HIT");
     expect(screen.getByText("Zoomed in")).toBeInTheDocument();
+  });
+
+  test("shows how many times the zoom was spent", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "armbands visible",
+          reasoning: "",
+          zoom_used: true,
+          zoom_count: 2,
+          channels: {},
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("HIT");
+    expect(screen.getByText("Zoomed in ×2")).toBeInTheDocument();
+    expect(screen.queryByText("Zoomed in")).not.toBeInTheDocument();
   });
 
   test("shows no zoom tag when the AI model did not use the zoom tool", async () => {

@@ -212,7 +212,7 @@ def detailed_image(width=2048, height=1536, stripe=2):
 def test_zoom_crops_the_centre_and_scales_back_up():
     zoomed, _ = load_image(zoom_image(detailed_image(2048, 1536), max_dimension=1024))
 
-    # 2048/4 = 512 wide before rescaling, then scaled so the longest side is 1024
+    # 2048/8 = 256 wide before rescaling, then scaled so the longest side is 1024
     assert max(zoomed.size) == 1024
     # Aspect ratio is preserved by the crop
     assert zoomed.size[0] / zoomed.size[1] == pytest.approx(2048 / 1536, rel=0.01)

@@ -544,7 +544,8 @@ async def admin_review_shot(shot_id: UUID):
 class _ReplayRequest(BaseModel):
     shot_id: UUID
     prompt: Optional[str] = None
-    always_zoom: bool = True
+    always_zoom: bool = False
+    reasoning_effort: Optional[str] = None
 
 
 @admin_method(path="/admin_replay_shot_review", method="POST")
@@ -552,10 +553,12 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
     """Fire one shot through the vision pipeline and return the reading.
 
     The admin replay workbench: same pipeline as a real review (aim marker,
-    resize, mandatory zoom), but with the prompt customisable on the fly and
-    nothing stored -- no state changes, no events, no auto-actions.
+    resize, screening-gated zoom), but with the prompt customisable on the fly
+    and nothing stored -- no state changes, no events, no auto-actions.
+    ``reasoning_effort`` overrides OPENROUTER_REASONING_EFFORT for this replay
+    only, for trialling reasoning depth against real shots.
     """
-    client = get_vision_client()
+    client = get_vision_client(reasoning_effort=request.reasoning_effort)
     if client is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
     try:
@@ -571,15 +574,20 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
 
 @admin_method("/admin_get_shot_vision_images", method="GET")
 async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
-    """Return the shot image formatted exactly as the vision model sees it.
+    """Return the shot image formatted exactly as the vision model sees it, at
+    every zoom level the pipeline can reach.
 
-    Two images are returned:
+    Three images are returned:
     - full: the whole frame with aim marker, downscaled to 1024px max (what
       prepare_for_vision produces)
-    - zoomed: the centre 25% of the original, cropped and upscaled to 1024px
-      with a fresh aim marker (what zoom_image produces)
+    - zoomed: the centre 12.5% of the original, cropped and upscaled to 1024px
+      with a fresh aim marker -- the first zoom (what zoom_image produces)
+    - zoomed2: the centre 12.5% of *that*, i.e. 1/ZOOM_FACTOR**2 of the
+      original -- the second zoom, spent only if the first wasn't enough
 
-    Both are JPEG data URLs ready to render in <img>.
+    Which of these a replay actually used is ShotVisionResult.zoom_count, not
+    anything about the shot itself, so the caller decides how many to show.
+    All three are JPEG data URLs ready to render in <img>.
     """
     original = AdminInterface().get_shot_image_base64(shot_id)
 
@@ -588,10 +596,13 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
         image_processing.draw_aim_marker(original)
     )
 
-    # Zoomed frame: centre 25% crop from ORIGINAL, upscale to 1024px, aim marker
+    # Zoomed frames: successive centre crops from ORIGINAL, each upscaled to
+    # 1024px with its own aim marker, compounding as ZOOM_FACTOR**level exactly
+    # as backend.ai_shot_review's zoom_provider does.
     zoomed = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR)
+    zoomed2 = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR**2)
 
-    return {"full": full, "zoomed": zoomed}
+    return {"full": full, "zoomed": zoomed, "zoomed2": zoomed2}
 
 
 @admin_method("/admin_get_default_vision_prompt", method="GET")

@@ -41,6 +41,11 @@ def hit_reply(slot=7):
     }
 
 
+def small_person_reply():
+    """The screening answer that spends the zoom."""
+    return {shot_vision.SCREENING_FIELD: True}
+
+
 def game_of(shot_id):
     return AdminInterface().get_shot_model(shot_id).game_id
 
@@ -59,6 +64,10 @@ async def test_a_successful_review_is_stored(db_session, shot_from_user_in_team)
     assert stored["review"]["outcome"] == shot_vision.HIT_PLAYER
     assert stored["review"]["is_hit"] is True
     assert stored["review"]["channels"]["tshirt"]["colour"] == "black"
+    assert stored["review"]["zoom_count"] == 0
+    # The full turn-by-turn transcript is the replay workbench's, not stored
+    # against every live shot
+    assert "transcript" not in stored["review"]
 
 
 @pytest.mark.asyncio
@@ -83,7 +92,7 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
     spy = mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
-    client = FakeVisionClient(reply=hit_reply())
+    client = FakeVisionClient(reply=[small_person_reply(), hit_reply()])
 
     await ai_shot_review.review_shot(shot_from_user_in_team, client)
 
@@ -97,20 +106,37 @@ async def test_the_zoom_is_cut_from_the_original_not_the_downsized_image(
 
 
 @pytest.mark.asyncio
-async def test_the_zoom_is_always_produced_whether_or_not_the_model_asks(
+async def test_the_zoom_is_produced_when_the_person_fills_less_than_half_the_screen(
     mocker, db_session, shot_from_user_in_team
 ):
-    # Roadmap #4: the model calls close misses hits at full confidence without
-    # ever asking for the zoom, so the zoom is no longer its choice.
+    # The screening question, not the model's self-assessed confidence, decides
+    # whether the zoom is spent: a small target gets the closer look.
     spy = mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
 
     await ai_shot_review.review_shot(
-        shot_from_user_in_team, FakeVisionClient(hit_reply())
+        shot_from_user_in_team,
+        FakeVisionClient([small_person_reply(), hit_reply()]),
     )
 
     spy.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_the_zoom_is_not_produced_when_the_person_fills_the_screen(
+    mocker, db_session, shot_from_user_in_team
+):
+    spy = mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team,
+        FakeVisionClient([{shot_vision.SCREENING_FIELD: False}, hit_reply()]),
+    )
+
+    spy.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -317,8 +343,48 @@ async def test_a_replay_threads_the_custom_prompt_and_zoom_choice(
     )
 
     assert client.calls[0]["turns"][0]["text"] == "A made-up prompt"
-    # always_zoom=False: the zoom is not produced unless the model asks
+    # always_zoom=False runs the screening flow; this model answered in full on
+    # the first turn, so the zoom is never produced
     assert client.images_sent[-1] != "data:image/jpeg;base64,Z"
+
+
+@pytest.mark.asyncio
+async def test_a_replay_returns_the_full_transcript(
+    mocker, db_session, shot_from_user_in_team
+):
+    # Unlike a stored live review, the replay workbench's answer carries every
+    # turn exchanged with the model -- that is the point of the workbench.
+    mocker.patch(
+        "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
+    )
+    client = FakeVisionClient(
+        reply=[small_person_reply(), hit_reply()],
+        reasoning=[None, "The armbands are clearly green in this crop."],
+    )
+
+    review = await ai_shot_review.replay_shot_review(
+        shot_from_user_in_team, client, prompt="A made-up prompt"
+    )
+
+    # A flat, chronological conversation: prompt, screening reply, the zoom
+    # follow-up, then the full reading -- nothing repeated turn to turn.
+    assert [entry["role"] for entry in review["transcript"]] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+    ]
+    assert review["transcript"][0]["text"] == "A made-up prompt"
+    assert review["transcript"][3]["reply"]["shot_hit_a_person"] is True
+    assert review["zoom_count"] == 1
+    # A "thinking" model's own reasoning trace rides alongside its reply, for
+    # the replay workbench to show -- distinct from the short "reasoning"
+    # field inside the parsed reply itself.
+    assert review["transcript"][1]["reasoning"] is None
+    assert (
+        review["transcript"][3]["reasoning"]
+        == "The armbands are clearly green in this crop."
+    )
 
 
 def test_replay_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):
@@ -358,11 +424,31 @@ def test_replay_endpoint_returns_the_reading(
     assert response.json()["outcome"] == shot_vision.HIT_PLAYER
 
 
+def test_replay_endpoint_passes_reasoning_effort_override_through(
+    mocker, monkeypatch, admin_api_client, shot_from_user_in_team
+):
+    # The workbench's per-replay override, independent of whatever
+    # OPENROUTER_REASONING_EFFORT is set to for the live pipeline.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    get_client = mocker.patch(
+        "backend.main.get_vision_client",
+        return_value=FakeVisionClient(reply=hit_reply()),
+    )
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review",
+        json={"shot_id": str(shot_from_user_in_team), "reasoning_effort": "high"},
+    )
+
+    assert response.status_code == 200
+    get_client.assert_called_once_with(reasoning_effort="high")
+
+
 def test_default_prompt_endpoint(admin_api_client):
     response = admin_api_client.get("/api/admin_get_default_vision_prompt")
 
     assert response.status_code == 200
-    assert "request_zoom" in response.json()["prompt"]
+    assert shot_vision.SCREENING_FIELD in response.json()["prompt"]
 
 
 def test_vision_images_endpoint_returns_full_and_zoomed(
@@ -376,10 +462,13 @@ def test_vision_images_endpoint_returns_full_and_zoomed(
     data = response.json()
     assert "full" in data
     assert "zoomed" in data
+    assert "zoomed2" in data
     assert data["full"].startswith("data:image/jpeg;base64,")
     assert data["zoomed"].startswith("data:image/jpeg;base64,")
-    # Full and zoomed should be different (zoom crops the center)
+    assert data["zoomed2"].startswith("data:image/jpeg;base64,")
+    # Full, zoomed and zoomed2 should all differ (each crops closer in)
     assert data["full"] != data["zoomed"]
+    assert data["zoomed"] != data["zoomed2"]
 
 
 def test_vision_images_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):

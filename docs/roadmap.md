@@ -501,6 +501,118 @@ question in the 2026-08-24 handover), not a prompt problem.
 `always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
 old behaviour survives as the `optional_zoom` variant for comparison runs.
 
+**Updated 2026-08-25 (later): the zoom is now gated on a screening question,
+not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 8`)
+the remaining failure mode was close shots that actually miss being called
+hits, so `review_image`'s default flow changed again: turn one asks only "does
+the person fill less than half of the screen?"
+(`person_fills_less_than_half`); that reply is discarded and turn two is either
+the zoomed view (small target, with the same question repeated) or a plain
+request for the full reading. A still-small target after the first zoom gets
+one final, closer view (`MAX_ZOOMS = 2`, compounding as `ZOOM_FACTOR**level`).
+The `request_zoom` field is gone — the model never chooses the zoom, it only
+ever answers how big the person is. `always_zoom=True` survives for replay
+comparisons; the harness's `baseline` variant tracks the screening flow and
+`optional_zoom` is retired.
+
+**Replay-scored 2026-08-25:** one run of `baseline` over all 13 fixtures
+(`tests/fixtures/shot_replay/replay_screening_gate_run1.jsonl`) — **false-hit
+rate 0/8 (0%), false-miss rate 4/5 (80%)**, matching the always-zoom numbers
+this variant replaces. d91548d3, the flagship false hit, is `miss` at 0.99
+confidence. The four false misses are the same `hit_bystander` mapping noted
+above (armbands hidden, other channels incomplete), not a regression from the
+screening gate. Single run, not the 5x done for the earlier variants — worth
+repeating before fully trusting the rate, but it confirms the screening gate
+did not reintroduce the false-hit problem it was built to avoid.
+
+**Admin visibility (2026-08-25):** two zooms sharing one `zoom_used` bool made
+it impossible to tell from the queue or the replay workbench whether a shot
+spent one zoom or two, and the workbench showed only the parsed final reading
+-- nothing of what was actually said turn by turn. `ShotVisionResult` grew
+`zoom_count` (0/1/2, `to_dict()` always) and `transcript` (every turn sent
+plus the raw reply, `to_dict(include_transcript=True)` -- opt-in so a live
+review's stored payload does not carry it on every shot). The queue and
+workbench tags now read "Zoomed in ×N" (`ShotQueue.zoomTag`, falling back to
+a bare "Zoomed in" for reviews stored before this); the workbench also gets a
+collapsible "Full model transcript" per replayed shot, with a "Prettified
+JSON" toggle that dumps the whole exchange instead of the per-turn cards.
+
+**Refined 2026-08-25 (later):** two follow-up fixes once this was actually
+used. First, the vision-images panel showed the full frame and one zoom crop
+unconditionally, regardless of whether a zoom was actually spent -- now it
+shows only the full frame until a replay runs, then exactly as many zoom
+crops as `zoom_count` says were used (`admin_get_shot_vision_images` grew a
+`zoomed2` alongside `zoomed`). Second, `transcript` was a list of *cumulative*
+snapshots -- each exchange repeating every earlier turn verbatim before
+adding its own -- which read as duplication once printed as JSON. The
+conversation is append-only (nothing sent earlier is ever revised), so
+`transcript` is now that flat chronological list directly: one entry per
+turn, user prompts as text and assistant replies as the parsed JSON, with
+nothing repeated. (Also checked: each turn already sends its text before its
+image in the message content, which is what you want for prompt caching.)
+
+**Reasoning trace surfaced (2026-08-26):** the transcript carried each
+assistant turn's *parsed reply* only -- for a "thinking" model, OpenRouter
+also returns the model's extended reasoning trace on `message.reasoning`
+(included by default, no opt-in needed), and that was silently dropped.
+`VisionClient` gained a `last_reasoning` property (`OpenRouterVisionClient`
+reads it off the response; `FakeVisionClient` takes a `reasoning=` arg for
+tests), and `shot_vision._assistant_turn` attaches it to each transcript
+entry the workbench renders. The workbench shows it under a per-turn
+"Model reasoning" disclosure, distinct from the short `reasoning` field the
+model fills in as part of its JSON reply itself.
+
+**Reasoning-continuity bug fixed (2026-08-26):** surfacing the trace for
+display exposed a real bug in the pipeline itself -- the screening -> zoom ->
+full-reading loop re-sent only each turn's bare parsed JSON as the assistant's
+prior turn, never the reasoning that produced it. Per OpenRouter's own
+guidance, a "thinking" model needs its `reasoning_details` (its
+provider-independent, pass-back-verbatim structured form -- some providers'
+blocks are encrypted, so this is not the same as the human-readable
+`reasoning` string above) fed back on the next turn's assistant message to
+continue reasoning from where it left off; without it, every turn after the
+first re-reasons from nothing but the previous turn's bare verdict, which
+measurably degrades multi-turn (zoomed) cases. `VisionClient` gained
+`last_reasoning_details`, `shot_vision.review_image` now threads it into
+each follow-up turn via `_previous_answer_turn`, and `_as_message` passes it
+through to OpenRouter unmodified.
+
+**Reasoning-effort knob added, and measured (2026-08-26).** Looking at a real
+production shot's transcript raised a further question: the displayed
+reasoning read as if it decided the hit, then filled in colours with no
+visible deliberation. Live calls through the real pipeline (screening-gated,
+`google/gemini-3.7-flash-20260813`) confirmed this is genuine, unrelated to
+the bug above -- Gemini's `reasoning` is a short **thought summary** (Google's
+term: a synopsis, not the raw chain-of-thought), and its length tracked
+`usage.completion_tokens_details.reasoning_tokens` exactly on every call, so
+nothing was being truncated in flight. `OPENROUTER_REASONING_EFFORT`
+(`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`) now requests a deeper
+one via OpenRouter's `reasoning: {"effort": ...}` parameter -- unset by
+default (identical behaviour to before), overridable per replay in the
+workbench regardless of the env setting.
+
+Measured on 3 fixture shots (one each of miss/hit/bystander ground truth),
+gated flow, Gemini only, one run per effort level:
+
+| effort | final-turn reasoning chars (3 shots) | verdict vs. `unset` |
+| --- | --- | --- |
+| unset | 219 / 355 / 259 | -- |
+| low | 0 / 0 / 0 | same outcome every time |
+| medium | 238 / 319 / 485 | same outcome every time |
+| high | 485 / 1465 / 1855 | same outcome every time |
+
+Two findings, both from real data, not the 3-shot sample size: **`low` is
+worse than doing nothing** -- it suppressed the visible summary to zero chars
+on every single call while still spending real `reasoning_tokens` (72-271)
+computing it, so if transparency is the goal, never configure `low`. **`high`
+gives the long, multi-paragraph, per-channel deliberation** the admin UI was
+missing (2-6x `unset`'s length), at a modest cost increase (~$0.006-0.008 vs
+~$0.005-0.008 per shot review, all three calls). None of the three shots'
+*verdicts* changed across any effort level -- one (`697899ee`, a hit
+misread as `hit_bystander`) stayed wrong at every level, so effort is a
+narration-depth and transparency knob here, not a demonstrated accuracy fix;
+that needs the full replay-set treatment (R1) to say anything at N > 3.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).
@@ -558,6 +670,27 @@ produce proper verdicts, the admin queue grew a **"Show adjudicated shots"**
 toggle and a per-shot **admin notes** field (`Shot.admin_notes`,
 `admin_get_shot_notes` / `admin_set_shot_notes`) so future exports carry real
 adjudications and the reasoning behind them.
+
+**Model-family sweep (2026-08-25).** `scripts/replay_shot_reviews.py` grew
+`replay_to_file`, the reusable core of `cmd_replay`, and
+`scripts/benchmark_vision_family.py` drives it over a list of models --
+every size OpenRouter currently lists under Qwen3-VL (235B-A22B, 32B,
+30B-A3B, 8B, instruct and thinking variants) plus the pipeline's own default
+`google/gemini-3.7-flash-20260813` -- writing one resumable JSONL per model
+under `--out-dir` and printing a side-by-side accuracy table plus a tool-use
+tally (JSON-schema/parse failures, empty replies, rejected requests). A full
+run against all 13 fixture shots is committed at
+`tests/fixtures/shot_replay/family_benchmark/`; see
+`docs/vision_model_family_benchmark_2026-08-25.md` for the results. Headline:
+`gemini-3.7-flash` (the current default) remains the best-calibrated model
+(0 false hits at 0.92 mean confidence); `qwen3-vl-235b-a22b-instruct` failed
+outright (whitespace, no JSON) on 4/13 shots; `qwen3-vl-8b-thinking`
+hallucinated confident hits on two shots every other model in the family,
+including its own non-thinking sibling, correctly called empty/ambiguous.
+The `d91548d3` marker-geometry false hit and the four-shot false-miss
+cluster from the 2026-08-24 handover both reproduced across most of the
+family, reinforcing that the aim-marker geometry and `classify()`'s
+two-channel rule (not model choice) are the higher-leverage fixes.
 
 **R2, after the game — the scorecard.** The admin-facing version: an endpoint and
 a page reporting CharlesBot's outcome against the admin's over a game or all
