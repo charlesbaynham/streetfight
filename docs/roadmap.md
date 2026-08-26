@@ -54,7 +54,7 @@ software with a real deadline, which is not where it started on the list.
 | 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
-| 4     | **#10** Colour-picking page                 | ~31 Aug build, live ~7 Sept  | The only software on the critical path. Also the mitigation for bring-your-own garments (see #9).              |
+| 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
@@ -105,10 +105,14 @@ Recorded here so they are not re-litigated:
   code-decode path in `slot_candidates_from_review` cannot see a player who is
   not wearing their exact codeword — which, with overrides or free choice, is
   most of them.
-- **Players choose freely, seated as far apart as their wardrobe allows** (#10),
-  rather than picking a canonical slot or being held to a hard distance
-  threshold. Plan §12.6: everyone gets clothes they own, ~55% keep the full
-  `d = 3`, ~45% sit at 2, ~0.2% at 1.
+- **Players choose their own outfit from a ranked, paginated list** (#10),
+  gated on Hamming distance (the scheme's nominal minimum, `d >= 3`, against
+  everyone already placed in the whole game — relaxed to `d >= 2` only once
+  the player confirms they have no more clothes) rather than auto-seated by
+  the backend or restricted to a canonical slot. Canonical Reed–Solomon
+  codewords rank at the top of the list, so most players land on one with no
+  overrides at all. See plan §12.6's "as implemented" note and the #10 entry
+  below for the ranking rule.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -249,60 +253,93 @@ is the natural place to sanity-check the game area's extent.
 
 ---
 
-### #10 — Let players pick their own colours *(the software on the critical path)*
+### #10 — Let players pick their own colours *(shipped)*
 
-**Current state.** `identity_admin.build_join_codes(game_id, slots_per_team)`
-pre-allocates a block of slots per team (one team-channel colour each, via
-`allocation.allocate_team_slots`) and mints one signed join URL **per slot**;
-`claim_join_slot()` claims whatever slot the scanned code carries. So today a
-player is handed an outfit, they do not choose one.
+**Shipped** as `backend/identity/config.py` (`PROVIDED_CHANNEL`,
+`COLOUR_COMMONNESS`, `commonness_for`), `backend/identity/allocation.py`
+(`assign_team_colours`, `colour_capacity`), `backend/model.py`
+(`Team.identity_colour`, `User.identity_wardrobe`), `backend/join_codes.py`
+(`slot` now optional — `None` marks a *team* code — plus
+`make_team_join_url`), `backend/identity_admin.py` (`build_join_codes`
+rewritten, `outfit_options`, `join_options`, `outfit_options_page`,
+`pick_outfit`, `clear_identity`), the new `GET /join_options` /
+`POST /outfit_options` / `POST /pick_outfit` / `POST /admin_clear_identity`
+endpoints in `backend/main.py`, and the player-facing page at
+`react-ui/src/PickOutfit.js` (route `/pick`), sharing the extracted
+`react-ui/src/Swatch.js` with `AdminIdentity.js`.
 
-**Suggested shape** (minimal change to what exists): keep the signed join code as
-the entry point, but let it carry the **team's block** rather than a single slot,
-and have the claim flow present the unclaimed slots in that block and take the
-player's pick. `build_join_codes` then mints one code per team instead of one per
-slot, which also makes the print run smaller.
+**How the design differs from what this entry used to say.** The rest of
+this entry, kept below for the "before" picture, said the backend would
+**auto-seat** a player "on the outfit that is as far as possible from
+everyone already placed" — that is not what shipped, and the description is
+corrected here rather than left standing. What actually happens: the player
+is offered a **ranked, paginated list of outfits and picks one themselves**.
+An option must be wearable from the colours the player ticked and clear a
+**hard Hamming-distance gate** — the scheme's nominal minimum distance
+against every other placed player in the *whole game*, not just the team
+(inside a team this costs nothing; plan §12.6 shows the team partition
+already caps a team at the code's own five-outfit capacity), relaxed by one
+once the player confirms "I'm sure I don't have any more clothes". Survivors
+are then ranked **overrides needed from a canonical Reed–Solomon codeword
+first (ascending), rarity second** (descending, summed `1 - commonness` over
+the player's own t-shirt/trousers channels only — the hat is fixed and the
+armband is ours). Distance from a canonical codeword beats rarity absolutely,
+so most players land on an unclaimed codeword carrying no overrides at all,
+and free choice is graceful degradation rather than the norm. See
+`backend.identity_admin.outfit_options` for the implementation and plan
+§12.6's "as implemented" note for the reasoning.
 
-**What the page needs:**
+**Two risks worth naming that the rest of this entry doesn't:**
 
-- the team's *unclaimed* slots rendered as outfits with colour swatches —
-  `hex_for()` and the swatch rendering in `AdminIdentity.js` / `IdentityDemo.js`
-  already exist to reuse;
-- an explanation that the armbands are fixed by the team (see #9) and the choice
-  is across the other three channels;
-- an **atomic** claim: several people will be picking at once on their phones,
-  and two players must never end up wearing the same codeword;
-- it must work **before the night** and before anybody has a `User` row — plan
-  §8.2 is explicit about this, and the whole point is that people need to know
-  what to wear in advance.
+- **Slots remain the real ceiling.** 34 usable slots
+  (`IdentityScheme.usable_slots`), so the game caps there regardless of how
+  generous anyone's wardrobe is.
+- **The team join code is a shareable bearer token.** One link per team means
+  one leaked link can burn every outfit in that team, not just one —
+  `/join_game`'s older per-slot code had this property per outfit; pooling by
+  team widens the blast radius.
 
-**Self-selection is now load-bearing, not a nicety.** With only the armbands
-provided (#9), three channels depend on players owning the right colours. Letting
-someone choose the slot whose t-shirt, trousers and hat they *already have* is
-the single best lever on how accurate the identification is on the night. So the
-page should be built around "which of these can you actually wear on Saturday",
-not "which is prettiest".
+**Current state, before this shipped.** `identity_admin.build_join_codes(game_id, slots_per_team)`
+pre-allocated a block of slots per team (one team-channel colour each, via
+`allocation.allocate_team_slots`) and minted one signed join URL **per
+slot**; `claim_join_slot()` claimed whatever slot the scanned code carried.
+So a player was handed an outfit; they did not choose one.
 
-**Settled: the choice is free within the team, and seated by distance.** The
-player is not offered a list of canonical slots. They say which t-shirt and
-trouser colours they own; the backend seats them on the outfit that is as far as
-possible from everyone already placed, with the hat fixed to the team and the
-armband chosen by us. §12.5's capacity tax does not apply, because pinning the
-hat to the team partitions the space and prevents the stranding that causes it —
-inside a team, free choice and the code fit the same five players. See plan
-§12.6 for the numbers and open question 5 for the reasoning.
+**What the page needed, and delivered:**
 
-**This depends on #5.** Freely chosen outfits are not codewords, so the
-code-decode path in `shot_vision.slot_candidates_from_review` cannot identify
-their wearers — and can confidently identify the *wrong* one. Auto-actions are
-required on the night, so #5 ships first.
+- the team's *unclaimed* outfits rendered with colour swatches — reusing
+  `hex_for()` and the swatch rendering already proven in `AdminIdentity.js` /
+  `IdentityDemo.js` (now the shared `Swatch.js`);
+- an explanation that the armbands are fixed by the team (see #9) and the
+  choice is across the other three channels;
+- an **atomic** claim, guarded by `identity_admin.pick_outfit_lock` plus
+  re-validation against freshly read state: several people pick at once on
+  their phones, and two players must never end up wearing the same codeword;
+- it works **before the night** and before anybody has a `User` row — plan
+  §8.2 is explicit about this, and `join_options` deliberately creates no
+  `User` row so a link-preview bot prefetching the URL can't burn an outfit.
 
-**Do ask each player to confirm they have the garments.** Do **not** ask them to
-photograph themselves: that is deliberately deferred to R7, where the admin takes
-the photo at the door on the night. A self-taken photo verifies nothing, because
-the person submitting it is the person with a reason to fudge it.
+**Self-selection is load-bearing, not a nicety.** With only the armbands
+provided (#9), three channels depend on players owning the right colours.
+Letting someone choose the outfit whose t-shirt, trousers and hat they
+*already have* is the single best lever on how accurate the identification is
+on the night. So the page is built around "which of these can you actually
+wear on Saturday", not "which is prettiest".
 
-**Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move). **Feeds:** #8.
+**Depended on #5, now shipped.** Freely chosen outfits are not codewords, so
+the code-decode path in `shot_vision.slot_candidates_from_review` cannot
+identify their wearers — and can confidently identify the *wrong* one.
+Auto-actions are required on the night, so #5 shipped first.
+
+**Each player confirms they have the garments** before picking, via an "I own
+these and I'll wear them on the night" checkbox. Players are **not** asked to
+photograph themselves: that is deliberately deferred to R7, where the admin
+takes the photo at the door on the night. A self-taken photo verifies
+nothing, because the person submitting it is the person with a reason to
+fudge it.
+
+**Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
+**Feeds:** #8.
 
 ---
 
@@ -343,9 +380,12 @@ than a fright. Cheap, and it converts the failure mode from "incident" to
    from #7 to the template.
 2. **Pub handouts** (#6) — probably a different format: something a bar will
    actually keep on display.
-3. **Player appearance cards** (#10) — what to wear, per player, plus their join
-   code. `build_join_codes` already returns `appearance` per slot for exactly
-   this.
+3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
+   their join code. Each player already knows this, having picked it via
+   `/pick`; the print step reads it off each player's picked
+   `effective_appearance` (the same shape `admin_identity_report` returns),
+   not from `build_join_codes` — that now mints one code per *team*, not one
+   appearance per slot.
 
 **If the schedule slips**, the drop codes are the ones with a hard dependency on
 physical placement; the appearance cards can be sent digitally as a fallback,

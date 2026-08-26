@@ -2,9 +2,9 @@
 // code (as opposed to a per-slot code, which still claims a fixed outfit
 // straight away - see JoinFromQueryParams). They declare what they own, are
 // offered a ranked list of outfits that are both wearable and distinguishable
-// from everyone already placed, and pick one. See
-// docs/pick_your_colours_plan.md ("The design" and "C7") for the full
-// rationale behind the ranking and the flow below.
+// from everyone already placed, and pick one. See docs/roadmap.md's #10
+// entry and backend/identity_admin.py's outfit_options for the ranking
+// rationale behind the flow below.
 //
 // Deliberately outside UserMode: no map, no webcam, no SSE, no permission
 // polling - this page only ever talks to join_options / outfit_options /
