@@ -653,6 +653,28 @@ async def test_the_transcript_is_a_flat_append_only_conversation():
 
 
 @pytest.mark.asyncio
+async def test_the_transcript_carries_the_models_reasoning_trace_per_turn():
+    # A "thinking" model's extended reasoning (OpenRouter's unified reasoning
+    # tokens), distinct from the short "reasoning" field inside each JSON
+    # reply -- present on some turns and not others, exactly as a real model
+    # might answer the screening turn tersely and think out loud on the rest.
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, reply_for(appearance_of(8))],
+        reasoning=[None, "Weighing up what's visible before answering."],
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert result.transcript[1]["reasoning"] is None
+    assert (
+        result.transcript[3]["reasoning"]
+        == "Weighing up what's visible before answering."
+    )
+
+
+@pytest.mark.asyncio
 async def test_transcript_is_omitted_from_to_dict_by_default_but_available_on_request():
     client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
 

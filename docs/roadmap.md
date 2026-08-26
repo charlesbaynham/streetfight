@@ -551,6 +551,17 @@ turn, user prompts as text and assistant replies as the parsed JSON, with
 nothing repeated. (Also checked: each turn already sends its text before its
 image in the message content, which is what you want for prompt caching.)
 
+**Reasoning trace surfaced (2026-08-26):** the transcript carried each
+assistant turn's *parsed reply* only -- for a "thinking" model, OpenRouter
+also returns the model's extended reasoning trace on `message.reasoning`
+(included by default, no opt-in needed), and that was silently dropped.
+`VisionClient` gained a `last_reasoning` property (`OpenRouterVisionClient`
+reads it off the response; `FakeVisionClient` takes a `reasoning=` arg for
+tests), and `shot_vision._assistant_turn` attaches it to each transcript
+entry the workbench renders. The workbench shows it under a per-turn
+"Model reasoning" disclosure, distinct from the short `reasoning` field the
+model fills in as part of its JSON reply itself.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

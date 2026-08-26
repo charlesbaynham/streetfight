@@ -85,6 +85,19 @@ class VisionClient:
     async def complete(self, turns: List[dict], schema: dict) -> dict:
         raise NotImplementedError
 
+    @property
+    def last_reasoning(self) -> Optional[str]:
+        """The model's own extended-thinking trace from the most recent
+        :meth:`complete` call, when the provider returned one.
+
+        Distinct from the short ``"reasoning"`` field the model fills in as
+        part of the JSON reply itself (see ``build_schema`` in
+        :mod:`backend.shot_vision`) -- this is a provider-level reasoning
+        trace (OpenRouter's unified reasoning tokens), not part of the parsed
+        reply. None when there is nothing to show.
+        """
+        return None
+
 
 class OpenRouterVisionClient(VisionClient):
     """Calls a vision model through OpenRouter's chat-completions API."""
@@ -98,6 +111,11 @@ class OpenRouterVisionClient(VisionClient):
         self.api_key = api_key
         self.model = model or os.getenv("OPENROUTER_MODEL") or DEFAULT_MODEL
         self.timeout = timeout if timeout is not None else _timeout_from_env()
+        self._last_reasoning: Optional[str] = None
+
+    @property
+    def last_reasoning(self) -> Optional[str]:
+        return self._last_reasoning
 
     async def complete(self, turns: List[dict], schema: dict) -> dict:
         import httpx
@@ -142,7 +160,9 @@ class OpenRouterVisionClient(VisionClient):
                         f"{response.text[:200]}"
                     )
                 else:
-                    return parse_json_reply(_content_of(response.json()))
+                    content, reasoning = _content_of(response.json())
+                    self._last_reasoning = reasoning
+                    return parse_json_reply(content)
             except VisionError:
                 raise
             except Exception as e:  # network errors, timeouts, malformed JSON
@@ -171,9 +191,17 @@ class FakeVisionClient(VisionClient):
     one per call -- which is how a test drives "ask for a zoom, then answer".
     """
 
-    def __init__(self, reply=None, error: Optional[Exception] = None):
+    def __init__(
+        self,
+        reply=None,
+        error: Optional[Exception] = None,
+        reasoning=None,
+    ):
         self.reply = reply if reply is not None else {}
         self.error = error
+        # None, a single string (every call), or a list parallel to ``reply``
+        # -- mirrors how ``reply`` itself is indexed per call.
+        self.reasoning = reasoning
         self.calls = []
 
     async def complete(self, turns: List[dict], schema: dict) -> dict:
@@ -186,6 +214,13 @@ class FakeVisionClient(VisionClient):
             index = min(len(self.calls), len(self.reply)) - 1
             return self.reply[index]
         return self.reply
+
+    @property
+    def last_reasoning(self) -> Optional[str]:
+        if isinstance(self.reasoning, list):
+            index = min(len(self.calls), len(self.reasoning)) - 1
+            return self.reasoning[index] if 0 <= index < len(self.reasoning) else None
+        return self.reasoning
 
     @property
     def images_sent(self) -> List[str]:
@@ -214,10 +249,17 @@ def _as_message(turn: dict) -> dict:
     return {"role": turn.get("role", "user"), "content": content}
 
 
-def _content_of(body: dict) -> str:
-    """Dig the assistant's text out of a chat-completions response body."""
+def _content_of(body: dict):
+    """The assistant's text, plus any reasoning trace, from a response body.
+
+    Returns ``(content, reasoning)``. ``reasoning`` is OpenRouter's unified
+    reasoning-tokens field -- included by default whenever the model behind
+    it produced one, no opt-in required -- and is None for a model that
+    didn't (or a provider that doesn't return it).
+    """
     try:
-        return body["choices"][0]["message"]["content"]
+        message = body["choices"][0]["message"]
+        return message["content"], message.get("reasoning") or None
     except (KeyError, IndexError, TypeError):
         raise VisionError(f"unexpected response shape: {str(body)[:200]}")
 

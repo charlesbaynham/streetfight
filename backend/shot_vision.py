@@ -822,7 +822,7 @@ async def review_image(
         result.zoom_used = True
         result.zoom_count = 1
         result.transcript = [_transcript_turn(turn) for turn in turns] + [
-            {"role": "assistant", "reply": raw}
+            _assistant_turn(raw, client)
         ]
         return result
 
@@ -836,7 +836,7 @@ async def review_image(
 
     raw = await client.complete(turns, build_screening_schema())
     zooms_used = 0
-    transcript = [_transcript_turn(turns[0]), {"role": "assistant", "reply": raw}]
+    transcript = [_transcript_turn(turns[0]), _assistant_turn(raw, client)]
 
     while not _answered_in_full(raw):
         if (
@@ -867,7 +867,7 @@ async def review_image(
         raw = await client.complete(
             turns, schema if final_turn else build_screening_schema()
         )
-        transcript.append({"role": "assistant", "reply": raw})
+        transcript.append(_assistant_turn(raw, client))
         if final_turn:
             # Whatever comes back now is the answer.
             break
@@ -902,6 +902,21 @@ def _transcript_turn(turn: dict) -> dict:
         "role": turn["role"],
         "text": turn["text"],
         "has_image": bool(turn.get("image_data_url")),
+    }
+
+
+def _assistant_turn(raw: dict, client) -> dict:
+    """One assistant turn for the transcript: the parsed reply, plus the
+    model's own extended-thinking trace when the provider returned one
+    (``client.last_reasoning`` -- OpenRouter's unified reasoning tokens).
+
+    Distinct from ``raw["reasoning"]``, the short field the model fills in as
+    part of the reply itself.
+    """
+    return {
+        "role": "assistant",
+        "reply": raw,
+        "reasoning": client.last_reasoning,
     }
 
 

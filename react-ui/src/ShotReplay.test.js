@@ -59,6 +59,7 @@ const hitReview = {
     {
       role: "assistant",
       reply: { shot_hit_a_person: true, confidence: 0.9 },
+      reasoning: "The armbands are clearly green in this crop.",
     },
   ],
   channels: {
@@ -192,6 +193,34 @@ test("shows how many times the zoom was spent, and the full model transcript", a
   // The prettified-JSON toggle dumps the whole transcript instead
   fireEvent.click(screen.getByLabelText("Prettified JSON"));
   expect(screen.getByText(/"shot_hit_a_person": true/)).toBeInTheDocument();
+});
+
+test("shows a thinking model's reasoning trace alongside its reply", async () => {
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  // Shown under its own "Model reasoning" disclosure, alongside the reply it
+  // led to -- only the turn that actually carried one gets a disclosure.
+  expect(screen.getAllByText("Model reasoning")).toHaveLength(1);
+  expect(
+    screen.getByText("The armbands are clearly green in this crop."),
+  ).toBeInTheDocument();
 });
 
 test("a replay disagreeing with the admin's verdict says so", async () => {

@@ -357,7 +357,10 @@ async def test_a_replay_returns_the_full_transcript(
     mocker.patch(
         "backend.ai_shot_review.zoom_image", return_value="data:image/jpeg;base64,Z"
     )
-    client = FakeVisionClient(reply=[small_person_reply(), hit_reply()])
+    client = FakeVisionClient(
+        reply=[small_person_reply(), hit_reply()],
+        reasoning=[None, "The armbands are clearly green in this crop."],
+    )
 
     review = await ai_shot_review.replay_shot_review(
         shot_from_user_in_team, client, prompt="A made-up prompt"
@@ -374,6 +377,14 @@ async def test_a_replay_returns_the_full_transcript(
     assert review["transcript"][0]["text"] == "A made-up prompt"
     assert review["transcript"][3]["reply"]["shot_hit_a_person"] is True
     assert review["zoom_count"] == 1
+    # A "thinking" model's own reasoning trace rides alongside its reply, for
+    # the replay workbench to show -- distinct from the short "reasoning"
+    # field inside the parsed reply itself.
+    assert review["transcript"][1]["reasoning"] is None
+    assert (
+        review["transcript"][3]["reasoning"]
+        == "The armbands are clearly green in this crop."
+    )
 
 
 def test_replay_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):
