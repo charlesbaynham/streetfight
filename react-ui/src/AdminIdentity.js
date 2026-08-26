@@ -385,6 +385,8 @@ function PlayerEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [force, setForce] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState(null);
 
   useEffect(() => {
     setSelectedSlot(player.slot === null ? "" : String(player.slot));
@@ -401,6 +403,7 @@ function PlayerEditor({
     setChannelOverrides(initial);
     setSaveError(null);
     setForce(false);
+    setClearError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.user_id]);
 
@@ -437,14 +440,51 @@ function PlayerEditor({
     }
   };
 
+  const clearOutfit = async () => {
+    if (
+      !window.confirm(
+        `Clear ${player.name}'s outfit? This throws away their pick - they'll ` +
+          "have to scan their join code and choose again.",
+      )
+    ) {
+      return;
+    }
+    setClearing(true);
+    setClearError(null);
+    try {
+      const updated = await postJSON("admin_clear_identity", {
+        user_id: player.user_id,
+      });
+      onSaved(updated);
+    } catch (e) {
+      setClearError(e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className={styles.editor}>
       <div className={styles.editorHeader}>
         <h3>
           {player.name} <small>({player.team_name})</small>
         </h3>
-        <button onClick={onClose}>Close</button>
+        <span>
+          <button
+            onClick={clearOutfit}
+            disabled={player.slot === null || clearing}
+            title={
+              player.slot === null
+                ? "This player has no outfit to clear"
+                : "Free this outfit so someone else can pick it, and let this player choose again"
+            }
+          >
+            {clearing ? "Clearing..." : "Clear outfit"}
+          </button>{" "}
+          <button onClick={onClose}>Close</button>
+        </span>
       </div>
+      {clearError ? <p className={styles.errorText}>{clearError}</p> : null}
 
       <div className={styles.editorField}>
         <label>

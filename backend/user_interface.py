@@ -222,6 +222,19 @@ class UserInterface:
         u.identity_overrides = overrides_json
 
     @db_scoped
+    def clear_identity(self):
+        """Null the identity slot, overrides and wardrobe, freeing the
+        outfit for everyone else. Just the column write -- the player stays
+        in their team (see backend/identity_admin.py's clear_identity, which
+        is the admin-facing entry point; team removal is admin_delete_user's
+        job, not this).
+        """
+        u = self.get_user()
+        u.identity_slot = None
+        u.identity_overrides = None
+        u.identity_wardrobe = None
+
+    @db_scoped
     def set_weapon_data(self, damage: int, fire_delay: float):
         u = self.get_user()
         u.shot_timeout = fire_delay

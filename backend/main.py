@@ -896,6 +896,12 @@ async def admin_identity_set(request: identity_admin.IdentitySetRequest) -> dict
         return identity_admin.set_identity(request)
 
 
+@admin_method(path="/admin_clear_identity", method="POST")
+async def admin_clear_identity(request: identity_admin.IdentityClearRequest) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.clear_identity(request.user_id)
+
+
 @admin_method(path="/admin_identity_suggest", method="POST")
 async def admin_identity_suggest(
     request: identity_admin.IdentitySuggestRequest,

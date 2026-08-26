@@ -95,6 +95,10 @@ class IdentitySetRequest(pydantic.BaseModel):
     force: bool = False
 
 
+class IdentityClearRequest(pydantic.BaseModel):
+    user_id: UUID
+
+
 class IdentitySuggestRequest(pydantic.BaseModel):
     game_id: UUID
     user_id: Optional[UUID] = None
@@ -287,6 +291,32 @@ def set_identity(request: IdentitySetRequest) -> dict:
         ui.set_identity(slot, overrides_json)
 
     updated = admin.get_user_model(request.user_id)
+    return _player_row(updated, scheme)
+
+
+# ---------------------------------------------------------------------------
+# POST /admin_clear_identity
+# ---------------------------------------------------------------------------
+
+
+def clear_identity(user_id: UUID) -> dict:
+    """Null a player's slot, overrides and wardrobe, freeing that outfit for
+    everyone else (plan C5) -- the escape hatch for a final pick: a player
+    who wants to choose again has to ask an admin, and this is also the tool
+    an admin reaches for at the door on game night when someone turns up in
+    the wrong clothes.
+
+    The player stays in their team -- clearing membership entirely is
+    ``admin_delete_user``'s job, not this.
+    """
+    scheme = default_scheme()
+    admin = AdminInterface()
+    admin.get_user_model(user_id)  # 404s if user missing
+
+    with UserInterface(user_id) as ui:
+        ui.clear_identity()
+
+    updated = admin.get_user_model(user_id)
     return _player_row(updated, scheme)
 
 
