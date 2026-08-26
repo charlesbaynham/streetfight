@@ -290,6 +290,56 @@ async def join_game(
         return identity_admin.claim_join_slot(user_id, code)
 
 
+@router.get("/join_options")
+async def join_options(data: str, user_id=Depends(get_user_id)) -> dict:
+    """The outfit-picking page's first load: team identity, palette and the
+    caller's own state if they have one. Non-mutating on purpose - see
+    ``identity_admin.join_options``."""
+    code = _decoded_join_code(data)
+    with _identity_admin_errors():
+        return identity_admin.join_options(user_id, code)
+
+
+class _OutfitOptionsRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    relaxed: bool = False
+    page: int = 0
+
+
+@router.post("/outfit_options")
+async def outfit_options(
+    request: _OutfitOptionsRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """A ranked, paginated page of candidate outfits. A POST because the
+    wardrobe is a body, but it writes nothing - see
+    ``identity_admin.outfit_options_page``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.outfit_options_page(
+            user_id, code, request.wardrobe, request.relaxed, request.page
+        )
+
+
+class _PickOutfitRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    appearance: Dict[str, str] = {}
+    confirmed: bool = False
+
+
+@router.post("/pick_outfit")
+async def pick_outfit(
+    request: _PickOutfitRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """Claim a picked outfit - see ``identity_admin.pick_outfit``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.pick_outfit(
+            user_id, code, request.wardrobe, request.appearance, request.confirmed
+        )
+
+
 class _EncodedItem(BaseModel):
     data: str
 
@@ -856,9 +906,17 @@ async def admin_identity_suggest(
 
 @contextmanager
 def _identity_admin_errors():
-    """Turn identity_admin's complaints into a readable HTTP 400."""
+    """Turn identity_admin's complaints into a readable HTTP error.
+
+    ``OutfitUnavailableError`` (a ``pick_outfit`` claim that failed
+    re-validation - someone just took it, or it stopped qualifying) maps to
+    409, distinguishable from the plain 400 a malformed request gets; check
+    it first since it subclasses ``IdentityAdminError``.
+    """
     try:
         yield
+    except identity_admin.OutfitUnavailableError as e:
+        raise HTTPException(409, str(e))
     except identity_admin.IdentityAdminError as e:
         raise HTTPException(400, str(e))
 
