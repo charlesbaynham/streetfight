@@ -104,6 +104,12 @@ function TranscriptView({ transcript }) {
               {turn.role}
               {turn.has_image ? " (+ image)" : ""}
             </span>
+            {turn.reasoning ? (
+              <details className={styles.turnReasoning}>
+                <summary>Model reasoning</summary>
+                <pre className={styles.turnReasoningText}>{turn.reasoning}</pre>
+              </details>
+            ) : null}
             <pre className={styles.turnText}>
               {turn.role === "assistant"
                 ? JSON.stringify(turn.reply, null, 2)

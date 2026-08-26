@@ -551,6 +551,32 @@ turn, user prompts as text and assistant replies as the parsed JSON, with
 nothing repeated. (Also checked: each turn already sends its text before its
 image in the message content, which is what you want for prompt caching.)
 
+**Reasoning trace surfaced (2026-08-26):** the transcript carried each
+assistant turn's *parsed reply* only -- for a "thinking" model, OpenRouter
+also returns the model's extended reasoning trace on `message.reasoning`
+(included by default, no opt-in needed), and that was silently dropped.
+`VisionClient` gained a `last_reasoning` property (`OpenRouterVisionClient`
+reads it off the response; `FakeVisionClient` takes a `reasoning=` arg for
+tests), and `shot_vision._assistant_turn` attaches it to each transcript
+entry the workbench renders. The workbench shows it under a per-turn
+"Model reasoning" disclosure, distinct from the short `reasoning` field the
+model fills in as part of its JSON reply itself.
+
+**Reasoning-continuity bug fixed (2026-08-26):** surfacing the trace for
+display exposed a real bug in the pipeline itself -- the screening -> zoom ->
+full-reading loop re-sent only each turn's bare parsed JSON as the assistant's
+prior turn, never the reasoning that produced it. Per OpenRouter's own
+guidance, a "thinking" model needs its `reasoning_details` (its
+provider-independent, pass-back-verbatim structured form -- some providers'
+blocks are encrypted, so this is not the same as the human-readable
+`reasoning` string above) fed back on the next turn's assistant message to
+continue reasoning from where it left off; without it, every turn after the
+first re-reasons from nothing but the previous turn's bare verdict, which
+measurably degrades multi-turn (zoomed) cases. `VisionClient` gained
+`last_reasoning_details`, `shot_vision.review_image` now threads it into
+each follow-up turn via `_previous_answer_turn`, and `_as_message` passes it
+through to OpenRouter unmodified.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).

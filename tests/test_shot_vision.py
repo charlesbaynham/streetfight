@@ -653,6 +653,61 @@ async def test_the_transcript_is_a_flat_append_only_conversation():
 
 
 @pytest.mark.asyncio
+async def test_the_transcript_carries_the_models_reasoning_trace_per_turn():
+    # A "thinking" model's extended reasoning (OpenRouter's unified reasoning
+    # tokens), distinct from the short "reasoning" field inside each JSON
+    # reply -- present on some turns and not others, exactly as a real model
+    # might answer the screening turn tersely and think out loud on the rest.
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, reply_for(appearance_of(8))],
+        reasoning=[None, "Weighing up what's visible before answering."],
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert result.transcript[1]["reasoning"] is None
+    assert (
+        result.transcript[3]["reasoning"]
+        == "Weighing up what's visible before answering."
+    )
+
+
+@pytest.mark.asyncio
+async def test_reasoning_details_are_fed_back_into_the_next_call_verbatim():
+    # OpenRouter's provider-independent form of a "thinking" model's
+    # reasoning: dropping it between turns makes the model re-reason from
+    # nothing but the bare JSON answer, so it must ride on the assistant
+    # turn of the *next* call unmodified -- not the display-only "reasoning"
+    # string, and not the turn where it was produced.
+    screening_details = [{"type": "reasoning.text", "text": "Is this a hit?"}]
+    zoomed_details = [{"type": "reasoning.encrypted", "data": "opaque-blob"}]
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))],
+        reasoning_details=[screening_details, zoomed_details, None],
+    )
+
+    await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert len(client.calls) == 3
+    # Call 1 (screening) sent no prior assistant turn to carry reasoning on.
+    assert all("reasoning_details" not in turn for turn in client.calls[0]["turns"])
+    # Call 2's assistant turn carries call 1's reasoning_details...
+    call_2_assistant = client.calls[1]["turns"][-2]
+    assert call_2_assistant["role"] == "assistant"
+    assert call_2_assistant["reasoning_details"] == screening_details
+    # ...and call 3's carries call 2's, not call 1's stale one.
+    call_3_assistant = client.calls[2]["turns"][-2]
+    assert call_3_assistant["role"] == "assistant"
+    assert call_3_assistant["reasoning_details"] == zoomed_details
+    # Call 3's own reply had no reasoning_details, but nothing downstream of
+    # it needs to carry one -- it is the final answer.
+
+
+@pytest.mark.asyncio
 async def test_transcript_is_omitted_from_to_dict_by_default_but_available_on_request():
     client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
 
