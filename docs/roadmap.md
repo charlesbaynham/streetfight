@@ -121,15 +121,21 @@ Recorded here so they are not re-litigated:
 - **The trousers channel carries seven colours**, up from five, so the scheme
   offers 48 usable slots instead of 34. The guest list outgrew the 35 identities
   the restriction allowed, and widening it is the remedy plan §2.6 and §11.1
-  both name. It keeps a physical set of its own: the main palette with **white
-  in place of yellow**, where white is one wide bucket covering cream, beige,
-  chinos and yellow. Merging the two is what lets white stay — §9.1 excluded it
-  from the main palette because yellow/white collapsed to ΔE 14 under sodium,
-  and a channel cannot confuse two colours it calls by the same name. Both
-  audiences that read a colour name, the guest instructions and the vision
-  prompt, get that from the one `COLOUR_BUCKETS` entry. What it does not fix is
-  white against *orange*, which the channel still carries: one misread in one
-  channel, which `d = 3` corrects. See plan §9.1.
+  both name. The seven are a **separately simulated set for legs** — black,
+  grey, off-white, blue, red, olive, mustard — sharing only `black` with the
+  main palette, hex and all. Three achromatics spread across the lightness range
+  (L\* 11 / 54 / 94) and four chromatics spread around the hue circle, so the
+  neutrals are told apart by lightness alone, which survives the colour cast
+  that would wreck a hue judgement. See plan §9.1 for the table and the
+  reasoning.
+- **Colour definitions are per channel** (`COLOUR_BUCKETS`), because the two
+  vocabularies genuinely disagree: charcoal is `black` on the legs, where grey
+  is two stops away, and explicitly not black on a top, where there is no grey
+  to catch it. The picking page and the vision prompt both render each channel's
+  own — the prompt inside that channel's question rather than in one shared
+  list, which could not state both. Keep them reading the same source: the
+  identification scores a player's answer against the model's, so the two have
+  to mean the same thing by a colour name.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game

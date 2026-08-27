@@ -4,10 +4,10 @@ from uuid import uuid4 as get_uuid
 
 import pytest
 
-from backend.identity.config import COLOUR_BUCKETS
 from backend.identity.config import COLOUR_COMMONNESS
 from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
+from backend.identity.config import buckets_for_channel
 from backend.identity.config import default_scheme
 from backend.identity.config import hex_for
 from backend.identity.config import palette_for_channel
@@ -232,7 +232,7 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
 # ---------------------------------------------------------------------------
 
 
-def test_join_options_serves_palette_and_colour_notes_and_creates_no_user_row(
+def test_join_options_serves_palette_and_channel_notes_and_creates_no_user_row(
     api_client_factory, admin_api_client, db_session, one_game, one_team
 ):
     url, colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
@@ -247,12 +247,16 @@ def test_join_options_serves_palette_and_colour_notes_and_creates_no_user_row(
     assert body["team_channel"] == TEAM_CHANNEL
     assert body["provided_channel"] == PROVIDED_CHANNEL
     assert set(body["wardrobe_channels"]) == {"tshirt", "trousers"}
-    assert body["colour_notes"] == COLOUR_BUCKETS
     assert body["you"] is None
 
-    # channels is _channels_payload verbatim - carries hex
+    # channels is _channels_payload verbatim - carries hex and the notes for
+    # that channel's own vocabulary, which is not the same as another's
     tshirt = next(c for c in body["channels"] if c["name"] == "tshirt")
+    trousers = next(c for c in body["channels"] if c["name"] == "trousers")
     assert tshirt["hex"]["black"] == "#1A1A1A"
+    assert tshirt["notes"] == buckets_for_channel("tshirt")
+    assert trousers["notes"] == buckets_for_channel("trousers")
+    assert tshirt["notes"]["black"] != trousers["notes"]["black"]
 
     # A team link prefetched by, say, a chat app's link-preview bot must not
     # burn an outfit or create a User row.

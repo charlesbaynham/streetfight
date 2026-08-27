@@ -265,13 +265,22 @@ Images are built from the Nix flake
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
-- **Trousers are their own palette** (`TROUSERS_PALETTE`): the main seven with
-  **white where the main palette has yellow**. White there is a deliberately
-  wide bucket — cream, beige, chinos *and* yellow — and merging the two is the
-  only reason white is usable at all (plan §9.1: yellow/white collapsed to
-  ΔE 14 under sodium light). Nothing on the legs is ever called yellow. The
-  merge has to reach the players and the vision model identically, and does,
-  because both render the same `COLOUR_BUCKETS` entry — keep them in step.
+- **Trousers are their own palette** (`TROUSERS_PALETTE`), simulated separately
+  for legs and sharing only `black` with the main one, hex and all: black, grey,
+  off-white, blue, red, olive, mustard. Three achromatics spread across the
+  lightness range plus four chromatics spread around the hue circle — the
+  neutrals are separated by `L*`, which survives a colour cast, rather than by
+  hue. Only the *cardinality* reaches the code, so nothing has to match the main
+  palette and almost nothing does. See plan §9.1.
+- **Colour definitions (`COLOUR_BUCKETS`) are keyed per channel**, like
+  `PALETTE_HEX`, with a per-colour fallback to `main` — because the channels
+  genuinely disagree: charcoal is `black` on the legs (grey is two stops away)
+  and explicitly not black on a top (no grey to catch it). Both audiences that
+  answer in these words render each channel's own: the swatch notes on `/pick`
+  (`channels[].notes` from `_channels_payload`) and the vision prompt, which
+  puts them inside that channel's question rather than in one shared list. Keep
+  the two in step — identification scores what the player said against what the
+  model said, so they must mean the same thing by a colour name.
 - One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
   teams apart by eye: the join-QR pre-allocation
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands

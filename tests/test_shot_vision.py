@@ -11,6 +11,7 @@ import re
 import pytest
 
 from backend import shot_vision as sv
+from backend.identity.config import buckets_for_channel
 from backend.identity.config import default_scheme
 from backend.identity.config import palette_for_channel
 from backend.vision_client import FakeVisionClient
@@ -77,33 +78,44 @@ def test_prompt_asks_about_visibility_before_colour():
 
 
 def test_prompt_offers_each_channel_only_its_own_colours():
-    """Every channel shares one palette today, so this is checking a contract
-    rather than a difference: the options offered for a channel are exactly
-    that channel's palette. A channel given its own alphabet back (an
-    entry in ``CHANNEL_PALETTES``) must not leak the main palette's colours
-    into the model's answer space, or the reading it returns is unwearable.
+    """The options offered for a channel are exactly that channel's palette.
+    Trousers have an alphabet of their own, and it must not leak the main
+    palette's colours into the model's answer space: a reading naming one is
+    an outfit nobody can be wearing.
     """
     prompt = sv.build_prompt()
 
     for name in CHANNELS:
         section = prompt.split(f"{name} (")[1].split("If it is none of these")[0]
-        offered = set(re.findall(r'"([a-z]+)"', section)) - {"unknown"}
+        offered = set(re.findall(r'"([a-z-]+)"', section)) - {"unknown"}
         assert offered == set(palette_for_channel(name))
 
+    trousers = prompt.split("trousers (")[1].split("If it is none of these")[0]
+    for absent in ("purple", "green", "yellow", "orange", "white"):
+        assert f'"{absent}"' not in trousers
 
-def test_the_prompt_folds_yellow_legs_into_white():
-    """Trousers merge white and yellow into one symbol (§9.1), so the model must
-    be offered white, never yellow, *and* told where yellow legs go. Without the
-    second half it answers "unknown" for a pair of chinos and throws away a
-    channel; the players are told the same thing from the same COLOUR_BUCKETS
-    entry, and the decode only works if both sides agree what "white" covers.
+
+def test_each_channel_carries_its_own_colour_definitions():
+    """The buckets go inside each channel's question, not once for the prompt,
+    because the channels disagree about what a word means: charcoal is "black"
+    on the legs (grey is two stops away at L* 54) and explicitly not "black" on
+    a top (there is no grey to catch it). One shared list would have to state
+    both. The players read the same definitions, from the same
+    ``COLOUR_BUCKETS`` entries -- the scoring downstream assumes a player and
+    the model mean the same thing by a colour name.
     """
     prompt = sv.build_prompt()
-    trousers = prompt.split("trousers (")[1].split("If it is none of these")[0]
+    sections = {
+        name: prompt.split(f"{name} (")[1].split("If it is none of these")[0]
+        for name in CHANNELS
+    }
 
-    assert '"white"' in trousers
-    assert '"yellow"' not in trousers
-    assert "chinos" in prompt and "yellow" in prompt.split("use these buckets:")[1]
+    for name, section in sections.items():
+        for colour, note in buckets_for_channel(name).items():
+            assert f"{colour}: {note}" in section
+
+    assert "black: black, not charcoal" in sections["tshirt"]
+    assert "black: black or charcoal" in sections["trousers"]
 
 
 def test_schema_restricts_each_channel_to_its_own_enum():
@@ -466,8 +478,10 @@ def test_result_serialises_with_colour_swatches():
     assert body["outcome"] == sv.HIT_PLAYER
     assert body["is_hit"] is True
     assert body["channels"]["tshirt"]["hex"] == "#1A1A1A"
-    assert body["channels"]["trousers"]["colour"] == "purple"
-    assert body["channels"]["trousers"]["hex"] == "#6A1B9A"
+    # The trousers channel has its own shades, so the same slot's hexes are
+    # resolved per channel, not from one global colour table.
+    assert body["channels"]["trousers"]["colour"] == "grey"
+    assert body["channels"]["trousers"]["hex"] == "#808080"
 
 
 def test_serialised_erasure_has_no_swatch():

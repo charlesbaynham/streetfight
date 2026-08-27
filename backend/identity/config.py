@@ -26,26 +26,42 @@ DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"
 
 # Trousers, also seven -- the whole point of widening this channel (plan §2.6:
 # it carried five, which capped the scheme at 35 wearable slots, and the guest
-# list outgrew that). It differs from the main palette in exactly one place:
-# symbol 6 is **white** rather than yellow.
+# list outgrew that). It is a wholly separate physical set from the main
+# palette, simulated and chosen for legs specifically (plan §9.1):
 #
-# That swap is what lets white live here at all. §9.1 excluded white from the
-# main palette on measurement, not on sourcing -- it reflects whatever light
-# hits it, so under sodium street lighting a white garment photographs orange,
-# and white/yellow collapsed to ΔE 14. Merging the two into one symbol dissolves
-# that pair: a channel cannot confuse two colours it calls by the same name.
-# Cream, beige, chinos and yellow trousers are all "white" here, which is both
-# what the guest instructions say and what the vision prompt asks for (see
-# COLOUR_BUCKETS below -- and keep the two in step, since the deterministic
-# decoding downstream assumes a player and the model mean the same thing by a
-# colour name).
+#   symbol  colour     hex        L*   hue    availability
+#   0       black      #1A1A1A    11   --     very high
+#   1       grey       #808080    54   --     very high
+#   2       off-white  #F0EFEA    94   --     moderate
+#   3       blue       #2E5FA3    42   270°   very high
+#   4       red        #C1272D    42   30°    moderate
+#   5       olive      #6B7A3A    49   105°   good
+#   6       mustard    #C9962B    66   80°    low
 #
-# It buys real wardrobe coverage: white/cream/beige is the third most commonly
-# owned trousers colour (COLOUR_COMMONNESS below), and chinos are exactly what
-# a guest reaches for when their jeans are all blue or black. What it does not
-# fix is white against *orange*, which this channel does carry: that pair is one
-# misread, in one channel, which d = 3 corrects outright.
-TROUSERS_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "white"]
+# Three achromatics spread right across the lightness range (11 / 54 / 94) plus
+# four chromatics spread around the hue circle. That is what makes it robust
+# under bad light: the achromatics are told apart by L* alone, which survives a
+# colour cast that would wreck a hue judgement, and the chromatics never have to
+# be separated from a neutral by hue.
+#
+# Only the *cardinality* reaches the code, so none of this has to match the main
+# palette and none of it does -- even blue and red carry their own, more
+# leg-like hexes. The names are the vocabulary players and the vision model both
+# answer in, so every one of them that covers a range is defined in
+# COLOUR_BUCKETS below, per channel: "black" excludes charcoal on a top (there
+# is no grey to catch it) and includes it on the legs (grey is a whole two
+# stops away). Keep the two audiences reading the same definitions -- the
+# scoring downstream assumes a player and the model mean the same thing by a
+# colour name.
+TROUSERS_PALETTE = [
+    "black",
+    "grey",
+    "off-white",
+    "blue",
+    "red",
+    "olive",
+    "mustard",
+]
 
 # The field cardinality. Must be prime, and must be at least the size of the
 # largest channel alphabet.
@@ -98,23 +114,43 @@ PALETTE_HEX = {
         "orange": "#FF8200",
         "yellow": "#FFF200",
     },
+    # Trousers list every shade that differs from the main palette; "black" is
+    # the one they share, so it is defined once, above.
     "trousers": {
-        "white": "#F2F3F4",
+        "grey": "#808080",
+        "off-white": "#F0EFEA",
+        "blue": "#2E5FA3",
+        "red": "#C1272D",
+        "olive": "#6B7A3A",
+        "mustard": "#C9962B",
     },
 }
 
-# Wide, dispute-free buckets for the guests -- one person's "burgundy" is
-# another's "red". Anything reading these colours (the guest instructions, the
-# vision prompt) should say the same thing.
+# Wide, dispute-free buckets -- one person's "burgundy" is another's "red".
+# Keyed by palette name exactly like PALETTE_HEX: a channel with an alphabet of
+# its own defines the terms that differ, and falls back to "main" for the rest.
+# Both audiences that answer in these words render the same entry: the swatch
+# note on the picking page, and each channel's options in the vision prompt.
+# Kept short, because they have to read well under a swatch on a phone.
 COLOUR_BUCKETS = {
-    "green": "includes olive and khaki",
-    "blue": "includes navy and denim",
-    "black": "black, not charcoal",
-    # Trousers only, and deliberately the widest bucket of the four: it is the
-    # merged white/yellow symbol (see TROUSERS_PALETTE), so every pale leg goes
-    # here and nothing on the legs is ever called yellow. Kept short because it
-    # renders under a swatch on a phone as well as in the vision prompt.
-    "white": "anything pale -- cream, beige, chinos, or yellow",
+    "main": {
+        "green": "includes olive and khaki",
+        "blue": "includes navy and denim",
+        "black": "black, not charcoal",
+    },
+    # The trousers palette is a different physical set, so most of its terms
+    # need defining. "black" is the one that actively contradicts the main
+    # palette: with no grey on a top, charcoal has to stay out of black to keep
+    # that bucket tight, but on the legs grey sits at L* 54 and charcoal is far
+    # nearer black at L* 11, so charcoal belongs there.
+    "trousers": {
+        "black": "black or charcoal",
+        "grey": "mid grey -- lighter than charcoal, darker than stone",
+        "off-white": "white, cream, beige or stone -- most chinos",
+        "red": "includes burgundy and rust",
+        "olive": "olive, khaki or army green",
+        "mustard": "mustard, ochre, tan or camel",
+    },
 }
 
 # Estimated ownership probability per garment *per colour* (plan §12.6): these
@@ -133,14 +169,18 @@ COLOUR_COMMONNESS = {
         "orange": 0.15,
         "yellow": 0.15,
     },
+    # Trousers come from the availability column of the §9.1 simulation rather
+    # than a guess: very high -> ~0.9, good -> 0.45, moderate -> ~0.35,
+    # low -> 0.08. Within a tier the ordering is the obvious one (blue jeans
+    # before black before grey); across tiers it is the table's.
     "trousers": {
         "blue": 0.95,
         "black": 0.90,
-        "white": 0.55,
-        "green": 0.30,
-        "red": 0.10,
-        "purple": 0.06,
-        "orange": 0.05,
+        "grey": 0.85,
+        "olive": 0.45,
+        "off-white": 0.40,
+        "red": 0.35,
+        "mustard": 0.08,
     },
     "hat": {
         "black": 0.30,
@@ -179,6 +219,23 @@ def hex_for(channel_name: str, colour: str):
     return own.get(colour, PALETTE_HEX["main"].get(colour))
 
 
+def bucket_for(channel_name: str, colour: str):
+    """What a colour name covers *in a given channel*, or None if it needs no
+    explaining. Falls back to the main palette, like :func:`hex_for`.
+    """
+    own = COLOUR_BUCKETS.get(channel_name, {})
+    return own.get(colour, COLOUR_BUCKETS["main"].get(colour))
+
+
+def buckets_for_channel(channel_name: str):
+    """``{colour: note}`` for the colours of ``channel_name`` that have one."""
+    notes = (
+        (colour, bucket_for(channel_name, colour))
+        for colour in palette_for_channel(channel_name)
+    )
+    return {colour: note for colour, note in notes if note}
+
+
 def commonness_for(channel_name: str, colour: str) -> float:
     """How common this colour is in that garment, 0..1. Unknown -> 0.5.
 
@@ -194,8 +251,8 @@ def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
     """Build the initial :class:`ChannelSet` (four channels, seven colours each).
 
     ``palette`` overrides the *main* palette only; channels named in
-    :data:`CHANNEL_PALETTES` keep their own alphabet -- trousers swap yellow
-    for white.
+    :data:`CHANNEL_PALETTES` keep their own alphabet -- trousers have a set of
+    their own entirely.
     """
     palette = list(palette if palette is not None else DEFAULT_PALETTE)
     channel_names = list(

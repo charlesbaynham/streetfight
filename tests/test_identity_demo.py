@@ -144,8 +144,9 @@ def test_bad_schemes_explain_themselves(spec, message_fragment):
 # -- decoding ---------------------------------------------------------------
 
 
-# Slot 7 is codeword (0, 1, 2, 3): black t-shirt, purple trousers, red hat,
-# blue armbands. Slot 14 is (0, 2, 4, 6) and shares only the t-shirt with it.
+# Slot 7 is codeword (0, 1, 2, 3): black t-shirt, grey trousers, red hat, blue
+# armbands -- symbol 1 is "grey" in the trousers palette and "purple" in the
+# main one. Slot 14 is (0, 2, 4, 6) and shares only the t-shirt with it.
 TARGET = "p7"
 
 
@@ -154,7 +155,7 @@ def test_clean_reading_identifies_the_right_player():
         candidates=candidates(10),
         reading=[
             demo.ObservationSpec(symbol="black", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="grey", confidence=0.9),
             demo.ObservationSpec(symbol="red", confidence=0.9),
             demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
@@ -164,7 +165,7 @@ def test_clean_reading_identifies_the_right_player():
     assert result["best"] == TARGET
     assert result["inconsistent"] is False
     assert result["auto_accept"] is True
-    assert result["hard_reading"] == ["black", "purple", "red", "blue"]
+    assert result["hard_reading"] == ["black", "grey", "red", "blue"]
     assert result["hard_reading_is_codeword"] is True
     assert result["ranked"][0]["distance"] == 0
 
@@ -175,7 +176,7 @@ def test_two_erasures_are_corrected():
         candidates=candidates(49),
         reading=[
             demo.ObservationSpec(symbol="black", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="grey", confidence=0.9),
             demo.ObservationSpec(kind="erasure"),
             demo.ObservationSpec(kind="erasure"),
         ],
@@ -194,7 +195,7 @@ def test_single_misread_is_corrected():
         candidates=candidates(49),
         reading=[
             demo.ObservationSpec(symbol="black", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="grey", confidence=0.9),
             demo.ObservationSpec(symbol="green", confidence=0.9),  # hat misread
             demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
@@ -214,7 +215,7 @@ def test_erasure_plus_misread_is_detected_as_inconsistent():
         candidates=candidates(49),
         reading=[
             demo.ObservationSpec(symbol="black", confidence=0.9),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="grey", confidence=0.9),
             demo.ObservationSpec(symbol="green", confidence=0.9),  # hat misread
             demo.ObservationSpec(kind="erasure"),
         ],
@@ -253,7 +254,7 @@ def test_distribution_observations_are_accepted():
             demo.ObservationSpec(
                 kind="distribution", distribution={"black": 0.6, "green": 0.4}
             ),
-            demo.ObservationSpec(symbol="purple", confidence=0.9),
+            demo.ObservationSpec(symbol="grey", confidence=0.9),
             demo.ObservationSpec(symbol="red", confidence=0.9),
             demo.ObservationSpec(symbol="blue", confidence=0.9),
         ],
@@ -420,7 +421,7 @@ def test_api_defaults(admin_api_client):
     # channels that use the main palette carry no explicit labels.
     trousers = next(c for c in body["channels"] if c["name"] == "trousers")
     assert trousers["labels"] == palette_for_channel("trousers")
-    assert trousers["labels"][-1] == "white"
+    assert "grey" in trousers["labels"] and "purple" not in trousers["labels"]
     assert all(c["labels"] is None for c in body["channels"] if c["name"] != "trousers")
 
 

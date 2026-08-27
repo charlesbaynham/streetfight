@@ -34,9 +34,9 @@ from . import ticker_message_dispatcher as tk
 from .admin_interface import AdminInterface
 from .identity.allocation import assign_team_colours
 from .identity.allocation import colour_capacity
-from .identity.config import COLOUR_BUCKETS
 from .identity.config import PROVIDED_CHANNEL
 from .identity.config import TEAM_CHANNEL
+from .identity.config import buckets_for_channel
 from .identity.config import commonness_for
 from .identity.config import default_scheme
 from .identity.config import hex_for
@@ -178,6 +178,9 @@ def _channels_payload(scheme: IdentityScheme) -> List[dict]:
                 "name": channel.name,
                 "labels": labels,
                 "hex": {label: hex_for(channel.name, label) for label in labels},
+                # Per channel, because the channels do not share a vocabulary:
+                # "black" excludes charcoal on a top and includes it on the legs.
+                "notes": buckets_for_channel(channel.name),
             }
         )
     return out
@@ -597,7 +600,6 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
         "provided_channel": PROVIDED_CHANNEL,
         "wardrobe_channels": _wardrobe_channels(scheme),
         "channels": _channels_payload(scheme),
-        "colour_notes": COLOUR_BUCKETS,
         "you": _player_row(caller, scheme) if caller is not None else None,
     }
 

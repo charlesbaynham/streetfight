@@ -102,7 +102,6 @@ describe("/pick (PickOutfit)", () => {
           { name: "hat", labels: ["red"], hex: { red: "#B00020" } },
           { name: "armbands", labels: ["red"], hex: { red: "#B00020" } },
         ],
-        colour_notes: {},
         you: null,
       },
     });
