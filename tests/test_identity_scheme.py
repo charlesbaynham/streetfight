@@ -9,8 +9,8 @@ from backend.identity.code import build_code
 from backend.identity.config import DEFAULT_PALETTE
 from backend.identity.config import DEFAULT_Q
 from backend.identity.config import DEFAULT_TARGET_DISTANCE
-from backend.identity.config import TROUSERS_PALETTE
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity.scheme import IdentityScheme
 
 # 49 codewords, less slot 0. Every channel of the configured scheme is full
@@ -56,7 +56,9 @@ def test_usable_slots_excludes_unwearable_codewords_and_slot_zero():
 
     trousers_index = scheme.channels.names.index("trousers")
     for slot in slots:
-        assert scheme.codeword_of_slot(slot)[trousers_index] < len(TROUSERS_PALETTE)
+        assert scheme.codeword_of_slot(slot)[trousers_index] < len(
+            palette_for_channel("trousers")
+        )
 
 
 def test_narrowing_a_channel_costs_the_codewords_it_cannot_wear():

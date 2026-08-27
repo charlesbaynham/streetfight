@@ -8,7 +8,6 @@ from backend.identity.config import COLOUR_BUCKETS
 from backend.identity.config import COLOUR_COMMONNESS
 from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
-from backend.identity.config import TROUSERS_PALETTE
 from backend.identity.config import default_scheme
 from backend.identity.config import hex_for
 from backend.identity.config import palette_for_channel
@@ -174,7 +173,7 @@ def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
     tshirts = {o.appearance["tshirt"] for o in options}
     trousers = {o.appearance["trousers"] for o in options}
     assert tshirts == set(SCHEME.channels.by_name("tshirt").labels)
-    assert trousers == set(TROUSERS_PALETTE)
+    assert trousers == set(palette_for_channel("trousers"))
 
 
 def test_options_never_share_a_wardrobe_combination():
@@ -196,7 +195,7 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
     """
     team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
     tshirt = SCHEME.channels.by_name("tshirt").labels[0]
-    trousers = TROUSERS_PALETTE[0]
+    trousers = palette_for_channel("trousers")[0]
     wardrobe = {"tshirt": [tshirt], "trousers": [trousers]}
 
     options = outfit_options(SCHEME, team_colour, wardrobe, [], get_uuid(), 0)
@@ -323,7 +322,7 @@ def test_wardrobe_that_cannot_clear_threshold_returns_empty_then_relaxed_finds_d
     assert first_pick.is_success
     taken_appearance = first_pick.json()["effective_appearance"]
     t0, r0 = taken_appearance["tshirt"], taken_appearance["trousers"]
-    r1 = next(c for c in TROUSERS_PALETTE if c != r0)
+    r1 = next(c for c in palette_for_channel("trousers") if c != r0)
 
     # This wardrobe can only ever differ from the first player on trousers
     # and armband (tshirt is pinned to the same colour), so its ceiling is

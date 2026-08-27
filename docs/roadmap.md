@@ -117,15 +117,18 @@ Recorded here so they are not re-litigated:
   codewords rank at the top of the list, so most players land on one with no
   overrides at all. See plan §12.6's "as implemented" note and the #10 entry
   below for the ranking rule.
-- **The trousers palette is back to seven colours**, so the scheme offers 48
-  usable slots instead of 34. The guest list outgrew the 35 identities a
-  five-colour trousers channel allows, and widening that channel is the remedy
-  plan §2.6 and §11.1 both name. Purple and orange are appended to the existing
-  five, so every outfit already picked still means the same thing. Two things
-  bought with it: rare trousers are now *offered* to the players who own them
-  (and ranked first, since the picker prefers rare clothing), and white trousers
-  now share a channel with orange — one possible misread under sodium light,
-  which `d = 3` corrects. See plan §9.1.
+- **Trousers use the main palette**, dropping their restricted five-colour set,
+  so the scheme offers 48 usable slots instead of 34. The guest list outgrew the
+  35 identities the restriction allowed, and lifting it is the remedy plan §2.6
+  and §11.1 both name. One palette for every channel keeps §9.1's separation
+  guarantee intact — the alternative, topping the restricted set back up to
+  seven, would have put white next to orange, which §9.1 excluded white to
+  avoid. The cost is wardrobe coverage: white/cream trousers are no longer
+  expressible, and they were the third most commonly owned colour in that
+  channel, so a player sourcing from jeans and chinos has one fewer route to a
+  canonical codeword. Rare colours are cheap to offer, since the picker only
+  shows a player what they say they own and ranks the rare ones first. See plan
+  §9.1.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -322,8 +325,8 @@ needs to go and find.
 
 - **Slots remain the real ceiling.** 48 usable slots
   (`IdentityScheme.usable_slots`) — it was 34 until the guest list outgrew the
-  five-colour trousers palette and it was widened back to seven (plan §2.6) — so
-  the game caps there regardless of how generous anyone's wardrobe is.
+  five-colour trousers palette and that channel joined the main one (plan §2.6)
+  — so the game caps there regardless of how generous anyone's wardrobe is.
 - **The team join code is a shareable bearer token.** One link per team means
   one leaked link can burn every outfit in that team, not just one —
   `/join_game`'s older per-slot code had this property per outfit; pooling by
@@ -1596,7 +1599,7 @@ Answers to these change the shape of the work, not just its order.
    partitions the space into seven independent buckets and prevents that
    stranding: inside a team, free choice and the code have identical capacity,
    because `d >= 3` under a shared hat already forces distinct t-shirts, trousers
-   and armbands, and the trousers palette caps a team at its own colour count
+   and armbands, and the trousers channel caps a team at its own colour count
    either way. What free choice adds is that those outfits can be chosen to fit
    the team's actual wardrobes — 82.8% of players in clothes they own against
    the code's 57.4%. See plan §12.6.

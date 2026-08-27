@@ -8,6 +8,7 @@ from backend import identity_admin
 from backend.admin_interface import AdminInterface
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity_admin import IdentityAdminError
 from backend.identity_admin import IdentitySetRequest
 from backend.identity_admin import IdentitySuggestRequest
@@ -15,6 +16,10 @@ from backend.model import User
 from backend.user_interface import UserInterface
 
 SCHEME = default_scheme()
+
+# What slot 1 says to wear. Spelled out from the scheme rather than by colour
+# name, so a palette change moves the fixtures below with it.
+SLOT_1 = SCHEME.appearance_of_slot(1)
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop, same
@@ -63,19 +68,12 @@ def test_report_empty_game(one_game):
         "hat",
         "armbands",
     ]
-    # hex is keyed by the addressable labels for that channel
+    # Each channel reports its own addressable labels, with a hex for each
+    for channel in report["channels"]:
+        assert channel["labels"] == palette_for_channel(channel["name"])
+        assert all(channel["hex"][label] for label in channel["labels"])
     tshirt = next(c for c in report["channels"] if c["name"] == "tshirt")
     assert tshirt["hex"]["purple"] == "#6A1B9A"
-    trousers = next(c for c in report["channels"] if c["name"] == "trousers")
-    assert set(trousers["labels"]) == {
-        "black",
-        "blue",
-        "green",
-        "red",
-        "white",
-        "purple",
-        "orange",
-    }
 
 
 def test_report_unknown_game_404():
@@ -165,12 +163,7 @@ def test_report_pairs_and_levels(db_session, one_game, one_team, user_factory):
         db_session,
         b,
         2,
-        overrides={
-            "tshirt": "purple",
-            "trousers": "blue",
-            "hat": "purple",
-            "armbands": "purple",
-        },
+        overrides=dict(SLOT_1),
     )
     report = identity_admin.build_report(one_game)
     assert len(report["pairs"]) == 1
@@ -257,8 +250,8 @@ def test_set_bad_label_400(db_session, one_game, one_team, user_factory):
     with pytest.raises(IdentityAdminError):
         identity_admin.set_identity(
             IdentitySetRequest(
-                user_id=u1, slot=1, overrides={"trousers": "yellow"}
-            )  # yellow isn't in the restricted trousers palette
+                user_id=u1, slot=1, overrides={"trousers": "white"}
+            )  # white is in no channel's palette
         )
 
 
@@ -272,12 +265,7 @@ def test_set_collision_400_names_player(db_session, one_game, one_team, user_fac
             IdentitySetRequest(
                 user_id=b,
                 slot=2,
-                overrides={
-                    "tshirt": "purple",
-                    "trousers": "blue",
-                    "hat": "purple",
-                    "armbands": "purple",
-                },
+                overrides=dict(SLOT_1),
             )
         )
     assert "Aardvark" in str(exc_info.value)
@@ -292,12 +280,7 @@ def test_set_force_overrides_collision(db_session, one_game, one_team, user_fact
         IdentitySetRequest(
             user_id=b,
             slot=2,
-            overrides={
-                "tshirt": "purple",
-                "trousers": "blue",
-                "hat": "purple",
-                "armbands": "purple",
-            },
+            overrides=dict(SLOT_1),
             force=True,
         )
     )

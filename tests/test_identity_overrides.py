@@ -12,8 +12,8 @@ from backend.identity.channels import Channel
 from backend.identity.channels import ChannelSet
 from backend.identity.config import DEFAULT_PALETTE
 from backend.identity.config import DEFAULT_Q
-from backend.identity.config import TROUSERS_PALETTE
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity.decoder import decode
 from backend.identity.observations import ChannelObservation
 from backend.identity.observations import Reading
@@ -62,9 +62,9 @@ def test_effective_word_rejects_unknown_channel():
 def test_effective_word_rejects_unknown_label():
     scheme = default_scheme()
     codeword = scheme.codeword_of_slot(scheme.usable_slots()[0])
-    # "yellow" is in the main palette but not the restricted trousers one.
+    # "white" is in no channel's palette (plan §9.1 excludes it on measurement).
     with pytest.raises(ValueError, match="no label"):
-        effective_word(codeword, {"trousers": "yellow"}, scheme.channels)
+        effective_word(codeword, {"trousers": "white"}, scheme.channels)
 
 
 def test_effective_word_rejects_wrong_length_codeword():
@@ -166,17 +166,18 @@ def test_suggest_free_channels_offers_the_whole_trousers_palette():
     scheme = _scheme()
     channels = scheme.channels
     fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
+    palette = palette_for_channel("trousers")
 
     suggestions = suggest_free_channels(
         fixed, ["trousers"], others={}, channels=channels, limit=10
     )
 
-    assert len(suggestions) == len(TROUSERS_PALETTE)
-    assert {s.assignment["trousers"] for s in suggestions} == set(TROUSERS_PALETTE)
+    assert len(suggestions) == len(palette)
+    assert {s.assignment["trousers"] for s in suggestions} == set(palette)
 
 
 def test_suggest_free_channels_respects_a_narrowed_palette():
-    # Trousers are full width again, but a channel carrying fewer than q
+    # Every channel is full width today, but a channel carrying fewer than q
     # colours is one config line away, and suggestions must never invent one.
     channels = ChannelSet(
         channels=[

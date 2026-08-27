@@ -19,31 +19,25 @@ from backend.identity.code import build_code
 from backend.identity.decoder import DecoderThresholds
 from backend.identity.scheme import IdentityScheme
 
-# The main palette, worn on t-shirt / hat / armbands. Seven colours, so q = 7
-# (prime, which the dependency-free GF(q) arithmetic requires).
+# The palette every channel wears. Seven colours, so q = 7 (prime, which the
+# dependency-free GF(q) arithmetic requires), and 7**2 = 49 codewords.
+#
+# Trousers used to have their own five-colour set (plan §2.6): guests supply
+# their own clothing, and purple, orange and yellow trousers are not things most
+# people own. That capped the scheme at 35 wearable slots and the guest list
+# outgrew it, so the channel now shares this palette -- the remedy §2.6 and
+# §11.1 both name. One palette for every channel also puts white back out of
+# reach, which the trousers set carried and which is the one colour §9.1
+# excluded on measurement rather than on sourcing: under sodium street lighting
+# white photographs orange, and white/yellow collapsed to ΔE 14.
+#
+# The cost is wardrobe coverage, not accuracy: trousers now come in four
+# widely-owned shades (blue, black, green, red) rather than five, since
+# white/cream chinos are no longer expressible. The picker asks each player what
+# they own and ranks the rare colours first (COLOUR_COMMONNESS below), so a rare
+# colour costs nothing to offer -- but a player whose trousers are all jeans and
+# chinos has one fewer route to a canonical codeword.
 DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"]
-
-# Trousers are a *different physical set* from the main palette, not a subset --
-# the code only ever sees indices, and a misread can only confuse colours within
-# one channel, so white is available here even though it is excluded from the
-# main palette (under sodium street lighting a white shirt photographs orange).
-#
-# It used to stop at five colours (plan §2.6): guests supply their own trousers,
-# and purple and orange ones are not things most people own. That capped the
-# scheme at 35 wearable slots, and the guest list has outgrown it -- so the
-# channel is now full width, which is exactly the remedy §2.6 and §11.1 name
-# ("widen the trousers palette rather than reordering"). The first five entries
-# keep their symbols, so nobody who has already picked an outfit is re-clothed.
-#
-# Two consequences, both accepted rather than overlooked:
-#
-# * purple and orange trousers are rare, which is a feature here -- the picker
-#   only offers a player colours they say they own, and COLOUR_COMMONNESS below
-#   ranks the rare ones first for everyone else;
-# * white is no longer sitting in an orange-free and yellow-free channel, so a
-#   white/orange confusion under sodium lighting is now possible. That is one
-#   misread in one channel, which is precisely what d = 3 corrects.
-TROUSERS_PALETTE = ["black", "blue", "green", "red", "white", "purple", "orange"]
 
 # The field cardinality. Must be prime, and must be at least the size of the
 # largest channel alphabet.
@@ -53,8 +47,14 @@ DEFAULT_Q = 7
 # Add/remove/reorder here -- e.g. a "shape" channel with a shape alphabet.
 DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "armbands"]
 
-# Channels not listed here use DEFAULT_PALETTE.
-CHANNEL_PALETTES = {"trousers": TROUSERS_PALETTE}
+# Channels with an alphabet of their own; anything not listed uses
+# DEFAULT_PALETTE. Empty today -- every channel wears the same seven colours --
+# but the mechanism is live and one entry away: a channel may carry a different
+# physical set (only its *cardinality* reaches the code) or fewer labels than
+# ``q``, which makes the codewords it cannot wear unassignable
+# (``ChannelSet.is_representable``). A channel listed here should get its own
+# PALETTE_HEX entry under the same name.
+CHANNEL_PALETTES = {}
 
 # The channel spent on telling teams apart by eye: every member of a team is
 # pre-allocated a slot with the same colour here, and no two teams share one
@@ -78,8 +78,9 @@ PROVIDED_CHANNEL = "armbands"
 DEFAULT_TARGET_DISTANCE = 3
 
 # The hex each colour name refers to, so the admin UI, any printable guest sheet
-# and the palette design all read from one place. Keyed by (channel_palette
-# name, colour) because "black" is #1A1A1A on a t-shirt and #222222 on trousers.
+# and the palette design all read from one place. Keyed by palette name, so a
+# channel given its own alphabet in CHANNEL_PALETTES can add its own shades
+# under its own channel name; every channel reads "main" until one does.
 PALETTE_HEX = {
     "main": {
         "black": "#1A1A1A",
@@ -90,15 +91,6 @@ PALETTE_HEX = {
         "orange": "#FF8200",
         "yellow": "#FFF200",
     },
-    "trousers": {
-        "black": "#222222",
-        "blue": "#0072CE",
-        "green": "#00A651",
-        "red": "#B00020",
-        "white": "#F2F3F4",
-        "purple": "#6A1B9A",
-        "orange": "#FF8200",
-    },
 }
 
 # Wide, dispute-free buckets for the guests -- one person's "burgundy" is
@@ -108,7 +100,6 @@ COLOUR_BUCKETS = {
     "green": "includes olive and khaki",
     "blue": "includes navy and denim",
     "black": "black, not charcoal",
-    "white": "includes cream and beige (e.g. chinos)",
 }
 
 # Estimated ownership probability per garment *per colour* (plan §12.6): these
@@ -130,11 +121,11 @@ COLOUR_COMMONNESS = {
     "trousers": {
         "blue": 0.95,
         "black": 0.90,
-        "white": 0.55,
         "green": 0.30,
         "red": 0.10,
         "purple": 0.06,
         "orange": 0.05,
+        "yellow": 0.04,
     },
     "hat": {
         "black": 0.30,
@@ -161,8 +152,12 @@ def palette_for_channel(name: str):
 
 
 def hex_for(channel_name: str, colour: str):
-    """The hex for a colour *in a given channel*, or None if it isn't in it."""
-    key = "trousers" if channel_name in CHANNEL_PALETTES else "main"
+    """The hex for a colour *in a given channel*, or None if it isn't in it.
+
+    A channel with its own shades supplies them under its own name in
+    :data:`PALETTE_HEX`; every other channel reads the main palette.
+    """
+    key = channel_name if channel_name in PALETTE_HEX else "main"
     return PALETTE_HEX[key].get(colour)
 
 
@@ -181,8 +176,7 @@ def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
     """Build the initial :class:`ChannelSet` (four channels, seven colours each).
 
     ``palette`` overrides the *main* palette only; channels named in
-    :data:`CHANNEL_PALETTES` keep their own alphabet -- trousers still have
-    their own physical set of colours, they are just no longer fewer of them.
+    :data:`CHANNEL_PALETTES` keep their own alphabet.
     """
     palette = list(palette if palette is not None else DEFAULT_PALETTE)
     channel_names = list(
@@ -199,8 +193,8 @@ def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
 def default_scheme() -> IdentityScheme:
     """The initial scheme: 4 colour channels, 7 colours, ``[4,2,3]`` Reed-Solomon.
 
-    Capacity is ``7**2`` = 49 codewords, of which **48** are usable: every one
-    is wearable now that the trousers channel is full width, less the all-black
+    Capacity is ``7**2`` = 49 codewords, of which **48** are usable: every
+    channel wears the whole palette, so the only one withheld is the all-black
     slot 0 (see :meth:`IdentityScheme.usable_slots`).
 
     At ``d = 3`` the guarantee is: correct up to two erasures, **or** correct one

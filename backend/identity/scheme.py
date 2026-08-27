@@ -101,9 +101,9 @@ class IdentityScheme:
           passer-by to be wearing by accident and where the vision model's
           failure mode piles up (it says "black" when it cannot tell).
 
-        Only the second bites in the configured scheme, whose channels are now
-        all full width, so this is 48 of the 49 codewords. The first is still
-        live machinery: narrowing a channel again is a one-line config change.
+        Only the second bites in the configured scheme, where every channel
+        wears the whole palette, so this is 48 of the 49 codewords. The first is
+        still live machinery: narrowing a channel is a one-line config change.
         """
         return [
             slot

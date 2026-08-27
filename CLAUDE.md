@@ -14,6 +14,21 @@ the photos and validate hits. It is a full-stack app:
 - **Frontend** — Create React App (`react-ui/`), a mobile-first PWA-style client.
 - Glued together by a root `package.json`, a Nix flake, and Docker Compose.
 
+## Not deployed yet — breaking changes are free
+
+The game has **not been run or deployed**, and **nobody has picked their
+clothes yet**: there are no live players, no assigned identity slots, no
+production database to migrate. So a change that would normally be off the
+table — renumbering the identity scheme's symbols, swapping a palette, or
+reshaping a model — costs nothing here. Don't contort a design to preserve
+data that does not exist, and don't warn about re-clothing players who have
+not chosen anything.
+
+Charles will say explicitly when that changes. Until he does, treat this as
+still true; after he does, the compatibility of already-assigned identity
+slots (`User.identity_slot`, `Team.identity_colour`) becomes real and the
+usual care applies.
+
 ## Planned work
 
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
