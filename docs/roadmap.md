@@ -1565,8 +1565,9 @@ deliberately.
 **The idea.** Stop asking the admin to check every shot. CharlesBot resolves each
 shot the moment the photo lands, and the two people who were actually there — the
 shooter, and whoever CharlesBot says was hit — are both shown the photo and the
-verdict. Either can press **Appeal**. Only appealed shots reach the admin. The
-queue stops being *every shot* and becomes *the contested ones*.
+verdict. Either can press **Appeal** — three times a game, with the appeal
+refunded whenever it succeeds. Only appealed shots reach the admin. The queue
+stops being *every shot* and becomes *the contested ones*.
 
 **Why this is worth more than another point of accuracy.** Everything else in
 track A tries to make CharlesBot wrong less often. This changes what happens when
@@ -1658,16 +1659,53 @@ Those still go to the admin as they do now. The honest claim is that the admin
 sees **the unresolvable plus the contested**, which on the numbers so far is a
 small fraction of the night's shots rather than all of them.
 
-**Abuse is the obvious failure mode, and the fix is also the payoff.** Appealing
-is free and the upside is one-directional, so the dominant strategy is to appeal
-everything, which puts the admin back exactly where they started. Cheapest
-effective brake: **one appeal per shot per party, and it must state a reason**
-picked from a short list — *it missed* / *that wasn't me* / *that's not a player*
-/ *I was already out*. That is a two-tap gate rather than a punishment, and the
-reason is worth having for its own sake: it labels the error class, which is
-precisely the data R1/R2 have to reconstruct by hand today. If a player still
-appeals everything, the admin can see their upheld/rejected record and have a
-word — a social problem with a social fix, in a game between friends.
+**Abuse is the obvious failure mode, and the budget is the fix.** Appealing is
+free and the upside is one-directional, so the dominant strategy would be to
+appeal everything, which puts the admin back exactly where they started. So:
+**three appeals per player per game, refunded whenever the appeal is upheld.**
+
+That mechanic is better than it first looks, because of where the cost lands.
+A player who is genuinely being misread — a bad photograph, an outfit that
+lights badly, whatever CharlesBot keeps getting wrong about them — appeals as
+often as they need to and never spends a thing, because every one of those
+appeals succeeds. The budget only ever depletes for someone appealing shots
+CharlesBot got *right*. **The price is on being wrong, not on appealing**, which
+is exactly the incentive to want: it puts no friction in front of the honest
+complaint the whole scheme depends on, and puts a hard stop in front of the
+speculative one. Running out means three failed appeals, which is itself
+something the admin should see.
+
+Keep the per-shot rule alongside it — **one appeal per shot per party, and it
+must state a reason** picked from a short list: *it missed* / *that wasn't me* /
+*that's not a player* / *I was already out*. Per-shot stops one shot being
+spammed, per-game caps the night. The reason is worth having for its own sake:
+it labels the error class, which is precisely the data R1/R2 have to reconstruct
+by hand today.
+
+**The budget is ammo, mechanically.** `User.num_bullets` with `award_ammo()` is
+the same shape and should be the model: an `appeals_remaining` column on `User`
+defaulting to three, decremented when the appeal is lodged, incremented when it
+is upheld, and reset alongside `num_bullets` and `hit_points` in
+`admin_interface.reset_game`. Show it next to the appeal button the way
+`BulletCount.js` shows ammo — a player deciding whether to spend one needs to
+know what they have left.
+
+**Upheld or rejected should be inferred, not a second admin button.** The
+contested shot already carries CharlesBot's verdict in `ai_review`; if the
+admin's adjudication differs from it, the appeal was upheld. That is one
+comparison at the point the admin resolves the shot, and it keeps the admin's
+workflow identical to the one they already have. Two cases need a stated rule:
+a shot the admin ends up **refunding** (the knockout cascade, not a judgement
+either way) should give the appeal back — benefit of the doubt costs nothing;
+and an admin who agrees with CharlesBot's outcome but for different reasons is
+a rejection, which is the right answer anyway since the game state is unchanged.
+
+**What the budget costs, and it is not nothing.** A player unsure whether they
+were really hit may sit on an appeal rather than risk it, so some real errors go
+unreported — which is the one thing this whole item exists to prevent. Three is
+therefore a number to revisit after a game, and it should live as a single
+constant, not be scattered. It also weakens the note below: with a budget in
+play, silence is partly explained by hoarding, not only by agreement.
 
 **Silence is data too, with a caveat.** A shot neither party appealed is weak
 evidence CharlesBot got it right, and there will be hundreds of them per game —
@@ -1691,15 +1729,18 @@ there is no "pre-confirmation" state to protect, because there is no admin pass
 coming. The privacy argument does not disappear, but it changes shape and should
 be re-answered here rather than assumed.
 
-**Lands in:** `backend/model.py` (appeal columns on `Shot` — remember there are no
-migrations, so `npm run resetdb`), `backend/user_interface.py` (shots-against-me,
-the widened image check, `appeal_shot`), `backend/main.py` (the two new player
-endpoints), `backend/admin_interface.py` (the contested list),
+**Lands in:** `backend/model.py` (appeal columns on `Shot`, `appeals_remaining`
+on `User` — remember there are no migrations, so `npm run resetdb`),
+`backend/user_interface.py` (shots-against-me, the widened image check,
+`appeal_shot` and the budget decrement), `backend/main.py` (the two new player
+endpoints), `backend/admin_interface.py` (the contested list, the upheld/rejected
+inference and its refund, the reset in `reset_game`),
 `backend/shot_auto_actions.py` (resolve-everything mode, and never re-drain a
 contested shot), `backend/ticker_message_dispatcher.py` (the correction message,
 and the shot id on the private hit message),
-`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button and the
-received-shots list), `react-ui/src/ShotQueue.js` (the contested tab). Tests in
+`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button, the
+remaining-appeals count and the received-shots list), `react-ui/src/ShotQueue.js`
+(the contested tab). Tests in
 `tests/test_shots.py`, `tests/test_admin_mode.py`, `ShotHistory.test.js`,
 `ShotQueue.test.js`.
 
