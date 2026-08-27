@@ -213,17 +213,25 @@
   border-color: white;
 }
 
-.recommendedBadge {
+.recommendedBadge,
+.notIdealBadge {
   position: absolute;
   top: -2mm;
   right: 3mm;
-  background: #00a651;
   color: black;
   font-size: x-small;
   font-weight: bold;
   text-transform: uppercase;
   padding: 0.5mm 2mm;
   border-radius: 2mm;
+}
+
+.recommendedBadge {
+  background: #00a651;
+}
+
+.notIdealBadge {
+  background: #e8850c;
 }
 
 .optionGarments {

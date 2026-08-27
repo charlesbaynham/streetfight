@@ -158,7 +158,37 @@ function OutfitGarments({ appearance, wardrobeChannels, channels, size }) {
   );
 }
 
-function OptionRow({ option, wardrobeChannels, channels, onPick }) {
+// The "recommended" badge marks the best outfit available, not merely a
+// canonical one: the backend ranks by (overrides, -rarity, ...), so that is
+// the head of the list, plus anything immediately behind it tying on rarity
+// - a tie is genuinely a tie, and singling one out would be arbitrary. The
+// rest of the canonical options are perfectly good and simply go unbadged;
+// only the head of the *first* page is the best, so later pages badge
+// nothing. Rarity is a sum of floats, hence the tolerance.
+const RARITY_TOLERANCE = 1e-9;
+
+function bestOptions(options) {
+  const best = options[0];
+  if (!best || !best.is_canonical) return [];
+  const tied = [];
+  for (const option of options) {
+    if (
+      !option.is_canonical ||
+      Math.abs(option.rarity - best.rarity) >= RARITY_TOLERANCE
+    )
+      break;
+    tied.push(option);
+  }
+  return tied;
+}
+
+function OptionRow({
+  option,
+  recommended,
+  wardrobeChannels,
+  channels,
+  onPick,
+}) {
   return (
     <button
       type="button"
@@ -166,9 +196,12 @@ function OptionRow({ option, wardrobeChannels, channels, onPick }) {
       aria-label={`Choose: ${optionDescription(option, wardrobeChannels)}`}
       onClick={() => onPick(option)}
     >
-      {option.is_canonical ? (
+      {recommended ? (
         <span className={styles.recommendedBadge}>recommended</span>
       ) : null}
+      {option.is_canonical ? null : (
+        <span className={styles.notIdealBadge}>not ideal</span>
+      )}
       <OutfitGarments
         appearance={option.appearance}
         wardrobeChannels={wardrobeChannels}
@@ -180,15 +213,22 @@ function OptionRow({ option, wardrobeChannels, channels, onPick }) {
 
 // Options arrive from the backend already sorted by overrides_needed, so a
 // simple linear scan groups consecutive equal values without re-sorting.
-function OptionsList({ options, wardrobeChannels, channels, onPick }) {
+function OptionsList({
+  options,
+  recommendedKeys,
+  wardrobeChannels,
+  channels,
+  onPick,
+}) {
   let lastOverrides = null;
   return (
     <div className={styles.optionsList}>
       {options.map((option) => {
         const showHeading = option.overrides_needed !== lastOverrides;
         lastOverrides = option.overrides_needed;
+        const key = optionDescription(option, wardrobeChannels);
         return (
-          <React.Fragment key={optionDescription(option, wardrobeChannels)}>
+          <React.Fragment key={key}>
             {showHeading ? (
               <h3 className={styles.groupHeading}>
                 {option.overrides_needed === 0
@@ -200,6 +240,7 @@ function OptionsList({ options, wardrobeChannels, channels, onPick }) {
             ) : null}
             <OptionRow
               option={option}
+              recommended={recommendedKeys.has(key)}
               wardrobeChannels={wardrobeChannels}
               channels={channels}
               onPick={onPick}
@@ -410,18 +451,22 @@ function PickOutfitForm({
   // is built out of - offering the rest alongside them invites a player to
   // spend identification accuracy on a colour they like the look of. So only
   // the canonical ones are shown until the player asks for the others, which
-  // also hides the pagination: a recommended outfit is never more than a tap
-  // away, and the long tail takes a deliberate one. When the wardrobe
-  // supports no canonical outfit at all there is nothing to nudge towards,
-  // so the full list stands as it is rather than leaving an empty page.
+  // also hides the pagination: a good outfit is never more than a tap away,
+  // and the long tail takes a deliberate one. When the wardrobe supports no
+  // canonical outfit at all there is nothing to nudge towards, so the full
+  // list stands as it is rather than leaving an empty page.
   const pageOptions = optionsResult ? optionsResult.options : [];
-  const recommendedOptions = pageOptions.filter(
-    (option) => option.is_canonical,
-  );
-  const nudging = !showingAll && recommendedOptions.length > 0;
-  const visibleOptions = nudging ? recommendedOptions : pageOptions;
+  const canonicalOptions = pageOptions.filter((option) => option.is_canonical);
+  const nudging = !showingAll && canonicalOptions.length > 0;
+  const visibleOptions = nudging ? canonicalOptions : pageOptions;
   const hasOthers =
-    recommendedOptions.length < pageOptions.length || totalPages > 1;
+    canonicalOptions.length < pageOptions.length || totalPages > 1;
+  const recommendedKeys = new Set(
+    (optionsResult && optionsResult.page === 0
+      ? bestOptions(pageOptions)
+      : []
+    ).map((option) => optionDescription(option, wardrobeChannels)),
+  );
 
   return (
     <>
@@ -492,6 +537,7 @@ function PickOutfitForm({
         <>
           <OptionsList
             options={visibleOptions}
+            recommendedKeys={recommendedKeys}
             wardrobeChannels={wardrobeChannels}
             channels={joinData.channels}
             onPick={setSelectedOption}
@@ -502,7 +548,7 @@ function PickOutfitForm({
               className={styles.linkButton}
               onClick={() => setShowingAll(true)}
             >
-              Show non-recommended outfits
+              Show more outfits
             </button>
           ) : null}
           {!nudging && totalPages > 1 ? (
