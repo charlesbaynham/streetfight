@@ -179,10 +179,14 @@ def _decide_auto_hit(
     can name somebody on its own.
 
     It still has to: the reply has to be confident overall, and the reading has
-    to pick out one living, non-shooter candidate confidently and without a tie
-    -- see backend.shot_identification.rank_candidates, which scores the reading
+    to pick out one non-shooter candidate confidently and without a tie -- see
+    backend.shot_identification.rank_candidates, which scores the reading
     against what each candidate is *actually wearing* rather than decoding it
     against the code.
+
+    A candidate who is already knocked out is acted on like any other: the shot
+    genuinely hit them, it simply takes nothing off them. Withholding it would
+    leave the shot behind a kill blocking the queue for an admin to rubber-stamp.
     """
     from .admin_interface import AdminInterface
 
@@ -201,7 +205,7 @@ def _decide_auto_hit(
         return None
 
     target = next((u for u in users if u.id == ranked.best), None)
-    if target is None or target.hit_points <= 0 or target.id == head.user_id:
+    if target is None or target.id == head.user_id:
         return None
 
     return (_HIT, target.id)
@@ -216,6 +220,9 @@ def _decide_escalated(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]
     the weak review clears it, see AdminInterface.store_shot_ai_review). Done ->
     whatever backend.shot_escalation makes of the verdict, re-validated here
     against the roster because the escalation may have finished minutes ago.
+    That re-validation asks only whether the named player is still somebody
+    this shot could have hit, not whether they are still alive: somebody
+    knocked out in the meantime was still hit, for no damage.
     """
     from . import shot_escalation
     from .admin_interface import AdminInterface
@@ -243,7 +250,7 @@ def _decide_escalated(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]
 
     users = AdminInterface().get_users_for_game(game_id)
     target = next((u for u in users if u.id == target_id), None)
-    if target is None or target.hit_points <= 0 or target.id == head.user_id:
+    if target is None or target.id == head.user_id:
         return None
 
     return (_HIT, target.id)

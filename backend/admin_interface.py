@@ -821,11 +821,17 @@ class AdminInterface:
         u_from = shot.user
         ui_target = UserInterface(target_user_id, session=self._session)
 
+        # A shot that hits somebody already knocked out is just a hit that does
+        # nothing: it is announced as a plain hit, and only the blow that
+        # actually kills announces a knockout and refunds the victim's queue.
+        # Reading the HP afterwards alone would credit a second killer.
+        already_dead = self._get_user_orm(target_user_id).hit_points <= 0
+
         ui_target.hit(shot.shot_damage)
 
         u_to = self._get_user_orm(target_user_id)
 
-        if u_to.hit_points > 0:
+        if already_dead or u_to.hit_points > 0:
             message_type_public = tk.TickerMessageType.HIT_AND_DAMAGE
             message_type_private = tk.TickerMessageType.USER_GOT_HIT
 

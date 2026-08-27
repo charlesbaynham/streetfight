@@ -444,9 +444,11 @@ def test_an_unconfident_escalated_player_verdict_stays_queued(
     assert UserInterface(target_with_slot).get_user_model().hit_points == 1
 
 
-def test_an_escalated_player_verdict_on_a_dead_target_stays_queued(
+def test_an_escalated_player_verdict_on_a_dead_target_still_lands(
     db_session, shot_from_user_in_team, target_with_slot
 ):
+    # Hitting somebody who is already out is a hit that does nothing. It must
+    # not come back to the admin: there is nothing for them to decide.
     with UserInterface(target_with_slot) as ui:
         ui.hit(1)  # knocked out between the escalation and the drain
 
@@ -456,7 +458,9 @@ def test_an_escalated_player_verdict_on_a_dead_target_stays_queued(
         escalation_payload("player", confidence=0.9, target_user_id=target_with_slot),
     )
 
-    assert shot.checked is False
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+    assert UserInterface(target_with_slot).get_user_model().hit_points == 0
 
 
 def test_an_escalated_miss_resolves_the_head(db_session, shot_from_user_in_team):
@@ -527,15 +531,19 @@ def test_a_hit_with_no_slot_holder_stays_queued(db_session, shot_from_user_in_te
     assert shot.checked is False
 
 
-def test_a_hit_on_a_dead_holder_stays_queued(
+def test_a_hit_on_a_dead_holder_is_acted_on_for_no_damage(
     db_session, shot_from_user_in_team, target_with_slot
 ):
+    # The knocked-out player is still standing there to be photographed, so the
+    # reading identifies them normally and the shot resolves against them.
     with UserInterface(target_with_slot) as ui:
         ui.hit(1)  # knocked out before the drain runs
 
     shot = drain_with_confident_hit(db_session, shot_from_user_in_team)
 
-    assert shot.checked is False
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+    assert UserInterface(target_with_slot).get_user_model().hit_points == 0
 
 
 def test_a_hit_identifying_the_shooter_stays_queued(
@@ -640,6 +648,44 @@ def test_a_knockout_mid_drain_refunds_the_victims_shot_and_continues(
     assert shot_row(db_session, victims_shot).result == "refunded"
     assert UserInterface(target_with_slot).get_user_model().num_bullets == 1
     # ...and the re-reading drain carried on past the vanished entry
+    assert shot_row(db_session, later_shot).result == "miss"
+
+
+def test_a_shot_queued_behind_a_kill_resolves_against_the_dead_target(
+    mocker, db_session, user_in_team, target_with_slot, test_image_string
+):
+    # The whole point of keeping the dead in the candidate set: the second
+    # photograph of the same person still identifies them, so it resolves as a
+    # hit that does nothing rather than matching nobody, burning an escalation
+    # and blocking the queue for an admin who has nothing to decide.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(3)
+    ui.set_weapon_data(1, 6)
+    kill_shot = ui.submit_shot(test_image_string)
+    after_death = ui.submit_shot(test_image_string)
+    later_shot = ui.submit_shot(test_image_string)
+    set_shot_time(db_session, kill_shot, datetime(2026, 1, 1, 12, 0, 0))
+    set_shot_time(db_session, after_death, datetime(2026, 1, 1, 12, 0, 5))
+    set_shot_time(db_session, later_shot, datetime(2026, 1, 1, 12, 0, 10))
+
+    game_id = game_of(kill_shot)
+    enable_ai(game_id)
+    store_done_review(kill_shot, confident_hit_reply())
+    store_done_review(after_death, confident_hit_reply())
+    store_done_review(later_shot, miss_reply(confidence=0.9))
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, kill_shot).result == "hit"
+    assert UserInterface(target_with_slot).get_user_model().hit_points == 0
+
+    second = shot_row(db_session, after_death)
+    assert second.result == "hit"
+    assert second.target_user_id == target_with_slot
+    enqueue.assert_not_called()
+
+    # ...and the queue carried on rather than stopping on the dead target
     assert shot_row(db_session, later_shot).result == "miss"
 
 

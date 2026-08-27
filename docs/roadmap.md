@@ -1216,6 +1216,16 @@ reasoning and the ranked candidate list it was given.
   passed); it now escalates instead, so with no escalation model configured
   those shots go to the admin rather than auto-firing. Deliberate — that rung
   is the one where the missing channel is the player marker.
+- **A hit on an already-dead player is just a hit that does nothing** — never
+  an escalation, never the admin's. Dead players stay in the candidate set
+  (`eligible_candidates` no longer filters on `hit_points`; a knocked-out
+  player is still physically there to be photographed, especially in the
+  seconds after the killing shot resolves), so a shot queued behind the one
+  that killed its target identifies normally and resolves as a hit — no
+  damage, no second knockout announcement (`hit_user` now announces a plain
+  hit for an already-dead target, which also fixes the manual admin path's
+  double-knockout wart). The prior stays flat for the dead; a death-age
+  down-weight is R2-fitting territory.
 
 The original design brief follows.
 

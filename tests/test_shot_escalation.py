@@ -141,6 +141,35 @@ async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
 
 
 @pytest.mark.asyncio
+async def test_a_knocked_out_candidate_is_listed_and_flagged_as_such(
+    db_session, shot_from_user_in_team, candidates
+):
+    # The dead stay on the list -- they are still in the photograph -- but the
+    # model is told, so it is not looking for somebody standing up.
+    with UserInterface(candidates[0]) as ui:
+        ui.hit(1)
+    store_weak_review(shot_from_user_in_team)
+    client = FakeVisionClient(reply=verdict_reply("unsure", confidence=0.3))
+
+    await shot_escalation.escalate_shot(shot_from_user_in_team, client)
+
+    prompt = client.calls[0]["turns"][0]["text"]
+    assert name_of(candidates[0]) in prompt
+    assert prompt.count(shot_escalation.KNOCKED_OUT_CLAUSE) == 1
+
+    listed = {
+        candidate["user_id"]: candidate["alive"]
+        for candidate in stored_escalation(shot_from_user_in_team)["escalation"][
+            "candidates"
+        ]
+    }
+    assert listed[str(candidates[0])] is False
+    assert all(
+        alive for user_id, alive in listed.items() if user_id != str(candidates[0])
+    )
+
+
+@pytest.mark.asyncio
 async def test_the_weak_models_conclusions_never_reach_the_stronger_one(
     db_session, shot_from_user_in_team, candidates
 ):

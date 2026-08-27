@@ -170,6 +170,14 @@ def build_escalation_schema() -> dict:
     }
 
 
+# Said of a candidate who has already been knocked out. They stay on the list:
+# a shot that hits them is a hit that does nothing, which is still a better
+# answer than "unsure".
+KNOCKED_OUT_CLAUSE = (
+    "Already knocked out earlier in the game, but may still be in the photograph."
+)
+
+
 def _candidate_line(candidate: dict) -> str:
     """One numbered candidate: who they are, how likely, what they are wearing,
     and whether their reference photo is here, askable for, or missing."""
@@ -183,10 +191,13 @@ def _candidate_line(candidate: dict) -> str:
         photo = "Reference photo available on request."
     else:
         photo = "No reference photo available."
+    # Being out of the game does not take somebody out of the frame: they are
+    # on the ground or walking off, and are a perfectly good answer.
+    dead = "" if candidate.get("alive", True) else f" {KNOCKED_OUT_CLAUSE}"
     return (
         f"  {candidate['number']}. {candidate['name']} -- "
         f"{candidate['probability'] * 100:.1f}% likely. "
-        f"Wearing: {outfit or shot_vision.UNKNOWN}. {photo}"
+        f"Wearing: {outfit or shot_vision.UNKNOWN}.{dead} {photo}"
     )
 
 
@@ -209,7 +220,7 @@ def build_escalation_prompt(candidates: List[dict], has_more_photos: bool) -> st
         )
     else:
         candidate_section = (
-            'Nobody in this game is placed and still alive, so "player" is not '
+            'Nobody in this game has an outfit recorded, so "player" is not '
             "a valid verdict here: there is no list to pick from. Decide "
             'between "miss", "bystander" and "unsure" on what the photograph '
             "shows."
@@ -504,6 +515,7 @@ def _load_context(shot_id: UUID):
 
     scheme = default_scheme()
     names = {user.id: user.name for user in users}
+    alive = {user.id: user.hit_points > 0 for user in users}
     words = effective_words(users, scheme)
 
     candidates: List[dict] = []
@@ -523,6 +535,9 @@ def _load_context(shot_id: UUID):
                 "user_id": str(user_id),
                 "name": names.get(user_id),
                 "probability": probability,
+                # Stored as well as told to the model: R2 wants to know which
+                # escalations were spent on somebody already out of the game.
+                "alive": alive.get(user_id, True),
                 # What they are actually wearing, overrides and all -- not the
                 # codeword their slot nominally assigns them.
                 "outfit": (
