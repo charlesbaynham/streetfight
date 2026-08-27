@@ -88,6 +88,9 @@ minimal changes over large refactors.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
+    (roadmap R7): capture a reference photo per player and see whether it
+    decodes to them, reusing `ShotQueue.js`'s exported tag renderers.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).

@@ -1,0 +1,196 @@
+/* The kit check at the door: one column of big targets, driven one-handed on
+   a phone. Colours follow AdminIdentity.module.css's tones so a pass, a
+   warning and a failure read the same across the admin pages. */
+
+.hint {
+  color: #666;
+  font-size: 0.85em;
+}
+
+.errorBox {
+  background: #fbdddd;
+  border: 1px solid #c0392b;
+  border-radius: 0.4em;
+  padding: 0.5em 0.7em;
+  margin: 0.5em 0;
+}
+
+/* --- Roster --- */
+
+.roster {
+  list-style: none;
+  margin: 0.5em 0;
+  padding: 0;
+}
+
+.roster li {
+  margin-bottom: 0.5em;
+}
+
+.rosterRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  width: 100%;
+  /* Comfortably above the ~44px minimum touch target */
+  min-height: 3.2em;
+  padding: 0.6em 0.8em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.5em;
+  background: #f8f9fa;
+  color: #212529;
+  text-align: left;
+}
+
+.rosterName {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+}
+
+.rosterTeam {
+  font-weight: normal;
+  color: #6c757d;
+}
+
+.status {
+  padding: 0.15em 0.6em;
+  border-radius: 1em;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+  font-size: 0.85em;
+}
+
+.statusNone {
+  background: #eeeeee;
+  border-color: #aaaaaa;
+  color: #555;
+}
+
+.statusPending {
+  background: #e3ecfb;
+  border-color: #4a76c9;
+}
+
+.statusGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  font-weight: bold;
+}
+
+.statusWarn {
+  background: #fdf0d5;
+  border-color: #d9a441;
+}
+
+.statusBad {
+  background: #fbdddd;
+  border-color: #c0392b;
+  font-weight: bold;
+}
+
+/* --- One player --- */
+
+.detailHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6em;
+  margin: 0.5em 0;
+}
+
+.detailHeader h2 {
+  margin: 0;
+  font-size: 1.3em;
+}
+
+.backButton {
+  min-height: 2.6em;
+  padding: 0.3em 0.8em;
+}
+
+.camera {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  background: black;
+  border-radius: 0.5em;
+  overflow: hidden;
+}
+
+.photo {
+  width: 100%;
+  border-radius: 0.5em;
+}
+
+.bigButton {
+  width: 100%;
+  min-height: 3.5em;
+  margin: 0.5em 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+.buttonRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  margin: 0.5em 0;
+}
+
+.buttonRow button {
+  flex: 1 1 8em;
+  min-height: 3em;
+}
+
+/* --- The verdict --- */
+
+.verdict {
+  padding: 0.7em 0.9em;
+  border-radius: 0.5em;
+  border: 2px solid transparent;
+  margin: 0.6em 0;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+.verdictGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  color: #1e5c34;
+}
+
+.verdictWarn {
+  background: #fdf0d5;
+  border-color: #d9a441;
+  color: #7a5410;
+}
+
+.verdictBad {
+  background: #fbdddd;
+  border-color: #c0392b;
+  color: #8c2318;
+}
+
+.flags {
+  color: #8c5b0f;
+  font-size: 0.9em;
+  margin: 0.2em 0;
+}
+
+.marginalWarning {
+  background: #fdf0d5;
+  border-left: 4px solid #d9a441;
+  padding: 0.4em 0.6em;
+  font-size: 0.9em;
+  margin: 0.4em 0;
+}
+
+.runnersUp {
+  list-style: none;
+  padding: 0;
+  margin: 0.2em 0 0.6em 0;
+  color: #666;
+  font-size: 0.85em;
+}

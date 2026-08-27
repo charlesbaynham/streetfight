@@ -14,19 +14,13 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
-import { verdictText, zoomTag } from "./ShotQueue";
+import { ChannelTags, outcomeTag, verdictText, zoomTag } from "./ShotQueue";
 import { Row, Col } from "react-bootstrap";
 
 import styles from "./ShotReplay.module.css";
 // The outcome tags are the ShotQueue's own, so a review reads the same here as
 // in the queue.
 import tagStyles from "./ShotQueue.module.css";
-
-const OUTCOME_LABELS = {
-  hit_player: ["HIT", tagStyles.outcomeHit],
-  hit_bystander: ["Bystander - not a hit", tagStyles.outcomeBystander],
-  miss: ["Miss", tagStyles.outcomeMiss],
-};
 
 // The conversation shapes the backend offers (shot_vision.ZOOM_MODES), and
 // what each does to the exchange.
@@ -46,11 +40,6 @@ const OUTCOME_TO_VERDICT = {
 // One shot's reading, rendered from the review dict the replay endpoint
 // returns (same shape ShotAiTags displays in the queue).
 function ReplayResult({ review }) {
-  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
-    review.outcome,
-    tagStyles.outcomeMiss,
-  ];
-
   // Under a contract of its own the reply has no outcome to render, and the
   // pipeline's default one would be a verdict the model never gave.
   if (review.parse_error) {
@@ -69,27 +58,12 @@ function ReplayResult({ review }) {
   return (
     <>
       <div className={tagStyles.tagRow}>
-        <span className={`${tagStyles.tag} ${outcomeStyle}`}>{label}</span>
+        {outcomeTag(review)}
         <span className={tagStyles.tag}>
           confidence {Math.round(100 * (review.confidence || 0))}%
         </span>
         {zoomTag(review)}
-        {Object.entries(review.channels || {}).map(([name, channel]) => (
-          <span
-            key={name}
-            className={`${tagStyles.tag} ${
-              channel.colour ? "" : tagStyles.tagUnknown
-            }`}
-          >
-            {channel.hex ? (
-              <span
-                className={tagStyles.swatch}
-                style={{ background: channel.hex }}
-              />
-            ) : null}
-            {name}: {channel.colour || "unknown"}
-          </span>
-        ))}
+        <ChannelTags channels={review.channels} />
       </div>
       <p className={tagStyles.aiReason}>
         {review.outcome_reason}

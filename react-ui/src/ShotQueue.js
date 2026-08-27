@@ -66,37 +66,71 @@ function ShotAiTags({ shot_id }) {
 
   if (!review) return listener;
 
-  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
-    review.outcome,
-    styles.outcomeMiss,
-  ];
-
   return (
     <>
       {listener}
       <div className={styles.tagRow}>
-        <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>
+        {outcomeTag(review)}
         {zoomTag(review)}
-        {Object.entries(review.channels || {}).map(([name, channel]) => (
-          <span
-            key={name}
-            className={`${styles.tag} ${channel.colour ? "" : styles.tagUnknown}`}
-          >
-            {channel.hex ? (
-              <span
-                className={styles.swatch}
-                style={{ background: channel.hex }}
-              />
-            ) : null}
-            {name}: {channel.colour || "unknown"}
-          </span>
-        ))}
+        <ChannelTags channels={review.channels} />
       </div>
       <p className={styles.aiReason}>
         {review.outcome_reason}
         {review.reasoning ? ` - ${review.reasoning}` : null}
       </p>
     </>
+  );
+}
+
+// What the model made of the photograph overall, as one tag. Shared so a
+// reading looks the same in the queue, the replay workbench and the
+// reference-photo kit check.
+export function outcomeTag(review) {
+  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
+    review.outcome,
+    styles.outcomeMiss,
+  ];
+
+  return <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>;
+}
+
+// The model's per-channel colour reading, as tags. `warnBelow` (unset in the
+// queue, where the admin decides every shot anyway) marks any channel it read
+// less confidently than that and shows the number, so "the trousers read as
+// black at 0.4" is visible rather than hidden behind a confident-looking tag.
+export function ChannelTags({ channels, warnBelow = null }) {
+  return (
+    <>
+      {Object.entries(channels || {}).map(([name, channel]) => (
+        <span
+          key={name}
+          className={`${styles.tag} ${channel.colour ? "" : styles.tagUnknown} ${
+            isMarginal(channel, warnBelow) ? styles.tagMarginal : ""
+          }`}
+        >
+          {channel.hex ? (
+            <span
+              className={styles.swatch}
+              style={{ background: channel.hex }}
+            />
+          ) : null}
+          {name}: {channel.colour || "unknown"}
+          {isMarginal(channel, warnBelow)
+            ? ` (${Math.round(100 * channel.confidence)}%)`
+            : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
+// A channel the model read, but not confidently enough to trust at the door.
+export function isMarginal(channel, warnBelow) {
+  return (
+    warnBelow !== null &&
+    !!channel.colour &&
+    typeof channel.confidence === "number" &&
+    channel.confidence < warnBelow
   );
 }
 
