@@ -9,6 +9,7 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 
 import { sendAPIRequest } from "./utils";
+import { Swatch, hexFor } from "./Swatch";
 
 import styles from "./AdminIdentity.module.css";
 
@@ -60,12 +61,6 @@ async function getJSON(endpoint, query_params) {
   return data;
 }
 
-function hexFor(channels, channelName, label) {
-  if (!label) return null;
-  const channel = channels.find((c) => c.name === channelName);
-  return (channel && channel.hex[label]) || null;
-}
-
 function distanceDescription(distance, closestPlayers) {
   const names = (closestPlayers || []).map((p) => p.name).join(", ") || null;
   if (distance >= 3) return "full guarantee";
@@ -81,28 +76,6 @@ function worstPair(pairs) {
     if (rankDiff !== 0) return rankDiff;
     return a.distance - b.distance;
   })[0];
-}
-
-// A single colour swatch. Unknown / outside-palette shows as a hatched "?"
-// square rather than being silently dropped.
-function Swatch({ hex, label, small }) {
-  const className = [
-    styles.swatch,
-    small ? styles.swatchSmall : "",
-    hex ? "" : styles.swatchUnknown,
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return (
-    <span
-      className={className}
-      style={hex ? { background: hex } : undefined}
-      title={label || "not in palette"}
-    >
-      {hex ? "" : "?"}
-    </span>
-  );
 }
 
 // One channel's cell in the player table: the effective (worn) colour, with
@@ -412,6 +385,8 @@ function PlayerEditor({
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState(null);
   const [force, setForce] = useState(false);
+  const [clearing, setClearing] = useState(false);
+  const [clearError, setClearError] = useState(null);
 
   useEffect(() => {
     setSelectedSlot(player.slot === null ? "" : String(player.slot));
@@ -428,6 +403,7 @@ function PlayerEditor({
     setChannelOverrides(initial);
     setSaveError(null);
     setForce(false);
+    setClearError(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.user_id]);
 
@@ -464,14 +440,51 @@ function PlayerEditor({
     }
   };
 
+  const clearOutfit = async () => {
+    if (
+      !window.confirm(
+        `Clear ${player.name}'s outfit? This throws away their pick - they'll ` +
+          "have to scan their join code and choose again.",
+      )
+    ) {
+      return;
+    }
+    setClearing(true);
+    setClearError(null);
+    try {
+      const updated = await postJSON("admin_clear_identity", {
+        user_id: player.user_id,
+      });
+      onSaved(updated);
+    } catch (e) {
+      setClearError(e.message);
+    } finally {
+      setClearing(false);
+    }
+  };
+
   return (
     <div className={styles.editor}>
       <div className={styles.editorHeader}>
         <h3>
           {player.name} <small>({player.team_name})</small>
         </h3>
-        <button onClick={onClose}>Close</button>
+        <span>
+          <button
+            onClick={clearOutfit}
+            disabled={player.slot === null || clearing}
+            title={
+              player.slot === null
+                ? "This player has no outfit to clear"
+                : "Free this outfit so someone else can pick it, and let this player choose again"
+            }
+          >
+            {clearing ? "Clearing..." : "Clear outfit"}
+          </button>{" "}
+          <button onClick={onClose}>Close</button>
+        </span>
       </div>
+      {clearError ? <p className={styles.errorText}>{clearError}</p> : null}
 
       <div className={styles.editorField}>
         <label>

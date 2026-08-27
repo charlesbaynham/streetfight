@@ -4,6 +4,7 @@ import * as ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import UserMode from "./UserMode";
+import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
@@ -19,6 +20,10 @@ const router = createBrowserRouter([
   {
     path: "/",
     element: <UserMode />,
+  },
+  {
+    path: "pick",
+    element: <PickOutfit />,
   },
   {
     path: "admin",

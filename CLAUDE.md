@@ -66,6 +66,9 @@ minimal changes over large refactors.
     turns its reference points into map geometry; `mapImages.js` is the bundled
     map images the server's `map.image` key resolves against.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
+    `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
+    team join code lands on; it shares the colour `Swatch.js` component with
+    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).
@@ -216,3 +219,14 @@ Images are built from the Nix flake
   colour. That is an allocation policy only — the decoder is unaffected. A hat
   colour covers five slots (four for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
+- `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
+  for a game, and left untouched on every later call (even after a new team is
+  added) — so a team that has already started picking outfits never gets
+  re-coloured out from under players who chose against its original hat.
+- Players choose their own outfit rather than being assigned one: a team join
+  code (`slot=None` in `JoinCodeModel`) sends the scanner to `/pick`, which
+  offers a ranked, paginated list built by
+  `identity_admin.outfit_options`. Ranking is canonical-first — an option
+  needing zero overrides from a Reed–Solomon codeword always outranks a rarer
+  one needing even one — then rarity, gated throughout on Hamming distance
+  against everyone already placed in the game.

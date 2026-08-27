@@ -1,25 +1,24 @@
-.codeGrid {
+.cardGrid {
   display: flex;
   flex-wrap: wrap;
   gap: 1em;
 }
 
-.codeCard {
+.card {
   border: 1px solid #ccc;
-  padding: 0.5em;
+  padding: 1em;
   text-align: center;
   /* Keep each card on one page when printing */
   break-inside: avoid;
 }
 
-.teamColours {
-  font-weight: normal;
-  font-style: italic;
+.colourLine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4em;
 }
 
-.appearanceList {
-  list-style: none;
-  padding: 0;
-  margin: 0;
-  text-align: left;
+.capacityLine {
+  color: #555;
 }

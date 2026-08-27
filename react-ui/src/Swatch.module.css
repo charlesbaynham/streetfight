@@ -1,0 +1,39 @@
+/* Shared colour swatch. Border and glyph colour are themeable via CSS custom
+   properties - the fallbacks below are today's (light-background) values, so
+   a consumer that doesn't set them renders identically to before. A
+   dark-background consumer (e.g. a player-facing page) should set
+   --swatch-border / --swatch-fg on its own container to something visible
+   against black instead. */
+
+.swatch {
+  width: 1.5em;
+  height: 1.5em;
+  border-radius: 0.3em;
+  border: 1px solid var(--swatch-border, rgba(0, 0, 0, 0.4));
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75em;
+  color: var(--swatch-fg, rgba(0, 0, 0, 0.55));
+  flex: none;
+}
+
+.swatchSmall {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.swatchLarge {
+  width: 2.5em;
+  height: 2.5em;
+}
+
+.swatchUnknown {
+  background: repeating-linear-gradient(
+    45deg,
+    #eeeeee,
+    #eeeeee 4px,
+    #cccccc 4px,
+    #cccccc 8px
+  );
+}

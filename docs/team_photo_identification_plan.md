@@ -998,3 +998,34 @@ also explains why `d = 2` is tolerable here: the candidate set is a handful of
 nearby living players on other teams, not all 35 outfits, and two channels
 discriminate sharply within a set that small. **If auto-actions are required on
 the night, #5 is on the critical path.**
+
+#### As implemented
+
+#10 shipped, and its ranking is not the pure greedy free-choice seating
+modelled above ("seat each player as far from everyone already placed as
+their wardrobe allows"). Instead the player is offered a ranked, paginated
+list — gated on Hamming distance, then sorted overrides-from-a-canonical-
+codeword first and rarity second — and picks from it themselves. Canonical
+Reed–Solomon codewords rank top of that list, so most players end up on one
+carrying no overrides at all, and free choice remains the fallback for
+whoever the canonical slots don't fit rather than the norm the greedy model
+assumed for everyone. That keeps the code doing real work — the auto-action
+gate in `shot_vision.slot_candidates_from_review` still means something for
+the majority of players — while free choice still delivers this section's
+headline result for whoever needs it: nobody is turned away for lack of the
+right clothes. See the roadmap's #10 entry and
+`backend.identity_admin.outfit_options` for the mechanism; the analysis and
+numbers above are otherwise unchanged.
+
+#### Since implemented
+
+The wardrobe model above priced hat ownership as a probability (black .30, blue
+.18, …) because the plan at the time was for each team to bulk-buy its hat
+colour, and a bulk order can come out wrong. That risk no longer exists: the
+hats were bought alongside the armbands (roadmap #9), so the hat-ownership row
+of the model no longer constrains anything — every player is handed the
+correct hat directly, not asked to own one. The section's conclusion is
+unchanged (team on the hat, armband free) but now holds for a stronger reason
+than the one argued above: not because the hat is merely worth controlling
+more than the armband, but because we control both outright and the armband is
+the one we choose to leave free at handout time.

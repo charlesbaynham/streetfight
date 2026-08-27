@@ -244,17 +244,14 @@ class _EncodedJoinCode(BaseModel):
     data: str
 
 
-@router.post("/join_game")
-async def join_game(
-    encoded_code: _EncodedJoinCode,
-    user_id=Depends(get_user_id),
-):
-    """Join a team and claim an identity slot by scanning a signed join code.
-
-    The body is ``{"data": <url-or-b64>}``, same shape as collect_item.
+def _decoded_join_code(data: str) -> JoinCodeModel:
+    """Decode and signature-check a join code, the way every join-code
+    endpoint must. Raises the same ``HTTPException``s ``join_game`` always
+    has, so later endpoints (e.g. ``join_options``) can reuse this rather
+    than re-deriving the checks.
     """
     try:
-        code = JoinCodeModel.from_base64(encoded_code.data)
+        code = JoinCodeModel.from_base64(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
@@ -264,12 +261,85 @@ async def join_game(
             403, f"The scanned join code is invalid - error {code_validation_error}"
         )
 
+    return code
+
+
+@router.post("/join_game")
+async def join_game(
+    encoded_code: _EncodedJoinCode,
+    user_id=Depends(get_user_id),
+):
+    """Join a team by scanning a signed join code.
+
+    The body is ``{"data": <url-or-b64>}``, same shape as collect_item. A
+    code with a concrete ``slot`` claims it immediately (unchanged). A *team*
+    code (``slot is None``) writes nothing - it hands back ``needs_pick`` so
+    the frontend can route the player to the outfit-picking flow instead.
+    """
+    code = _decoded_join_code(encoded_code.data)
+
     logger.info(
         "User %s joining team %s with slot %s", user_id, code.team_id, code.slot
     )
 
+    if code.slot is None:
+        team = AdminInterface().get_team_model(code.team_id)  # 404s if missing
+        if team.game_id != code.game_id:
+            raise HTTPException(400, "join code's team does not belong to its game")
+        return {"needs_pick": True, "team_id": team.id, "team_name": team.name}
+
     with _identity_admin_errors():
         return identity_admin.claim_join_slot(user_id, code)
+
+
+@router.get("/join_options")
+async def join_options(data: str, user_id=Depends(get_user_id)) -> dict:
+    """The outfit-picking page's first load: team identity, palette and the
+    caller's own state if they have one. Non-mutating on purpose - see
+    ``identity_admin.join_options``."""
+    code = _decoded_join_code(data)
+    with _identity_admin_errors():
+        return identity_admin.join_options(user_id, code)
+
+
+class _OutfitOptionsRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    relaxed: bool = False
+    page: int = 0
+
+
+@router.post("/outfit_options")
+async def outfit_options(
+    request: _OutfitOptionsRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """A ranked, paginated page of candidate outfits. A POST because the
+    wardrobe is a body, but it writes nothing - see
+    ``identity_admin.outfit_options_page``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.outfit_options_page(
+            user_id, code, request.wardrobe, request.relaxed, request.page
+        )
+
+
+class _PickOutfitRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    appearance: Dict[str, str] = {}
+    confirmed: bool = False
+
+
+@router.post("/pick_outfit")
+async def pick_outfit(
+    request: _PickOutfitRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """Claim a picked outfit - see ``identity_admin.pick_outfit``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.pick_outfit(
+            user_id, code, request.wardrobe, request.appearance, request.confirmed
+        )
 
 
 class _EncodedItem(BaseModel):
@@ -814,17 +884,24 @@ async def admin_identity_report(game_id: UUID) -> dict:
 
 
 @admin_method(path="/admin_join_qr_codes", method="GET")
-async def admin_join_qr_codes(game_id: UUID, slots_per_team: int = 8) -> dict:
-    """Signed join QR URLs for every team in a game: scanning one joins that
-    team and claims that identity slot. Deterministic, so reprints match."""
+async def admin_join_qr_codes(game_id: UUID) -> dict:
+    """One signed team join QR per team: scanning it lets a player pick their
+    own outfit in that team's colour. See ``identity_admin.build_join_codes``
+    for why this GET writes (it pins each team's hat colour)."""
     with _identity_admin_errors():
-        return identity_admin.build_join_codes(game_id, slots_per_team)
+        return identity_admin.build_join_codes(game_id)
 
 
 @admin_method(path="/admin_identity_set", method="POST")
 async def admin_identity_set(request: identity_admin.IdentitySetRequest) -> dict:
     with _identity_admin_errors():
         return identity_admin.set_identity(request)
+
+
+@admin_method(path="/admin_clear_identity", method="POST")
+async def admin_clear_identity(request: identity_admin.IdentityClearRequest) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.clear_identity(request.user_id)
 
 
 @admin_method(path="/admin_identity_suggest", method="POST")
@@ -837,9 +914,17 @@ async def admin_identity_suggest(
 
 @contextmanager
 def _identity_admin_errors():
-    """Turn identity_admin's complaints into a readable HTTP 400."""
+    """Turn identity_admin's complaints into a readable HTTP error.
+
+    ``OutfitUnavailableError`` (a ``pick_outfit`` claim that failed
+    re-validation - someone just took it, or it stopped qualifying) maps to
+    409, distinguishable from the plain 400 a malformed request gets; check
+    it first since it subclasses ``IdentityAdminError``.
+    """
     try:
         yield
+    except identity_admin.OutfitUnavailableError as e:
+        raise HTTPException(409, str(e))
     except identity_admin.IdentityAdminError as e:
         raise HTTPException(400, str(e))
 

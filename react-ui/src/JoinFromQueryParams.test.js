@@ -35,6 +35,15 @@ test("posts join_game with the code after the debounce, then navigates to /", as
   expect(calls[0].body).toEqual({ data: "ABC123" });
 });
 
+test("a needs_pick response navigates to /pick carrying the same code", async () => {
+  installFetchMock({
+    join_game: { needs_pick: true, team_id: "team-1", team_name: "Reds" },
+  });
+  renderWithRouter("/somewhere?j=ABC123");
+
+  await screen.findByText("/pick?j=ABC123");
+});
+
 test("an error response shows the backend's detail text and still navigates to /", async () => {
   installFetchMock({
     join_game: {

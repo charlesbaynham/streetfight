@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import JoinQRCodes from "./JoinQRCodes";
@@ -10,36 +10,23 @@ const REPORT = {
     {
       team_id: "team-red",
       team_name: "Red",
-      team_colours: ["purple"],
-      codes: [
-        {
-          slot: 7,
-          encoded_url: "https://example.com?j=red7",
-          appearance: { tshirt: "red", trousers: "black" },
-        },
-        {
-          slot: 9,
-          encoded_url: "https://example.com?j=red9",
-          appearance: { tshirt: "red", trousers: "white" },
-        },
-      ],
+      team_colour: "red",
+      team_colour_hex: "#B00020",
+      capacity: 5,
+      encoded_url: "https://example.com?j=red",
     },
     {
       team_id: "team-blue",
       team_name: "Blue",
-      team_colours: ["green", "yellow"],
-      codes: [
-        {
-          slot: 11,
-          encoded_url: "https://example.com?j=blue11",
-          appearance: { tshirt: "blue", trousers: "black" },
-        },
-      ],
+      team_colour: "blue",
+      team_colour_hex: "#0000FF",
+      capacity: 4,
+      encoded_url: "https://example.com?j=blue",
     },
   ],
 };
 
-test("Generate fetches admin_join_qr_codes and renders one QR per code with captions", async () => {
+test("Generate fetches admin_join_qr_codes with game_id only and renders one QR per team", async () => {
   installFetchMock({ admin_join_qr_codes: REPORT });
   const { container } = render(<JoinQRCodes game_id="game-1" />);
 
@@ -47,25 +34,19 @@ test("Generate fetches admin_join_qr_codes and renders one QR per code with capt
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
 
-  await screen.findByText("Team Red — outfit #7");
+  await screen.findByText("Team Red");
 
   expect(getLastAPICall("admin_join_qr_codes").method).toBe("GET");
   expect(getLastAPICall("admin_join_qr_codes").query).toEqual({
     game_id: "game-1",
-    slots_per_team: "8",
   });
 
-  // One QR (react-qr-code renders an svg) per code across both teams
-  expect(container.querySelectorAll("svg")).toHaveLength(3);
-  expect(screen.getByText("Team Red — outfit #9")).toBeInTheDocument();
-  expect(screen.getByText("Team Blue — outfit #11")).toBeInTheDocument();
-
-  // The appearance is listed channel by channel
-  expect(screen.getByText("tshirt: blue")).toBeInTheDocument();
-  expect(screen.getAllByText("trousers: black")).toHaveLength(2);
+  // One QR (react-qr-code renders an svg) per team, not per outfit slot.
+  expect(container.querySelectorAll("svg")).toHaveLength(2);
+  expect(screen.getByText("Team Blue")).toBeInTheDocument();
 });
 
-test("each team heading names the colour its whole team wears", async () => {
+test("each team card names its colour and full-accuracy capacity", async () => {
   installFetchMock({ admin_join_qr_codes: REPORT });
   render(<JoinQRCodes game_id="game-1" />);
 
@@ -73,30 +54,14 @@ test("each team heading names the colour its whole team wears", async () => {
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
 
-  // One colour for the whole team...
-  await screen.findByText(/purple hats/);
-  // ...and a team too big for one colour says which comes next
-  expect(screen.getByText(/hats: green then yellow/)).toBeInTheDocument();
-});
-
-test("the slots-per-team input feeds the request", async () => {
-  installFetchMock({ admin_join_qr_codes: REPORT });
-  render(<JoinQRCodes game_id="game-1" />);
-
-  const input = screen.getByLabelText(/Slots per team/);
-  userEvent.clear(input);
-  userEvent.type(input, "4");
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Generate" })),
-  );
-
-  await waitFor(() =>
-    expect(getLastAPICall("admin_join_qr_codes")).toBeDefined(),
-  );
-  expect(getLastAPICall("admin_join_qr_codes").query).toEqual({
-    game_id: "game-1",
-    slots_per_team: "4",
-  });
+  await screen.findByText(/red hats/);
+  expect(screen.getByText(/blue hats/)).toBeInTheDocument();
+  expect(
+    screen.getByText("holds 5 players at full accuracy"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText("holds 4 players at full accuracy"),
+  ).toBeInTheDocument();
 });
 
 test("Print appears once codes are generated and calls window.print", async () => {
@@ -110,7 +75,7 @@ test("Print appears once codes are generated and calls window.print", async () =
   await actAndFlush(() =>
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
-  await screen.findByText("Team Red — outfit #7");
+  await screen.findByText("Team Red");
 
   window.print = jest.fn();
   userEvent.click(screen.getByRole("button", { name: "Print" }));
