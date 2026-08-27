@@ -300,12 +300,26 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
   );
 }
 
-function PickOutfitForm({ code, joinData, onPicked, onError }) {
+function PickOutfitForm({
+  code,
+  joinData,
+  onPicked,
+  onError,
+  onChoosingChange,
+}) {
   const [wardrobe, setWardrobe] = useState({});
   const [optionsResult, setOptionsResult] = useState(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
+
+  // The header's "tell us what else you'll be wearing" prompt is an
+  // instruction, and on the confirm screen there is nothing left to tell -
+  // the player is being asked to approve a specific outfit. Let the parent,
+  // which owns the header, know when we are on that screen.
+  useEffect(() => {
+    onChoosingChange(selectedOption !== null);
+  }, [selectedOption, onChoosingChange]);
 
   const wardrobeChannels = joinData.wardrobe_channels;
 
@@ -495,6 +509,7 @@ function PickOutfit() {
   const [joinData, setJoinData] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [pickedRow, setPickedRow] = useState(null);
+  const [choosing, setChoosing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [errorVisible, setErrorVisible] = useState(false);
 
@@ -539,7 +554,10 @@ function PickOutfit() {
           <p>Loading...</p>
         ) : (
           <>
-            <Header joinData={joinData} showWardrobePrompt={!result} />
+            <Header
+              joinData={joinData}
+              showWardrobePrompt={!result && !choosing}
+            />
             {result ? (
               <ResultScreen
                 appearance={result.effective_appearance}
@@ -552,6 +570,7 @@ function PickOutfit() {
                 joinData={joinData}
                 onPicked={setPickedRow}
                 onError={showError}
+                onChoosingChange={setChoosing}
               />
             )}
           </>
