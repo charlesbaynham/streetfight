@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
@@ -38,7 +38,26 @@ function makeJoinData(overrides = {}) {
       },
     ],
     colour_notes: { green: "includes olive and khaki" },
-    you: null,
+    you: makeYou(),
+    ...overrides,
+  };
+}
+
+// The caller's own row as join_options returns it (backend/identity_admin.py's
+// _player_row). The default is somebody who has given their name but not yet
+// claimed an outfit - the ordinary state for everything past the name gate;
+// pass `you: null` to land on the page as a brand new scanner.
+function makeYou(overrides = {}) {
+  return {
+    user_id: "u1",
+    name: "Alice",
+    team_name: "Reds",
+    slot: null,
+    overrides: null,
+    wardrobe: {},
+    canonical_appearance: null,
+    effective_appearance: null,
+    overridden: false,
     ...overrides,
   };
 }
@@ -287,6 +306,103 @@ test("tapping an option shows the confirmation screen without claiming it, and L
   expect(lockIn).not.toBeDisabled();
 });
 
+test("a player who has not given their name cannot lock in an outfit until they do", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: null }),
+    outfit_options: makeOptionsResult(),
+    set_name: {},
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+
+  // Ticked, but still nameless - an outfit claimed anonymously is an outfit
+  // nobody can be handed a card for.
+  const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
+  expect(lockIn).toBeDisabled();
+
+  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  await actAndFlush(() => {
+    fireEvent.change(nameBox, { target: { value: "Alice" } });
+    fireEvent.keyDown(nameBox, { key: "Enter" });
+  });
+
+  expect(getLastAPICall("set_name").query).toEqual({ name: "Alice" });
+  expect(
+    screen.getByRole("button", { name: /Lock in my choice/ }),
+  ).not.toBeDisabled();
+});
+
+test("whitespace is not a name - it neither posts set_name nor unlocks the claim", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: null }),
+    outfit_options: makeOptionsResult(),
+    set_name: {},
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+
+  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  await actAndFlush(() => {
+    fireEvent.change(nameBox, { target: { value: "   " } });
+    fireEvent.keyDown(nameBox, { key: "Enter" });
+  });
+
+  expect(getAPICalls("set_name")).toHaveLength(0);
+  expect(
+    screen.getByRole("button", { name: /Lock in my choice/ }),
+  ).toBeDisabled();
+});
+
+test("a name already set in a previous session shows pre-filled, not blank, and stays editable on every step", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: makeYou({ name: "Bob" }) }),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  // join_options already reported a name - the box must show it, not
+  // resurface blank and ask again.
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
+
+  await showOutfits();
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+
+  // Still pre-filled, and still editable, on the confirm screen.
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
+
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+  expect(
+    screen.getByRole("button", { name: /Lock in my choice/ }),
+  ).not.toBeDisabled();
+  expect(getAPICalls("set_name")).toHaveLength(0);
+});
+
 test("ticking the confirm box and pressing Lock in my choice claims the outfit and renders the result screen", async () => {
   installFetchMock({
     join_options: makeJoinData(),
@@ -359,17 +475,12 @@ test("Choose a different outfit returns to the options list without claiming any
 test("a returning visitor whose slot is already set sees the result, not the form", async () => {
   installFetchMock({
     join_options: makeJoinData({
-      you: {
-        user_id: "u1",
-        name: "Alice",
-        team_name: "Reds",
+      you: makeYou({
         slot: 3,
-        overrides: null,
         wardrobe: { tshirt: ["black"] },
         canonical_appearance: makeOption().appearance,
         effective_appearance: makeOption().appearance,
-        overridden: false,
-      },
+      }),
     }),
   });
 

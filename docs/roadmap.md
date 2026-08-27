@@ -389,6 +389,25 @@ badge points at *the* best outfit rather than a dozen equally-badged ones.
 The remaining canonical options go unbadged, and the non-canonical ones
 revealed by "Show more outfits" carry an orange "not ideal" badge instead.
 
+**A name is now required to claim an outfit.** The name box was on the page
+from the start but gated nothing, and `NameEntry` posted `set_name` without
+telling the page - so a player could lock in an outfit anonymously, leaving a
+slot claimed that #8 has no card to print a name on. The name is now tracked
+in `PickOutfitForm` (seeded from `join_options`' `you.name`, updated by
+`NameEntry`'s new optional `onNameSet` callback), the box follows the player
+onto the confirm screen, and "Lock in my choice" stays disabled until both it
+and the checkbox are satisfied. `NameEntry` also no longer posts a
+whitespace-only name, in `OnboardingView` as well as here.
+
+**The box stays visible and editable, always - it no longer hides itself once
+a name is known.** `join_options` only ever reports a name for a player an
+admin has already added to the team ahead of picking (`team_id` and
+`identity_slot` are otherwise set together, atomically, by `pick_outfit`
+alone) - a real but uncommon case, and one worth showing correctly: the box
+pre-fills from that name rather than reappearing blank and asking again, and
+stays open to a correction the whole way through, including on the confirm
+screen.
+
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
 **Feeds:** #8.
 

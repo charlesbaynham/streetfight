@@ -276,6 +276,7 @@ function ConfirmScreen({
   onConfirm,
   onBack,
   confirming,
+  hasName,
 }) {
   const [checked, setChecked] = useState(false);
   return (
@@ -295,10 +296,15 @@ function ConfirmScreen({
         />
         I will wear this on the night.
       </label>
+      {hasName ? null : (
+        <p className={styles.nameRequired}>
+          Enter your name above first - an outfit has to belong to somebody.
+        </p>
+      )}
       <button
         type="button"
         className={styles.submitButton}
-        disabled={!checked || confirming}
+        disabled={!checked || !hasName || confirming}
         onClick={() => onConfirm(checked)}
       >
         {confirming ? "Locking in..." : "Lock in my choice"}
@@ -354,6 +360,12 @@ function PickOutfitForm({
   const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
   const [showingAll, setShowingAll] = useState(false);
+  // join_options only reports the name as it was on load, and NameEntry posts
+  // set_name without telling anyone - so track it here, since the confirm
+  // step is gated on it.
+  const [name, setName] = useState(
+    joinData.you && joinData.you.name ? joinData.you.name : null,
+  );
 
   // The header's "tell us what else you'll be wearing" prompt is an
   // instruction, and on the confirm screen there is nothing left to tell -
@@ -427,16 +439,32 @@ function PickOutfitForm({
     [code, wardrobe, onPicked, onError, optionsResult, fetchOptions],
   );
 
+  // Always shown, on every step including the confirm screen - a name
+  // already known from an earlier session is worth reviewing (it stays
+  // editable), and one not yet given is worth asking for again, since the
+  // confirm step refuses to claim an outfit without it.
+  const nameEntry = (
+    <NameEntry
+      user={{ name }}
+      className={styles.nameEntry}
+      onNameSet={setName}
+    />
+  );
+
   if (selectedOption) {
     return (
-      <ConfirmScreen
-        option={selectedOption}
-        wardrobeChannels={wardrobeChannels}
-        channels={joinData.channels}
-        confirming={claiming}
-        onConfirm={(confirmed) => claimOption(selectedOption, confirmed)}
-        onBack={() => setSelectedOption(null)}
-      />
+      <>
+        {nameEntry}
+        <ConfirmScreen
+          option={selectedOption}
+          wardrobeChannels={wardrobeChannels}
+          channels={joinData.channels}
+          confirming={claiming}
+          hasName={Boolean(name)}
+          onConfirm={(confirmed) => claimOption(selectedOption, confirmed)}
+          onBack={() => setSelectedOption(null)}
+        />
+      </>
     );
   }
 
@@ -470,12 +498,7 @@ function PickOutfitForm({
 
   return (
     <>
-      {joinData.you && joinData.you.name ? null : (
-        <NameEntry
-          user={joinData.you || { name: null }}
-          className={styles.nameEntry}
-        />
-      )}
+      {nameEntry}
 
       {showingOptions ? (
         <WardrobeSummary
