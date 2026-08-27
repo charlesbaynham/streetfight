@@ -105,7 +105,7 @@ def run_family(
             client,
             prompt,
             variant_name,
-            variant.always_zoom,
+            variant.zoom_mode,
             jsonl_path,
             limit=limit,
             concurrency=concurrency,

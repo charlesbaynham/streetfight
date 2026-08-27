@@ -111,13 +111,12 @@ class PromptVariant(NamedTuple):
     ``build_prompt`` is a callable taking the channel palettes and returning
     the prompt text; None means whatever ``shot_vision.build_prompt`` currently
     produces, so a replay always scores what the live pipeline would have said.
-    ``always_zoom`` is passed through to ``shot_vision.review_image``: the zoom
-    is sent up front whether the screening answer says the target is small or
-    not.
+    ``zoom_mode`` is passed through to ``shot_vision.review_image`` (see its
+    ``ZOOM_*`` constants) and picks the shape of the exchange.
     """
 
     build_prompt: Optional[Callable] = None
-    always_zoom: bool = False
+    zoom_mode: str = shot_vision.ZOOM_SCREENED
 
 
 # Prompt variants for roadmap #4 land here. "baseline" is the live pipeline's
@@ -133,7 +132,7 @@ PROMPT_VARIANTS = {
     # doubted themselves, so the zoom was sent whether they asked or not. Kept
     # under its own name because that is what the replay_always_zoom_run*.jsonl
     # files record.
-    "always_zoom": PromptVariant(always_zoom=True),
+    "always_zoom": PromptVariant(zoom_mode=shot_vision.ZOOM_UPFRONT),
 }
 
 # Scoring a historical shot against the *current* user table cannot reproduce
@@ -483,7 +482,7 @@ def cmd_export(args) -> None:
     print(f"Exported {len(entries)} shots to {out_dir}")
 
 
-async def _replay_one(shot: dict, client, prompt, semaphore, always_zoom: bool) -> dict:
+async def _replay_one(shot: dict, client, prompt, semaphore, zoom_mode: str) -> dict:
     """One shot through the real pipeline: marker, resize, review, one zoom."""
     async with semaphore:
         try:
@@ -499,7 +498,7 @@ async def _replay_one(shot: dict, client, prompt, semaphore, always_zoom: bool) 
                 prepared,
                 zoom_provider=zoom_provider,
                 prompt=prompt,
-                always_zoom=always_zoom,
+                zoom_mode=zoom_mode,
             )
             return {"review": result.to_dict()}
         except Exception as e:  # a failed shot is data, not a crash
@@ -512,7 +511,7 @@ def replay_to_file(
     client,
     prompt,
     variant_name: str,
-    always_zoom: bool,
+    zoom_mode: str,
     out_path: Path,
     limit: Optional[int] = None,
     concurrency: int = 2,
@@ -544,10 +543,7 @@ def replay_to_file(
 
     async def run_all():
         return await asyncio.gather(
-            *(
-                _replay_one(shot, client, prompt, semaphore, always_zoom)
-                for shot in todo
-            )
+            *(_replay_one(shot, client, prompt, semaphore, zoom_mode) for shot in todo)
         )
 
     outcomes = asyncio.run(run_all())
@@ -596,7 +592,7 @@ def cmd_replay(args) -> None:
         client,
         prompt,
         args.variant,
-        variant.always_zoom,
+        variant.zoom_mode,
         Path(args.out),
         limit=args.limit,
         concurrency=args.concurrency,

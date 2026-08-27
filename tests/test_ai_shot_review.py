@@ -339,13 +339,50 @@ async def test_a_replay_threads_the_custom_prompt_and_zoom_choice(
     client = FakeVisionClient(reply=hit_reply())
 
     await ai_shot_review.replay_shot_review(
-        shot_from_user_in_team, client, prompt="A made-up prompt", always_zoom=False
+        shot_from_user_in_team,
+        client,
+        prompt="A made-up prompt",
+        zoom_mode=shot_vision.ZOOM_SCREENED,
     )
 
     assert client.calls[0]["turns"][0]["text"] == "A made-up prompt"
-    # always_zoom=False runs the screening flow; this model answered in full on
-    # the first turn, so the zoom is never produced
+    # The screened flow: this model answered in full on the first turn, so the
+    # zoom is never produced
     assert client.images_sent[-1] != "data:image/jpeg;base64,Z"
+
+
+@pytest.mark.asyncio
+async def test_a_replay_of_a_custom_contract_is_not_forced_into_the_live_one(
+    db_session, shot_from_user_in_team
+):
+    # The bug this workbench had: the prompt was editable but the schemas and
+    # the follow-up turns were not, so a prompt asking for something else was
+    # answered against the live pipeline's contract regardless -- the custom
+    # prompt might as well not have been sent.
+    schema = {
+        "type": "object",
+        "properties": {"aim_point": {"type": "string"}},
+        "required": ["aim_point"],
+    }
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+
+    review = await ai_shot_review.replay_shot_review(
+        shot_from_user_in_team,
+        client,
+        prompt="Report the garments as X-Y pixel coordinates.",
+        zoom_mode=shot_vision.ZOOM_SINGLE,
+        schema=schema,
+    )
+
+    assert [call["schema"] for call in client.calls] == [schema]
+    assert client.calls[0]["turns"][0]["text"] == (
+        "Report the garments as X-Y pixel coordinates."
+    )
+    assert shot_vision.SCREENING_FIELD not in json.dumps(client.calls)
+    # Nothing in the live shape to parse, so the reply comes back as it landed
+    assert review["raw_reply"] == {"aim_point": "512x384"}
+    assert review["parse_error"]
+    assert review["transcript"][-1]["reply"] == {"aim_point": "512x384"}
 
 
 @pytest.mark.asyncio
@@ -424,6 +461,42 @@ def test_replay_endpoint_returns_the_reading(
     assert response.json()["outcome"] == shot_vision.HIT_PLAYER
 
 
+def test_replay_endpoint_threads_the_zoom_mode_and_schema_through(
+    mocker, monkeypatch, admin_api_client, shot_from_user_in_team
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    schema = {"type": "object", "properties": {"aim_point": {"type": "string"}}}
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+    mocker.patch("backend.main.get_vision_client", return_value=client)
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review",
+        json={
+            "shot_id": str(shot_from_user_in_team),
+            "prompt": "Where are the garments?",
+            "zoom_mode": shot_vision.ZOOM_SINGLE,
+            "response_schema": schema,
+        },
+    )
+
+    assert response.status_code == 200
+    assert [call["schema"] for call in client.calls] == [schema]
+    assert response.json()["raw_reply"] == {"aim_point": "512x384"}
+
+
+def test_replay_endpoint_rejects_an_unknown_zoom_mode(
+    monkeypatch, admin_api_client, shot_from_user_in_team
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_review",
+        json={"shot_id": str(shot_from_user_in_team), "zoom_mode": "sideways"},
+    )
+
+    assert response.status_code == 400
+
+
 def test_replay_endpoint_passes_reasoning_effort_override_through(
     mocker, monkeypatch, admin_api_client, shot_from_user_in_team
 ):
@@ -449,6 +522,22 @@ def test_default_prompt_endpoint(admin_api_client):
 
     assert response.status_code == 200
     assert shot_vision.SCREENING_FIELD in response.json()["prompt"]
+    # The schema is half of the contract, and the workbench must be able to
+    # edit it alongside the wording -- so it is seeded from here too.
+    assert response.json()["schema"] == shot_vision.build_schema()
+
+
+def test_default_prompt_endpoint_matches_the_prompt_to_the_zoom_mode(
+    admin_api_client,
+):
+    # A prompt promising a screening question, sent into a single-turn replay,
+    # describes an exchange that is not about to happen.
+    response = admin_api_client.get(
+        f"/api/admin_get_default_vision_prompt?zoom_mode={shot_vision.ZOOM_SINGLE}"
+    )
+
+    assert response.status_code == 200
+    assert shot_vision.SCREENING_FIELD not in response.json()["prompt"]
 
 
 def test_vision_images_endpoint_returns_full_and_zoomed(

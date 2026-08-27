@@ -80,6 +80,14 @@ const hitReview = {
   },
 };
 
+// The response contract the live pipeline asks for, seeded into the schema
+// box alongside the prompt.
+const liveSchema = {
+  type: "object",
+  properties: { shot_hit_a_person: { type: "boolean" } },
+  required: ["shot_hit_a_person"],
+};
+
 function visionImagesFor(shotId) {
   return {
     full: `data:image/jpeg;base64,vision-full-${shotId}`,
@@ -94,7 +102,13 @@ function installWorkshopMock(shotsById, extra = {}) {
     admin_get_shots_info: Object.keys(shotsById),
     admin_get_shot: ({ query }) => shotsById[query.shot_id],
     admin_get_shot_vision_images: ({ query }) => visionImagesFor(query.shot_id),
-    admin_get_default_vision_prompt: { prompt: "The live prompt" },
+    admin_get_default_vision_prompt: ({ query }) => ({
+      prompt:
+        query.zoom_mode === "single"
+          ? "The single-turn prompt"
+          : "The live prompt",
+      schema: liveSchema,
+    }),
     admin_replay_shot_review: hitReview,
     ...extra,
   });
@@ -150,13 +164,177 @@ test("replaying a selected shot posts the edited prompt and shows the reading", 
     shot_id: "shot-1",
     prompt: "A customised prompt",
     // The default matches the live pipeline: the zoom is screening-gated,
-    // not sent up front, and no reasoning-effort override is sent.
-    always_zoom: false,
+    // the response contract is the live one, and no reasoning-effort
+    // override is sent.
+    zoom_mode: "screened",
+    response_schema: liveSchema,
     reasoning_effort: null,
   });
 
   expect(screen.getByText("HIT")).toBeInTheDocument();
   expect(screen.getByText(/clear view of the target/)).toBeInTheDocument();
+});
+
+test("the edited response schema is posted alongside the prompt", async () => {
+  // Editing the wording alone changes nothing if the model is still forced to
+  // answer the pipeline's own schema -- the contract has to travel with it.
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  expect(screen.getByLabelText("Response schema")).toHaveValue(
+    JSON.stringify(liveSchema, null, 2),
+  );
+
+  const customSchema = { type: "object", properties: { aim_point: {} } };
+  fireEvent.change(screen.getByLabelText("Response schema"), {
+    target: { value: JSON.stringify(customSchema) },
+  });
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(
+    getLastAPICall("admin_replay_shot_review").body.response_schema,
+  ).toEqual(customSchema);
+});
+
+test("an unparseable response schema blocks the replay and says so", async () => {
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  fireEvent.change(screen.getByLabelText("Response schema"), {
+    target: { value: "{not json" },
+  });
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(screen.getByText(/not valid JSON/)).toBeInTheDocument();
+  expect(getAPICalls("admin_replay_shot_review")).toHaveLength(0);
+});
+
+test("choosing a conversation shape reseeds the prompt that describes it", async () => {
+  // The prompt explains the zoom it is about to be offered, so an untouched
+  // prompt must follow the shape rather than describe a different exchange.
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  await actAndFlush(() =>
+    fireEvent.change(screen.getByLabelText("Conversation shape"), {
+      target: { value: "single" },
+    }),
+  );
+
+  expect(screen.getByLabelText("Vision prompt")).toHaveValue(
+    "The single-turn prompt",
+  );
+
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(getLastAPICall("admin_replay_shot_review").body.zoom_mode).toBe(
+    "single",
+  );
+});
+
+test("an edited prompt survives a change of conversation shape", async () => {
+  installWorkshopMock({ "shot-1": makeShotDetail() });
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  fireEvent.change(screen.getByLabelText("Vision prompt"), {
+    target: { value: "My own wording" },
+  });
+  await actAndFlush(() =>
+    fireEvent.change(screen.getByLabelText("Conversation shape"), {
+      target: { value: "single" },
+    }),
+  );
+
+  expect(screen.getByLabelText("Vision prompt")).toHaveValue("My own wording");
+});
+
+test("a reply that did not match the contract is shown as it landed", async () => {
+  // A custom contract has no outcome to render: showing the pipeline's
+  // default "Miss" would be a verdict the model never gave.
+  installWorkshopMock(
+    { "shot-1": makeShotDetail() },
+    {
+      admin_replay_shot_review: {
+        ...hitReview,
+        outcome: "miss",
+        is_hit: false,
+        parse_error: "'shot_hit_a_person' must be true or false; got None",
+        raw_reply: { aim_point: "512x384" },
+      },
+    },
+  );
+
+  await actAndFlush(() =>
+    render(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    ),
+  );
+
+  await actAndFlush(() =>
+    fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+  );
+  await actAndFlush(() =>
+    fireEvent.click(
+      screen.getByRole("button", { name: "Replay 1 selected shot" }),
+    ),
+  );
+
+  expect(
+    screen.getByText(/did not match the standard reading/),
+  ).toBeInTheDocument();
+  expect(screen.getByText(/"aim_point": "512x384"/)).toBeInTheDocument();
+  expect(screen.queryByText("Miss")).not.toBeInTheDocument();
 });
 
 test("a chosen reasoning effort is sent as the override", async () => {

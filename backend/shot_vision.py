@@ -65,6 +65,22 @@ SCREENING_FIELD = "person_fills_less_than_half"
 # target still small after that gets one final, closer view.
 MAX_ZOOMS = 2
 
+# The shape of the conversation -- which is not a detail of the prompt's
+# wording but of the exchange itself, so the prompt, the schemas asked for and
+# the follow-up turns all follow from it together. The live pipeline runs
+# SCREENED; the other two exist for the replay harness and the admin workbench.
+#
+# - SCREENED: turn one asks only the screening question, and that answer
+#   decides whether the next turn carries a zoomed view.
+# - UPFRONT: the full frame and the first zoom go together in one call.
+# - SINGLE: one turn, one image, no screening and no zoom -- the shape to pick
+#   when trialling a prompt that asks for something else entirely, since then
+#   nothing but the prompt and its schema governs what comes back.
+ZOOM_SCREENED = "screened"
+ZOOM_UPFRONT = "upfront"
+ZOOM_SINGLE = "single"
+ZOOM_MODES = (ZOOM_SCREENED, ZOOM_UPFRONT, ZOOM_SINGLE)
+
 # Outcomes. Only HIT_PLAYER counts against a player's hit points. Shown to the
 # admin as advice -- and, when a game's AI-review toggle is on, acted on for the
 # head of the queue by backend.shot_auto_actions when confident enough.
@@ -121,6 +137,8 @@ class ShotVisionResult:
         zoom_used: bool = False,
         zoom_count: int = 0,
         transcript: Optional[List[dict]] = None,
+        raw_reply: Optional[dict] = None,
+        parse_error: Optional[str] = None,
     ):
         self.shot_hit_a_person = shot_hit_a_person
         self.channels = channels
@@ -137,6 +155,12 @@ class ShotVisionResult:
         # Every request/reply exchanged with the model, for the admin replay
         # workbench. None on a live review -- see to_dict's include_transcript.
         self.transcript = transcript
+        # Set only when a workbench replay asked for a contract of its own and
+        # the answer therefore has no reading to parse: the reply as it landed,
+        # and why it could not be read as one. Both stay None everywhere else,
+        # so a live review's stored payload never grows them.
+        self.raw_reply = raw_reply
+        self.parse_error = parse_error
 
     @property
     def is_hit(self) -> bool:
@@ -167,6 +191,9 @@ class ShotVisionResult:
         }
         if include_transcript:
             result["transcript"] = self.transcript or []
+        if self.parse_error is not None:
+            result["parse_error"] = self.parse_error
+            result["raw_reply"] = self.raw_reply
         return result
 
 
@@ -270,7 +297,7 @@ UPFRONT_ZOOM_DECISION_RULE = (
 def build_prompt(
     palettes: Optional[Dict[str, List[str]]] = None,
     decision_rule: Optional[str] = None,
-    zoom_offered: bool = True,
+    zoom_mode: str = ZOOM_SCREENED,
 ) -> str:
     """The instructions sent alongside the photo.
 
@@ -280,19 +307,21 @@ def build_prompt(
     it without duplicating the rest of the template (channel questions,
     colour buckets, JSON shape).
 
-    ``zoom_offered`` selects the zoom wording: with the default the model is
-    *screened* first -- its opening reply answers only "does the person fill
-    less than half of the screen?", and that answer decides whether the second
-    turn carries the zoomed view -- or it is told the zoomed view is already in
-    front of it (the always-zoom path in :func:`review_image`).
+    ``zoom_mode`` must match the shape of the conversation
+    :func:`review_image` is about to run (see the ``ZOOM_*`` constants): the
+    wording explaining the zoom is part of the prompt, so a prompt written for
+    one shape and sent into another tells the model it is about to be shown
+    something it will not be.
     """
     palettes = palettes or channel_palettes()
     if decision_rule is None:
         decision_rule = (
-            DEFAULT_DECISION_RULE if zoom_offered else UPFRONT_ZOOM_DECISION_RULE
+            UPFRONT_ZOOM_DECISION_RULE
+            if zoom_mode == ZOOM_UPFRONT
+            else DEFAULT_DECISION_RULE
         )
 
-    if zoom_offered:
+    if zoom_mode == ZOOM_SCREENED:
         zoom_paragraph = f"""FIRST, before any of the questions below: does the person at \
 the centre of the cross fill less than half of the screen? Reply to this \
 message with {{"{SCREENING_FIELD}": true}} or {{"{SCREENING_FIELD}": false}} \
@@ -301,12 +330,17 @@ the next turn shows you a zoomed-in view of the middle of the photograph at \
 higher resolution, and asks you the same question again -- a still-smaller \
 target gets one final, closer view. Once the person fills at least half of \
 the screen, or the zooms run out, you answer in full."""
-    else:
+    elif zoom_mode == ZOOM_UPFRONT:
         zoom_paragraph = """You are shown this photograph twice: the first image is the whole frame, and \
 the second is a zoomed-in view containing only the middle 12.5% of it in higher \
 resolution, with the same red cross redrawn at the same aim point -- only its \
 centre pixel counts, exactly as in the full frame. Use whichever view is \
 clearer, and trust the zoomed one when they disagree."""
+    else:
+        # ZOOM_SINGLE: one image, so there is no zoom to promise and none to
+        # ask for.
+        zoom_paragraph = """You are shown this photograph once, as the whole frame. There is no \
+zoomed view and no closer look to ask for: judge it from what you have."""
 
     questions = []
     for name, palette in palettes.items():
@@ -771,13 +805,24 @@ async def review_image(
     palettes=None,
     zoom_provider=None,
     prompt: Optional[str] = None,
-    always_zoom: bool = False,
+    zoom_mode: str = ZOOM_SCREENED,
+    schema: Optional[dict] = None,
+    tolerate_unparsed: bool = False,
 ) -> ShotVisionResult:
     """Review one prepared image, spending the zoom only on a small target.
 
-    ``prompt`` overrides :func:`build_prompt` -- used by the offline replay
-    harness (scripts/replay_shot_reviews.py) to trial prompt variants against
-    saved shots; the live path leaves it as the default.
+    ``prompt`` overrides :func:`build_prompt` and ``schema`` overrides
+    :func:`build_schema` -- used by the offline replay harness
+    (scripts/replay_shot_reviews.py) and the admin workbench to trial variants
+    against saved shots; the live path leaves both as the default. They are two
+    halves of one contract: a reply's *shape* is fixed by the schema the model
+    is asked for, so a custom prompt without a matching schema is asked a new
+    question and made to answer the old one.
+
+    ``tolerate_unparsed`` returns a reply that is not a standard reading as
+    :attr:`ShotVisionResult.raw_reply` instead of raising -- for the workbench,
+    where seeing what the model actually said is the whole point. A live review
+    leaves it off: storing a meaningless verdict is worse than erroring.
 
     ``zoom_provider`` is a callable taking the zoom level (1, 2, ...) and
     returning a magnified view of the shot, so each further zoom compounds the
@@ -793,22 +838,27 @@ async def review_image(
     asked for the full reading. Screening replies are discarded; a model that
     skips the screening and answers in full is accepted as-is.
 
-    With ``always_zoom`` the zoom stops being gated on the screening: the full
-    frame and the first zoom go in a single call and the reply is final. Kept
-    for the replay harness's comparison runs.
+    ``zoom_mode`` picks the shape of the exchange (see the ``ZOOM_*``
+    constants). ZOOM_UPFRONT puts the full frame and the first zoom in a single
+    call, the reply being final; ZOOM_SINGLE is one turn with one image and no
+    screening at all, so the prompt and its schema are the only thing that
+    decides what comes back. Both are kept for the replay harness's comparison
+    runs and the workbench; the live path runs ZOOM_SCREENED.
     """
     palettes = palettes or channel_palettes()
-    schema = build_schema(palettes)
+    schema = schema if schema is not None else build_schema(palettes)
+    opening = (
+        prompt if prompt is not None else build_prompt(palettes, zoom_mode=zoom_mode)
+    )
 
-    if always_zoom and zoom_provider is not None:
+    def finalise(raw) -> ShotVisionResult:
+        return _reading_or_raw(raw, palettes, scheme, tolerate_unparsed)
+
+    if zoom_mode == ZOOM_UPFRONT and zoom_provider is not None:
         turns = [
             {
                 "role": "user",
-                "text": (
-                    prompt
-                    if prompt is not None
-                    else build_prompt(palettes, zoom_offered=False)
-                ),
+                "text": opening,
                 "image_data_url": image_data_url,
             },
             {
@@ -819,7 +869,7 @@ async def review_image(
         ]
         # One call, both views: whatever comes back is the answer.
         raw = await client.complete(turns, schema)
-        result = classify(parse_result(raw, palettes), scheme)
+        result = finalise(raw)
         result.zoom_used = True
         result.zoom_count = 1
         result.transcript = [_transcript_turn(turn) for turn in turns] + [
@@ -830,10 +880,18 @@ async def review_image(
     turns = [
         {
             "role": "user",
-            "text": prompt if prompt is not None else build_prompt(palettes),
+            "text": opening,
             "image_data_url": image_data_url,
         }
     ]
+
+    if zoom_mode == ZOOM_SINGLE:
+        # Nothing to screen for and nothing to follow up: one turn, answered
+        # against whatever contract the caller asked for.
+        raw = await client.complete(turns, schema)
+        result = finalise(raw)
+        result.transcript = [_transcript_turn(turns[0]), _assistant_turn(raw, client)]
+        return result
 
     raw = await client.complete(turns, build_screening_schema())
     zooms_used = 0
@@ -878,11 +936,33 @@ async def review_image(
             # Whatever comes back now is the answer.
             break
 
-    result = classify(parse_result(raw, palettes), scheme)
+    result = finalise(raw)
     result.zoom_used = zooms_used > 0
     result.zoom_count = zooms_used
     result.transcript = transcript
     return result
+
+
+def _reading_or_raw(raw, palettes, scheme, tolerate_unparsed: bool):
+    """The parsed reading -- or, for a workbench replay whose prompt asked for
+    something else, the reply exactly as it landed.
+
+    A reply in another shape is not an error there: it is the answer to the
+    question that was actually asked, and showing it is what the workbench is
+    for. Everywhere else it stays an error, so nothing meaningless is stored.
+    """
+    try:
+        return classify(parse_result(raw, palettes), scheme)
+    except ShotVisionError as e:
+        if not tolerate_unparsed:
+            raise
+        return ShotVisionResult(
+            shot_hit_a_person=False,
+            channels={name: ChannelRead(False, None, 0.0) for name in palettes},
+            outcome_reason=f"Reply did not match the standard reading: {e}",
+            raw_reply=raw if isinstance(raw, dict) else {"reply": raw},
+            parse_error=str(e),
+        )
 
 
 def _call_zoom_provider(provider, level: int) -> str:

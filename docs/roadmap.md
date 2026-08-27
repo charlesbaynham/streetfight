@@ -788,6 +788,33 @@ flags where the reading disagrees with the admin's verdict — the quick
 half of the harness, for trialling a prompt edit before measuring it properly
 with `replay`.
 
+**The custom prompt was being overruled — fixed (2026-08-27).** The workbench
+let you edit the prompt, and only the prompt: the schemas the model was asked
+for and the follow-up turns between them stayed the pipeline's own. So a
+prompt asking for something else — say, pixel coordinates for each garment —
+was sent, and then answered against `build_screening_schema()`
+(`{"person_fills_less_than_half": …}`), followed up with "answer in full with
+the JSON described above", and finally forced into `build_schema()`'s four
+channels. The transcript looked as if the custom prompt had never been sent,
+because structurally it had not been: a model can only answer the question its
+schema asks.
+
+The contract is now three things that travel together —
+`shot_vision.review_image` takes a `zoom_mode` (`ZOOM_SCREENED`, the live
+shape, `ZOOM_UPFRONT`, both views in one call, or `ZOOM_SINGLE`, one turn with
+no screening and no zoom) and a `schema` override alongside `prompt`, and
+`build_prompt(zoom_mode=…)` writes the zoom wording that matches the shape
+about to be run. `always_zoom: bool` is gone, replaced by `zoom_mode`
+throughout (`PROMPT_VARIANTS["always_zoom"]` keeps its name, since that is
+what the `replay_always_zoom_run*.jsonl` files record). The workbench gained a
+schema box and a conversation-shape selector; changing the shape reseeds an
+*untouched* prompt so it never describes an exchange that is not about to
+happen, and leaves an edited one alone. Replays also stopped 502-ing on a
+reply that is not a standard reading: `review_image(tolerate_unparsed=True)`
+returns it as `raw_reply` + `parse_error` and the workbench renders it, since
+under a contract of its own that is the answer rather than a failure. Live
+reviews still raise — storing a meaningless verdict is worse than erroring.
+
 **What the first run found.** The live database held no admin verdicts at all
 (the queue was never adjudicated), so the fixture labels are by eye. Even so:
 a close-up the admin calls a **miss** (crosshair just top-left of the head)
