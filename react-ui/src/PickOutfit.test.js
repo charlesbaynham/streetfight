@@ -92,6 +92,18 @@ async function showOutfits() {
   );
 }
 
+// Only the canonical options are shown until this is pressed - see the
+// nudge test below.
+async function showOtherOutfits() {
+  await actAndFlush(() =>
+    userEvent.click(
+      screen.getByRole("button", {
+        name: "Show non-recommended outfits",
+      }),
+    ),
+  );
+}
+
 test("ticking colours and submitting (with no confirm checkbox on this step) posts the wardrobe and renders ranked options with a recommended badge on the canonical one", async () => {
   installFetchMock({
     join_options: makeJoinData(),
@@ -149,6 +161,9 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
 
   expect(screen.getByText("recommended")).toBeInTheDocument();
   expect(screen.getByText("Exact match")).toBeInTheDocument();
+  expect(screen.queryByText("1 colour different")).not.toBeInTheDocument();
+
+  await showOtherOutfits();
   expect(screen.getByText("1 colour different")).toBeInTheDocument();
 
   // Only the player-supplied garments show on an option row - no hat/armband.
@@ -209,6 +224,7 @@ test("paging fetches the next page", async () => {
 
   expect(screen.getByText("Trousers: black")).toBeInTheDocument();
 
+  await showOtherOutfits();
   await actAndFlush(() =>
     userEvent.click(screen.getByRole("button", { name: "Next" })),
   );
@@ -395,4 +411,125 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
   ).toBeInTheDocument();
   expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
+});
+
+test("only the recommended outfits show until the player asks for the rest, which also unhides the pagination", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult({
+      options: [
+        makeOption({
+          appearance: {
+            tshirt: "black",
+            trousers: "black",
+            hat: "red",
+            armbands: "red",
+          },
+        }),
+        makeOption({
+          appearance: {
+            tshirt: "red",
+            trousers: "blue",
+            hat: "red",
+            armbands: "green",
+          },
+          overrides_needed: 1,
+          is_canonical: false,
+        }),
+      ],
+      page_size: 2,
+      total: 4,
+    }),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  expect(screen.getByText("Trousers: black")).toBeInTheDocument();
+  expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Next" }),
+  ).not.toBeInTheDocument();
+
+  await showOtherOutfits();
+
+  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: "Show non-recommended outfits",
+    }),
+  ).not.toBeInTheDocument();
+});
+
+test("a wardrobe with no canonical outfit at all shows the whole list rather than an empty one", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult({
+      options: [
+        makeOption({
+          appearance: {
+            tshirt: "red",
+            trousers: "blue",
+            hat: "red",
+            armbands: "green",
+          },
+          overrides_needed: 1,
+          is_canonical: false,
+        }),
+      ],
+    }),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", {
+      name: "Show non-recommended outfits",
+    }),
+  ).not.toBeInTheDocument();
+});
+
+test("reopening the wardrobe collapses the list back to the recommended outfits", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult({
+      options: [
+        makeOption(),
+        makeOption({
+          appearance: {
+            tshirt: "red",
+            trousers: "blue",
+            hat: "red",
+            armbands: "green",
+          },
+          overrides_needed: 1,
+          is_canonical: false,
+        }),
+      ],
+      total: 2,
+    }),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+  await showOtherOutfits();
+  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Change what I own" })),
+  );
+  await showOutfits();
+
+  expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", {
+      name: "Show non-recommended outfits",
+    }),
+  ).toBeInTheDocument();
 });

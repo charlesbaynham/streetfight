@@ -312,6 +312,7 @@ function PickOutfitForm({
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
+  const [showingAll, setShowingAll] = useState(false);
 
   // The header's "tell us what else you'll be wearing" prompt is an
   // instruction, and on the confirm screen there is nothing left to tell -
@@ -323,6 +324,13 @@ function PickOutfitForm({
 
   const wardrobeChannels = joinData.wardrobe_channels;
 
+  // Back to the wardrobe form: the next list is a fresh one, so it starts
+  // nudging again rather than inheriting a previous "show me the rest".
+  const reopenWardrobe = () => {
+    setOptionsResult(null);
+    setShowingAll(false);
+  };
+
   const toggleColour = (channelName, label) => {
     setWardrobe((old) => {
       const current = old[channelName] || [];
@@ -331,7 +339,7 @@ function PickOutfitForm({
         : [...current, label];
       return { ...old, [channelName]: next };
     });
-    setOptionsResult(null);
+    reopenWardrobe();
   };
 
   const fetchOptions = useCallback(
@@ -398,6 +406,23 @@ function PickOutfitForm({
     ? Math.max(1, Math.ceil(optionsResult.total / optionsResult.page_size))
     : 0;
 
+  // Every option is pickable, but the canonical ones are the ones the code
+  // is built out of - offering the rest alongside them invites a player to
+  // spend identification accuracy on a colour they like the look of. So only
+  // the canonical ones are shown until the player asks for the others, which
+  // also hides the pagination: a recommended outfit is never more than a tap
+  // away, and the long tail takes a deliberate one. When the wardrobe
+  // supports no canonical outfit at all there is nothing to nudge towards,
+  // so the full list stands as it is rather than leaving an empty page.
+  const pageOptions = optionsResult ? optionsResult.options : [];
+  const recommendedOptions = pageOptions.filter(
+    (option) => option.is_canonical,
+  );
+  const nudging = !showingAll && recommendedOptions.length > 0;
+  const visibleOptions = nudging ? recommendedOptions : pageOptions;
+  const hasOthers =
+    recommendedOptions.length < pageOptions.length || totalPages > 1;
+
   return (
     <>
       {joinData.you && joinData.you.name ? null : (
@@ -411,7 +436,7 @@ function PickOutfitForm({
         <WardrobeSummary
           wardrobeChannels={wardrobeChannels}
           wardrobe={wardrobe}
-          onChange={() => setOptionsResult(null)}
+          onChange={reopenWardrobe}
         />
       ) : (
         <>
@@ -466,12 +491,21 @@ function PickOutfitForm({
       {showingOptions ? (
         <>
           <OptionsList
-            options={optionsResult.options}
+            options={visibleOptions}
             wardrobeChannels={wardrobeChannels}
             channels={joinData.channels}
             onPick={setSelectedOption}
           />
-          {totalPages > 1 ? (
+          {nudging && hasOthers ? (
+            <button
+              type="button"
+              className={styles.linkButton}
+              onClick={() => setShowingAll(true)}
+            >
+              Show non-recommended outfits
+            </button>
+          ) : null}
+          {!nudging && totalPages > 1 ? (
             <div className={styles.pagination}>
               <button
                 type="button"
