@@ -26,9 +26,13 @@ against a hidden item or a misread colour.
 - Each channel uses a palette of **7 colours**. The code is the MDS
   Reed–Solomon `[4,2,3]` over `GF(7)`, giving **49 distinct player identities**
   at minimum distance **d = 3**.
-- The **trousers** channel deliberately uses **fewer than 7 colours** (see §2.6)
-  because guests supply their own clothing and green/yellow/purple trousers are
-  hard to come by. Capacity is `7 × (number of trouser colours)`.
+- The **trousers** channel used to deliberately use **fewer than 7 colours**
+  (see §2.6), because guests supply their own clothing. Capacity is
+  `7 × (number of trouser colours)`, and 5 colours only bought 35 — fewer than
+  the guest list — so it is 7 there too now, giving the full 49. It has a set of
+  its own, chosen for legs and sharing no hex with the main palette but black:
+  three achromatics spread across the lightness range plus four chromatics
+  spread around the hue circle (§9.1).
 - The number of colours, the number of channels, *and* the kind of channel
   (a channel could be shapes instead of colours) must **all be reconfigurable
   without touching the decode logic.** This extensibility is the single most
@@ -161,6 +165,19 @@ erasure-poor, so keep `k = 2`.**
 
 ### 2.6 Restricting the trousers alphabet (per-channel palettes)
 
+> **Superseded in part, and worth reading anyway.** The trousers channel is no
+> longer *narrowed*: the guest list outgrew the 35 identities a five-colour
+> channel allows, and widening it to seven is the remedy this section and §11.1
+> both name. Everything below about per-channel alphabets stands, and matters
+> more than ever — the channel is now a wholly separate physical set, simulated
+> for legs specifically (§9.1), sharing no colour name with the main palette
+> beyond black, blue and red and no hex beyond black.
+>
+> What is superseded is only the *count*. The narrowing mechanism itself is
+> still in `ChannelSet.is_representable`, `CHANNEL_PALETTES` is still where a
+> channel declares its own alphabet, and narrowing one again is one line of
+> `config.py`.
+
 Guests supply their own clothing, so the channels are **not equally capable**.
 Yellow, purple and orange trousers are rare in ordinary wardrobes; t-shirts and
 hats come in anything.
@@ -177,10 +194,33 @@ Two facts make this cheap to accommodate:
    green trousers never need to be told apart from yellow trousers if yellow is
    not in the trousers vocabulary at all.
 
-Therefore the trousers channel uses **five easy-to-source colours that are not
-all drawn from the main palette** (§9.1). Restricting trousers costs essentially
-nothing in accuracy and slightly *reduces* the misread rate, because fewer
-symbols in a channel means fewer ways to get it wrong (§12.3).
+Therefore the trousers channel used **five easy-to-source colours that are not
+all drawn from the main palette** (§9.1). Restricting trousers cost essentially
+nothing in accuracy and slightly *reduced* the misread rate, because fewer
+symbols in a channel means fewer ways to get it wrong (§12.3) — and lifting the
+restriction gives that small margin up again, which is the price of the extra 14
+identities.
+
+The sourcing argument is also weaker than it looks now that players **pick**
+their outfit from the colours they say they own (§12.6, roadmap #10) rather than
+being handed one. A colour hardly anyone owns is not a colour anyone is forced
+into: it is offered to the few who do own it, and ranked *first* for them,
+because rare clothing is what the identification wants (`COLOUR_COMMONNESS`).
+Widening the channel therefore costs almost nothing on either side of the
+ledger, because the two extra symbols were spent on colours legs actually come
+in rather than on borrowing from the main palette. Wardrobe coverage went *up*:
+mid grey is as common as black, and off-white now covers stone and beige as
+well as cream. Only mustard is genuinely scarce, and the picker will only ever
+offer it to the few who own a pair.
+
+**The vocabularies now diverge, and that has to reach both audiences.** A
+channel's colour names are what a player picks from and what the vision model
+answers in, and the two channels no longer agree on what a word means: charcoal
+is "black" on the legs, where grey sits two stops away at L\* 54, and explicitly
+*not* black on a top, where there is no grey to catch it. So the definitions in
+`COLOUR_BUCKETS` are keyed per channel, and both the picking page and the vision
+prompt render each channel's own — the prompt puts them inside that channel's
+question rather than in one shared list, which could not state both.
 
 > **Do not** "solve" the trousers problem by adding a fifth channel (e.g. socks)
 > so trousers can drop to 2 colours. That was simulated: it forces `k = 3`, which
@@ -196,9 +236,9 @@ symbols in a channel means fewer ways to get it wrong (§12.3).
 | Channels | `tshirt`, `trousers`, `hat`, `armbands` (4) | **Yes** — add/remove/reorder channels |
 | `q` (field size / max alphabet) | 7 | **Yes** — must stay prime (see below) |
 | Full palette (t-shirt, hat, armbands) | 7 colours, §9.1 | **Yes** |
-| Trousers palette | 5 colours, §9.1 — a **different physical set** | **Yes** — `s` is a free parameter |
+| Trousers palette | 7 colours, §9.1 — a **wholly different physical set**, simulated for legs; 5 until the guest list outgrew it | **Yes** — `s` is a free parameter |
 | Code | `[4,2,3]` Reed–Solomon over GF(7) | **Yes** — swap per §2.5 |
-| Player capacity | `q × s` = 35 (49 if trousers unrestricted) | derived |
+| Player capacity | `q × s` = 49 (35 while trousers were restricted to 5) | derived |
 | Guarantee | correct 2 erasures / 1 misread / 1 erasure + detect 1 misread | derived from `d = 3` |
 
 > **Prime-field constraint (document it):** the algebraic code uses `GF(q)`
@@ -211,7 +251,8 @@ symbols in a channel means fewer ways to get it wrong (§12.3).
 > **Restricted-alphabet channels:** a channel may legitimately expose **fewer
 > than `q` labels**. The scheme must then only assign codewords whose symbol in
 > that channel falls inside the allowed subset — capacity becomes `q^(k−1) × s`
-> (here `7 × 5 = 35`). Distance is unaffected: a subset of a code has minimum
+> (`7 × 5 = 35` while the trousers channel carried five colours). Distance is
+> unaffected: a subset of a code has minimum
 > distance at least that of the parent. This must be a first-class feature, not a
 > hack, since it is how the trousers channel works.
 
@@ -290,7 +331,8 @@ all integration code are untouched. That is the extensibility guarantee.
   - `usable_codewords()` → the codewords of the `LinearCode` **filtered** so that
     every symbol lies within its channel's `allowed_symbols()`. This is what makes
     the restricted trousers alphabet work; `capacity` is the size of *this* set
-    (35 for the chosen config), not `q^k`.
+    (49 for the current config, where every channel is full width; 35 while
+    trousers carried five colours), not `q^k` in general.
   - `assign(player_ids)` → deterministic mapping `player_id → codeword`
     (raise if more players than `capacity`),
   - `appearance(player_id)` → `{channel_name: label}` (what to tell a player to
@@ -340,8 +382,10 @@ all integration code are untouched. That is the extensibility guarantee.
 - Declarative config + a `default_scheme()` factory:
   - `q = 7`,
   - `MAIN_PALETTE = ["black","purple","red","blue","green","orange","yellow"]`,
-  - `TROUSER_PALETTE = ["black","blue","green","red","white"]` (5 — deliberately a
-    different physical set, see §9.1),
+  - `TROUSER_PALETTE = ["black","grey","off-white","blue","red","olive","mustard"]`
+    (7 — deliberately a different physical set, see §9.1; it was the 5-colour
+    `["black","blue","green","red","white"]` until §2.6's restriction was
+    lifted),
   - channels = `tshirt`, `trousers`, `hat`, `armbands` **in that order** (the order
     fixes the RS evaluation points and therefore the codeword layout — changing it
     changes what everyone wears),
@@ -360,7 +404,9 @@ parametrised tests:
 1. **Widen or narrow the trousers alphabet.** Add/remove labels on the trousers
    `Channel` only. Capacity moves as `7 × s` (28 at `s=4`, 35 at `s=5`, 49 at
    `s=7`). Nothing else changes — this is the routine knob, exercised whenever the
-   guest list grows or someone can't find red trousers.
+   guest list grows or someone can't find red trousers. It has since been turned
+   in anger: the guest list passed 35 and `s` went from 5 back to 7, one line of
+   `config.py`.
 2. **Split armbands into left + right (5 channels).** Add a `Channel`; change the
    code to `reed_solomon_code(5, 2, 7)` (`[5,2,4]`, tolerates 3 erasures). Only
    `config.py` changes. **Note §12.3: this was measured and is not worth it** —
@@ -572,20 +618,51 @@ Worst-case minimum ΔE2000 across the three illuminants: **30.8**. Weakest pairs
 blue/purple in daylight and under LED; the warm end (red/orange/yellow) compresses
 under sodium.
 
-**Trousers palette (`s = 5`) — a deliberately different physical set:**
+**Trousers palette (`s = 7`) — simulated separately, for legs:**
 
-| Symbol | Colour | Hex |
-|---|---|---|
-| 0 | black | `#222222` |
-| 1 | blue | `#0072CE` |
-| 2 | green | `#00A651` |
-| 3 | red | `#B00020` |
-| 4 | white | `#F2F3F4` |
+| Symbol | Colour | Hex | L\* | Hue | Availability |
+|---|---|---|---|---|---|
+| 0 | black | `#1A1A1A` | 11 | — | very high |
+| 1 | grey | `#808080` | 54 | — | very high |
+| 2 | off-white | `#F0EFEA` | 94 | — | moderate |
+| 3 | blue | `#2E5FA3` | 42 | 270° | very high |
+| 4 | red | `#C1272D` | 42 | 30° | moderate |
+| 5 | olive | `#6B7A3A` | 49 | 105° | good |
+| 6 | mustard | `#C9962B` | 66 | 80° | low |
 
-Worst-case minimum ΔE2000: **31.6** — *better* than the 7-colour palette, because
-five colours in a channel is an easier packing problem. Every one of these is
-something people already own: black jeans, blue jeans, olive/khaki chinos (count
-these as green), red chinos, white/cream trousers.
+This shares only `black` with the main palette, hex and all — even blue and red
+carry their own, more leg-like values. That is entirely allowed: only the
+*cardinality* reaches the code (§2.6), and a misread can never cross channels.
+
+**The structure is the point.** Three achromatics spread right across the
+lightness range (11 / 54 / 94) and four chromatics spread around the hue circle.
+The achromatics are told apart by `L*` alone, which survives the colour cast
+that would wreck a hue judgement — sodium lighting is exactly such a cast — and
+no chromatic ever has to be separated from a neutral by hue. Compare the main
+palette, which spends its separation budget on hue because a t-shirt can be any
+colour you like.
+
+The **availability** column is why the palette looks like this rather than like
+the main one: guests supply their own trousers, and legs come in a narrower
+range of colours than tops. It feeds `COLOUR_COMMONNESS` directly, so the
+picker's rarity ranking follows this table (§12.6) — mustard, the scarcest, is
+the one it recommends first to anyone who owns a pair.
+
+**These names are a different vocabulary, not a relabelling.** They are what a
+player ticks and what the vision model answers in, so every term that covers a
+range is defined per channel in `COLOUR_BUCKETS`, and the two channels
+contradict each other on one: charcoal is `black` here, where grey is two stops
+away at `L*` 54, and explicitly *not* black on a top, where there is no grey to
+catch it. The picking page and the vision prompt both render each channel's own
+definitions, the prompt inside that channel's question — the decoding downstream
+assumes a player and the model mean the same thing by a colour name.
+
+The five-colour set this replaced (§2.6) was `black #222222`, `blue`, `green`,
+`red`, `white` — every one of them something people already own: black jeans,
+blue jeans, olive/khaki chinos (count these as green), red chinos, white/cream
+trousers. It scored a worst-case minimum ΔE2000 of **31.6** — *better* than the
+7-colour main palette, because five colours in a channel is an easier packing
+problem. It was retired when the guest list passed 35.
 
 **Instructions to guests must define wide, dispute-free buckets**, since people
 are choosing from their own wardrobes and one person's "burgundy" is another's
@@ -596,8 +673,9 @@ includes navy and denim; black is black, not charcoal.*
 - **White in the main palette** — it reflects whatever light hits it, so under
   sodium street lighting a white shirt photographs orange. Including it collapsed
   yellow/white to ΔE 14 in the sodium model, roughly half the margin of the
-  white-free set. It is safe in the *trousers* channel only because yellow and
-  orange are not in that channel's alphabet.
+  white-free set. The *trousers* channel carries `off-white` regardless, and can:
+  it has no yellow to collapse against, and its neutrals are separated by `L*`
+  rather than by hue (above).
 - **Grey and brown** — they sit in the achromatic cluster with black and white and
   degrade worst in low light.
 - **Pink** — was in the 7 until black displaced it; pink appeared in both of the
@@ -624,17 +702,20 @@ self-evident.
 
 **Status update.** Steps 1–7 are built, and `config.py` now carries the revised
 configuration from §2.4/§9.1: four channels (`tshirt`, `trousers`, `hat`,
-`armbands`), the 7-colour main palette, the 5-colour trousers palette, and the
-`[4,2,3]` Reed–Solomon code. Two things the original spec did not anticipate came
+`armbands`), the 7-colour main palette, the separately-simulated 7-colour
+trousers palette (a restricted 5-colour set until the guest list outgrew the 35
+identities that allowed), and the `[4,2,3]` Reed–Solomon code. Two things the original spec did not anticipate came
 out of §2.6 and are now part of the module:
 
 - `ChannelSet` accepts a channel with **fewer** than `q` labels (it used to
   reject one), because the restricted trousers palette needs it. The codewords
   such a channel cannot express are reported by `ChannelSet.is_representable`.
 - `IdentityScheme.usable_slots()` is the assignable set: representable codewords,
-  less slot 0 (§11.1). For the configured scheme that is **34** of the 49
-  codewords, and `assign()` now draws from it, so it can never hand a player an
-  outfit nobody can source.
+  less slot 0 (§11.1). For the configured scheme that is now **48** of the 49
+  codewords — every one is representable once every channel carries seven
+  colours, so only slot 0 is withheld. It was 34 while trousers carried five
+  colours, and the trimming is still live: narrowing a channel brings it
+  straight back.
 
 `IdentityScheme.codewords_matching()` was added alongside for the hit/bystander
 check in the vision layer — it answers "is this a valid outfit" without needing a
@@ -663,69 +744,89 @@ Verified against all 49 codewords. Symbol indices:
 | Index | Main palette (t-shirt, hat, armbands) | Trousers palette |
 |---|---|---|
 | 0 | black | black |
-| 1 | purple | blue |
-| 2 | red | green |
-| 3 | blue | red |
-| 4 | green | white |
-| 5 | orange | — *(not available)* |
-| 6 | yellow | — *(not available)* |
+| 1 | purple | grey |
+| 2 | red | off-white |
+| 3 | blue | blue |
+| 4 | green | red |
+| 5 | orange | olive |
+| 6 | yellow | mustard |
 
-### 11.1 The 35 assignments (trousers restricted to 5 colours)
+### 11.1 The 49 assignments
 
 Player slots are numbered by `(t-shirt, trousers)`. Read across for what that
-player wears.
+player wears. Every channel now carries seven symbols, so every combination is
+wearable — the 35-row version of this table, from when trousers were restricted
+to five, went with the restriction (§2.6). The trousers column uses that
+channel's own palette (§9.1), which is not the main one: symbol 1 is `grey`
+there and `purple` everywhere else, and so on down.
 
 | Slot | T-shirt | Trousers | Hat | Armbands |
 |---|---|---|---|---|
 | 0 | black | black | black | black |
-| 1 | black | blue | red | blue |
-| 2 | black | green | green | yellow |
-| 3 | black | red | yellow | red |
-| 4 | black | white | purple | orange |
-| 5 | purple | black | yellow | orange |
-| 6 | purple | blue | purple | purple |
-| 7 | purple | green | blue | green |
-| 8 | purple | red | orange | black |
-| 9 | purple | white | black | blue |
-| 10 | red | black | orange | blue |
-| 11 | red | blue | black | yellow |
-| 12 | red | green | red | red |
-| 13 | red | red | green | orange |
-| 14 | red | white | yellow | purple |
-| 15 | blue | black | green | purple |
-| 16 | blue | blue | yellow | green |
-| 17 | blue | green | purple | black |
-| 18 | blue | red | blue | blue |
-| 19 | blue | white | orange | yellow |
-| 20 | green | black | blue | yellow |
-| 21 | green | blue | orange | red |
-| 22 | green | green | black | orange |
-| 23 | green | red | red | purple |
-| 24 | green | white | green | green |
-| 25 | orange | black | red | green |
-| 26 | orange | blue | green | black |
-| 27 | orange | green | yellow | blue |
-| 28 | orange | red | purple | yellow |
-| 29 | orange | white | blue | red |
-| 30 | yellow | black | purple | red |
-| 31 | yellow | blue | blue | orange |
-| 32 | yellow | green | orange | purple |
-| 33 | yellow | red | black | green |
-| 34 | yellow | white | red | black |
+| 1 | black | grey | red | blue |
+| 2 | black | off-white | green | yellow |
+| 3 | black | blue | yellow | red |
+| 4 | black | red | purple | orange |
+| 5 | black | olive | blue | purple |
+| 6 | black | mustard | orange | green |
+| 7 | purple | black | yellow | orange |
+| 8 | purple | grey | purple | purple |
+| 9 | purple | off-white | blue | green |
+| 10 | purple | blue | orange | black |
+| 11 | purple | red | black | blue |
+| 12 | purple | olive | red | yellow |
+| 13 | purple | mustard | green | red |
+| 14 | red | black | orange | blue |
+| 15 | red | grey | black | yellow |
+| 16 | red | off-white | red | red |
+| 17 | red | blue | green | orange |
+| 18 | red | red | yellow | purple |
+| 19 | red | olive | purple | green |
+| 20 | red | mustard | blue | black |
+| 21 | blue | black | green | purple |
+| 22 | blue | grey | yellow | green |
+| 23 | blue | off-white | purple | black |
+| 24 | blue | blue | blue | blue |
+| 25 | blue | red | orange | yellow |
+| 26 | blue | olive | black | red |
+| 27 | blue | mustard | red | orange |
+| 28 | green | black | blue | yellow |
+| 29 | green | grey | orange | red |
+| 30 | green | off-white | black | orange |
+| 31 | green | blue | red | purple |
+| 32 | green | red | green | green |
+| 33 | green | olive | yellow | black |
+| 34 | green | mustard | purple | blue |
+| 35 | orange | black | red | green |
+| 36 | orange | grey | green | black |
+| 37 | orange | off-white | yellow | blue |
+| 38 | orange | blue | purple | yellow |
+| 39 | orange | red | blue | red |
+| 40 | orange | olive | orange | orange |
+| 41 | orange | mustard | black | purple |
+| 42 | yellow | black | purple | red |
+| 43 | yellow | grey | blue | orange |
+| 44 | yellow | off-white | orange | purple |
+| 45 | yellow | blue | black | green |
+| 46 | yellow | red | red | black |
+| 47 | yellow | olive | green | blue |
+| 48 | yellow | mustard | yellow | yellow |
 
-> Slots are **not** contiguous in trousers colour by accident: the trousers
-> symbol is the restricted one, so it is the inner loop. If the guest list
-> exceeds 35, widen the trousers palette (§2.6) rather than reordering.
+> This numbering is the table's own, `t-shirt × 7 + trousers`, and it is *not*
+> the slot number the code stores against a player — `IdentityScheme` derives a
+> codeword from a slot algebraically (`codeword_of_slot`), which walks the same
+> 49 words in a different order. Read this table as the codebook, and ask the
+> scheme for a specific player's outfit.
 
 > **Do not assign slot 0.** It is the all-zero codeword — black t-shirt, black
 > trousers, black hat, black armbands — which is both indistinguishable from an
 > ordinary member of the public and the single most likely outfit for someone to
 > be wearing by accident. The vision model's failure mode on unclear targets is
 > also to report "black" (§12.1), so the all-black codeword is exactly where
-> spurious reads will pile up. Usable capacity is therefore **34**, still
-> comfortably above the expected guest count. More generally, the assignment
-> policy should prefer codewords with high symbol diversity and hand out the
-> drabber ones last.
+> spurious reads will pile up. Usable capacity is therefore **48**. More
+> generally, the assignment policy should prefer codewords with high symbol
+> diversity and hand out the drabber ones last — which is what the rarity
+> ranking in §12.6 does, now that players pick for themselves.
 
 ### 11.2 Decode behaviour
 
@@ -847,6 +948,9 @@ random packing), for both trousers palettes.
 | trousers restricted to 5 | 1715 | **28.5** (1.2) | 25–33 | 35 | 81% |
 | trousers unrestricted (7) | 2401 | **35.1** (1.3) | 31–39 | 49 | 72% |
 
+The second row is the live configuration: the guest list passed 35, so the
+trousers channel went from five colours to seven (§2.6).
+
 ![Capacity histogram](code_capacity_histogram.svg)
 
 Readings:
@@ -898,7 +1002,7 @@ coloured hats are rare:
 | channel | probabilities |
 |---|---|
 | t-shirt | black .95, blue .80, red .55, green .45, purple .25, orange .15, yellow .15 |
-| trousers | blue .95, black .90, white .55, green .30, red .10 |
+| trousers | blue .95, black .90, grey .85, olive .45, off-white .40, red .35, mustard .08 — the availability column of §9.1 |
 | hat | black .30, blue .18, red .12, green .10, purple .06, orange .05, yellow .05 |
 
 These are estimates, not measurements. The ratios drive every conclusion below
@@ -906,8 +1010,9 @@ and are robust to reasonable changes; the absolute percentages are not.
 
 #### Which channel should carry the team
 
-Pinning any channel to the team leaves the same number of slots — five per colour,
-four for black — because the code is MDS with `k = 2`. Confirmed for hat, t-shirt
+Pinning any channel to the team leaves the same number of slots — seven per
+colour, six for black (five and four while trousers were restricted) — because
+the code is MDS with `k = 2`. Confirmed for hat, t-shirt
 and armbands alike. **The team-channel choice does not change capacity.** What it
 changes is which garments a player has to source:
 
@@ -929,10 +1034,11 @@ whatever players own, minimum pairwise distance ≥ 2 was reached in **1.7%** of
 #### The team partition removes §12.5's capacity tax
 
 Within one team the hat is fixed, so `d >= 3` forces every pair to differ in
-t-shirt **and** trousers **and** armband. The trousers palette has five colours,
-so a team caps at five players — and the code's own bucket is exactly five
-mutually-distance-3 outfits using all five trousers colours. **Free choice and
-the code have identical capacity inside a team.**
+t-shirt **and** trousers **and** armband. A team therefore caps at as many
+players as the trousers channel has colours — seven now, five while it was
+restricted — and the code's own bucket is exactly that many mutually-distance-3
+outfits, one per trousers colour. **Free choice and the code have identical
+capacity inside a team.**
 
 §12.5's tax comes from unstructured free choice stranding regions of the space.
 Pinning the hat to the team partitions the space into seven independent buckets
@@ -995,7 +1101,7 @@ a latent problem universal and therefore unignorable.
 The fix is roadmap #5 — score the reading against the effective words of the
 living candidates, with the GPS prior, instead of decoding against the code. That
 also explains why `d = 2` is tolerable here: the candidate set is a handful of
-nearby living players on other teams, not all 35 outfits, and two channels
+nearby living players on other teams, not all 49 outfits, and two channels
 discriminate sharply within a set that small. **If auto-actions are required on
 the night, #5 is on the critical path.**
 

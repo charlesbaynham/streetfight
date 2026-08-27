@@ -1,10 +1,12 @@
 // Tests for the admin identity workbench.
 //
 // The one thing worth pinning down here is the null appearance: the backend
-// deliberately sends `appearance: null` for a codeword a restricted channel
-// (trousers) has no colour for, and the real default scheme produces several
-// of those, so any table that reads through it crashes the whole page on
-// mount. routes.test.js only smoke-tests the mount, and never mocks
+// deliberately sends `appearance: null` for a codeword a restricted channel has
+// no colour for, so any table that reads through it crashes the whole page on
+// mount. The configured scheme has no restricted channel today, but the
+// workbench exists to try ones that do - the fixtures below narrow trousers,
+// exactly as the real scheme did until its guest list outgrew it.
+// routes.test.js only smoke-tests the mount, and never mocks
 // admin_identity_scheme, so it never renders a codebook row.
 
 import React from "react";

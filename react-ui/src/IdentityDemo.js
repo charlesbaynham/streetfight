@@ -62,9 +62,9 @@ const panel = {
 const errorStyle = { color: "red", whiteSpace: "pre-wrap" };
 const unwearableStyle = { ...cell, color: "#999" };
 
-// The backend sends appearance = null for a codeword a restricted channel
-// (trousers) has no colour for: the algebra is fine, but nobody could be
-// wearing it. Render a dash rather than reading through the null.
+// The backend sends appearance = null for a codeword a restricted channel has
+// no colour for: the algebra is fine, but nobody could be wearing it. Render a
+// dash rather than reading through the null.
 function AppearanceCells({ appearance, channels }) {
   return channels.map((c) => (
     <td key={c.name} style={appearance ? cell : unwearableStyle}>
@@ -759,8 +759,8 @@ export default function IdentityDemo() {
         qText: "",
         channels: defaults.channels.map(({ name, labels }) => ({
           name,
-          // Blank means "use the palette"; only the restricted channels
-          // (trousers) carry an explicit alphabet.
+          // Blank means "use the palette"; only a channel with an alphabet of
+          // its own carries an explicit one.
           labelsText: labels ? labels.join(", ") : "",
         })),
         code_type: "auto",

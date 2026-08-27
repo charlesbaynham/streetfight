@@ -26,9 +26,9 @@ from typing import Dict
 from typing import List
 from typing import Optional
 
-from .identity.config import COLOUR_BUCKETS
 from .identity.config import DEFAULT_CHANNEL_NAMES
 from .identity.config import DEFAULT_THRESHOLDS
+from .identity.config import buckets_for_channel
 from .identity.config import default_scheme
 from .identity.config import hex_for
 from .identity.config import palette_for_channel
@@ -308,23 +308,27 @@ resolution, with the same red cross redrawn at the same aim point -- only its \
 centre pixel counts, exactly as in the full frame. Use whichever view is \
 clearer, and trust the zoomed one when they disagree."""
 
-    buckets = "\n".join(
-        f"- {colour}: {note}"
-        for colour, note in COLOUR_BUCKETS.items()
-        if any(colour in palette for palette in palettes.values())
-    )
-
     questions = []
     for name, palette in palettes.items():
         description = CHANNEL_DESCRIPTIONS.get(name, f"their {name}")
         options = ", ".join(f'"{colour}"' for colour in palette)
+        # Per channel, not once for the whole prompt: the channels do not share
+        # a vocabulary, and where they use the same word they can mean different
+        # things by it (charcoal is "black" on the legs and not on a top).
+        notes = "".join(
+            f"\n       {colour}: {note}"
+            for colour, note in buckets_for_channel(name).items()
+        )
+        if notes:
+            notes = f"\n     Some of these cover a range:{notes}"
         questions.append(
             f"{name} ({description}):\n"
             f"  1. Can you clearly see it in this photo? If it is hidden, out of\n"
             f"     frame, in deep shadow, or too small or blurred to judge, the\n"
             f'     answer is no and the colour is "{UNKNOWN}".\n'
             f"  2. Only if you can clearly see it, which of these is it?\n"
-            f"     {options}\n"
+            f"     {options}"
+            f"{notes}\n"
             f'     If it is none of these, answer "{UNKNOWN}".'
         )
 
@@ -355,9 +359,6 @@ Answering "{UNKNOWN}" is a correct and useful answer. It is much better than a \
 guess: a wrong colour is worse than no colour. Give each answer a confidence \
 between 0 and 1. Also give a single overall "confidence" between 0 and 1 for \
 your reading of this photo as a whole.
-
-Some colour names cover a range, so use these buckets:
-{buckets}
 
 Reply with JSON only, matching this shape:
 {{

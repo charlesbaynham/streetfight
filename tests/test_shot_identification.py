@@ -85,7 +85,7 @@ def test_an_overridden_player_is_still_identified():
     # Wearing slot 7, except the trousers, which are recorded as what they
     # actually own. The resulting outfit is not a codeword of the scheme.
     worn = dict(SCHEME.appearance_of_slot(7))
-    worn["trousers"] = "white" if worn["trousers"] != "white" else "black"
+    worn["trousers"] = "black" if worn["trousers"] != "black" else "green"
     target = player(slot=7, overrides={"trousers": worn["trousers"]})
     other = player(slot=21)
 

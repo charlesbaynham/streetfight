@@ -13,12 +13,12 @@ distinct codewords of the same scheme -- it merely constrains *which* of the
 usable slots each team draws from.
 
 The constraint has a hard ceiling: a hat colour only covers as many slots as
-there are codewords carrying it (five each in the default scheme, four for
-black). Past that a team needs a second colour, and
-:func:`allocate_team_slots` gives it one *whole* extra colour rather than
-sharing a part-used one, so a hat colour still names exactly one team. Slots
-are emitted primary-colour-first, so a team that never fills its block never
-reaches the second colour at all.
+there are codewords carrying it (seven each in the default scheme, six for
+black -- the all-black slot 0 is never handed out). Past that a team needs a
+second colour, and :func:`allocate_team_slots` gives it one *whole* extra
+colour rather than sharing a part-used one, so a hat colour still names exactly
+one team. Slots are emitted primary-colour-first, so a team that never fills its
+block never reaches the second colour at all.
 
 This module is pure: slots, labels and schemes only, no database (the
 package-wide rule -- see :mod:`backend.identity.overrides`).

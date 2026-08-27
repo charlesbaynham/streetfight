@@ -66,13 +66,17 @@ class ChannelSet:
     """An ordered collection of channels backing a code of length ``n``.
 
     ``q`` is the field cardinality (the common symbol count the code uses).
-    A channel may supply **more** than ``q`` labels (only the first ``q`` are
-    addressable) or **fewer** (plan §2.6): guests supply their own clothing, so
-    the trousers channel deliberately carries five easy-to-source colours while
-    ``q = 7``. A channel with ``s < q`` labels simply makes the codewords whose
+    Channels need not agree on their alphabet: only the index reaches the code,
+    so one channel can carry different colours from another, or shapes instead
+    of colours. A channel may also supply **more** than ``q`` labels (only the
+    first ``q`` are addressable) or **fewer** (plan §2.6): the trousers channel
+    used to carry just five easy-to-source colours while ``q = 7``, because
+    guests supply their own clothing. Every channel shares one seven-colour
+    palette now that the guest list needs the capacity, but the mechanism
+    stays: a channel with ``s < q`` labels simply makes the codewords whose
     symbol at that position is ``>= s`` unwearable, which
-    :meth:`is_representable` reports and ``IdentityScheme.usable_slots`` uses to
-    trim the assignable identities.
+    :meth:`is_representable` reports and ``IdentityScheme.usable_slots`` uses
+    to trim the assignable identities.
     """
 
     def __init__(self, channels: Iterable[Channel], q: int):
@@ -110,8 +114,10 @@ class ChannelSet:
     def is_representable(self, codeword: Sequence[int]) -> bool:
         """Whether every symbol of ``codeword`` exists in its own channel.
 
-        False for a codeword that asks the restricted trousers channel for, say,
-        yellow -- the algebra is fine, but nobody can wear it.
+        False for a codeword that asks a narrowed channel for a symbol past the
+        end of its palette -- the algebra is fine, but nobody can wear it. No
+        channel of the configured scheme is narrowed today, so every codeword
+        passes; a channel that loses a colour brings this back.
         """
         if len(codeword) != self.n:
             return False

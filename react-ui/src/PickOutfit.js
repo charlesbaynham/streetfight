@@ -97,14 +97,17 @@ function Header({ joinData, showWardrobePrompt }) {
   );
 }
 
-function WardrobeChannel({ channel, selected, colourNotes, onToggle }) {
+// Notes ride on the channel, not on the page: the channels do not share a
+// colour vocabulary, and where they use the same word they can mean different
+// things by it (charcoal is "black" on the legs and not on a top).
+function WardrobeChannel({ channel, selected, onToggle }) {
   return (
     <fieldset className={styles.wardrobeChannel}>
       <legend>{channelLabel(channel.name)}</legend>
       <div className={styles.swatchGrid}>
         {channel.labels.map((label) => {
           const isSelected = selected.includes(label);
-          const note = colourNotes[label];
+          const note = (channel.notes || {})[label];
           return (
             <button
               type="button"
@@ -523,7 +526,6 @@ function PickOutfitForm({
                 key={channelName}
                 channel={channel}
                 selected={wardrobe[channelName] || []}
-                colourNotes={joinData.colour_notes}
                 onToggle={(label) => toggleColour(channelName, label)}
               />
             );
