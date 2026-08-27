@@ -89,6 +89,7 @@ setup_logging()
 
 from . import ai_shot_review
 from . import image_processing
+from . import reference_photos
 from . import shot_auto_actions
 from . import shot_vision
 from . import sse_event_streams
@@ -713,6 +714,62 @@ async def admin_get_default_vision_prompt(
         "prompt": shot_vision.build_prompt(zoom_mode=zoom_mode),
         "schema": shot_vision.build_schema(),
     }
+
+
+class _ReferencePhoto(BaseModel):
+    user_id: UUID
+    photo: str
+
+
+@admin_method(path="/admin_capture_reference_photo", method="POST")
+async def admin_capture_reference_photo(reference: _ReferencePhoto) -> UUID:
+    """Store the kit-check photo of one player, taken at the door.
+
+    The review that follows is not gated on the game's ai_shot_review toggle:
+    that toggle is about annotating the shot queue, and this is its own
+    feature. It is only skipped when there is no vision client at all, in
+    which case the photo is still stored and the review state simply stays
+    null -- capture must never fail because the AI is off.
+    """
+    logger.info("Storing a reference photo for user %s", reference.user_id)
+    AdminInterface().set_reference_photo(reference.user_id, reference.photo)
+    reference_photos.enqueue_review(reference.user_id)
+    return reference.user_id
+
+
+@admin_method("/admin_get_reference_photo", method="GET")
+async def admin_get_reference_photo(user_id: UUID) -> str:
+    photo = AdminInterface().get_reference_photo(user_id)
+    if not photo:
+        raise HTTPException(404, f"No reference photo stored for user {user_id}")
+    return photo
+
+
+@admin_method("/admin_get_reference_review", method="GET")
+async def admin_get_reference_review(user_id: UUID):
+    """The AI's reading of one player's reference photo, plus who it decoded to."""
+    return AdminInterface().get_reference_review(user_id)
+
+
+@admin_method(path="/admin_review_reference_photo", method="POST")
+async def admin_review_reference_photo(user_id: UUID):
+    """Review (or re-review) the stored reference photo of one player now."""
+    if not AdminInterface().get_reference_photo(user_id):
+        raise HTTPException(404, f"No reference photo stored for user {user_id}")
+    if reference_photos.enqueue_review(user_id) is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    return {"queued": True}
+
+
+@admin_method(path="/admin_delete_reference_photo", method="POST")
+async def admin_delete_reference_photo(user_id: UUID):
+    AdminInterface().clear_reference_photo(user_id)
+
+
+@admin_method("/admin_get_reference_photo_status", method="GET")
+async def admin_get_reference_photo_status(game_id: UUID) -> List[dict]:
+    """The door roster: every player in the game and how their kit check went."""
+    return AdminInterface().get_reference_photo_status(game_id)
 
 
 @admin_method("/admin_get_locations", method="GET")

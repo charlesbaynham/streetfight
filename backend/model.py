@@ -238,6 +238,17 @@ class User(Base):
     # as JSON text, same pattern as identity_overrides. Null before they pick.
     identity_wardrobe = Column(String, nullable=True)
 
+    # The kit check taken at the door (backend/reference_photos.py): a photo of
+    # the player in the outfit they turned up in, run through the same vision
+    # pipeline a real shot uses. Same columns as Shot's, for the same reasons -
+    # the image is a base64 data URL, the review is JSON text (or the error
+    # message when the state is "error"), and the state is null (never queued)
+    # / "pending" / "done" / "error". Never exposed on UserModel: the photo is
+    # of an identifiable person and travels only through the admin endpoints.
+    reference_photo_base64 = Column(String, nullable=True)
+    reference_review_state = Column(String, nullable=True)
+    reference_review = Column(String, nullable=True)
+
     shots = relationship(
         "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
     )

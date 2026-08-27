@@ -59,6 +59,13 @@
   border-color: #c0392b;
 }
 
+/* A colour the model did read, but only just - at the door that is the
+   difference between a kit check that passed and one that got lucky. */
+.tagMarginal {
+  background: #fdf0d5;
+  border-color: #d9a441;
+}
+
 .tagZoom {
   background: #e3ecfb;
   border-color: #4a76c9;
