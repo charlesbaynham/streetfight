@@ -98,7 +98,7 @@ async function showOtherOutfits() {
   await actAndFlush(() =>
     userEvent.click(
       screen.getByRole("button", {
-        name: "Show other outfits (not recommended)",
+        name: "Show non-recommended outfits",
       }),
     ),
   );
@@ -458,7 +458,7 @@ test("only the recommended outfits show until the player asks for the rest, whic
   expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
   expect(
     screen.queryByRole("button", {
-      name: "Show other outfits (not recommended)",
+      name: "Show non-recommended outfits",
     }),
   ).not.toBeInTheDocument();
 });
@@ -489,7 +489,7 @@ test("a wardrobe with no canonical outfit at all shows the whole list rather tha
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
   expect(
     screen.queryByRole("button", {
-      name: "Show other outfits (not recommended)",
+      name: "Show non-recommended outfits",
     }),
   ).not.toBeInTheDocument();
 });
@@ -529,7 +529,7 @@ test("reopening the wardrobe collapses the list back to the recommended outfits"
   expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
   expect(
     screen.getByRole("button", {
-      name: "Show other outfits (not recommended)",
+      name: "Show non-recommended outfits",
     }),
   ).toBeInTheDocument();
 });

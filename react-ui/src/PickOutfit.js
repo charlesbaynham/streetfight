@@ -502,7 +502,7 @@ function PickOutfitForm({
               className={styles.linkButton}
               onClick={() => setShowingAll(true)}
             >
-              Show other outfits (not recommended)
+              Show non-recommended outfits
             </button>
           ) : null}
           {!nudging && totalPages > 1 ? (

@@ -375,7 +375,7 @@ options are showing, so a phone screen reaches the options without first
 scrolling past every colour swatch, with a "Change what I own" link back;
 (4) the options list now shows **only the canonical options** (the ranking's
 top tier, badged "recommended"), with the rest - and the pagination - behind
-a "Show other outfits (not recommended)" link. Showing both tiers together
+a "Show non-recommended outfits" link. Showing both tiers together
 invited a player to spend identification accuracy on whichever colours they
 liked the look of; a canonical outfit is still one tap away and the long
 tail takes a deliberate one. Frontend-only: `outfit_options` still returns
