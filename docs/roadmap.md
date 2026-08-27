@@ -1690,7 +1690,37 @@ is upheld, and reset alongside `num_bullets` and `hit_points` in
 `BulletCount.js` shows ammo — a player deciding whether to spend one needs to
 know what they have left.
 
-**Upheld or rejected should be inferred, not a second admin button.** The
+**What the player actually sees.** An **Appeal** button on the shot, and a
+confirmation popup before it is spent — nobody should lose an appeal to a
+mis-tap, and the count is the thing they need in front of them at the moment
+they decide:
+
+> **Are you sure? You have 2 of 3 appeals left.**
+> *Successful appeals are refunded.*
+
+The second line in smaller white text under the question. It is there because the
+budget is only fair if the player knows the refund rule *before* they weigh
+spending one — a cap without the refund reads as "shut up and accept it", which
+is the opposite of what this is for. **At zero the button is greyed out, not
+hidden**, and says why: a control that vanishes is a bug report, and a player who
+can see they are out of appeals understands the rule better than one who never
+sees the button again.
+
+`Popup.js` is already the fullscreen popup component and the shot-history detail
+view is already inside one, so this is a confirmation step in an existing
+surface. The count itself should ride the `UserModel` payload next to
+`num_bullets`, so the existing SSE `user` event keeps it live without a new
+endpoint or a poll.
+
+**And the admin can hand appeals back.** A referee who has just talked something
+through with a player needs to be able to give them another go — a budget with no
+override turns a judgement call into a dead end. This is the same control the
+admin already has for ammo: `AdminMode.js`'s per-user row has **Ammo: +1 / −1**
+posting to `admin_give_ammo`, so **Appeals: +1 / −1** posting to
+`admin_give_appeals` is the same row, the same shape, and the same backend
+pattern. Reuse it rather than inventing a different one.
+
+**Upheld or rejected should be inferred, not a second verdict button.** The
 contested shot already carries CharlesBot's verdict in `ai_review`; if the
 admin's adjudication differs from it, the appeal was upheld. That is one
 comparison at the point the admin resolves the shot, and it keeps the admin's
@@ -1733,14 +1763,16 @@ be re-answered here rather than assumed.
 on `User` — remember there are no migrations, so `npm run resetdb`),
 `backend/user_interface.py` (shots-against-me, the widened image check,
 `appeal_shot` and the budget decrement), `backend/main.py` (the two new player
-endpoints), `backend/admin_interface.py` (the contested list, the upheld/rejected
-inference and its refund, the reset in `reset_game`),
+endpoints plus `admin_give_appeals`), `backend/admin_interface.py` (the contested
+list, the upheld/rejected inference and its refund, granting appeals back, the
+reset in `reset_game`),
 `backend/shot_auto_actions.py` (resolve-everything mode, and never re-drain a
 contested shot), `backend/ticker_message_dispatcher.py` (the correction message,
 and the shot id on the private hit message),
-`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button, the
-remaining-appeals count and the received-shots list), `react-ui/src/ShotQueue.js`
-(the contested tab). Tests in
+`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button, its
+`Popup.js` confirmation, the remaining-appeals count and the received-shots
+list), `react-ui/src/ShotQueue.js` (the contested tab), `react-ui/src/AdminMode.js`
+(**Appeals: +1 / −1** on the per-user row). Tests in
 `tests/test_shots.py`, `tests/test_admin_mode.py`, `ShotHistory.test.js`,
 `ShotQueue.test.js`.
 
