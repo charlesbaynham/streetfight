@@ -91,6 +91,21 @@ def test_prompt_offers_each_channel_only_its_own_colours():
         assert offered == set(palette_for_channel(name))
 
 
+def test_the_prompt_folds_yellow_legs_into_white():
+    """Trousers merge white and yellow into one symbol (§9.1), so the model must
+    be offered white, never yellow, *and* told where yellow legs go. Without the
+    second half it answers "unknown" for a pair of chinos and throws away a
+    channel; the players are told the same thing from the same COLOUR_BUCKETS
+    entry, and the decode only works if both sides agree what "white" covers.
+    """
+    prompt = sv.build_prompt()
+    trousers = prompt.split("trousers (")[1].split("If it is none of these")[0]
+
+    assert '"white"' in trousers
+    assert '"yellow"' not in trousers
+    assert "chinos" in prompt and "yellow" in prompt.split("use these buckets:")[1]
+
+
 def test_schema_restricts_each_channel_to_its_own_enum():
     schema = sv.build_schema()
 
@@ -129,9 +144,9 @@ def test_unknown_becomes_an_erasure():
 
 def test_a_colour_outside_the_channel_palette_is_rejected():
     raw = reply_for(appearance_of(7))
-    # "white" was in the trousers palette while that channel had its own set;
-    # no channel carries it now, so the model must never be taken at its word.
-    raw["channels"]["trousers"]["colour"] = "white"
+    # Trousers have no yellow -- pale legs are "white" (§9.1) -- so a model
+    # that answers "yellow" here must never be taken at its word.
+    raw["channels"]["trousers"]["colour"] = "yellow"
 
     with pytest.raises(sv.ShotVisionError) as excinfo:
         sv.parse_result(raw)

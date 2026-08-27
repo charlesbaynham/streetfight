@@ -117,18 +117,18 @@ Recorded here so they are not re-litigated:
   codewords rank at the top of the list, so most players land on one with no
   overrides at all. See plan §12.6's "as implemented" note and the #10 entry
   below for the ranking rule.
-- **Trousers use the main palette**, dropping their restricted five-colour set,
-  so the scheme offers 48 usable slots instead of 34. The guest list outgrew the
-  35 identities the restriction allowed, and lifting it is the remedy plan §2.6
-  and §11.1 both name. One palette for every channel keeps §9.1's separation
-  guarantee intact — the alternative, topping the restricted set back up to
-  seven, would have put white next to orange, which §9.1 excluded white to
-  avoid. The cost is wardrobe coverage: white/cream trousers are no longer
-  expressible, and they were the third most commonly owned colour in that
-  channel, so a player sourcing from jeans and chinos has one fewer route to a
-  canonical codeword. Rare colours are cheap to offer, since the picker only
-  shows a player what they say they own and ranks the rare ones first. See plan
-  §9.1.
+- **The trousers channel carries seven colours**, up from five, so the scheme
+  offers 48 usable slots instead of 34. The guest list outgrew the 35 identities
+  the restriction allowed, and widening it is the remedy plan §2.6 and §11.1
+  both name. It keeps a physical set of its own: the main palette with **white
+  in place of yellow**, where white is one wide bucket covering cream, beige,
+  chinos and yellow. Merging the two is what lets white stay — §9.1 excluded it
+  from the main palette because yellow/white collapsed to ΔE 14 under sodium,
+  and a channel cannot confuse two colours it calls by the same name. Both
+  audiences that read a colour name, the guest instructions and the vision
+  prompt, get that from the one `COLOUR_BUCKETS` entry. What it does not fix is
+  white against *orange*, which the channel still carries: one misread in one
+  channel, which `d = 3` corrects. See plan §9.1.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game

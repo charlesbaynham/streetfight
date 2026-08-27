@@ -227,6 +227,13 @@ Images are built from the Nix flake
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
+- **Trousers are their own palette** (`TROUSERS_PALETTE`): the main seven with
+  **white where the main palette has yellow**. White there is a deliberately
+  wide bucket — cream, beige, chinos *and* yellow — and merging the two is the
+  only reason white is usable at all (plan §9.1: yellow/white collapsed to
+  ΔE 14 under sodium light). Nothing on the legs is ever called yellow. The
+  merge has to reach the players and the vision model identically, and does,
+  because both render the same `COLOUR_BUCKETS` entry — keep them in step.
 - One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
   teams apart by eye: the join-QR pre-allocation
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands

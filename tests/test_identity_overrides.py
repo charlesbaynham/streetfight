@@ -62,9 +62,9 @@ def test_effective_word_rejects_unknown_channel():
 def test_effective_word_rejects_unknown_label():
     scheme = default_scheme()
     codeword = scheme.codeword_of_slot(scheme.usable_slots()[0])
-    # "white" is in no channel's palette (plan §9.1 excludes it on measurement).
+    # "yellow" is in the main palette; trousers fold it into "white" (§9.1).
     with pytest.raises(ValueError, match="no label"):
-        effective_word(codeword, {"trousers": "white"}, scheme.channels)
+        effective_word(codeword, {"trousers": "yellow"}, scheme.channels)
 
 
 def test_effective_word_rejects_wrong_length_codeword():

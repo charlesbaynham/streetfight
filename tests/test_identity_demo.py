@@ -7,6 +7,7 @@ demo layer -- spec parsing, error messages, the simulation, and the admin API.
 import pytest
 
 from backend import identity_demo as demo
+from backend.identity.config import palette_for_channel
 
 
 @pytest.fixture(autouse=True)
@@ -414,9 +415,13 @@ def test_api_defaults(admin_api_client):
     body = response.json()
     assert body["channel_names"] == ["tshirt", "trousers", "hat", "armbands"]
     assert body["target_distance"] == 3
-    # Every channel wears the main palette, so none carries an explicit
-    # alphabet; a channel given one in CHANNEL_PALETTES would travel with it.
-    assert all(c["labels"] is None for c in body["channels"])
+    # The trousers channel's own alphabet travels with the defaults, so the
+    # workbench starts from the real scheme rather than the main palette; the
+    # channels that use the main palette carry no explicit labels.
+    trousers = next(c for c in body["channels"] if c["name"] == "trousers")
+    assert trousers["labels"] == palette_for_channel("trousers")
+    assert trousers["labels"][-1] == "white"
+    assert all(c["labels"] is None for c in body["channels"] if c["name"] != "trousers")
 
 
 def test_api_scheme_and_decode(admin_api_client):

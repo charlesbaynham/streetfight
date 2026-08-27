@@ -19,25 +19,33 @@ from backend.identity.code import build_code
 from backend.identity.decoder import DecoderThresholds
 from backend.identity.scheme import IdentityScheme
 
-# The palette every channel wears. Seven colours, so q = 7 (prime, which the
-# dependency-free GF(q) arithmetic requires), and 7**2 = 49 codewords.
-#
-# Trousers used to have their own five-colour set (plan §2.6): guests supply
-# their own clothing, and purple, orange and yellow trousers are not things most
-# people own. That capped the scheme at 35 wearable slots and the guest list
-# outgrew it, so the channel now shares this palette -- the remedy §2.6 and
-# §11.1 both name. One palette for every channel also puts white back out of
-# reach, which the trousers set carried and which is the one colour §9.1
-# excluded on measurement rather than on sourcing: under sodium street lighting
-# white photographs orange, and white/yellow collapsed to ΔE 14.
-#
-# The cost is wardrobe coverage, not accuracy: trousers now come in four
-# widely-owned shades (blue, black, green, red) rather than five, since
-# white/cream chinos are no longer expressible. The picker asks each player what
-# they own and ranks the rare colours first (COLOUR_COMMONNESS below), so a rare
-# colour costs nothing to offer -- but a player whose trousers are all jeans and
-# chinos has one fewer route to a canonical codeword.
+# The main palette, worn on t-shirt / hat / armbands. Seven colours, so q = 7
+# (prime, which the dependency-free GF(q) arithmetic requires), and 7**2 = 49
+# codewords.
 DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"]
+
+# Trousers, also seven -- the whole point of widening this channel (plan §2.6:
+# it carried five, which capped the scheme at 35 wearable slots, and the guest
+# list outgrew that). It differs from the main palette in exactly one place:
+# symbol 6 is **white** rather than yellow.
+#
+# That swap is what lets white live here at all. §9.1 excluded white from the
+# main palette on measurement, not on sourcing -- it reflects whatever light
+# hits it, so under sodium street lighting a white garment photographs orange,
+# and white/yellow collapsed to ΔE 14. Merging the two into one symbol dissolves
+# that pair: a channel cannot confuse two colours it calls by the same name.
+# Cream, beige, chinos and yellow trousers are all "white" here, which is both
+# what the guest instructions say and what the vision prompt asks for (see
+# COLOUR_BUCKETS below -- and keep the two in step, since the deterministic
+# decoding downstream assumes a player and the model mean the same thing by a
+# colour name).
+#
+# It buys real wardrobe coverage: white/cream/beige is the third most commonly
+# owned trousers colour (COLOUR_COMMONNESS below), and chinos are exactly what
+# a guest reaches for when their jeans are all blue or black. What it does not
+# fix is white against *orange*, which this channel does carry: that pair is one
+# misread, in one channel, which d = 3 corrects outright.
+TROUSERS_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "white"]
 
 # The field cardinality. Must be prime, and must be at least the size of the
 # largest channel alphabet.
@@ -48,13 +56,12 @@ DEFAULT_Q = 7
 DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "armbands"]
 
 # Channels with an alphabet of their own; anything not listed uses
-# DEFAULT_PALETTE. Empty today -- every channel wears the same seven colours --
-# but the mechanism is live and one entry away: a channel may carry a different
-# physical set (only its *cardinality* reaches the code) or fewer labels than
-# ``q``, which makes the codewords it cannot wear unassignable
-# (``ChannelSet.is_representable``). A channel listed here should get its own
-# PALETTE_HEX entry under the same name.
-CHANNEL_PALETTES = {}
+# DEFAULT_PALETTE. Only the *cardinality* reaches the code, so a channel here
+# may carry a different physical set (trousers) or fewer labels than ``q``,
+# which makes the codewords it cannot wear unassignable
+# (``ChannelSet.is_representable``). A channel listed here may also give its own
+# shades in PALETTE_HEX under the same name, for the colours that differ.
+CHANNEL_PALETTES = {"trousers": TROUSERS_PALETTE}
 
 # The channel spent on telling teams apart by eye: every member of a team is
 # pre-allocated a slot with the same colour here, and no two teams share one
@@ -78,9 +85,9 @@ PROVIDED_CHANNEL = "armbands"
 DEFAULT_TARGET_DISTANCE = 3
 
 # The hex each colour name refers to, so the admin UI, any printable guest sheet
-# and the palette design all read from one place. Keyed by palette name, so a
-# channel given its own alphabet in CHANNEL_PALETTES can add its own shades
-# under its own channel name; every channel reads "main" until one does.
+# and the palette design all read from one place. Keyed by palette name: a
+# channel with its own alphabet lists only the shades that *differ*, and falls
+# back to "main" for the rest.
 PALETTE_HEX = {
     "main": {
         "black": "#1A1A1A",
@@ -91,6 +98,9 @@ PALETTE_HEX = {
         "orange": "#FF8200",
         "yellow": "#FFF200",
     },
+    "trousers": {
+        "white": "#F2F3F4",
+    },
 }
 
 # Wide, dispute-free buckets for the guests -- one person's "burgundy" is
@@ -100,6 +110,11 @@ COLOUR_BUCKETS = {
     "green": "includes olive and khaki",
     "blue": "includes navy and denim",
     "black": "black, not charcoal",
+    # Trousers only, and deliberately the widest bucket of the four: it is the
+    # merged white/yellow symbol (see TROUSERS_PALETTE), so every pale leg goes
+    # here and nothing on the legs is ever called yellow. Kept short because it
+    # renders under a swatch on a phone as well as in the vision prompt.
+    "white": "anything pale -- cream, beige, chinos, or yellow",
 }
 
 # Estimated ownership probability per garment *per colour* (plan §12.6): these
@@ -121,11 +136,11 @@ COLOUR_COMMONNESS = {
     "trousers": {
         "blue": 0.95,
         "black": 0.90,
+        "white": 0.55,
         "green": 0.30,
         "red": 0.10,
         "purple": 0.06,
         "orange": 0.05,
-        "yellow": 0.04,
     },
     "hat": {
         "black": 0.30,
@@ -154,11 +169,14 @@ def palette_for_channel(name: str):
 def hex_for(channel_name: str, colour: str):
     """The hex for a colour *in a given channel*, or None if it isn't in it.
 
-    A channel with its own shades supplies them under its own name in
-    :data:`PALETTE_HEX`; every other channel reads the main palette.
+    A channel with shades of its own lists only the ones that differ, under its
+    own name in :data:`PALETTE_HEX`, and falls back to the main palette for the
+    rest -- so a colour common to both is defined once.
     """
-    key = channel_name if channel_name in PALETTE_HEX else "main"
-    return PALETTE_HEX[key].get(colour)
+    if colour not in palette_for_channel(channel_name):
+        return None
+    own = PALETTE_HEX.get(channel_name, {})
+    return own.get(colour, PALETTE_HEX["main"].get(colour))
 
 
 def commonness_for(channel_name: str, colour: str) -> float:
@@ -176,7 +194,8 @@ def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
     """Build the initial :class:`ChannelSet` (four channels, seven colours each).
 
     ``palette`` overrides the *main* palette only; channels named in
-    :data:`CHANNEL_PALETTES` keep their own alphabet.
+    :data:`CHANNEL_PALETTES` keep their own alphabet -- trousers swap yellow
+    for white.
     """
     palette = list(palette if palette is not None else DEFAULT_PALETTE)
     channel_names = list(
@@ -194,8 +213,8 @@ def default_scheme() -> IdentityScheme:
     """The initial scheme: 4 colour channels, 7 colours, ``[4,2,3]`` Reed-Solomon.
 
     Capacity is ``7**2`` = 49 codewords, of which **48** are usable: every
-    channel wears the whole palette, so the only one withheld is the all-black
-    slot 0 (see :meth:`IdentityScheme.usable_slots`).
+    channel carries a full seven colours, so the only one withheld is the
+    all-black slot 0 (see :meth:`IdentityScheme.usable_slots`).
 
     At ``d = 3`` the guarantee is: correct up to two erasures, **or** correct one
     misread, **or** correct one erasure and detect one misread. Equivalently:

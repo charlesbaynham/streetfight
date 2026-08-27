@@ -250,8 +250,8 @@ def test_set_bad_label_400(db_session, one_game, one_team, user_factory):
     with pytest.raises(IdentityAdminError):
         identity_admin.set_identity(
             IdentitySetRequest(
-                user_id=u1, slot=1, overrides={"trousers": "white"}
-            )  # white is in no channel's palette
+                user_id=u1, slot=1, overrides={"trousers": "yellow"}
+            )  # trousers fold yellow into "white" and have no yellow of their own
         )
 
 
