@@ -351,12 +351,28 @@ the code-decode path in `shot_vision.slot_candidates_from_review` cannot
 identify their wearers — and can confidently identify the *wrong* one.
 Auto-actions are required on the night, so #5 shipped first.
 
-**Each player confirms they have the garments** before picking, via an "I own
-these and I'll wear them on the night" checkbox. Players are **not** asked to
-photograph themselves: that is deliberately deferred to R7, where the admin
-takes the photo at the door on the night. A self-taken photo verifies
-nothing, because the person submitting it is the person with a reason to
-fudge it.
+**Each player confirms they have the garments** before picking, via an "I
+will wear this on the night" checkbox - moved, after a mobile walkthrough,
+from gating "show me outfits" (committing before seeing what you're
+committing to) to a dedicated confirm screen shown after tapping an option
+and before it's claimed, with a "choose a different outfit" way back.
+Players are **not** asked to photograph themselves: that is deliberately
+deferred to R7, where the admin takes the photo at the door on the night. A
+self-taken photo verifies nothing, because the person submitting it is the
+person with a reason to fudge it.
+
+**Post-ship UX revision (mobile walkthrough).** Three further fixes beyond
+the confirm-step move above, all in `react-ui/src/PickOutfit.js` /
+`backend/identity_admin.py`: (1) `outfit_options` now collapses to one
+option per distinct tshirt+trousers combination - the armband varying
+underneath was a choice the player has no stake in, since it's ours to
+assign - keeping `outfit_options_page`'s `total`/pagination honest against
+the smaller, deduplicated list; (2) option rows, the confirm screen and the
+result screen now show only the wardrobe channels (`join_options`'
+`wardrobe_channels`), dropping the hat/armband and the "yours"/"ours" tags
+they needed; (3) the wardrobe form collapses to a one-line summary once
+options are showing, so a phone screen reaches the options without first
+scrolling past every colour swatch, with a "Change what I own" link back.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
 **Feeds:** #8.

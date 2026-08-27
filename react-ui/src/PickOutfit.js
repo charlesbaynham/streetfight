@@ -2,15 +2,15 @@
 // code (as opposed to a per-slot code, which still claims a fixed outfit
 // straight away - see JoinFromQueryParams). They declare what they own, are
 // offered a ranked list of outfits that are both wearable and distinguishable
-// from everyone already placed, and pick one. See docs/roadmap.md's #10
-// entry and backend/identity_admin.py's outfit_options for the ranking
-// rationale behind the flow below.
+// from everyone already placed, pick one, confirm it, and lock it in. See
+// docs/roadmap.md's #10 entry and backend/identity_admin.py's outfit_options
+// for the ranking rationale behind the flow below.
 //
 // Deliberately outside UserMode: no map, no webcam, no SSE, no permission
 // polling - this page only ever talks to join_options / outfit_options /
 // pick_outfit.
 
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 
 import Popup from "./Popup";
@@ -25,6 +25,18 @@ import styles from "./PickOutfit.module.css";
 function useQuery() {
   const { search } = useLocation();
   return React.useMemo(() => new URLSearchParams(search), [search]);
+}
+
+// A channel name is only ever a raw scheme identifier ("tshirt", "hat", ...)
+// - this is the one place that turns it into something worth showing a
+// player. Keyed off the name so a future channel (a "shape" channel, say)
+// just falls through to the capitalised default instead of reading raw.
+const CHANNEL_DISPLAY_NAMES = { tshirt: "T-shirt" };
+
+function channelLabel(name) {
+  return (
+    CHANNEL_DISPLAY_NAMES[name] || name.charAt(0).toUpperCase() + name.slice(1)
+  );
 }
 
 async function getJSON(endpoint, query_params) {
@@ -65,7 +77,7 @@ async function postJSON(endpoint, body) {
   return data;
 }
 
-function Header({ joinData }) {
+function Header({ joinData, showWardrobePrompt }) {
   const hex = hexFor(
     joinData.channels,
     joinData.team_channel,
@@ -76,8 +88,10 @@ function Header({ joinData }) {
       <h1>Team {joinData.team_name}</h1>
       <Swatch hex={hex} label={joinData.team_colour} size="large" />
       <p>
-        We're bringing your {joinData.team_colour} {joinData.team_channel} and
-        your {joinData.provided_channel}. Tell us what you'll wear underneath.
+        We'll bring your {joinData.team_colour}{" "}
+        {channelLabel(joinData.team_channel).toLowerCase()} and your{" "}
+        {channelLabel(joinData.provided_channel).toLowerCase()} on the night.
+        {showWardrobePrompt ? " Tell us what else you'll be wearing." : null}
       </p>
     </div>
   );
@@ -86,7 +100,7 @@ function Header({ joinData }) {
 function WardrobeChannel({ channel, selected, colourNotes, onToggle }) {
   return (
     <fieldset className={styles.wardrobeChannel}>
-      <legend>{channel.name}</legend>
+      <legend>{channelLabel(channel.name)}</legend>
       <div className={styles.swatchGrid}>
         {channel.labels.map((label) => {
           const isSelected = selected.includes(label);
@@ -114,46 +128,59 @@ function WardrobeChannel({ channel, selected, colourNotes, onToggle }) {
   );
 }
 
-function optionDescription(option) {
-  return Object.entries(option.appearance)
-    .map(([name, label]) => `${name} ${label}`)
+// Both used to key/label an option by what the player can actually see and
+// chose: the wardrobe channels only (roadmap #10 revision) - the hat is
+// pinned to the team colour and the armband is ours to assign, so neither is
+// a choice the player has a stake in, and the backend now collapses options
+// so no two share a wardrobe combination, keeping this a stable React key.
+function optionDescription(option, wardrobeChannels) {
+  return wardrobeChannels
+    .map((name) => `${channelLabel(name)} ${option.appearance[name]}`)
     .join(", ");
 }
 
-function OptionRow({ option, channels, oursChannels, onPick }) {
+function OutfitGarments({ appearance, wardrobeChannels, channels, size }) {
+  return (
+    <div className={styles.optionGarments}>
+      {wardrobeChannels.map((name) => {
+        const channel = channels.find((c) => c.name === name);
+        const label = appearance[name];
+        return (
+          <span key={name} className={styles.garment}>
+            <Swatch hex={channel.hex[label]} label={label} size={size} />
+            <span className={styles.garmentLabel}>
+              {channelLabel(name)}: {label}
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
+}
+
+function OptionRow({ option, wardrobeChannels, channels, onPick }) {
   return (
     <button
       type="button"
       className={styles.optionRow}
-      aria-label={`Choose: ${optionDescription(option)}`}
+      aria-label={`Choose: ${optionDescription(option, wardrobeChannels)}`}
       onClick={() => onPick(option)}
     >
       {option.is_canonical ? (
         <span className={styles.recommendedBadge}>recommended</span>
       ) : null}
-      <div className={styles.optionGarments}>
-        {channels.map((channel) => {
-          const label = option.appearance[channel.name];
-          return (
-            <span key={channel.name} className={styles.garment}>
-              <Swatch hex={channel.hex[label]} label={label} />
-              <span className={styles.garmentLabel}>
-                {channel.name}: {label}
-                <span className={styles.tag}>
-                  {oursChannels.includes(channel.name) ? "ours" : "yours"}
-                </span>
-              </span>
-            </span>
-          );
-        })}
-      </div>
+      <OutfitGarments
+        appearance={option.appearance}
+        wardrobeChannels={wardrobeChannels}
+        channels={channels}
+      />
     </button>
   );
 }
 
 // Options arrive from the backend already sorted by overrides_needed, so a
 // simple linear scan groups consecutive equal values without re-sorting.
-function OptionsList({ options, channels, oursChannels, onPick }) {
+function OptionsList({ options, wardrobeChannels, channels, onPick }) {
   let lastOverrides = null;
   return (
     <div className={styles.optionsList}>
@@ -161,7 +188,7 @@ function OptionsList({ options, channels, oursChannels, onPick }) {
         const showHeading = option.overrides_needed !== lastOverrides;
         lastOverrides = option.overrides_needed;
         return (
-          <React.Fragment key={optionDescription(option)}>
+          <React.Fragment key={optionDescription(option, wardrobeChannels)}>
             {showHeading ? (
               <h3 className={styles.groupHeading}>
                 {option.overrides_needed === 0
@@ -173,8 +200,8 @@ function OptionsList({ options, channels, oursChannels, onPick }) {
             ) : null}
             <OptionRow
               option={option}
+              wardrobeChannels={wardrobeChannels}
               channels={channels}
-              oursChannels={oursChannels}
               onPick={onPick}
             />
           </React.Fragment>
@@ -184,18 +211,84 @@ function OptionsList({ options, channels, oursChannels, onPick }) {
   );
 }
 
-function ResultScreen({ appearance, channels }) {
+function WardrobeSummary({ wardrobeChannels, wardrobe, onChange }) {
+  const description = wardrobeChannels
+    .map((name) => {
+      const chosen = wardrobe[name] || [];
+      return `${channelLabel(name)}: ${chosen.length ? chosen.join(", ") : "anything"}`;
+    })
+    .join(" · ");
+  return (
+    <div className={styles.wardrobeSummary}>
+      <p>{description}</p>
+      <button type="button" className={styles.linkButton} onClick={onChange}>
+        Change what I own
+      </button>
+    </div>
+  );
+}
+
+function ConfirmScreen({
+  option,
+  wardrobeChannels,
+  channels,
+  onConfirm,
+  onBack,
+  confirming,
+}) {
+  const [checked, setChecked] = useState(false);
+  return (
+    <div className={styles.confirmScreen}>
+      <h2>Wear this outfit?</h2>
+      <OutfitGarments
+        appearance={option.appearance}
+        wardrobeChannels={wardrobeChannels}
+        channels={channels}
+        size="large"
+      />
+      <label className={styles.confirmRow}>
+        <input
+          type="checkbox"
+          checked={checked}
+          onChange={(e) => setChecked(e.target.checked)}
+        />
+        I will wear this on the night.
+      </label>
+      <button
+        type="button"
+        className={styles.submitButton}
+        disabled={!checked || confirming}
+        onClick={onConfirm}
+      >
+        {confirming ? "Locking in..." : "Lock in my choice"}
+      </button>
+      <button
+        type="button"
+        className={styles.linkButton}
+        onClick={onBack}
+        disabled={confirming}
+      >
+        Choose a different outfit
+      </button>
+    </div>
+  );
+}
+
+function ResultScreen({ appearance, wardrobeChannels, channels }) {
   return (
     <div className={styles.resultScreen}>
       <h2>You're set</h2>
       <div className={styles.resultGarments}>
-        {channels.map((channel) => {
-          const label = appearance ? appearance[channel.name] : null;
+        {wardrobeChannels.map((name) => {
+          const channel = channels.find((c) => c.name === name);
+          const label = appearance ? appearance[name] : null;
           return (
-            <div key={channel.name} className={styles.resultGarment}>
+            <div key={name} className={styles.resultGarment}>
               <Swatch hex={channel.hex[label]} label={label} size="large" />
               <div>
-                <div className={styles.resultChannelName}>{channel.name}</div>
+                <div className={styles.resultChannelName}>
+                  {channelLabel(name)}
+                </div>
                 <div>{label}</div>
               </div>
             </div>
@@ -209,15 +302,12 @@ function ResultScreen({ appearance, channels }) {
 
 function PickOutfitForm({ code, joinData, onPicked, onError }) {
   const [wardrobe, setWardrobe] = useState({});
-  const [confirmed, setConfirmed] = useState(false);
   const [optionsResult, setOptionsResult] = useState(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
+  const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
 
-  const oursChannels = useMemo(
-    () => [joinData.team_channel, joinData.provided_channel],
-    [joinData.team_channel, joinData.provided_channel],
-  );
+  const wardrobeChannels = joinData.wardrobe_channels;
 
   const toggleColour = (channelName, label) => {
     setWardrobe((old) => {
@@ -263,6 +353,7 @@ function PickOutfitForm({ code, joinData, onPicked, onError }) {
         onPicked(row);
       } catch (e) {
         onError(e.message);
+        setSelectedOption(null);
         if (e.status === 409 && optionsResult) {
           fetchOptions(optionsResult.relaxed, optionsResult.page);
         }
@@ -273,8 +364,22 @@ function PickOutfitForm({ code, joinData, onPicked, onError }) {
     [code, wardrobe, onPicked, onError, optionsResult, fetchOptions],
   );
 
+  if (selectedOption) {
+    return (
+      <ConfirmScreen
+        option={selectedOption}
+        wardrobeChannels={wardrobeChannels}
+        channels={joinData.channels}
+        confirming={claiming}
+        onConfirm={() => claimOption(selectedOption)}
+        onBack={() => setSelectedOption(null)}
+      />
+    );
+  }
+
   const showAreYouSure =
     optionsResult && optionsResult.total === 0 && !optionsResult.relaxed;
+  const showingOptions = optionsResult && optionsResult.total > 0;
   const totalPages = optionsResult
     ? Math.max(1, Math.ceil(optionsResult.total / optionsResult.page_size))
     : 0;
@@ -288,41 +393,45 @@ function PickOutfitForm({ code, joinData, onPicked, onError }) {
         />
       )}
 
-      <p className={styles.wardrobeIntro}>
-        Tick everything you own - the more you tick, the more choices you get.
-      </p>
-
-      {joinData.wardrobe_channels.map((channelName) => {
-        const channel = joinData.channels.find((c) => c.name === channelName);
-        if (!channel) return null;
-        return (
-          <WardrobeChannel
-            key={channelName}
-            channel={channel}
-            selected={wardrobe[channelName] || []}
-            colourNotes={joinData.colour_notes}
-            onToggle={(label) => toggleColour(channelName, label)}
-          />
-        );
-      })}
-
-      <label className={styles.confirmRow}>
-        <input
-          type="checkbox"
-          checked={confirmed}
-          onChange={(e) => setConfirmed(e.target.checked)}
+      {showingOptions ? (
+        <WardrobeSummary
+          wardrobeChannels={wardrobeChannels}
+          wardrobe={wardrobe}
+          onChange={() => setOptionsResult(null)}
         />
-        I own these and I'll wear them on the night.
-      </label>
+      ) : (
+        <>
+          <p className={styles.wardrobeIntro}>
+            Tick everything you own - the more you tick, the more choices you
+            get.
+          </p>
 
-      <button
-        type="button"
-        className={styles.submitButton}
-        disabled={!confirmed || optionsLoading}
-        onClick={() => fetchOptions(false, 0)}
-      >
-        {optionsLoading ? "Finding outfits..." : "Show me outfits"}
-      </button>
+          {wardrobeChannels.map((channelName) => {
+            const channel = joinData.channels.find(
+              (c) => c.name === channelName,
+            );
+            if (!channel) return null;
+            return (
+              <WardrobeChannel
+                key={channelName}
+                channel={channel}
+                selected={wardrobe[channelName] || []}
+                colourNotes={joinData.colour_notes}
+                onToggle={(label) => toggleColour(channelName, label)}
+              />
+            );
+          })}
+
+          <button
+            type="button"
+            className={styles.submitButton}
+            disabled={optionsLoading}
+            onClick={() => fetchOptions(false, 0)}
+          >
+            {optionsLoading ? "Finding outfits..." : "Show me outfits"}
+          </button>
+        </>
+      )}
 
       {showAreYouSure ? (
         <div className={styles.emptyState}>
@@ -340,13 +449,13 @@ function PickOutfitForm({ code, joinData, onPicked, onError }) {
         </p>
       ) : null}
 
-      {optionsResult && optionsResult.total > 0 ? (
+      {showingOptions ? (
         <>
           <OptionsList
             options={optionsResult.options}
+            wardrobeChannels={wardrobeChannels}
             channels={joinData.channels}
-            oursChannels={oursChannels}
-            onPick={claimOption}
+            onPick={setSelectedOption}
           />
           {totalPages > 1 ? (
             <div className={styles.pagination}>
@@ -430,10 +539,11 @@ function PickOutfit() {
           <p>Loading...</p>
         ) : (
           <>
-            <Header joinData={joinData} />
+            <Header joinData={joinData} showWardrobePrompt={!result} />
             {result ? (
               <ResultScreen
                 appearance={result.effective_appearance}
+                wardrobeChannels={joinData.wardrobe_channels}
                 channels={joinData.channels}
               />
             ) : (

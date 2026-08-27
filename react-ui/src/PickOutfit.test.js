@@ -86,7 +86,13 @@ async function goPastHeader() {
   return screen.findByRole("heading", { name: "Team Reds" });
 }
 
-test("ticking colours and submitting posts the wardrobe and renders ranked options with a recommended badge on the canonical one", async () => {
+async function showOutfits() {
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
+  );
+}
+
+test("ticking colours and submitting (with no confirm checkbox on this step) posts the wardrobe and renders ranked options with a recommended badge on the canonical one", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: {
@@ -124,16 +130,15 @@ test("ticking colours and submitting posts the wardrobe and renders ranked optio
   renderPickOutfit();
   await goPastHeader();
 
-  const tshirtGroup = screen.getByRole("group", { name: "tshirt" });
+  // The confirm checkbox has moved off this step entirely.
+  expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+
+  const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
   userEvent.click(within(tshirtGroup).getByRole("button", { name: "black" }));
-  const trousersGroup = screen.getByRole("group", { name: "trousers" });
+  const trousersGroup = screen.getByRole("group", { name: "Trousers" });
   userEvent.click(within(trousersGroup).getByRole("button", { name: "black" }));
 
-  userEvent.click(screen.getByRole("checkbox"));
-
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
-  );
+  await showOutfits();
 
   expect(getLastAPICall("outfit_options").body).toEqual({
     data: "CODE1",
@@ -145,6 +150,36 @@ test("ticking colours and submitting posts the wardrobe and renders ranked optio
   expect(screen.getByText("recommended")).toBeInTheDocument();
   expect(screen.getByText("Exact match")).toBeInTheDocument();
   expect(screen.getByText("1 colour different")).toBeInTheDocument();
+
+  // Only the player-supplied garments show on an option row - no hat/armband.
+  expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
+  expect(screen.queryByText(/^Hat:/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
+});
+
+test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  // The twelve colour swatch buttons are gone from view; a summary + link
+  // affordance stands in for them.
+  expect(
+    screen.queryByRole("group", { name: "T-shirt" }),
+  ).not.toBeInTheDocument();
+  const reopen = screen.getByRole("button", { name: "Change what I own" });
+
+  await actAndFlush(() => userEvent.click(reopen));
+
+  expect(screen.getByRole("group", { name: "T-shirt" })).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: "Change what I own" }),
+  ).not.toBeInTheDocument();
 });
 
 test("paging fetches the next page", async () => {
@@ -159,9 +194,9 @@ test("paging fetches the next page", async () => {
           makeOption({
             appearance: {
               tshirt: "black",
-              trousers: "black",
+              trousers: body.page === 0 ? "black" : "blue",
               hat: "red",
-              armbands: body.page === 0 ? "red" : "green",
+              armbands: "red",
             },
           }),
         ],
@@ -170,20 +205,17 @@ test("paging fetches the next page", async () => {
 
   renderPickOutfit();
   await goPastHeader();
-  userEvent.click(screen.getByRole("checkbox"));
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
-  );
+  await showOutfits();
 
-  expect(screen.getByText("armbands: red")).toBeInTheDocument();
+  expect(screen.getByText("Trousers: black")).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(screen.getByRole("button", { name: "Next" })),
   );
 
   expect(getLastAPICall("outfit_options").body.page).toBe(1);
-  expect(screen.getByText("armbands: green")).toBeInTheDocument();
-  expect(screen.queryByText("armbands: red")).not.toBeInTheDocument();
+  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.queryByText("Trousers: black")).not.toBeInTheDocument();
 });
 
 test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches at relaxed distance", async () => {
@@ -197,10 +229,7 @@ test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches 
 
   renderPickOutfit();
   await goPastHeader();
-  userEvent.click(screen.getByRole("checkbox"));
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
-  );
+  await showOutfits();
 
   expect(
     screen.getByText(
@@ -216,7 +245,32 @@ test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches 
   expect(screen.getByText("recommended")).toBeInTheDocument();
 });
 
-test("choosing an option claims it and renders the result screen", async () => {
+test("tapping an option shows the confirmation screen without claiming it, and Lock in my choice is disabled until ticked", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  const row = screen.getByRole("button", { name: /Choose:/ });
+  await actAndFlush(() => userEvent.click(row));
+
+  expect(getAPICalls("pick_outfit")).toHaveLength(0);
+  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+
+  const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
+  expect(lockIn).toBeDisabled();
+
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+  expect(lockIn).not.toBeDisabled();
+});
+
+test("ticking the confirm box and pressing Lock in my choice claims the outfit and renders the result screen", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: makeOptionsResult(),
@@ -235,13 +289,17 @@ test("choosing an option claims it and renders the result screen", async () => {
 
   renderPickOutfit();
   await goPastHeader();
-  userEvent.click(screen.getByRole("checkbox"));
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
-  );
+  await showOutfits();
 
   const row = screen.getByRole("button", { name: /Choose:/ });
   await actAndFlush(() => userEvent.click(row));
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+  );
 
   expect(screen.getByText("This is final. Screenshot it.")).toBeInTheDocument();
   expect(getLastAPICall("pick_outfit").body).toEqual({
@@ -250,6 +308,35 @@ test("choosing an option claims it and renders the result screen", async () => {
     appearance: makeOption().appearance,
     confirmed: true,
   });
+
+  // The result screen shows only the player-supplied garments too.
+  expect(screen.queryByText("Hat")).not.toBeInTheDocument();
+  expect(screen.queryByText("Armbands")).not.toBeInTheDocument();
+});
+
+test("Choose a different outfit returns to the options list without claiming anything", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  const row = screen.getByRole("button", { name: /Choose:/ });
+  await actAndFlush(() => userEvent.click(row));
+  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(
+      screen.getByRole("button", { name: "Choose a different outfit" }),
+    ),
+  );
+
+  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: /Choose:/ })).toBeInTheDocument();
+  expect(getAPICalls("pick_outfit")).toHaveLength(0);
 });
 
 test("a returning visitor whose slot is already set sees the result, not the form", async () => {
@@ -277,7 +364,7 @@ test("a returning visitor whose slot is already set sees the result, not the for
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 });
 
-test("a 409 from pick_outfit shows the choose-again message and refetches options", async () => {
+test("a 409 from pick_outfit shows the choose-again message, returns to the options and refetches them", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: makeOptionsResult(),
@@ -289,18 +376,23 @@ test("a 409 from pick_outfit shows the choose-again message and refetches option
 
   renderPickOutfit();
   await goPastHeader();
-  userEvent.click(screen.getByRole("checkbox"));
-  await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
-  );
+  await showOutfits();
 
   const row = screen.getByRole("button", { name: /Choose:/ });
   await actAndFlush(() => userEvent.click(row));
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+  );
 
   expect(
     await screen.findByText(
       "Someone just took that outfit - please choose again.",
     ),
   ).toBeInTheDocument();
+  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });

@@ -475,6 +475,17 @@ def outfit_options(
     fixed and the armband is ours) only breaks ties within a tier. The final
     ``symbols`` key (the candidate's own codeword-shaped word, numeric) makes
     the order fully deterministic.
+
+    Finally, the ranked list is collapsed to **one option per distinct
+    combination of the wardrobe channels** (e.g. one per tshirt+trousers
+    pair): the armband is ours to assign, not the player's to choose, so
+    letting it vary would offer a choice the player has no stake in - rows
+    differing only in armband colour would even render identically once the
+    picker stops displaying it (plan revision, roadmap #10). Because the
+    list is already ranked, the survivor kept from each group is
+    automatically its best-separating armband. Done here, inside
+    :func:`outfit_options` itself, so ``total`` and the pagination in
+    :func:`outfit_options_page` stay honest.
     """
     wardrobe_channels = _wardrobe_channels(scheme)
 
@@ -549,7 +560,16 @@ def outfit_options(
             item[1],
         )
     )
-    return [option for option, _word in scored]
+
+    seen_combos = set()
+    deduped = []
+    for option, _word in scored:
+        combo = tuple(option.appearance[name] for name in wardrobe_channels)
+        if combo in seen_combos:
+            continue
+        seen_combos.add(combo)
+        deduped.append(option)
+    return deduped
 
 
 def join_options(user_id: UUID, code: JoinCodeModel) -> dict:

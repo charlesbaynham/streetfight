@@ -9,6 +9,8 @@ from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import TROUSERS_PALETTE
 from backend.identity.config import default_scheme
+from backend.identity.overrides import nearest_slots
+from backend.identity.overrides import overrides_for
 from backend.identity_admin import outfit_options
 from backend.join_codes import make_join_url
 from backend.model import TickerEntry
@@ -148,6 +150,57 @@ def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
     assert trousers == set(TROUSERS_PALETTE)
 
 
+def test_options_never_share_a_wardrobe_combination():
+    """The armband is ours to assign, not the player's to choose (roadmap
+    #10 revision): across the whole open wardrobe space, no two returned
+    options share a tshirt+trousers pair."""
+    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
+    options = outfit_options(SCHEME, team_colour, {}, [], get_uuid(), THRESHOLD)
+
+    combos = [(o.appearance["tshirt"], o.appearance["trousers"]) for o in options]
+    assert len(combos) == len(set(combos))
+
+
+def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
+    """Pin the wardrobe to a single tshirt+trousers pair, so every raw
+    candidate before collapsing differs only in armband colour, and check
+    the one option kept really is the best of that 7-armband-wide group
+    (fewest overrides needed against a real slot), not just the first seen.
+    """
+    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
+    tshirt = SCHEME.channels.by_name("tshirt").labels[0]
+    trousers = TROUSERS_PALETTE[0]
+    wardrobe = {"tshirt": [tshirt], "trousers": [trousers]}
+
+    options = outfit_options(SCHEME, team_colour, wardrobe, [], get_uuid(), 0)
+    assert len(options) == 1
+    survivor = options[0]
+    assert (survivor.appearance["tshirt"], survivor.appearance["trousers"]) == (
+        tshirt,
+        trousers,
+    )
+
+    def overrides_needed_for(armband):
+        appearance = {
+            "tshirt": tshirt,
+            "trousers": trousers,
+            TEAM_CHANNEL: team_colour,
+            PROVIDED_CHANNEL: armband,
+        }
+        word = tuple(
+            SCHEME.channels.by_name(name).label_to_index(appearance[name])
+            for name in SCHEME.channels.names
+        )
+        slot = nearest_slots(word, SCHEME)[0]
+        return len(overrides_for(word, slot, SCHEME))
+
+    best_possible = min(
+        overrides_needed_for(armband)
+        for armband in SCHEME.channels.by_name(PROVIDED_CHANNEL).labels
+    )
+    assert survivor.overrides_needed == best_possible
+
+
 # ---------------------------------------------------------------------------
 # GET /api/join_options
 # ---------------------------------------------------------------------------
@@ -211,7 +264,9 @@ def test_outfit_options_pagination_boundaries(
     assert first_page["page_size"] == 12
     assert len(first_page["options"]) == 12
     total = first_page["total"]
-    assert total > 12  # the ~245-outfit open wardrobe space
+    # 7 tshirt colours x 5 trousers colours, collapsed one-per-combination
+    # (the open wardrobe space is ~245 before that collapse).
+    assert total > 12
 
     last_page_index = (total - 1) // 12
     last_page = outfit_options_call(

@@ -115,6 +115,56 @@
   cursor: default;
 }
 
+.linkButton {
+  display: block;
+  width: 100%;
+  margin-top: 3mm;
+  padding: 2mm;
+  background: none;
+  border: none;
+  color: white;
+  text-decoration: underline;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.linkButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.wardrobeSummary {
+  margin-bottom: 4mm;
+  padding: 3mm;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3mm;
+}
+
+.wardrobeSummary p {
+  margin: 0;
+  opacity: 0.85;
+  text-transform: capitalize;
+}
+
+.wardrobeSummary .linkButton {
+  margin-top: 2mm;
+  text-align: left;
+  padding: 0;
+}
+
+.confirmScreen {
+  text-align: center;
+}
+
+.confirmScreen .optionGarments {
+  justify-content: center;
+  margin: 4mm 0;
+}
+
+.confirmScreen .confirmRow {
+  justify-content: center;
+}
+
 .errorText {
   color: #ff8080;
 }
@@ -191,14 +241,6 @@
 .garmentLabel {
   font-size: smaller;
   text-transform: capitalize;
-}
-
-.tag {
-  display: inline-block;
-  margin-left: 1mm;
-  font-size: x-small;
-  opacity: 0.6;
-  text-transform: uppercase;
 }
 
 .pagination {
