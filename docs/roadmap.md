@@ -361,7 +361,7 @@ deferred to R7, where the admin takes the photo at the door on the night. A
 self-taken photo verifies nothing, because the person submitting it is the
 person with a reason to fudge it.
 
-**Post-ship UX revision (mobile walkthrough).** Three further fixes beyond
+**Post-ship UX revision (mobile walkthrough).** Four further fixes beyond
 the confirm-step move above, all in `react-ui/src/PickOutfit.js` /
 `backend/identity_admin.py`: (1) `outfit_options` now collapses to one
 option per distinct tshirt+trousers combination - the armband varying
@@ -372,7 +372,15 @@ result screen now show only the wardrobe channels (`join_options`'
 `wardrobe_channels`), dropping the hat/armband and the "yours"/"ours" tags
 they needed; (3) the wardrobe form collapses to a one-line summary once
 options are showing, so a phone screen reaches the options without first
-scrolling past every colour swatch, with a "Change what I own" link back.
+scrolling past every colour swatch, with a "Change what I own" link back;
+(4) the options list now shows **only the canonical options** (the ranking's
+top tier, badged "recommended"), with the rest - and the pagination - behind
+a "Show other outfits (not recommended)" link. Showing both tiers together
+invited a player to spend identification accuracy on whichever colours they
+liked the look of; a canonical outfit is still one tap away and the long
+tail takes a deliberate one. Frontend-only: `outfit_options` still returns
+the full ranked list, and a wardrobe supporting no canonical option at all
+falls back to showing everything rather than an empty page.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
 **Feeds:** #8.
