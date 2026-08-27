@@ -9,6 +9,7 @@ import {
 } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 import { refreshShots } from "./shotHistoryStore";
+import { watchCompassHeading } from "./utils";
 
 const constraints = {
   audio: false,
@@ -25,6 +26,17 @@ export const MyWebcam = forwardRef(
     const videoRef = useRef(null);
 
     const mediaStream = useRef(null);
+
+    // Which way the phone is pointing, kept up to date while the camera is on
+    // screen so that firing can read it without waiting for a sensor event.
+    // Stays null on anything that can't or won't tell us - the shot is
+    // submitted either way (docs/roadmap.md R5b).
+    const headingRef = useRef(null);
+
+    useEffect(
+      () => watchCompassHeading((heading) => (headingRef.current = heading)),
+      [],
+    );
 
     // Return the current frame as a base64-encoded image
     const capture = useCallback(() => {
@@ -53,6 +65,7 @@ export const MyWebcam = forwardRef(
       const imageSrc = capture();
       const query = JSON.stringify({
         photo: imageSrc,
+        heading: headingRef.current,
       });
 
       const requestOptions = {

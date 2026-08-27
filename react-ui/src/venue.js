@@ -48,6 +48,37 @@ export function mapGeometry(venue) {
   };
 }
 
+// Where a latitude / longitude falls inside a box of pixels showing part of
+// that map, given how much ground the box covers and what it is centred on.
+// Shared by the player's map view and the admin's per-shot thumbnail: both
+// draw the same georeferenced image and differ only in those two things.
+// Pixel coordinates are measured from the bottom left of the box, matching how
+// the dots are positioned in CSS (`left` and `bottom`).
+export function mapProjection({
+  degreesLatitudePerKm,
+  degreesLongitudePerKm,
+  centreLat,
+  centreLong,
+  boxWidthKm,
+  boxHeightKm,
+  boxWidthPx,
+  boxHeightPx,
+}) {
+  const coordsToKm = (lat, long) => [
+    (long - centreLong) / degreesLongitudePerKm + boxWidthKm / 2,
+    (lat - centreLat) / degreesLatitudePerKm + boxHeightKm / 2,
+  ];
+
+  const kmToPixels = (x_km, y_km) => [
+    (x_km / boxWidthKm) * boxWidthPx,
+    (y_km / boxHeightKm) * boxHeightPx,
+  ];
+
+  const coordsToPixels = (lat, long) => kmToPixels(...coordsToKm(lat, long));
+
+  return { coordsToKm, kmToPixels, coordsToPixels };
+}
+
 // The venue can't change under a running client, so fetch it once per page
 // load and share it between every map on the page.
 let venuePromise = null;

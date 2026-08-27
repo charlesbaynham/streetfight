@@ -1,3 +1,6 @@
+import json
+from uuid import UUID
+
 import pytest
 from fastapi.exceptions import HTTPException
 
@@ -202,3 +205,112 @@ def test_user_cannot_fetch_someone_elses_shot_image(api_client, shot_from_user_i
     # The api_client session is a different user from the one who fired
     response = api_client.get(f"/api/user_shot_image?shot_id={shot_from_user_in_team}")
     assert response.status_code == 404
+
+
+# -- telemetry captured with a shot (docs/roadmap.md R5) ---------------------
+#
+# Nothing reads either of these fields yet, on purpose: they are recorded now
+# because they cannot be recovered afterwards.
+
+
+def test_shot_records_the_heading_it_was_fired_on(user_in_team, test_image_string):
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    shot_id = ui.submit_shot(test_image_string, heading=137.5)
+
+    assert AdminInterface().get_shot_model(shot_id).heading == 137.5
+
+
+def test_shot_without_a_heading_is_still_a_shot(user_in_team, test_image_string):
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    shot_id = ui.submit_shot(test_image_string)
+
+    assert AdminInterface().get_shot_model(shot_id).heading is None
+
+
+def test_submit_shot_endpoint_passes_the_heading_through(
+    api_client, api_user_id, one_team, test_image_string
+):
+    UserInterface(api_user_id).join_team(one_team)
+    UserInterface(api_user_id).award_ammo(1)
+
+    response = api_client.post(
+        "/api/submit_shot", json={"photo": test_image_string, "heading": 42.0}
+    )
+    assert response.is_success
+
+    shot_id = UUID(response.json())
+    assert AdminInterface().get_shot_model(shot_id).heading == 42.0
+
+
+def test_submit_shot_endpoint_tolerates_a_missing_heading(
+    api_client, api_user_id, one_team, test_image_string
+):
+    UserInterface(api_user_id).join_team(one_team)
+    UserInterface(api_user_id).award_ammo(1)
+
+    response = api_client.post("/api/submit_shot", json={"photo": test_image_string})
+    assert response.is_success
+
+    shot_id = UUID(response.json())
+    assert AdminInterface().get_shot_model(shot_id).heading is None
+
+
+def test_location_accuracy_is_stored_and_reported(user_in_team):
+    ui = UserInterface(user_in_team)
+    ui.set_location(51.5, -0.1, accuracy=12.5)
+
+    assert ui.get_user_model().location_accuracy == 12.5
+
+    (location,) = [
+        entry
+        for entry in AdminInterface().get_locations()
+        if entry["user_id"] == user_in_team
+    ]
+    assert location["accuracy"] == 12.5
+
+
+def test_location_accuracy_is_optional(user_in_team):
+    ui = UserInterface(user_in_team)
+    ui.set_location(51.5, -0.1)
+
+    (location,) = [
+        entry
+        for entry in AdminInterface().get_locations()
+        if entry["user_id"] == user_in_team
+    ]
+    assert location["accuracy"] is None
+
+
+def test_set_location_endpoint_passes_the_accuracy_through(
+    api_client, api_user_id, one_team
+):
+    UserInterface(api_user_id).join_team(one_team)
+
+    response = api_client.post(
+        "/api/set_location",
+        params={"latitude": 51.5, "longitude": -0.1, "accuracy": 8.25},
+    )
+    assert response.is_success
+
+    assert UserInterface(api_user_id).get_user_model().location_accuracy == 8.25
+
+
+def test_shot_location_context_carries_the_shooters_fix(
+    user_in_team, test_image_string
+):
+    """The context serialised into every shot is what a future model reads
+    back, so the accuracy has to survive the round trip into it."""
+    ui = UserInterface(user_in_team)
+    ui.set_location(51.5, -0.1, accuracy=9.0)
+    ui.award_ammo(1)
+    shot_id = ui.submit_shot(test_image_string, heading=90.0)
+
+    shot = AdminInterface().get_shot_model(shot_id)
+    context = json.loads(shot.location_context)
+
+    (shooter,) = [entry for entry in context if entry["user_id"] == str(user_in_team)]
+    assert shooter["latitude"] == 51.5
+    assert shooter["longitude"] == -0.1
+    assert shooter["accuracy"] == 9.0

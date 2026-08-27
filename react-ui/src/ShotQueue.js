@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage, adminPost } from "./AdminCommon";
 import { getShotFromCache, evictShotFromCache } from "./ShotCache";
+import ShotMap from "./ShotMap";
 import UpdateListener from "./UpdateListener";
 import { Row, Col } from "react-bootstrap";
 
@@ -423,6 +424,8 @@ function ShotQueuePanel() {
               </button>
             </Col>
             <Col>
+              <h3>Where it was fired from:</h3>
+              <ShotMap shot={shot} />
               <NearestPlayers shot_data={shot} />
               {shot.checked ? null : (
                 <>

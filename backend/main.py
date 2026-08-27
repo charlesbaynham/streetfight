@@ -187,6 +187,10 @@ async def get_circles(
 
 class _Shot(BaseModel):
     photo: str
+    # Degrees clockwise from north at the moment of capture. Optional on
+    # purpose: a client with no compass, or a player who refused the
+    # permission, still gets to fire.
+    heading: Optional[float] = None
 
 
 @router.post("/submit_shot")
@@ -197,7 +201,7 @@ async def submit_shot(
     logger.info("Received shot from user %s", user_id)
 
     with UserInterface(user_id) as ui:
-        shot_id = ui.submit_shot(shot.photo)
+        shot_id = ui.submit_shot(shot.photo, heading=shot.heading)
         game_id = ui.get_user().team.game_id
 
     # Outside the session: queueing the review must not slow down the player
@@ -397,11 +401,12 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
 async def set_location(
     latitude: float,
     longitude: float,
+    accuracy: Optional[float] = None,
     user_id=Depends(get_user_id),
 ):
     logger.info("Setting location for user %s to %f, %f", user_id, latitude, longitude)
     with UserInterface(user_id) as ui:
-        ui.set_location(latitude, longitude)
+        ui.set_location(latitude, longitude, accuracy=accuracy)
 
 
 ######## ADMIN ###########

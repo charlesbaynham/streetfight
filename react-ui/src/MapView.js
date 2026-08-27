@@ -8,7 +8,7 @@ import React, {
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
-import { mapGeometry, useVenue } from "./venue";
+import { mapGeometry, mapProjection, useVenue } from "./venue";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
@@ -53,16 +53,15 @@ const BACKGROUND_GEO_SETTINGS = {
 const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
 
-function sendLocationUpdate(lat, long) {
-  sendAPIRequest(
-    "set_location",
-    {
-      latitude: lat,
-      longitude: long,
-    },
-    "POST",
-    null,
-  );
+// `accuracy` is the browser's own radius-in-metres estimate for the fix. It is
+// recorded but not yet used by anything: it is how good each fix was, which
+// cannot be recovered after the game (docs/roadmap.md R5a).
+function sendLocationUpdate(lat, long, accuracy = null) {
+  const params = { latitude: lat, longitude: long };
+  if (typeof accuracy === "number" && !Number.isNaN(accuracy)) {
+    params.accuracy = accuracy;
+  }
+  sendAPIRequest("set_location", params, "POST", null);
 }
 
 // Draw the exclusion zone and next target zone on the map, if they exist. This
@@ -275,38 +274,44 @@ function VenueMapView({
   const mapCentreLatRef = useRef((bottomLeft.lat + topRight.lat) / 2);
   const mapCentreLongRef = useRef((bottomLeft.long + topRight.long) / 2);
 
-  const coordsToKm = useCallback(
-    (lat, long) => {
-      // Convert from lat / long to km from the bottom left corner
-      const x_km =
-        (long - mapCentreLongRef.current) / degreesLongitudePerKm +
-        box_width_km / 2;
-      const y_km =
-        (lat - mapCentreLatRef.current) / degreesLatitudePerKm +
-        box_height_km / 2;
+  // Built afresh on every call rather than memoised: the map centre lives in
+  // refs that move with the player, and a memo would freeze it at whatever it
+  // was when the box was last resized.
+  const projection = useCallback(
+    () =>
+      mapProjection({
+        degreesLatitudePerKm,
+        degreesLongitudePerKm,
+        centreLat: mapCentreLatRef.current,
+        centreLong: mapCentreLongRef.current,
+        boxWidthKm: box_width_km,
+        boxHeightKm: box_height_km,
+        boxWidthPx,
+        boxHeightPx,
+      }),
+    [
+      box_height_km,
+      box_width_km,
+      boxHeightPx,
+      boxWidthPx,
+      degreesLatitudePerKm,
+      degreesLongitudePerKm,
+    ],
+  );
 
-      return [x_km, y_km];
-    },
-    [box_height_km, box_width_km, degreesLatitudePerKm, degreesLongitudePerKm],
+  const coordsToKm = useCallback(
+    (lat, long) => projection().coordsToKm(lat, long),
+    [projection],
   );
 
   const kmToPixels = useCallback(
-    (x_km, y_km) => {
-      // Convert from km to pixels
-      const x_px = (x_km / box_width_km) * boxWidthPx;
-      const y_px = (y_km / box_height_km) * boxHeightPx;
-
-      return [x_px, y_px];
-    },
-    [boxWidthPx, boxHeightPx, box_height_km, box_width_km],
+    (x_km, y_km) => projection().kmToPixels(x_km, y_km),
+    [projection],
   );
 
   const coordsToPixels = useCallback(
-    (lat, long) => {
-      const [x_km, y_km] = coordsToKm(lat, long);
-      return kmToPixels(x_km, y_km);
-    },
-    [coordsToKm, kmToPixels],
+    (lat, long) => projection().coordsToPixels(lat, long),
+    [projection],
   );
 
   const [mapData, setMapData] = useState({
@@ -541,6 +546,7 @@ export function MapViewSelf() {
             sendLocationUpdate(
               position.coords.latitude,
               position.coords.longitude,
+              position.coords.accuracy,
             );
             lastUpdateTime.current = currentTime;
           }

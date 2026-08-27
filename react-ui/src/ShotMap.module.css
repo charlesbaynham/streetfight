@@ -1,0 +1,63 @@
+.shotMap {
+  position: relative;
+  overflow: hidden;
+  background-color: white;
+  border: 1px solid #ccc;
+  border-radius: 0.5em;
+  margin: 0.4em 0 0.2em 0;
+}
+
+.mapImage {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+}
+
+/* How good the fix was, to scale. Drawn under the heading cone so it never
+   hides it. */
+.accuracyCircle {
+  position: absolute;
+  border-radius: 50%;
+  box-sizing: border-box;
+  border: 1px solid rgba(40, 90, 200, 0.8);
+  background-color: rgba(40, 90, 200, 0.15);
+}
+
+.cone {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.conePath {
+  fill: rgba(192, 57, 43, 0.35);
+  stroke: rgba(192, 57, 43, 0.8);
+  stroke-width: 1;
+}
+
+.dot {
+  position: absolute;
+  width: 0.7em;
+  height: 0.7em;
+  border-radius: 50%;
+  background-color: #c0392b;
+  border: 2px solid white;
+  box-shadow: 0 0 0.2em rgba(0, 0, 0, 0.6);
+  transform: translateX(-50%) translateY(50%);
+}
+
+.caption {
+  font-size: 0.8em;
+  color: #666;
+  margin: 0 0 0.6em 0;
+}
+
+.noFix {
+  font-size: 0.8em;
+  color: #666;
+  font-style: italic;
+  margin: 0.4em 0;
+}

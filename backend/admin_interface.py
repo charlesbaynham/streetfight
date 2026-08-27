@@ -896,6 +896,9 @@ class AdminInterface:
                         "longitude": user.longitude,
                         "state": user.state,
                         "timestamp": user.location_timestamp,
+                        # How good that fix was, in metres. Serialises into
+                        # every shot's location_context along with the rest.
+                        "accuracy": user.location_accuracy,
                     }
                 )
         return locations
