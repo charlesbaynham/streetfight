@@ -38,12 +38,20 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
   </button>
 );
 
-function NameEntry({ user, className }) {
+// onNameSet, when given, is called with the saved name - PickOutfit needs to
+// know the moment the player stops being anonymous, since it will not let an
+// outfit be claimed before then. A blank box is not a name: it is neither
+// posted nor reported.
+function NameEntry({ user, className, onNameSet = null }) {
   const [nameBoxValue, setNameBoxValue] = useState(user.name ? user.name : "");
 
   const setUserName = useCallback(() => {
-    sendAPIRequest("set_name", { name: nameBoxValue }, "POST", null);
-  }, [nameBoxValue]);
+    const name = nameBoxValue.trim();
+    if (!name) return;
+    sendAPIRequest("set_name", { name }, "POST", () => {
+      if (onNameSet) onNameSet(name);
+    });
+  }, [nameBoxValue, onNameSet]);
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter") {
