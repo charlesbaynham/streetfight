@@ -33,7 +33,7 @@ allowed to become a blocker for the night — it is all upside.
 
 | By             | What must be true                                                                                                                          | Items        |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| **Now**        | Armbands ordered. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
+| **Now**        | Armbands and hats bought. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
 | **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
@@ -50,7 +50,7 @@ software with a real deadline, which is not where it started on the list.
 
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 1     | **#9** Buy armbands                         | Now                          | Longest lead time; #10 and #8 both wait on it. In flight.                                                      |
+| 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
@@ -81,8 +81,9 @@ Recorded here so they are not re-litigated:
 
 - **The game is on 19 September 2026, in Westminster.** House Absolute is in
   Westminster, so #6, #7 and #12 are all the same venue.
-- **We provide the armbands only** (#9). Hats, tops and trousers are the
-  player's own. See #9 for what that costs and what to do about it.
+- **We provide the armbands and the hats** (#9); both have been bought. Only
+  the t-shirt and trousers are the player's own. See #9 for what that costs
+  and what to do about it.
 - **Players pick their own colours from a pre-game web page** (#10), not on the
   night and not assigned by an admin.
 - **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
@@ -97,9 +98,12 @@ Recorded here so they are not re-litigated:
   wore what they said they would, so it has to be done by the person who can
   send them home to change. Answers open question 2.
 - **`TEAM_CHANNEL` stays on the hat**, reversing the earlier decision to move it
-  to the armbands. Each team bulk-buys hats in its colour; the armbands stay the
-  free per-player channel we set on the night. See #9 and plan §12.6 — no code
-  change, `TEAM_CHANNEL` is already `"hat"`.
+  to the armbands. We now buy and supply each team's hats outright (#9), rather
+  than leaving that to the team, so the armband stays the free per-player
+  channel we set on the night — for a stronger reason than originally argued,
+  since we control the hat colour directly instead of trusting a team's bulk
+  order to get it right. See #9 and plan §12.6 — no code change, `TEAM_CHANNEL`
+  is already `"hat"`.
 - **Auto-actions must work on the night.** They are the point of the recognition
   work, not a bonus. This promotes **#5** onto the critical path, because the
   code-decode path in `slot_candidates_from_review` cannot see a player who is
@@ -122,7 +126,7 @@ Recorded here so they are not re-litigated:
 
 ## Track B — the critical path
 
-### #9 — Buy armbands *(in flight)*
+### #9 — Buy armbands and hats *(bought)*
 
 **The constraint.** The palettes in `backend/identity/config.py` were chosen by
 optimising worst-case CIEDE2000 separation across three illuminants (daylight,
@@ -132,19 +136,27 @@ whole scheme rests on. Buy against the hex values, and where a real product
 misses, **record what was actually bought** so the palette can be re-checked
 rather than silently drifting.
 
-Needed: **7 armband colours** (the main palette).
+**Bought: 7 armband colours (the main palette), plus one hat per team in that
+team's colour.** The original plan here was to supply the armbands only and
+leave hats to each team to bulk-buy; that changed before ordering, and we
+bought the hats ourselves too. Only the t-shirt and trousers remain the
+player's own.
 
-**The consequence of not providing hats.** `backend/identity/allocation.py`
-currently spends the hat channel (`TEAM_CHANNEL`) on telling teams apart by eye:
-every member of a team gets the same hat colour and no two teams share one. That
-only works if people turn up wearing a hat in a specific one of seven colours —
-which, with hats now bring-your-own, most will not.
+**Why the hat channel matters.** `backend/identity/allocation.py` spends the
+hat channel (`TEAM_CHANNEL`) on telling teams apart by eye: every member of a
+team gets the same hat colour and no two teams share one. That only works if
+people turn up wearing a hat in the exact colour their team was allocated —
+which is exactly why we now hand the hats out ourselves rather than leave it
+to each team to buy correctly.
 
-**Reversed: `TEAM_CHANNEL` stays on the hat, and each team bulk-buys its hats.**
-An earlier draft of this section decided to move it to the armbands, on the
-grounds that the armbands are the one garment we control. That reasoning was
-right about the premise and wrong about the conclusion, and the numbers in plan
-§12.6 say so:
+**`TEAM_CHANNEL` stays on the hat.** An earlier draft of this section had
+argued for moving it to the armbands, on the grounds that the armbands are the
+one garment we control; a later draft reversed that back onto the hat, with
+each team bulk-buying its own hat colour to get there. Buying the hats
+ourselves removes the weak link in that second plan — a team's bulk order can
+no longer come out wrong — but the underlying argument for keeping
+`TEAM_CHANNEL` on the hat is unchanged, and the numbers in plan §12.6 still
+support it:
 
 - **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
   garments determine the other two. Pinning *any* channel to the team leaves
@@ -152,9 +164,9 @@ right about the premise and wrong about the conclusion, and the numbers in plan
   and armbands. The team-channel choice does not change capacity at all.
 - **It decides which garments a player has to source.** With the team on the
   armbands, the five slots in a team each need a *different* hat colour, and
-  almost nobody owns a coloured hat. With the team on the hat, the hat is a
-  single bulk purchase — one person buys five caps — and the player sources only
-  a t-shirt and trousers, which are things people own.
+  almost nobody owns a coloured hat. With the team on the hat, the hat is ours
+  to hand out — one colour per team — and the player sources only a t-shirt and
+  trousers, which are things people own.
 - **It is the difference between having a free channel and not having one.**
   Teammates share the team colour, so if that colour is the armbands, then within
   a team we have *no* channel left that we control — nothing to turn at handout
@@ -165,17 +177,20 @@ right about the premise and wrong about the conclusion, and the numbers in plan
 
 Measured (§12.6): with the team on the armbands, a player can fully wear ~0.06 of
 their team's free slots and 46% wear at most one of their three garments as
-recorded. With the team on the hat, that becomes ~0.56 and 10%.
+recorded. With the team on the hat, that becomes ~0.56 and 10%. Those figures
+were modelled against a team *bulk-buying* its own hat colour; buying the hats
+ourselves removes even the residual risk that model priced in — there is no
+"wrong hat colour" outcome left to have.
 
-**No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changes is
-the shopping list: seven armband colours (already ordered, #9) *plus* one hat
-colour per team, bought by the team.
+**No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changed
+was the shopping list: seven armband colours and one hat colour per team, all
+bought by us rather than left to the teams.
 
-**Risk to name out loud:** two of the four channels are bring-your-own in the
-free sense (t-shirt, trousers), the hat is bring-your-own but bulk-bought to a
-single colour per team, and only the armbands are ours. The scheme's accuracy on
-the night still depends on players owning and wearing what they picked. #10 is
-the mitigation, and R7 is the check that it worked.
+**Risk to name out loud:** two of the four channels remain bring-your-own —
+t-shirt and trousers — and the hat and armbands are both ours now. The
+scheme's accuracy on the night still depends on players owning and wearing the
+t-shirt and trousers they picked. #10 is the mitigation, and R7 is the check
+that it worked.
 
 ---
 
@@ -289,6 +304,11 @@ and free choice is graceful degradation rather than the norm. See
 `backend.identity_admin.outfit_options` for the implementation and plan
 §12.6's "as implemented" note for the reasoning.
 
+**The page only asks about what the player actually sources.** The hat and
+armbands are ours (#9), not the player's choice, so the picking page shows and
+ticks colours for the t-shirt and trousers only — the two garments a player
+needs to go and find.
+
 **Two risks worth naming that the rest of this entry doesn't:**
 
 - **Slots remain the real ceiling.** 34 usable slots
@@ -310,8 +330,8 @@ So a player was handed an outfit; they did not choose one.
 - the team's *unclaimed* outfits rendered with colour swatches — reusing
   `hex_for()` and the swatch rendering already proven in `AdminIdentity.js` /
   `IdentityDemo.js` (now the shared `Swatch.js`);
-- an explanation that the armbands are fixed by the team (see #9) and the
-  choice is across the other three channels;
+- an explanation that the hat and armbands are ours (see #9) and the choice is
+  across the t-shirt and trousers;
 - an **atomic** claim, guarded by `identity_admin.pick_outfit_lock` plus
   re-validation against freshly read state: several people pick at once on
   their phones, and two players must never end up wearing the same codeword;
@@ -319,11 +339,11 @@ So a player was handed an outfit; they did not choose one.
   §8.2 is explicit about this, and `join_options` deliberately creates no
   `User` row so a link-preview bot prefetching the URL can't burn an outfit.
 
-**Self-selection is load-bearing, not a nicety.** With only the armbands
-provided (#9), three channels depend on players owning the right colours.
-Letting someone choose the outfit whose t-shirt, trousers and hat they
-*already have* is the single best lever on how accurate the identification is
-on the night. So the page is built around "which of these can you actually
+**Self-selection is load-bearing, not a nicety.** With the hat and armbands
+provided (#9), two channels still depend on players owning the right colours.
+Letting someone choose the outfit whose t-shirt and trousers they *already
+have* is the single best lever on how accurate the identification is on the
+night. So the page is built around "which of these can you actually
 wear on Saturday", not "which is prettiest".
 
 **Depended on #5, now shipped.** Freely chosen outfits are not codewords, so
@@ -1420,12 +1440,13 @@ held as a weapon, and it keeps going to sleep.
 ### R7 — The reference photo as a kit check, run through the shot AI *(proposed)*
 
 **Why the admin takes it, not the player.** The reference photo's first job is
-not to feed #11 — it is a **manual gate**. Three of the four channels are
-bring-your-own (#9), so the single largest risk to the night is somebody turning
-up in the wrong colours, or in something they called "green" that photographs
-khaki. Checking that is a job for the person standing at the door with the box of
-armbands, because they are the only one who can do anything about it: swap a
-garment, hand out a different armband, or record an override there and then. A
+not to feed #11 — it is a **manual gate**. Two of the four channels are
+bring-your-own (#9) — t-shirt and trousers — so the single largest risk to the
+night is somebody turning up in the wrong colours, or in something they called
+"green" that photographs khaki. Checking that is a job for the person standing
+at the door with the box of armbands and hats, because they are the only one
+who can do anything about it: swap a garment, hand out a different armband, or
+record an override there and then. A
 photo the player takes of themselves at pick time verifies nothing, since the
 person submitting it is the person with a reason to fudge it. Hence: **at the
 door, on the night, by the admin, one person at a time.**
@@ -1502,10 +1523,13 @@ Answers to these change the shape of the work, not just its order.
    the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
    photo a check rather than a self-report.
 3. **How long do reference photos live?** Suggestion: deleted with the game.
-4. **Does the identification scheme survive three bring-your-own channels?** With
-   only armbands provided (#9), this is the biggest open risk to the whole
-   identification idea on the night. #10 is the mitigation; R1/R2 will tell us
-   afterwards how well it worked.
+4. **Does the identification scheme survive two bring-your-own channels?** With
+   the armbands and hat now provided (#9), only the t-shirt and trousers are
+   left to players — roughly halving the exposure this question originally
+   worried about, though it does not remove it: those two channels still depend
+   on players owning and wearing the colours they picked. #10's picking page and
+   R7's door check are the mitigations; R1/R2 will tell us afterwards how well
+   it worked.
 5. ~~**Is free choice of outfit worth the capacity it costs?**~~ **Answered:
    yes, and it costs nothing here.** §12.5 measured free choice across the *whole*
    space, where unlucky picks strand regions. Pinning the hat to the team

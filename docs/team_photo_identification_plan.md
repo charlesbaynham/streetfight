@@ -1016,3 +1016,16 @@ headline result for whoever needs it: nobody is turned away for lack of the
 right clothes. See the roadmap's #10 entry and
 `backend.identity_admin.outfit_options` for the mechanism; the analysis and
 numbers above are otherwise unchanged.
+
+#### Since implemented
+
+The wardrobe model above priced hat ownership as a probability (black .30, blue
+.18, …) because the plan at the time was for each team to bulk-buy its hat
+colour, and a bulk order can come out wrong. That risk no longer exists: the
+hats were bought alongside the armbands (roadmap #9), so the hat-ownership row
+of the model no longer constrains anything — every player is handed the
+correct hat directly, not asked to own one. The section's conclusion is
+unchanged (team on the hat, armband free) but now holds for a stronger reason
+than the one argued above: not because the hat is merely worth controlling
+more than the armband, but because we control both outright and the armband is
+the one we choose to leave free at handout time.
