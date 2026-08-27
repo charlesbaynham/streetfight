@@ -13,14 +13,11 @@ already named, on a team, and holding ammo.
 ## 1. One-time container setup
 
 ```bash
-# Python deps (skip psycopg2 - dev uses SQLite).
-pip install python-dotenv qrcode click sqlalchemy pillow sqlalchemy-utils \
-    fastapi "uvicorn[standard]" itsdangerous httpx wsproto
-
-# The system-packaged `cryptography` module can be broken (pyo3 panic on
-# import, pulled in via sqlalchemy-utils). Reinstall it if the next command
-# fails:
-python -c "import backend.model" 2>/dev/null || pip install --ignore-installed cryptography
+# Python deps: one command, from the committed uv.lock. This is the same
+# resolution Nix builds the deployed container from, so what you test here is
+# what runs in production. Prefix later python/pytest/uvicorn calls with
+# `uv run`, or use .venv/bin/... directly.
+uv sync --frozen --all-groups
 
 # Frontend deps (several minutes; run in background while doing the rest).
 cd react-ui && npm install --no-audit --no-fund
@@ -39,14 +36,14 @@ cp .env.dev .env    # sets sqlite DB, admin password "password", MAKE_DEBUG_ENTR
 
 # Reset the DB. MAKE_DEBUG_ENTRIES creates an *active* sample game
 # (id a47c0fcf-67bd-4c91-a83b-1ac6c3d8fd43) with ten empty teams.
-set -a && . ./.env && set +a && python -m backend.reset_db
+set -a && . ./.env && set +a && uv run python -m backend.reset_db
 ```
 
 ## 3. Launch backend and frontend (both in background)
 
 ```bash
 # Backend on :8000
-set -a && . ./.env && set +a && uvicorn backend.main:app --host 127.0.0.1 --port 8000
+set -a && . ./.env && set +a && uv run uvicorn backend.main:app --host 127.0.0.1 --port 8000
 # wait until: curl -sf http://127.0.0.1:8000/api/hello   -> {"msg":"Hello world!"}
 
 # Frontend on :3000. The package.json start script hardcodes HTTPS=true, so

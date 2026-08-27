@@ -1,0 +1,54 @@
+[project]
+name = "streetfight"
+version = "0.1"
+description = "Mobile-first, team-based real-life game"
+requires-python = ">=3.11"
+
+# The single declaration of this project's Python dependencies. Nix builds the
+# deployed environment from the uv.lock these produce (see flake.nix), so a
+# `uv sync` in a bare container and the LXC container run identical versions.
+dependencies = [
+  "click",
+  "fastapi",
+  "httpx",
+  "itsdangerous",
+  "pillow",
+  # psycopg2 proper is sdist-only and would need libpq/pg_config at build time;
+  # the -binary wheel carries its own libpq and keeps sourcePreference = "wheel"
+  # working without an override.
+  "psycopg2-binary",
+  "pydantic",
+  "python-dotenv",
+  "qrcode",
+  "sqlalchemy",
+  "sqlalchemy-utils",
+  "starlette",
+  "tzdata",
+  "uvicorn",
+  "wsproto",
+]
+
+[project.scripts]
+qr_gen = "backend.generate_qr_items:generate"
+
+[dependency-groups]
+dev = [
+  "pytest",
+  "pytest-asyncio",
+  "pytest-mock",
+  "requests",
+  # Not packaged in nixpkgs, so unavailable under the old flake — the selenium
+  # tier in tests/test_selenium.py was commented out for want of it.
+  "selenium",
+]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["backend*"]
+
+[tool.setuptools.package-data]
+backend = ["*.ttf", "*.txt", "image_templates/*"]
