@@ -8,8 +8,12 @@ objects, the same style as test_identity_scheme.py / test_identity_decoder.py.
 
 import pytest
 
-from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.channels import Channel
+from backend.identity.channels import ChannelSet
+from backend.identity.config import DEFAULT_PALETTE
+from backend.identity.config import DEFAULT_Q
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity.decoder import decode
 from backend.identity.observations import ChannelObservation
 from backend.identity.observations import Reading
@@ -58,7 +62,7 @@ def test_effective_word_rejects_unknown_channel():
 def test_effective_word_rejects_unknown_label():
     scheme = default_scheme()
     codeword = scheme.codeword_of_slot(scheme.usable_slots()[0])
-    # "yellow" is in the main palette but not the restricted trousers one.
+    # "yellow" is in the main palette; trousers fold it into "white" (§9.1).
     with pytest.raises(ValueError, match="no label"):
         effective_word(codeword, {"trousers": "yellow"}, scheme.channels)
 
@@ -158,18 +162,43 @@ def test_suggest_free_channels_maximises_distance_to_others():
     assert all(s.assignment["armbands"] != "black" for s in suggestions)
 
 
-def test_suggest_free_channels_respects_restricted_trousers_palette():
+def test_suggest_free_channels_offers_the_whole_trousers_palette():
     scheme = _scheme()
     channels = scheme.channels
+    fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
+    palette = palette_for_channel("trousers")
+
+    suggestions = suggest_free_channels(
+        fixed, ["trousers"], others={}, channels=channels, limit=10
+    )
+
+    assert len(suggestions) == len(palette)
+    assert {s.assignment["trousers"] for s in suggestions} == set(palette)
+
+
+def test_suggest_free_channels_respects_a_narrowed_palette():
+    # Every channel is full width today, but a channel carrying fewer than q
+    # colours is one config line away, and suggestions must never invent one.
+    channels = ChannelSet(
+        channels=[
+            Channel(name="tshirt", labels=DEFAULT_PALETTE),
+            Channel(name="trousers", labels=["black", "blue", "green"]),
+            Channel(name="hat", labels=DEFAULT_PALETTE),
+            Channel(name="armbands", labels=DEFAULT_PALETTE),
+        ],
+        q=DEFAULT_Q,
+    )
     fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
 
     suggestions = suggest_free_channels(
         fixed, ["trousers"], others={}, channels=channels, limit=10
     )
 
-    # Only 5 trousers colours exist, even though q = 7 and armbands/tshirt do.
-    assert len(suggestions) == 5
-    assert {s.assignment["trousers"] for s in suggestions} == set(TROUSERS_PALETTE)
+    assert {s.assignment["trousers"] for s in suggestions} == {
+        "black",
+        "blue",
+        "green",
+    }
 
 
 def test_suggest_free_channels_empty_others_uses_documented_sentinel():

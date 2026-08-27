@@ -232,12 +232,7 @@ def test_join_game_override_collision_400_and_joins_nothing(
         db_session,
         holder,
         2,
-        overrides={
-            "tshirt": "purple",
-            "trousers": "blue",
-            "hat": "purple",
-            "armbands": "purple",
-        },
+        overrides=dict(SCHEME.appearance_of_slot(1)),
     )
 
     user_id = scanner_id(api_client)

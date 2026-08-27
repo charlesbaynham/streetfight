@@ -14,6 +14,21 @@ the photos and validate hits. It is a full-stack app:
 - **Frontend** — Create React App (`react-ui/`), a mobile-first PWA-style client.
 - Glued together by a root `package.json`, a Nix flake, and Docker Compose.
 
+## Not deployed yet — breaking changes are free
+
+The game has **not been run or deployed**, and **nobody has picked their
+clothes yet**: there are no live players, no assigned identity slots, no
+production database to migrate. So a change that would normally be off the
+table — renumbering the identity scheme's symbols, swapping a palette, or
+reshaping a model — costs nothing here. Don't contort a design to preserve
+data that does not exist, and don't warn about re-clothing players who have
+not chosen anything.
+
+Charles will say explicitly when that changes. Until he does, treat this as
+still true; after he does, the compatibility of already-assigned identity
+slots (`User.identity_slot`, `Team.identity_colour`) becomes real and the
+usual care applies.
+
 ## Planned work
 
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
@@ -259,12 +274,28 @@ Images are built from the Nix flake
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
+- **Trousers are their own palette** (`TROUSERS_PALETTE`), simulated separately
+  for legs and sharing only `black` with the main one, hex and all: black, grey,
+  off-white, blue, red, olive, mustard. Three achromatics spread across the
+  lightness range plus four chromatics spread around the hue circle — the
+  neutrals are separated by `L*`, which survives a colour cast, rather than by
+  hue. Only the *cardinality* reaches the code, so nothing has to match the main
+  palette and almost nothing does. See plan §9.1.
+- **Colour definitions (`COLOUR_BUCKETS`) are keyed per channel**, like
+  `PALETTE_HEX`, with a per-colour fallback to `main` — because the channels
+  genuinely disagree: charcoal is `black` on the legs (grey is two stops away)
+  and explicitly not black on a top (no grey to catch it). Both audiences that
+  answer in these words render each channel's own: the swatch notes on `/pick`
+  (`channels[].notes` from `_channels_payload`) and the vision prompt, which
+  puts them inside that channel's question rather than in one shared list. Keep
+  the two in step — identification scores what the player said against what the
+  model said, so they must mean the same thing by a colour name.
 - One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
   teams apart by eye: the join-QR pre-allocation
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
   each team a block of slots sharing one hat colour, and no two teams share a
   colour. That is an allocation policy only — the decoder is unaffected. A hat
-  colour covers five slots (four for black), so a bigger team picks up a whole
+  colour covers seven slots (six for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
 - `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
   for a game, and left untouched on every later call (even after a new team is

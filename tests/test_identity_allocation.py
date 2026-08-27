@@ -11,9 +11,10 @@ from backend.identity.config import default_scheme
 
 SCHEME = default_scheme()
 
-# The default scheme's team channel holds seven colours, six worth five usable
-# slots and black worth four (34 usable slots in total).
-BUCKET_SIZE = 5
+# The default scheme's team channel holds seven colours, six worth seven usable
+# slots and black worth six (48 usable slots in total -- slot 0, the all-black
+# codeword, is the one black loses).
+BUCKET_SIZE = 7
 
 
 def hats(slots):
@@ -92,8 +93,8 @@ def test_allocation_is_deterministic_so_reprints_match():
 
 
 def test_colours_run_out_before_slots_do_and_the_leftovers_still_fill():
-    # 2 x 17 = every usable slot, far more than seven colours can keep apart
-    allocations = allocate_team_slots(SCHEME, 2, 17, TEAM_CHANNEL)
+    # 2 x 24 = every usable slot, far more than seven colours can keep apart
+    allocations = allocate_team_slots(SCHEME, 2, 24, TEAM_CHANNEL)
 
     slots = [slot for a in allocations for slot in a.slots]
     assert sorted(slots) == SCHEME.usable_slots()
@@ -109,7 +110,7 @@ def test_colours_run_out_before_slots_do_and_the_leftovers_still_fill():
 
 def test_more_slots_than_the_scheme_has_is_an_error():
     with pytest.raises(ValueError):
-        allocate_team_slots(SCHEME, 2, 18, TEAM_CHANNEL)  # 36 > 34 usable
+        allocate_team_slots(SCHEME, 2, 25, TEAM_CHANNEL)  # 50 > 48 usable
 
 
 @pytest.mark.parametrize("n_teams,slots_per_team", [(0, 4), (2, 0), (-1, 4)])

@@ -6,12 +6,14 @@ one through :class:`FakeVisionClient`.
 """
 
 import json
+import re
 
 import pytest
 
 from backend import shot_vision as sv
-from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.config import buckets_for_channel
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 from backend.vision_client import parse_json_reply
@@ -76,21 +78,54 @@ def test_prompt_asks_about_visibility_before_colour():
 
 
 def test_prompt_offers_each_channel_only_its_own_colours():
+    """The options offered for a channel are exactly that channel's palette.
+    Trousers have an alphabet of their own, and it must not leak the main
+    palette's colours into the model's answer space: a reading naming one is
+    an outfit nobody can be wearing.
+    """
     prompt = sv.build_prompt()
 
-    trousers_options = prompt.split("trousers (")[1].split("hat (")[0]
-    for colour in TROUSERS_PALETTE:
-        assert f'"{colour}"' in trousers_options
-    # Nobody owns yellow trousers, so the model must never be able to say so
-    for absent in ("yellow", "orange", "purple"):
-        assert f'"{absent}"' not in trousers_options
+    for name in CHANNELS:
+        section = prompt.split(f"{name} (")[1].split("If it is none of these")[0]
+        offered = set(re.findall(r'"([a-z-]+)"', section)) - {"unknown"}
+        assert offered == set(palette_for_channel(name))
+
+    trousers = prompt.split("trousers (")[1].split("If it is none of these")[0]
+    for absent in ("purple", "green", "yellow", "orange", "white"):
+        assert f'"{absent}"' not in trousers
 
 
-def test_schema_restricts_the_trousers_enum():
+def test_each_channel_carries_its_own_colour_definitions():
+    """The buckets go inside each channel's question, not once for the prompt,
+    because the channels disagree about what a word means: charcoal is "black"
+    on the legs (grey is two stops away at L* 54) and explicitly not "black" on
+    a top (there is no grey to catch it). One shared list would have to state
+    both. The players read the same definitions, from the same
+    ``COLOUR_BUCKETS`` entries -- the scoring downstream assumes a player and
+    the model mean the same thing by a colour name.
+    """
+    prompt = sv.build_prompt()
+    sections = {
+        name: prompt.split(f"{name} (")[1].split("If it is none of these")[0]
+        for name in CHANNELS
+    }
+
+    for name, section in sections.items():
+        for colour, note in buckets_for_channel(name).items():
+            assert f"{colour}: {note}" in section
+
+    assert "black: black, not charcoal" in sections["tshirt"]
+    assert "black: black or charcoal" in sections["trousers"]
+
+
+def test_schema_restricts_each_channel_to_its_own_enum():
     schema = sv.build_schema()
-    trousers = schema["properties"]["channels"]["properties"]["trousers"]
 
-    assert trousers["properties"]["colour"]["enum"] == TROUSERS_PALETTE + ["unknown"]
+    for name in CHANNELS:
+        channel = schema["properties"]["channels"]["properties"][name]
+        assert channel["properties"]["colour"]["enum"] == palette_for_channel(name) + [
+            "unknown"
+        ]
 
 
 def test_prompt_names_the_wide_colour_buckets():
@@ -121,6 +156,8 @@ def test_unknown_becomes_an_erasure():
 
 def test_a_colour_outside_the_channel_palette_is_rejected():
     raw = reply_for(appearance_of(7))
+    # Trousers have no yellow -- pale legs are "white" (§9.1) -- so a model
+    # that answers "yellow" here must never be taken at its word.
     raw["channels"]["trousers"]["colour"] = "yellow"
 
     with pytest.raises(sv.ShotVisionError) as excinfo:
@@ -441,9 +478,10 @@ def test_result_serialises_with_colour_swatches():
     assert body["outcome"] == sv.HIT_PLAYER
     assert body["is_hit"] is True
     assert body["channels"]["tshirt"]["hex"] == "#1A1A1A"
-    # The same colour name has a different hex in the trousers palette
-    assert body["channels"]["trousers"]["colour"] == "blue"
-    assert body["channels"]["trousers"]["hex"] == "#0072CE"
+    # The trousers channel has its own shades, so the same slot's hexes are
+    # resolved per channel, not from one global colour table.
+    assert body["channels"]["trousers"]["colour"] == "grey"
+    assert body["channels"]["trousers"]["hex"] == "#808080"
 
 
 def test_serialised_erasure_has_no_swatch():
@@ -745,8 +783,13 @@ def test_the_prompt_leads_with_the_screening_question():
     assert "request_zoom" not in prompt
 
 
-def test_the_buckets_cover_chinos():
-    assert "beige" in sv.build_prompt()
+def test_the_prompt_carries_the_wide_colour_buckets():
+    # One person's "burgundy" is another's "red", so the prompt has to define
+    # the buckets it is asking the model to sort into.
+    prompt = sv.build_prompt()
+
+    assert "olive and khaki" in prompt
+    assert "navy and denim" in prompt
 
 
 # -- the conversation shapes -------------------------------------------------

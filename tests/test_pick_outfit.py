@@ -4,11 +4,13 @@ from uuid import uuid4 as get_uuid
 
 import pytest
 
-from backend.identity.config import COLOUR_BUCKETS
+from backend.identity.config import COLOUR_COMMONNESS
 from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
-from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.config import buckets_for_channel
 from backend.identity.config import default_scheme
+from backend.identity.config import hex_for
+from backend.identity.config import palette_for_channel
 from backend.identity.overrides import nearest_slots
 from backend.identity.overrides import overrides_for
 from backend.identity_admin import outfit_options
@@ -111,6 +113,30 @@ def test_canonical_option_ranks_above_a_much_rarer_overridden_one():
     assert max(canonical_idx) < min(overridden_idx)
 
 
+def test_every_offered_colour_has_a_swatch_and_a_rarity_estimate():
+    """Widening a palette means adding the colour in three places, and only one
+    of them fails loudly. A colour with no ``PALETTE_HEX`` entry renders as a
+    blank swatch; a wardrobe colour with no ``COLOUR_COMMONNESS`` entry falls
+    back to ``commonness_for``'s neutral 0.5, which silently parks it in the
+    middle of the ranking - so a rare colour added for the capacity would stop
+    being the one the picker leads with, which is the whole point of it.
+    """
+    wardrobe_channels = [
+        name
+        for name in SCHEME.channels.names
+        if name not in (TEAM_CHANNEL, PROVIDED_CHANNEL)
+    ]
+
+    for name in SCHEME.channels.names:
+        for colour in palette_for_channel(name):
+            assert hex_for(name, colour) is not None, f"no hex for {name} {colour}"
+
+    for name in wardrobe_channels:
+        estimated = COLOUR_COMMONNESS.get(name, {})
+        missing = set(palette_for_channel(name)) - set(estimated)
+        assert not missing, f"{name} has no ownership estimate for {sorted(missing)}"
+
+
 def test_rarity_breaks_ties_within_an_override_tier():
     """Within a tier, rarer outfits rank higher - checked as a monotonicity
     invariant across the whole ranked list rather than one hand-picked pair."""
@@ -147,7 +173,7 @@ def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
     tshirts = {o.appearance["tshirt"] for o in options}
     trousers = {o.appearance["trousers"] for o in options}
     assert tshirts == set(SCHEME.channels.by_name("tshirt").labels)
-    assert trousers == set(TROUSERS_PALETTE)
+    assert trousers == set(palette_for_channel("trousers"))
 
 
 def test_options_never_share_a_wardrobe_combination():
@@ -169,7 +195,7 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
     """
     team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
     tshirt = SCHEME.channels.by_name("tshirt").labels[0]
-    trousers = TROUSERS_PALETTE[0]
+    trousers = palette_for_channel("trousers")[0]
     wardrobe = {"tshirt": [tshirt], "trousers": [trousers]}
 
     options = outfit_options(SCHEME, team_colour, wardrobe, [], get_uuid(), 0)
@@ -206,7 +232,7 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
 # ---------------------------------------------------------------------------
 
 
-def test_join_options_serves_palette_and_colour_notes_and_creates_no_user_row(
+def test_join_options_serves_palette_and_channel_notes_and_creates_no_user_row(
     api_client_factory, admin_api_client, db_session, one_game, one_team
 ):
     url, colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
@@ -221,12 +247,16 @@ def test_join_options_serves_palette_and_colour_notes_and_creates_no_user_row(
     assert body["team_channel"] == TEAM_CHANNEL
     assert body["provided_channel"] == PROVIDED_CHANNEL
     assert set(body["wardrobe_channels"]) == {"tshirt", "trousers"}
-    assert body["colour_notes"] == COLOUR_BUCKETS
     assert body["you"] is None
 
-    # channels is _channels_payload verbatim - carries hex
+    # channels is _channels_payload verbatim - carries hex and the notes for
+    # that channel's own vocabulary, which is not the same as another's
     tshirt = next(c for c in body["channels"] if c["name"] == "tshirt")
+    trousers = next(c for c in body["channels"] if c["name"] == "trousers")
     assert tshirt["hex"]["black"] == "#1A1A1A"
+    assert tshirt["notes"] == buckets_for_channel("tshirt")
+    assert trousers["notes"] == buckets_for_channel("trousers")
+    assert tshirt["notes"]["black"] != trousers["notes"]["black"]
 
     # A team link prefetched by, say, a chat app's link-preview bot must not
     # burn an outfit or create a User row.
@@ -296,7 +326,7 @@ def test_wardrobe_that_cannot_clear_threshold_returns_empty_then_relaxed_finds_d
     assert first_pick.is_success
     taken_appearance = first_pick.json()["effective_appearance"]
     t0, r0 = taken_appearance["tshirt"], taken_appearance["trousers"]
-    r1 = next(c for c in TROUSERS_PALETTE if c != r0)
+    r1 = next(c for c in palette_for_channel("trousers") if c != r0)
 
     # This wardrobe can only ever differ from the first player on trousers
     # and armband (tshirt is pinned to the same colour), so its ceiling is

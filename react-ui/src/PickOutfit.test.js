@@ -29,6 +29,7 @@ function makeJoinData(overrides = {}) {
         name: "trousers",
         labels: ["black", "blue"],
         hex: { black: "#222222", blue: "#0072CE" },
+        notes: { black: "black or charcoal" },
       },
       { name: "hat", labels: ["red"], hex: { red: "#B00020" } },
       {
@@ -37,7 +38,6 @@ function makeJoinData(overrides = {}) {
         hex: { red: "#B00020", green: "#00A651" },
       },
     ],
-    colour_notes: { green: "includes olive and khaki" },
     you: makeYou(),
     ...overrides,
   };
