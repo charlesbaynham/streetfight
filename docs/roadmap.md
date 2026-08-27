@@ -68,6 +68,7 @@ software with a real deadline, which is not where it started on the list.
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
 | 14    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
 | 15    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
+| 15b   | **R8** Players appeal, admin sees only the contested | —                    | The structural fix rather than another accuracy point: it makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Wants #5/#2 first, pairs with R4. |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
 | 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
 | 18    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
@@ -1559,6 +1560,157 @@ deliberately.
 
 ---
 
+### R8 — Let the players adjudicate: appeal, don't review *(proposed — Gaby's idea)*
+
+**The idea.** Stop asking the admin to check every shot. CharlesBot resolves each
+shot the moment the photo lands, and the two people who were actually there — the
+shooter, and whoever CharlesBot says was hit — are both shown the photo and the
+verdict. Either can press **Appeal**. Only appealed shots reach the admin. The
+queue stops being *every shot* and becomes *the contested ones*.
+
+**Why this is worth more than another point of accuracy.** Everything else in
+track A tries to make CharlesBot wrong less often. This changes what happens when
+it is wrong, which is the more valuable half. The go/no-go on
+`ai_auto_actions_enabled` currently rests on a false-hit rate measured over
+thirteen fixtures, and switching it on is a bet, because an automatic error today
+is both silent and final — nobody ever looks at that shot again. With appeals an
+error is loud and recoverable, so the toggle stops being a bet on accuracy and
+becomes a bet on *the errors being noticed*, which is a much easier thing to be
+right about. It also removes the only structural limit on how big a game can get:
+one admin adjudicating every shot, all night, in real time.
+
+**The incentives do the work.** Line each way CharlesBot can be wrong up against
+who is told and who wants it changed:
+
+| CharlesBot's verdict          | Who sees it       | Who wants it looked at again                                        |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------- |
+| Hit on Alice — correct        | shooter, Alice    | nobody. It stands, with no admin time spent.                        |
+| Hit on Alice — actually a miss | shooter, Alice   | **Alice**: she has lost HP she should still have.                   |
+| Hit on Alice — actually hit Bob | shooter, Alice  | **Alice**, who was never shot. (Bob is never told, and needn't be — Alice's appeal re-opens the shot either way.) |
+| Miss — actually hit Alice     | shooter only      | **the shooter**: he wants his kill.                                 |
+| Bystander — actually hit Alice | shooter only     | **the shooter**, likewise.                                          |
+| Miss — correct                | shooter only      | nobody with a case, but see abuse below.                            |
+
+The shooter and the target are on opposite teams, so for every error class there
+is somebody who both *knows* about it and *wants* it revisited. That adversarial
+pairing is what makes the scheme sound, and it also names its one hole:
+**friendly fire has no opposed party** — a shot between teammates, wrongly
+resolved, may suit both of them. Rare, low-stakes, and the admin can still open
+any shot they like; not worth engineering against.
+
+**The shooter's side is nearly built.** `ShotHistory.js` and
+`shotHistoryStore.js` already give a player every shot they have fired, its
+adjudicated outcome, and the photo (`/api/user_shot_image`, cached by
+`ShotCache.js`), including today's `AI thinks: …` line for a shot the admin has
+not reached. An Appeal button on that per-shot detail view is a small addition to
+a surface that exists.
+
+**The target's side does not exist, and is the real build.** A player who is hit
+gets one private ticker line (`USER_GOT_HIT` / `USER_GOT_KNOCKED_OUT`, sent from
+`admin_interface.hit_user`) and nothing else — no photo, no shot id, nothing to
+appeal against. Needed:
+
+- `Shot.target_user_id` is already recorded, so the query is there:
+  `user_interface.get_own_shots` wants a sibling for *shots against me*, and
+  `get_own_shot_image`'s `shot.user_id != self.user_id` check has to widen to
+  admit the target. No new exposure — it is a photograph of them, taken of them,
+  and the ticker has already named the shooter.
+- Somewhere to show it. The existing shot-history popup is the natural home:
+  either a second list, or one list with each entry marked fired/received.
+- The private ticker message should carry the shot id so the line itself can be
+  the way in, rather than making the player go looking.
+
+**An appeal re-opens the shot; it does not undo it.** This is the part that will
+bite if it is not decided up front. Resolving a shot mutates game state that
+later events depend on — a knockout calls `clear_unchecked_shots`, which refunds
+every shot the victim had queued, and the ticker has already announced it in
+public. There is no compensating action anywhere in the codebase for any of that,
+and writing a general unwind is far more than this item is worth. So:
+
+> **Appealing marks the shot contested and puts it in front of the admin. It
+> changes no HP, no ammo and no ticker by itself.** The admin then adjudicates
+> with the tools that already exist — `hit_user`, `refund_shot`, `set_user_HP`,
+> `hit_user_by_admin` — and a wrongly-taken life is handed back by hand.
+
+Pragmatic, honest about what it is, and it means an appeal can never itself
+corrupt the game state. It does need a ticker message for the correction, though:
+"Alice is back in the game" is a social event, not a database update.
+
+**Contested shots need their own queue, not the head of the existing one.**
+`shot_auto_actions.process_queue_head` acts only on the oldest unchecked shot,
+deliberately, because resolving a shot can invalidate the ones behind it. An
+appealed shot re-entering that queue with its original timestamp would become the
+head and jam the live drain behind a twenty-minute-old argument. Keep the two
+apart: a `contested` flag (or an `appeal_state` column) that lists the shot in a
+separate admin tab, leaving `get_unchecked_shots` and the drain untouched.
+
+**Note that the two auto-action gates are separable**, and only one of them
+relaxes here. The strict queue ordering exists because of *state dependency* and
+still holds. The confidence threshold exists because of *accuracy*, and appeals
+are exactly what justify loosening it: `_decide()` returning `None` would stop
+meaning "stop the drain" and start meaning "resolve it as best you can, the
+players will complain if it is wrong".
+
+**It does not empty the queue, and shouldn't be sold as if it does.** Some shots
+CharlesBot cannot resolve at all — a hit it is sure about but cannot pin to any
+candidate has no verdict to show anybody, because there is no target to notify.
+Those still go to the admin as they do now. The honest claim is that the admin
+sees **the unresolvable plus the contested**, which on the numbers so far is a
+small fraction of the night's shots rather than all of them.
+
+**Abuse is the obvious failure mode, and the fix is also the payoff.** Appealing
+is free and the upside is one-directional, so the dominant strategy is to appeal
+everything, which puts the admin back exactly where they started. Cheapest
+effective brake: **one appeal per shot per party, and it must state a reason**
+picked from a short list — *it missed* / *that wasn't me* / *that's not a player*
+/ *I was already out*. That is a two-tap gate rather than a punishment, and the
+reason is worth having for its own sake: it labels the error class, which is
+precisely the data R1/R2 have to reconstruct by hand today. If a player still
+appeals everything, the admin can see their upheld/rejected record and have a
+word — a social problem with a social fix, in a game between friends.
+
+**Silence is data too, with a caveat.** A shot neither party appealed is weak
+evidence CharlesBot got it right, and there will be hundreds of them per game —
+by far the largest labelled set the recognition work has ever had. Weak because
+nobody may have looked; worth recording as *unappealed* rather than *confirmed*,
+and never worth mixing with admin verdicts in the same column of R2's scorecard.
+
+**Timing, and why this pairs with R4.** An appeal is only useful inside the
+window where the shot still matters, so the target has to find out quickly. With
+the app open, the existing SSE `user` event and the shot-history bubble already
+do this. With the app closed — a phone in a pocket between fights, which is most
+of a game — nothing reaches them until they look. That makes **R4 (Web Push)** the
+natural partner: it is what turns "you were shot, appeal within a few minutes"
+into something a player actually receives. Shippable without it; better with it.
+
+**This partly answers open question 1.** If CharlesBot's word is final unless
+appealed, then its word has to be shown to both parties — a shooter cannot appeal
+a misattribution they were never told about. The reason for withholding the name
+was that it was an unconfirmed guess leaking a player's position; under appeals
+there is no "pre-confirmation" state to protect, because there is no admin pass
+coming. The privacy argument does not disappear, but it changes shape and should
+be re-answered here rather than assumed.
+
+**Lands in:** `backend/model.py` (appeal columns on `Shot` — remember there are no
+migrations, so `npm run resetdb`), `backend/user_interface.py` (shots-against-me,
+the widened image check, `appeal_shot`), `backend/main.py` (the two new player
+endpoints), `backend/admin_interface.py` (the contested list),
+`backend/shot_auto_actions.py` (resolve-everything mode, and never re-drain a
+contested shot), `backend/ticker_message_dispatcher.py` (the correction message,
+and the shot id on the private hit message),
+`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button and the
+received-shots list), `react-ui/src/ShotQueue.js` (the contested tab). Tests in
+`tests/test_shots.py`, `tests/test_admin_mode.py`, `ShotHistory.test.js`,
+`ShotQueue.test.js`.
+
+**Depends on:** nothing hard, but it wants #5 shipped (an auto-resolved hit has to
+name somebody) and reads much better after #2 gives that name a display string.
+**Feeds:** R1/R2 — every appeal is a labelled error with its class attached.
+**Pairs with:** R4. **Not before the 19th**: it changes who adjudicates the game
+on the night, which is not a thing to try for the first time on the night.
+
+---
+
 ## Open questions
 
 Answers to these change the shape of the work, not just its order.
@@ -1567,7 +1719,10 @@ Answers to these change the shape of the work, not just its order.
    a name. Telling a shooter "CharlesBot thinks you hit Alice" before an admin has
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
-   admin queue, and keep the player's view to hit / miss / bystander.
+   admin queue, and keep the player's view to hit / miss / bystander. **R8 reopens
+   this**: if CharlesBot's verdict is final unless a player appeals it, there is
+   no unconfirmed-guess state to protect and both parties have to be shown enough
+   to appeal against.
 2. ~~**Do we ask players for a photo of themselves in their outfit at pick
    time?**~~ **Answered: no.** The photo moves to the door on the night, taken by
    the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
@@ -1590,3 +1745,11 @@ Answers to these change the shape of the work, not just its order.
    free choice adds is that the five outfits can be chosen to fit the team's
    actual wardrobes — 82.8% of players in clothes they own against the code's
    57.4%. See plan §12.6.
+6. **When an appeal is upheld, how far back does the correction reach?** R8's
+   recommendation is that it doesn't: the appeal re-opens the shot and the admin
+   fixes HP and ammo by hand, because a knockout has already refunded the
+   victim's queued shots and announced itself in the ticker, and a general unwind
+   is more machinery than the game is worth. Worth confirming before building —
+   the alternative (hold each auto-verdict for an appeal window and only then
+   apply it) needs no unwind at all, but delays every knockout by the length of
+   the window, which in a game measured in seconds is its own problem.
