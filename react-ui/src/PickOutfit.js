@@ -439,11 +439,13 @@ function PickOutfitForm({
     [code, wardrobe, onPicked, onError, optionsResult, fetchOptions],
   );
 
-  // Follows the player through every step until they have a name, because
-  // the confirm step refuses to claim an outfit without one.
-  const nameEntry = name ? null : (
+  // Always shown, on every step including the confirm screen - a name
+  // already known from an earlier session is worth reviewing (it stays
+  // editable), and one not yet given is worth asking for again, since the
+  // confirm step refuses to claim an outfit without it.
+  const nameEntry = (
     <NameEntry
-      user={{ name: null }}
+      user={{ name }}
       className={styles.nameEntry}
       onNameSet={setName}
     />

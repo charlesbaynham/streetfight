@@ -371,7 +371,7 @@ test("whitespace is not a name - it neither posts set_name nor unlocks the claim
   ).toBeDisabled();
 });
 
-test("a name already set in a previous session does not reappear as a blank box - the player picks and confirms without re-entering it", async () => {
+test("a name already set in a previous session shows pre-filled, not blank, and stays editable on every step", async () => {
   installFetchMock({
     join_options: makeJoinData({ you: makeYou({ name: "Bob" }) }),
     outfit_options: makeOptionsResult(),
@@ -380,25 +380,19 @@ test("a name already set in a previous session does not reappear as a blank box 
   renderPickOutfit();
   await goPastHeader();
 
-  // join_options already reported a name, so there is nothing to fill in -
-  // the box must not resurface blank and ask again.
-  expect(
-    screen.queryByPlaceholderText("Enter your name..."),
-  ).not.toBeInTheDocument();
+  // join_options already reported a name - the box must show it, not
+  // resurface blank and ask again.
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
 
   await showOutfits();
-  expect(
-    screen.queryByPlaceholderText("Enter your name..."),
-  ).not.toBeInTheDocument();
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
 
   await actAndFlush(() =>
     userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
   );
 
-  // Still no box on the confirm screen either.
-  expect(
-    screen.queryByPlaceholderText("Enter your name..."),
-  ).not.toBeInTheDocument();
+  // Still pre-filled, and still editable, on the confirm screen.
+  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
 
   userEvent.click(
     screen.getByRole("checkbox", { name: /wear this on the night/ }),
