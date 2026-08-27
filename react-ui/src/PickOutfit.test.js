@@ -371,6 +371,44 @@ test("whitespace is not a name - it neither posts set_name nor unlocks the claim
   ).toBeDisabled();
 });
 
+test("a name already set in a previous session does not reappear as a blank box - the player picks and confirms without re-entering it", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: makeYou({ name: "Bob" }) }),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  // join_options already reported a name, so there is nothing to fill in -
+  // the box must not resurface blank and ask again.
+  expect(
+    screen.queryByPlaceholderText("Enter your name..."),
+  ).not.toBeInTheDocument();
+
+  await showOutfits();
+  expect(
+    screen.queryByPlaceholderText("Enter your name..."),
+  ).not.toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+
+  // Still no box on the confirm screen either.
+  expect(
+    screen.queryByPlaceholderText("Enter your name..."),
+  ).not.toBeInTheDocument();
+
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+  expect(
+    screen.getByRole("button", { name: /Lock in my choice/ }),
+  ).not.toBeDisabled();
+  expect(getAPICalls("set_name")).toHaveLength(0);
+});
+
 test("ticking the confirm box and pressing Lock in my choice claims the outfit and renders the result screen", async () => {
   installFetchMock({
     join_options: makeJoinData(),
