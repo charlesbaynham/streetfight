@@ -374,13 +374,20 @@ they needed; (3) the wardrobe form collapses to a one-line summary once
 options are showing, so a phone screen reaches the options without first
 scrolling past every colour swatch, with a "Change what I own" link back;
 (4) the options list now shows **only the canonical options** (the ranking's
-top tier, badged "recommended"), with the rest - and the pagination - behind
-a "Show non-recommended outfits" link. Showing both tiers together
-invited a player to spend identification accuracy on whichever colours they
-liked the look of; a canonical outfit is still one tap away and the long
-tail takes a deliberate one. Frontend-only: `outfit_options` still returns
-the full ranked list, and a wardrobe supporting no canonical option at all
-falls back to showing everything rather than an empty page.
+top tier), with the rest - and the pagination - behind a "Show more
+outfits" link. Showing both tiers together invited a player to spend
+identification accuracy on whichever colours they liked the look of; a
+canonical outfit is still one tap away and the long tail takes a deliberate
+one. Frontend-only: `outfit_options` still returns the full ranked list, and
+a wardrobe supporting no canonical option at all falls back to showing
+everything rather than an empty page.
+
+**Badging revision.** The green "recommended" badge no longer marks every
+canonical option - only the head of the first page, plus anything tying with
+it on rarity (the ranking's tie-break within the canonical tier), so the
+badge points at *the* best outfit rather than a dozen equally-badged ones.
+The remaining canonical options go unbadged, and the non-canonical ones
+revealed by "Show more outfits" carry an orange "not ideal" badge instead.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
 **Feeds:** #8.

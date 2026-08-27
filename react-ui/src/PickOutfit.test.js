@@ -98,13 +98,13 @@ async function showOtherOutfits() {
   await actAndFlush(() =>
     userEvent.click(
       screen.getByRole("button", {
-        name: "Show non-recommended outfits",
+        name: "Show more outfits",
       }),
     ),
   );
 }
 
-test("ticking colours and submitting (with no confirm checkbox on this step) posts the wardrobe and renders ranked options with a recommended badge on the canonical one", async () => {
+test("ticking colours and submitting (with no confirm checkbox on this step) posts the wardrobe and renders ranked options, badged best-first", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: {
@@ -165,6 +165,7 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
 
   await showOtherOutfits();
   expect(screen.getByText("1 colour different")).toBeInTheDocument();
+  expect(screen.getByText("not ideal")).toBeInTheDocument();
 
   // Only the player-supplied garments show on an option row - no hat/armband.
   expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
@@ -413,7 +414,7 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });
 
-test("only the recommended outfits show until the player asks for the rest, which also unhides the pagination", async () => {
+test("only the canonical outfits show until the player asks for the rest, which also unhides the pagination", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: makeOptionsResult({
@@ -457,10 +458,93 @@ test("only the recommended outfits show until the player asks for the rest, whic
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
   expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", {
-      name: "Show non-recommended outfits",
-    }),
+    screen.queryByRole("button", { name: "Show more outfits" }),
   ).not.toBeInTheDocument();
+});
+
+test("the recommended badge marks only the top of the list, ties included", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult({
+      options: [
+        makeOption({
+          appearance: {
+            tshirt: "black",
+            trousers: "black",
+            hat: "red",
+            armbands: "red",
+          },
+          rarity: 0.9,
+        }),
+        makeOption({
+          appearance: {
+            tshirt: "black",
+            trousers: "blue",
+            hat: "red",
+            armbands: "red",
+          },
+          rarity: 0.9,
+        }),
+        makeOption({
+          appearance: {
+            tshirt: "red",
+            trousers: "black",
+            hat: "red",
+            armbands: "red",
+          },
+          rarity: 0.4,
+        }),
+      ],
+      total: 3,
+    }),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  // The two rarest canonical outfits tie at the top, so both are badged;
+  // the third is canonical but simply goes unbadged.
+  expect(screen.getAllByText("recommended")).toHaveLength(2);
+  expect(screen.queryByText("not ideal")).not.toBeInTheDocument();
+
+  const rows = screen.getAllByRole("button", { name: /Choose:/ });
+  expect(within(rows[2]).queryByText("recommended")).not.toBeInTheDocument();
+});
+
+test("a later page badges nothing as recommended - only the first page holds the best", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: ({ body }) =>
+      makeOptionsResult({
+        page: body.page,
+        page_size: 1,
+        total: 2,
+        options: [
+          makeOption({
+            appearance: {
+              tshirt: "black",
+              trousers: body.page === 0 ? "black" : "blue",
+              hat: "red",
+              armbands: "red",
+            },
+          }),
+        ],
+      }),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+  expect(screen.getByText("recommended")).toBeInTheDocument();
+
+  await showOtherOutfits();
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Next" })),
+  );
+
+  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.queryByText("recommended")).not.toBeInTheDocument();
 });
 
 test("a wardrobe with no canonical outfit at all shows the whole list rather than an empty one", async () => {
@@ -488,13 +572,11 @@ test("a wardrobe with no canonical outfit at all shows the whole list rather tha
 
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", {
-      name: "Show non-recommended outfits",
-    }),
+    screen.queryByRole("button", { name: "Show more outfits" }),
   ).not.toBeInTheDocument();
 });
 
-test("reopening the wardrobe collapses the list back to the recommended outfits", async () => {
+test("reopening the wardrobe collapses the list back to the canonical outfits", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: makeOptionsResult({
@@ -528,8 +610,6 @@ test("reopening the wardrobe collapses the list back to the recommended outfits"
 
   expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
   expect(
-    screen.getByRole("button", {
-      name: "Show non-recommended outfits",
-    }),
+    screen.getByRole("button", { name: "Show more outfits" }),
   ).toBeInTheDocument();
 });
