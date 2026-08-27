@@ -284,6 +284,8 @@ async def join_game(
 
     if code.slot is None:
         team = AdminInterface().get_team_model(code.team_id)  # 404s if missing
+        if team.game_id != code.game_id:
+            raise HTTPException(400, "join code's team does not belong to its game")
         return {"needs_pick": True, "team_id": team.id, "team_name": team.name}
 
     with _identity_admin_errors():

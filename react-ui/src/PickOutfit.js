@@ -258,7 +258,7 @@ function ConfirmScreen({
         type="button"
         className={styles.submitButton}
         disabled={!checked || confirming}
-        onClick={onConfirm}
+        onClick={() => onConfirm(checked)}
       >
         {confirming ? "Locking in..." : "Lock in my choice"}
       </button>
@@ -363,14 +363,14 @@ function PickOutfitForm({
   );
 
   const claimOption = useCallback(
-    async (option) => {
+    async (option, confirmed) => {
       setClaiming(true);
       try {
         const row = await postJSON("pick_outfit", {
           data: code,
           wardrobe,
           appearance: option.appearance,
-          confirmed: true,
+          confirmed,
         });
         onPicked(row);
       } catch (e) {
@@ -393,7 +393,7 @@ function PickOutfitForm({
         wardrobeChannels={wardrobeChannels}
         channels={joinData.channels}
         confirming={claiming}
-        onConfirm={() => claimOption(selectedOption)}
+        onConfirm={(confirmed) => claimOption(selectedOption, confirmed)}
         onBack={() => setSelectedOption(null)}
       />
     );
