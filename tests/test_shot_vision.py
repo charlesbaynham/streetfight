@@ -81,9 +81,11 @@ def test_prompt_offers_each_channel_only_its_own_colours():
     trousers_options = prompt.split("trousers (")[1].split("hat (")[0]
     for colour in TROUSERS_PALETTE:
         assert f'"{colour}"' in trousers_options
-    # Nobody owns yellow trousers, so the model must never be able to say so
-    for absent in ("yellow", "orange", "purple"):
-        assert f'"{absent}"' not in trousers_options
+    # Trousers come in white and the main palette does not; yellow is the other
+    # way round, and the model must never be able to answer outside a channel.
+    assert '"yellow"' not in trousers_options
+    tshirt_options = prompt.split("tshirt (")[1].split("trousers (")[0]
+    assert '"white"' not in tshirt_options
 
 
 def test_schema_restricts_the_trousers_enum():

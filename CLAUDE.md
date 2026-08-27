@@ -217,7 +217,7 @@ Images are built from the Nix flake
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
   each team a block of slots sharing one hat colour, and no two teams share a
   colour. That is an allocation policy only — the decoder is unaffected. A hat
-  colour covers five slots (four for black), so a bigger team picks up a whole
+  colour covers seven slots (six for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
 - `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
   for a game, and left untouched on every later call (even after a new team is

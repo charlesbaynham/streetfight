@@ -15,10 +15,16 @@ This script measures that waste by Monte Carlo. Each trial repeatedly picks a
 uniformly random *still-available* point until none is left -- a maximal random
 packing -- and records how many players it fitted. Two configurations are run:
 
-* **trousers constrained** -- the real palette, trousers restricted to its five
-  easy-to-source colours (plan section 2.6), so the space is 7*5*7*7 = 1715 points;
+* **trousers constrained** -- trousers restricted to five easy-to-source colours
+  (plan section 2.6), so the space is 7*5*7*7 = 1715 points;
 * **trousers unconstrained** -- every channel gets all seven colours, 7^4 = 2401
-  points, i.e. what we could do if guests would wear yellow trousers.
+  points.
+
+The live scheme is the unconstrained one: the guest list outgrew the 35 slots a
+five-colour trousers channel allows, so the palette was widened back (plan
+section 2.6 and 11.1 both name that as the remedy). The constrained row is kept
+because it is what the restriction cost, and the size the scheme drops back to
+if a colour ever has to come out again.
 
 Output is a summary table on stdout plus an SVG histogram of the two capacity
 distributions with the Reed-Solomon capacities marked for comparison.
@@ -40,7 +46,6 @@ from typing import List
 from typing import Sequence
 from typing import Tuple
 
-from backend.identity.config import DEFAULT_Q
 from backend.identity.config import DEFAULT_TARGET_DISTANCE
 from backend.identity.config import default_channel_set
 from backend.identity.config import default_scheme
@@ -51,16 +56,25 @@ Point = Tuple[int, ...]
 # -- the code space ------------------------------------------------------
 
 
+# How many colours the trousers channel carried while it was restricted (plan
+# section 2.6). Named here rather than read off the live config, which has no
+# restricted channel left to read it from.
+NARROW_TROUSERS = 5
+
+
 def alphabet_sizes(constrain_trousers: bool) -> List[int]:
     """Wearable symbol count per channel, from the live config.
 
-    Unconstrained means "pretend every channel had the full palette": the point
-    of the comparison is what the restricted trousers channel costs.
+    Constrained means "pretend the trousers channel were still narrowed to its
+    five easy-to-source colours": the point of the comparison is what a
+    restricted channel costs.
     """
     channels = default_channel_set()
-    if not constrain_trousers:
-        return [DEFAULT_Q] * channels.n
-    return [channels.max_addressable_symbol(i) for i in range(channels.n)]
+    sizes = [channels.max_addressable_symbol(i) for i in range(channels.n)]
+    if constrain_trousers:
+        trousers = channels.names.index("trousers")
+        sizes[trousers] = min(sizes[trousers], NARROW_TROUSERS)
+    return sizes
 
 
 def code_space(sizes: Sequence[int]) -> List[Point]:
@@ -152,19 +166,21 @@ def run_trials(
 
 
 def reed_solomon_capacities() -> Dict[bool, int]:
-    """Codewords the live scheme offers, keyed by whether trousers are constrained.
+    """Codewords the scheme offers, keyed by whether trousers are constrained.
 
-    Unconstrained is the full ``q**k``; constrained is the subset that the
-    restricted trousers channel can actually wear (35 of the 49 -- the 34 in the
-    plan plus the all-black word, which is excluded by policy, not by the code).
+    Unconstrained is the full ``q**k`` -- the live scheme, every channel full
+    width. Constrained is the subset a five-colour trousers channel could wear
+    (35 of the 49 -- the 34 in the plan plus the all-black word, which is
+    excluded by policy, not by the code).
     """
     scheme = default_scheme()
+    trousers = scheme.channels.names.index("trousers")
     return {
         False: scheme.capacity,
         True: sum(
             1
             for slot in range(scheme.capacity)
-            if scheme.channels.is_representable(scheme.codeword_of_slot(slot))
+            if scheme.codeword_of_slot(slot)[trousers] < NARROW_TROUSERS
         ),
     }
 

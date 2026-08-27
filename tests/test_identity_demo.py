@@ -27,9 +27,8 @@ def test_default_scheme_matches_the_config():
     assert (info["n"], info["k"], info["q"]) == (4, 2, 7)
     assert info["min_distance"] == 3
     assert info["capacity"] == 49
-    # The restricted trousers channel and the all-black slot 0 are not
-    # assignable, so fewer identities are usable than the code can express.
-    assert info["usable_capacity"] == 34
+    # Every channel is full width, so only the all-black slot 0 is unassignable.
+    assert info["usable_capacity"] == 48
     assert info["code_type"] == "reed_solomon"
     assert len(info["codebook"]) == 49
     assert info["codebook"][0]["appearance"] == {
@@ -41,13 +40,26 @@ def test_default_scheme_matches_the_config():
 
 
 def test_codebook_marks_unwearable_codewords():
-    info = demo.describe_scheme(demo.SchemeSpec())
+    # The configured scheme has no narrowed channel any more, so narrow one in
+    # the workbench - which is what the workbench is for.
+    spec = demo.SchemeSpec(
+        channels=[
+            demo.ChannelSpec(name="tshirt"),
+            demo.ChannelSpec(
+                name="trousers", labels=["black", "blue", "green", "red", "white"]
+            ),
+            demo.ChannelSpec(name="hat"),
+            demo.ChannelSpec(name="armbands"),
+        ]
+    )
+    info = demo.describe_scheme(spec)
 
-    # Slot 5's codeword asks trousers for symbol 5, which has no colour.
+    # Slot 5's codeword asks trousers for symbol 5, which then has no colour.
     row = info["codebook"][5]
     assert row["wearable"] is False
     assert row["appearance"] is None
     assert info["codebook"][0]["wearable"] is True
+    assert info["usable_capacity"] == 34
 
 
 def test_upgrade_ladder_gives_the_expected_codes():
@@ -391,10 +403,19 @@ def test_api_defaults(admin_api_client):
     body = response.json()
     assert body["channel_names"] == ["tshirt", "trousers", "hat", "armbands"]
     assert body["target_distance"] == 3
-    # The restricted channel travels with the defaults, so the workbench starts
-    # from the real scheme rather than silently widening trousers to 7 colours.
+    # The trousers channel's own physical set travels with the defaults, so the
+    # workbench starts from the real scheme rather than the main palette - the
+    # two are the same size now but still not the same colours.
     trousers = next(c for c in body["channels"] if c["name"] == "trousers")
-    assert trousers["labels"] == ["black", "blue", "green", "red", "white"]
+    assert trousers["labels"] == [
+        "black",
+        "blue",
+        "green",
+        "red",
+        "white",
+        "purple",
+        "orange",
+    ]
     assert next(c for c in body["channels"] if c["name"] == "hat")["labels"] is None
 
 

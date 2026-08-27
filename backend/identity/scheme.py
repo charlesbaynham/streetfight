@@ -101,7 +101,9 @@ class IdentityScheme:
           passer-by to be wearing by accident and where the vision model's
           failure mode piles up (it says "black" when it cannot tell).
 
-        For the default scheme this is 34 of the 49 codewords.
+        Only the second bites in the configured scheme, whose channels are now
+        all full width, so this is 48 of the 49 codewords. The first is still
+        live machinery: narrowing a channel again is a one-line config change.
         """
         return [
             slot

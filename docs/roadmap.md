@@ -117,6 +117,15 @@ Recorded here so they are not re-litigated:
   codewords rank at the top of the list, so most players land on one with no
   overrides at all. See plan §12.6's "as implemented" note and the #10 entry
   below for the ranking rule.
+- **The trousers palette is back to seven colours**, so the scheme offers 48
+  usable slots instead of 34. The guest list outgrew the 35 identities a
+  five-colour trousers channel allows, and widening that channel is the remedy
+  plan §2.6 and §11.1 both name. Purple and orange are appended to the existing
+  five, so every outfit already picked still means the same thing. Two things
+  bought with it: rare trousers are now *offered* to the players who own them
+  (and ranked first, since the picker prefers rare clothing), and white trousers
+  now share a channel with orange — one possible misread under sodium light,
+  which `d = 3` corrects. See plan §9.1.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -160,10 +169,10 @@ support it:
 
 - **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
   garments determine the other two. Pinning *any* channel to the team leaves
-  exactly one bucket of five slots (four for black) — identical for hat, t-shirt
+  exactly one bucket of seven slots (six for black) — identical for hat, t-shirt
   and armbands. The team-channel choice does not change capacity at all.
 - **It decides which garments a player has to source.** With the team on the
-  armbands, the five slots in a team each need a *different* hat colour, and
+  armbands, the slots in a team each need a *different* hat colour, and
   almost nobody owns a coloured hat. With the team on the hat, the hat is ours
   to hand out — one colour per team — and the player sources only a t-shirt and
   trousers, which are things people own.
@@ -293,7 +302,7 @@ An option must be wearable from the colours the player ticked and clear a
 **hard Hamming-distance gate** — the scheme's nominal minimum distance
 against every other placed player in the *whole game*, not just the team
 (inside a team this costs nothing; plan §12.6 shows the team partition
-already caps a team at the code's own five-outfit capacity), relaxed by one
+already caps a team at the code's own per-colour capacity), relaxed by one
 once the player confirms "I'm sure I don't have any more clothes". Survivors
 are then ranked **overrides needed from a canonical Reed–Solomon codeword
 first (ascending), rarity second** (descending, summed `1 - commonness` over
@@ -311,9 +320,10 @@ needs to go and find.
 
 **Two risks worth naming that the rest of this entry doesn't:**
 
-- **Slots remain the real ceiling.** 34 usable slots
-  (`IdentityScheme.usable_slots`), so the game caps there regardless of how
-  generous anyone's wardrobe is.
+- **Slots remain the real ceiling.** 48 usable slots
+  (`IdentityScheme.usable_slots`) — it was 34 until the guest list outgrew the
+  five-colour trousers palette and it was widened back to seven (plan §2.6) — so
+  the game caps there regardless of how generous anyone's wardrobe is.
 - **The team join code is a shareable bearer token.** One link per team means
   one leaked link can burn every outfit in that team, not just one —
   `/join_game`'s older per-slot code had this property per outfit; pooling by
@@ -838,7 +848,7 @@ codeword, so the code vouches for nothing) — but it answers the wrong question
   genuinely are strong evidence — more so now that they are the one garment we
   supply (#9). Keep that, but as *evidence*, not as a gate.
 - **"Which player is it?"** does **not** need the full codeword space. The
-  candidate set is not the 34 usable slots, it is the handful of living players
+  candidate set is not the 48 usable slots, it is the handful of living players
   on other teams who were near the shooter — and two correctly-read channels
   discriminate sharply within a set that small, especially once the GPS prior is
   applied.
@@ -1583,10 +1593,10 @@ Answers to these change the shape of the work, not just its order.
 5. ~~**Is free choice of outfit worth the capacity it costs?**~~ **Answered:
    yes, and it costs nothing here.** §12.5 measured free choice across the *whole*
    space, where unlucky picks strand regions. Pinning the hat to the team
-   partitions the space into seven independent buckets of five and prevents that
+   partitions the space into seven independent buckets and prevents that
    stranding: inside a team, free choice and the code have identical capacity,
    because `d >= 3` under a shared hat already forces distinct t-shirts, trousers
-   and armbands, and the trousers palette caps a team at five either way. What
-   free choice adds is that the five outfits can be chosen to fit the team's
-   actual wardrobes — 82.8% of players in clothes they own against the code's
-   57.4%. See plan §12.6.
+   and armbands, and the trousers palette caps a team at its own colour count
+   either way. What free choice adds is that those outfits can be chosen to fit
+   the team's actual wardrobes — 82.8% of players in clothes they own against
+   the code's 57.4%. See plan §12.6.

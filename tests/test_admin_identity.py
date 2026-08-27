@@ -67,7 +67,15 @@ def test_report_empty_game(one_game):
     tshirt = next(c for c in report["channels"] if c["name"] == "tshirt")
     assert tshirt["hex"]["purple"] == "#6A1B9A"
     trousers = next(c for c in report["channels"] if c["name"] == "trousers")
-    assert set(trousers["labels"]) == {"black", "blue", "green", "red", "white"}
+    assert set(trousers["labels"]) == {
+        "black",
+        "blue",
+        "green",
+        "red",
+        "white",
+        "purple",
+        "orange",
+    }
 
 
 def test_report_unknown_game_404():

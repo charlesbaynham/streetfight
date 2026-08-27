@@ -5,10 +5,13 @@ from uuid import uuid4 as get_uuid
 import pytest
 
 from backend.identity.config import COLOUR_BUCKETS
+from backend.identity.config import COLOUR_COMMONNESS
 from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import TROUSERS_PALETTE
 from backend.identity.config import default_scheme
+from backend.identity.config import hex_for
+from backend.identity.config import palette_for_channel
 from backend.identity.overrides import nearest_slots
 from backend.identity.overrides import overrides_for
 from backend.identity_admin import outfit_options
@@ -109,6 +112,30 @@ def test_canonical_option_ranks_above_a_much_rarer_overridden_one():
 
     # Yet every 0-override option ranks above every 1-override option.
     assert max(canonical_idx) < min(overridden_idx)
+
+
+def test_every_offered_colour_has_a_swatch_and_a_rarity_estimate():
+    """Widening a palette means adding the colour in three places, and only one
+    of them fails loudly. A colour with no ``PALETTE_HEX`` entry renders as a
+    blank swatch; a wardrobe colour with no ``COLOUR_COMMONNESS`` entry falls
+    back to ``commonness_for``'s neutral 0.5, which silently parks it in the
+    middle of the ranking - so a rare colour added for the capacity would stop
+    being the one the picker leads with, which is the whole point of it.
+    """
+    wardrobe_channels = [
+        name
+        for name in SCHEME.channels.names
+        if name not in (TEAM_CHANNEL, PROVIDED_CHANNEL)
+    ]
+
+    for name in SCHEME.channels.names:
+        for colour in palette_for_channel(name):
+            assert hex_for(name, colour) is not None, f"no hex for {name} {colour}"
+
+    for name in wardrobe_channels:
+        estimated = COLOUR_COMMONNESS.get(name, {})
+        missing = set(palette_for_channel(name)) - set(estimated)
+        assert not missing, f"{name} has no ownership estimate for {sorted(missing)}"
 
 
 def test_rarity_breaks_ties_within_an_override_tier():

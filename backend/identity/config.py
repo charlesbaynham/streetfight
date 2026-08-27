@@ -23,13 +23,27 @@ from backend.identity.scheme import IdentityScheme
 # (prime, which the dependency-free GF(q) arithmetic requires).
 DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"]
 
-# Trousers are deliberately restricted (plan §2.6): guests supply their own
-# clothing and yellow, orange and purple trousers are not things people own.
-# This is a *different physical set*, not a subset -- the code only ever sees
-# indices, and a misread can only confuse colours within one channel, so white
-# is safe here even though it is excluded from the main palette (under sodium
-# street lighting a white shirt photographs orange).
-TROUSERS_PALETTE = ["black", "blue", "green", "red", "white"]
+# Trousers are a *different physical set* from the main palette, not a subset --
+# the code only ever sees indices, and a misread can only confuse colours within
+# one channel, so white is available here even though it is excluded from the
+# main palette (under sodium street lighting a white shirt photographs orange).
+#
+# It used to stop at five colours (plan §2.6): guests supply their own trousers,
+# and purple and orange ones are not things most people own. That capped the
+# scheme at 35 wearable slots, and the guest list has outgrown it -- so the
+# channel is now full width, which is exactly the remedy §2.6 and §11.1 name
+# ("widen the trousers palette rather than reordering"). The first five entries
+# keep their symbols, so nobody who has already picked an outfit is re-clothed.
+#
+# Two consequences, both accepted rather than overlooked:
+#
+# * purple and orange trousers are rare, which is a feature here -- the picker
+#   only offers a player colours they say they own, and COLOUR_COMMONNESS below
+#   ranks the rare ones first for everyone else;
+# * white is no longer sitting in an orange-free and yellow-free channel, so a
+#   white/orange confusion under sodium lighting is now possible. That is one
+#   misread in one channel, which is precisely what d = 3 corrects.
+TROUSERS_PALETTE = ["black", "blue", "green", "red", "white", "purple", "orange"]
 
 # The field cardinality. Must be prime, and must be at least the size of the
 # largest channel alphabet.
@@ -82,6 +96,8 @@ PALETTE_HEX = {
         "green": "#00A651",
         "red": "#B00020",
         "white": "#F2F3F4",
+        "purple": "#6A1B9A",
+        "orange": "#FF8200",
     },
 }
 
@@ -117,6 +133,8 @@ COLOUR_COMMONNESS = {
         "white": 0.55,
         "green": 0.30,
         "red": 0.10,
+        "purple": 0.06,
+        "orange": 0.05,
     },
     "hat": {
         "black": 0.30,
@@ -160,10 +178,11 @@ def commonness_for(channel_name: str, colour: str) -> float:
 
 
 def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
-    """Build the initial :class:`ChannelSet` (four channels, restricted trousers).
+    """Build the initial :class:`ChannelSet` (four channels, seven colours each).
 
     ``palette`` overrides the *main* palette only; channels named in
-    :data:`CHANNEL_PALETTES` keep their own alphabet.
+    :data:`CHANNEL_PALETTES` keep their own alphabet -- trousers still have
+    their own physical set of colours, they are just no longer fewer of them.
     """
     palette = list(palette if palette is not None else DEFAULT_PALETTE)
     channel_names = list(
@@ -180,9 +199,9 @@ def default_channel_set(palette=None, channel_names=None, q=None) -> ChannelSet:
 def default_scheme() -> IdentityScheme:
     """The initial scheme: 4 colour channels, 7 colours, ``[4,2,3]`` Reed-Solomon.
 
-    Capacity is ``7**2`` = 49 codewords, of which **34** are usable once the
-    restricted trousers palette and the all-black slot 0 are excluded (see
-    :meth:`IdentityScheme.usable_slots`).
+    Capacity is ``7**2`` = 49 codewords, of which **48** are usable: every one
+    is wearable now that the trousers channel is full width, less the all-black
+    slot 0 (see :meth:`IdentityScheme.usable_slots`).
 
     At ``d = 3`` the guarantee is: correct up to two erasures, **or** correct one
     misread, **or** correct one erasure and detect one misread. Equivalently:
