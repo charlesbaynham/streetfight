@@ -1,9 +1,16 @@
 // The replay workbench: fire real shots from the database through the vision
-// pipeline with a prompt edited on the fly, and see what CharlesBot would have
-// said. Nothing is stored - this is the in-browser counterpart of
+// pipeline with the contract edited on the fly, and see what CharlesBot would
+// have said. Nothing is stored - this is the in-browser counterpart of
 // scripts/replay_shot_reviews.py, for trialling a prompt before shipping it.
+//
+// "The contract" is three things, and all three have to be editable together:
+// the wording, the shape of the conversation (whether a zoom is screened for,
+// sent up front, or not offered at all) and the JSON schema the reply must
+// match. A prompt edited alone is a prompt overruled - the model can only
+// answer the question its schema asks, and the pipeline's follow-up turns
+// refer it back to "the JSON described above" whatever it was told.
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
@@ -21,6 +28,14 @@ const OUTCOME_LABELS = {
   miss: ["Miss", tagStyles.outcomeMiss],
 };
 
+// The conversation shapes the backend offers (shot_vision.ZOOM_MODES), and
+// what each does to the exchange.
+const ZOOM_MODES = [
+  ["screened", "Screened zoom (live pipeline)"],
+  ["upfront", "Both views up front"],
+  ["single", "One turn, no zoom"],
+];
+
 // The coarse verdict a review implies, for comparison with the admin's own.
 const OUTCOME_TO_VERDICT = {
   hit_player: "hit",
@@ -35,6 +50,21 @@ function ReplayResult({ review }) {
     review.outcome,
     tagStyles.outcomeMiss,
   ];
+
+  // Under a contract of its own the reply has no outcome to render, and the
+  // pipeline's default one would be a verdict the model never gave.
+  if (review.parse_error) {
+    return (
+      <>
+        <p className={styles.rawReplyNote}>
+          The reply did not match the standard reading: {review.parse_error}
+        </p>
+        <pre className={styles.rawReply}>
+          {JSON.stringify(review.raw_reply, null, 2)}
+        </pre>
+      </>
+    );
+  }
 
   return (
     <>
@@ -250,12 +280,45 @@ function ShotReplayPanel() {
   const [shotIds, setShotIds] = useState([]);
   const [selected, setSelected] = useState(new Set());
   const [prompt, setPrompt] = useState(null);
-  const [alwaysZoom, setAlwaysZoom] = useState(false);
+  const [schemaText, setSchemaText] = useState(null);
+  const [schemaError, setSchemaError] = useState(null);
+  const [zoomMode, setZoomMode] = useState(ZOOM_MODES[0][0]);
   // "" means no override -- the live pipeline's OPENROUTER_REASONING_EFFORT
   // setting (or none at all) applies, exactly as it does for a real review.
   const [reasoningEffort, setReasoningEffort] = useState("");
   const [results, setResults] = useState({});
   const [running, setRunning] = useState(false);
+  // What the backend last handed back, so an *untouched* box can follow a
+  // change of conversation shape while an edited one is never clobbered.
+  const seeded = useRef({ prompt: null, schema: null });
+
+  const seedContract = useCallback((mode, force) => {
+    sendAPIRequest(
+      "admin_get_default_vision_prompt",
+      { zoom_mode: mode },
+      "GET",
+      (body) => {
+        const nextSchema = JSON.stringify(body.schema, null, 2);
+        // Read against what was seeded *before* this fetch: the state updaters
+        // below run after this callback returns, so comparing them against the
+        // ref once it already holds the new values would find no match and
+        // leave every box stale.
+        const previous = seeded.current;
+        seeded.current = { prompt: body.prompt, schema: nextSchema };
+        setPrompt((current) =>
+          force || current === null || current === previous.prompt
+            ? body.prompt
+            : current,
+        );
+        setSchemaText((current) =>
+          force || current === null || current === previous.schema
+            ? nextSchema
+            : current,
+        );
+        setSchemaError(null);
+      },
+    );
+  }, []);
 
   // Every shot in the database, newest first: this page replays history, so
   // the adjudicated shots the queue hides are the interesting ones.
@@ -266,10 +329,13 @@ function ShotReplayPanel() {
         setShotIds((await response.json()).reverse());
       },
     );
-    sendAPIRequest("admin_get_default_vision_prompt", {}, "GET", (body) => {
-      setPrompt(body.prompt);
-    });
   }, []);
+
+  // The prompt describes the zoom it is about to be offered, so the default
+  // text is only correct for one shape of conversation: reseed on a change.
+  useEffect(() => {
+    seedContract(zoomMode, false);
+  }, [zoomMode, seedContract]);
 
   const toggle = useCallback((shot_id) => {
     setSelected((previous) => {
@@ -288,6 +354,14 @@ function ShotReplayPanel() {
   }, []);
 
   const replaySelected = useCallback(() => {
+    let responseSchema;
+    try {
+      responseSchema = JSON.parse(schemaText);
+    } catch (e) {
+      setSchemaError(`The response schema is not valid JSON: ${e.message}`);
+      return;
+    }
+    setSchemaError(null);
     setRunning(true);
     // Fire them all at once: the backend's semaphore bounds how many vision
     // calls are actually in flight.
@@ -297,7 +371,8 @@ function ShotReplayPanel() {
         return sendAPIRequest("admin_replay_shot_review", {}, "POST", null, {
           shot_id,
           prompt,
-          always_zoom: alwaysZoom,
+          zoom_mode: zoomMode,
+          response_schema: responseSchema,
           reasoning_effort: reasoningEffort || null,
         }).then(async (response) => {
           if (response.ok) {
@@ -314,7 +389,7 @@ function ShotReplayPanel() {
         });
       }),
     ).then(() => setRunning(false));
-  }, [selected, prompt, alwaysZoom, reasoningEffort, setResult]);
+  }, [selected, prompt, schemaText, zoomMode, reasoningEffort, setResult]);
 
   return (
     <>
@@ -322,9 +397,10 @@ function ShotReplayPanel() {
       <Row>
         <Col>
           <p>
-            Replays real shots through the AI reviewer with the prompt below.
+            Replays real shots through the AI reviewer with the contract below.
             Nothing is stored and the game is not affected. Pick shots, edit the
-            prompt, run.
+            prompt, the conversation shape and the schema its reply must match,
+            run. A reply that is not a standard reading is shown as it landed.
           </p>
           <textarea
             aria-label="Vision prompt"
@@ -332,10 +408,31 @@ function ShotReplayPanel() {
             value={prompt === null ? "Loading the live prompt..." : prompt}
             onChange={(event) => setPrompt(event.target.value)}
           />
+          <details className={styles.schemaPanel}>
+            <summary>
+              Response schema - the JSON shape the reply is forced into
+            </summary>
+            <textarea
+              aria-label="Response schema"
+              className={styles.schemaBox}
+              value={
+                schemaText === null ? "Loading the live schema..." : schemaText
+              }
+              onChange={(event) => setSchemaText(event.target.value)}
+            />
+          </details>
+          {schemaError ? (
+            <p className={styles.replayError}>{schemaError}</p>
+          ) : null}
           <div className={styles.controls}>
             <button
               onClick={replaySelected}
-              disabled={running || selected.size === 0 || prompt === null}
+              disabled={
+                running ||
+                selected.size === 0 ||
+                prompt === null ||
+                schemaText === null
+              }
             >
               {running
                 ? "Replaying..."
@@ -343,25 +440,22 @@ function ShotReplayPanel() {
                     selected.size === 1 ? "" : "s"
                   }`}
             </button>
-            <button
-              onClick={() =>
-                sendAPIRequest(
-                  "admin_get_default_vision_prompt",
-                  {},
-                  "GET",
-                  (body) => setPrompt(body.prompt),
-                )
-              }
-            >
-              Reset to live prompt
+            <button onClick={() => seedContract(zoomMode, true)}>
+              Reset to live contract
             </button>
-            <label className={tagStyles.showCheckedToggle}>
-              <input
-                type="checkbox"
-                checked={alwaysZoom}
-                onChange={(event) => setAlwaysZoom(event.target.checked)}
-              />
-              Always send the zoomed view
+            <label>
+              Conversation shape{" "}
+              <select
+                aria-label="Conversation shape"
+                value={zoomMode}
+                onChange={(event) => setZoomMode(event.target.value)}
+              >
+                {ZOOM_MODES.map(([value, label]) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label>
               Reasoning effort{" "}

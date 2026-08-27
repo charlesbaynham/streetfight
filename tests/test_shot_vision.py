@@ -749,11 +749,11 @@ def test_the_buckets_cover_chinos():
     assert "beige" in sv.build_prompt()
 
 
-# -- the always-zoom mode ----------------------------------------------------
+# -- the conversation shapes -------------------------------------------------
 
 
 @pytest.mark.asyncio
-async def test_always_zoom_sends_both_views_in_one_call():
+async def test_upfront_zoom_sends_both_views_in_one_call():
     calls = []
 
     def zoom_provider():
@@ -767,7 +767,7 @@ async def test_always_zoom_sends_both_views_in_one_call():
         "data:image/jpeg;base64,WIDE",
         SCHEME,
         zoom_provider=zoom_provider,
-        always_zoom=True,
+        zoom_mode=sv.ZOOM_UPFRONT,
     )
 
     # The zoom is produced without being asked for, and costs one call, not two
@@ -793,8 +793,8 @@ async def test_always_zoom_sends_both_views_in_one_call():
     assert result.transcript[2]["reply"] == reply_for(appearance_of(8))
 
 
-def test_the_always_zoom_prompt_skips_the_screening_question():
-    prompt = sv.build_prompt(zoom_offered=False)
+def test_the_upfront_zoom_prompt_skips_the_screening_question():
+    prompt = sv.build_prompt(zoom_mode=sv.ZOOM_UPFRONT)
 
     # Both views are already in front of the model, so there is nothing to ask
     assert sv.SCREENING_FIELD not in prompt
@@ -802,6 +802,112 @@ def test_the_always_zoom_prompt_skips_the_screening_question():
     # The hit rule itself is unchanged
     assert "on their clothing, hands, or shoes" in prompt
     assert "You MUST ultimately make a decision" in prompt
+
+
+@pytest.mark.asyncio
+async def test_the_single_turn_shape_asks_only_what_the_prompt_asked():
+    # The workbench's point is trialling a prompt. A prompt asking for
+    # something other than the live contract was previously answered against
+    # the screening schema regardless -- the model could only reply with the
+    # screening boolean, whatever it had been asked.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+    schema = {
+        "type": "object",
+        "properties": {"aim_point": {"type": "string"}},
+        "required": ["aim_point"],
+    }
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_provider=lambda level: "data:image/jpeg;base64,ZOOMED",
+        prompt="Where are the garments? Answer in X-Y.",
+        zoom_mode=sv.ZOOM_SINGLE,
+        schema=schema,
+        tolerate_unparsed=True,
+    )
+
+    assert len(client.calls) == 1
+    assert (
+        client.calls[0]["turns"][0]["text"] == "Where are the garments? Answer in X-Y."
+    )
+    assert client.calls[0]["schema"] == schema
+    assert client.images_sent == ["data:image/jpeg;base64,WIDE"]
+    assert result.raw_reply == {"aim_point": "512x384"}
+    assert result.zoom_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_custom_schema_is_the_one_the_full_reading_is_asked_for():
+    # The screened shape still screens -- but the final turn must ask for the
+    # caller's schema, not the four-channel one baked into the pipeline.
+    schema = {
+        "type": "object",
+        "properties": {"aim_point": {"type": "string"}},
+        "required": ["aim_point"],
+    }
+    client = FakeVisionClient(
+        reply=[{sv.SCREENING_FIELD: False}, {"aim_point": "512x384"}]
+    )
+
+    await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        schema=schema,
+        tolerate_unparsed=True,
+    )
+
+    assert client.calls[0]["schema"] == sv.build_screening_schema()
+    assert client.calls[1]["schema"] == schema
+
+
+@pytest.mark.asyncio
+async def test_a_reply_in_another_shape_comes_back_raw_rather_than_raising():
+    # Not every prompt worth trialling produces a standard reading. The
+    # workbench must show what the model actually said instead of failing.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_mode=sv.ZOOM_SINGLE,
+        tolerate_unparsed=True,
+    )
+
+    assert result.raw_reply == {"aim_point": "512x384"}
+    assert result.parse_error
+    assert result.to_dict()["parse_error"] == result.parse_error
+
+
+@pytest.mark.asyncio
+async def test_a_live_review_still_rejects_a_reply_in_another_shape():
+    # tolerate_unparsed is the workbench's alone: a live review storing a
+    # meaningless verdict would be far worse than one that errors.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+
+    with pytest.raises(sv.ShotVisionError):
+        await sv.review_image(client, "data:image/jpeg;base64,WIDE", SCHEME)
+
+
+def test_a_parsed_reading_carries_no_raw_reply():
+    # The extra keys exist for the unparseable case only -- a stored live
+    # review's payload must not grow them.
+    result = outcome_of(reply_for(appearance_of(7)))
+
+    assert "parse_error" not in result.to_dict()
+    assert "raw_reply" not in result.to_dict()
+
+
+def test_the_single_turn_prompt_promises_neither_screening_nor_zoom():
+    prompt = sv.build_prompt(zoom_mode=sv.ZOOM_SINGLE)
+
+    assert sv.SCREENING_FIELD not in prompt
+    assert "zoomed" not in prompt.split("no zoomed view")[0]
+    # The hit rule itself is unchanged
+    assert "on their clothing, hands, or shoes" in prompt
 
 
 @pytest.mark.parametrize(

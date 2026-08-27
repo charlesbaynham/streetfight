@@ -236,6 +236,15 @@ Images are built from the Nix flake
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.
+- The **replay workbench** (`/admin/replay`, `react-ui/src/ShotReplay.js` →
+  `admin_replay_shot_review`) trials a vision contract against real shots
+  without storing anything. That contract is three things, and they must stay
+  editable *together*: the prompt, the `zoom_mode` (`shot_vision.ZOOM_SCREENED`
+  / `ZOOM_UPFRONT` / `ZOOM_SINGLE` — which decides the follow-up turns) and the
+  response `schema`. Vary the wording alone and the model is still forced to
+  answer the old schema through the old follow-ups, so the new prompt has no
+  effect — that was a real bug (roadmap R1). `build_prompt(zoom_mode=…)` writes
+  the zoom wording that matches the shape being run; keep them in step.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

@@ -5,6 +5,15 @@
   font-size: 0.85em;
 }
 
+.schemaPanel {
+  margin: 0.5em 0;
+}
+
+.schemaBox {
+  composes: promptBox;
+  min-height: 12em;
+}
+
 .controls {
   display: flex;
   gap: 0.5em;
@@ -163,8 +172,15 @@
   font-style: italic;
 }
 
+.rawReplyNote {
+  color: #a05000;
+  font-size: 0.9em;
+  margin: 0.2em 0;
+}
+
 .turnText,
-.transcriptJson {
+.transcriptJson,
+.rawReply {
   white-space: pre-wrap;
   word-break: break-word;
   overflow-x: auto;

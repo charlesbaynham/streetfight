@@ -614,7 +614,14 @@ async def admin_review_shot(shot_id: UUID):
 class _ReplayRequest(BaseModel):
     shot_id: UUID
     prompt: Optional[str] = None
-    always_zoom: bool = False
+    # The shape of the exchange and the shape of the reply. Both travel with
+    # the prompt: a custom prompt answered against the pipeline's own schema,
+    # through the pipeline's own follow-up turns, has been overruled -- the
+    # model can only answer the question the schema asks, whatever it was told.
+    zoom_mode: str = shot_vision.ZOOM_SCREENED
+    # Named "response_schema" rather than "schema": pydantic's BaseModel owns
+    # the latter.
+    response_schema: Optional[dict] = None
     reasoning_effort: Optional[str] = None
 
 
@@ -622,12 +629,21 @@ class _ReplayRequest(BaseModel):
 async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
     """Fire one shot through the vision pipeline and return the reading.
 
-    The admin replay workbench: same pipeline as a real review (aim marker,
-    resize, screening-gated zoom), but with the prompt customisable on the fly
-    and nothing stored -- no state changes, no events, no auto-actions.
+    The admin replay workbench: the same pipeline as a real review (aim marker,
+    resize, the zoom), but with the whole contract -- prompt, conversation
+    shape and response schema -- customisable on the fly, and nothing stored:
+    no state changes, no events, no auto-actions. A reply that is not a
+    standard reading comes back raw rather than as an error, since under a
+    custom contract that is the answer rather than a failure.
     ``reasoning_effort`` overrides OPENROUTER_REASONING_EFFORT for this replay
     only, for trialling reasoning depth against real shots.
     """
+    if request.zoom_mode not in shot_vision.ZOOM_MODES:
+        raise HTTPException(
+            400,
+            f"Unknown zoom_mode {request.zoom_mode!r}; "
+            f"expected one of {', '.join(shot_vision.ZOOM_MODES)}",
+        )
     client = get_vision_client(reasoning_effort=request.reasoning_effort)
     if client is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
@@ -636,7 +652,8 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
             request.shot_id,
             client,
             prompt=request.prompt or None,
-            always_zoom=request.always_zoom,
+            zoom_mode=request.zoom_mode,
+            schema=request.response_schema or None,
         )
     except Exception as e:
         raise HTTPException(502, f"Replay failed: {e}")
@@ -676,9 +693,26 @@ async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
 
 
 @admin_method("/admin_get_default_vision_prompt", method="GET")
-async def admin_get_default_vision_prompt() -> dict:
-    """The prompt the live pipeline currently uses, to seed the workbench's."""
-    return {"prompt": shot_vision.build_prompt()}
+async def admin_get_default_vision_prompt(
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+) -> dict:
+    """The contract the live pipeline currently uses, to seed the workbench's.
+
+    Both halves of it: the prompt and the JSON schema the reply is asked to
+    match. ``zoom_mode`` picks which conversation shape the prompt should
+    describe -- the zoom wording is part of the prompt, so the default text
+    only makes sense alongside the exchange it is about to be sent into.
+    """
+    if zoom_mode not in shot_vision.ZOOM_MODES:
+        raise HTTPException(
+            400,
+            f"Unknown zoom_mode {zoom_mode!r}; "
+            f"expected one of {', '.join(shot_vision.ZOOM_MODES)}",
+        )
+    return {
+        "prompt": shot_vision.build_prompt(zoom_mode=zoom_mode),
+        "schema": shot_vision.build_schema(),
+    }
 
 
 @admin_method("/admin_get_locations", method="GET")

@@ -109,7 +109,9 @@ async def _review_image_data(
     image_base64: str,
     client,
     prompt: Optional[str] = None,
-    always_zoom: bool = False,
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+    schema: Optional[dict] = None,
+    tolerate_unparsed: bool = False,
 ) -> "shot_vision.ShotVisionResult":
     """One shot photo through the vision pipeline: marker, resize, review.
 
@@ -118,8 +120,8 @@ async def _review_image_data(
     image -- the resize has already discarded the camera resolution that makes
     a distant target readable, which is the only reason to zoom at all. It is
     spent only when the model's screening answer says the person fills less
-    than half of the screen; ``always_zoom`` keeps the previous
-    both-views-up-front behaviour for replay comparisons.
+    than half of the screen; ``zoom_mode`` (see ``shot_vision.ZOOM_*``) picks
+    another shape of exchange for replay comparisons.
     """
     prepared = prepare_for_vision(draw_aim_marker(image_base64))
 
@@ -133,7 +135,9 @@ async def _review_image_data(
         prepared,
         zoom_provider=zoom_provider,
         prompt=prompt,
-        always_zoom=always_zoom,
+        zoom_mode=zoom_mode,
+        schema=schema,
+        tolerate_unparsed=tolerate_unparsed,
     )
 
 
@@ -141,23 +145,37 @@ async def replay_shot_review(
     shot_id: UUID,
     client,
     prompt: Optional[str] = None,
-    always_zoom: bool = False,
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+    schema: Optional[dict] = None,
 ) -> dict:
-    """Review one shot on demand -- with a custom prompt if given -- and hand
-    the reading straight back.
+    """Review one shot on demand -- with a contract of its own if given -- and
+    hand the reading straight back.
+
+    ``prompt``, ``zoom_mode`` and ``schema`` are the three halves of what the
+    workbench can vary: the wording, the shape of the exchange, and the shape
+    of the reply. All three have to travel together, since a prompt asking a
+    new question while the pipeline still asks for the old schema and sends the
+    old follow-up turns is a prompt that has been overruled.
 
     Unlike :func:`review_shot` this stores nothing, fires no update events and
     runs no auto-actions: it is the admin replay workbench's scratch pad, not
     part of the game. The reply carries the full turn-by-turn transcript
     (``include_transcript=True``) so the workbench can show exactly what was
-    sent and said back -- a live review's stored payload leaves it out.
+    sent and said back -- a live review's stored payload leaves it out -- and a
+    reply that is not a standard reading comes back raw rather than as an
+    error.
     """
     from .admin_interface import AdminInterface
 
     image_base64 = AdminInterface().get_shot_model(shot_id).image_base64
     async with _get_semaphore():
         result = await _review_image_data(
-            image_base64, client, prompt=prompt, always_zoom=always_zoom
+            image_base64,
+            client,
+            prompt=prompt,
+            zoom_mode=zoom_mode,
+            schema=schema,
+            tolerate_unparsed=True,
         )
     return result.to_dict(include_transcript=True)
 
