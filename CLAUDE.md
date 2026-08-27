@@ -95,8 +95,9 @@ minimal changes over large refactors.
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and
   `shared_fixtures.py`).
-- Root: `package.json` (orchestration scripts), `flake.nix` / `.envrc` (Nix dev
-  env), `compose*.yml` + `Caddyfile` (deployment).
+- Root: `package.json` (orchestration scripts), `pyproject.toml` + `uv.lock`
+  (the Python dependencies), `flake.nix` / `.envrc` (Nix dev env),
+  `compose*.yml` + `Caddyfile` (deployment).
 
 ## Setup & run (development)
 
@@ -125,6 +126,43 @@ reset the dev DB with `npm run resetdb`.
 
 Nix alternative: `nix develop` to enter the dev shell, then `nix run .#backend`
 and `nix run .#frontend` in separate terminals.
+
+## Python dependencies
+
+Declared **once**, in `pyproject.toml`, and resolved by **uv** into `uv.lock`.
+Nix does not carry a second list: `flake.nix` feeds `uv.lock` to **uv2nix**,
+which builds the dev shell, the CI shell and the deployed `backendEnv` from it.
+So a bare `uv sync` in a throwaway container installs the same versions the LXC
+container runs — that parity is the whole point, so **do not** hand-install
+packages with `pip` and **do not** add a Python dependency to `flake.nix`.
+
+```bash
+uv sync --frozen --all-groups   # exactly what the lock says (agents, CI, containers)
+uv add <pkg>                    # add a runtime dep; updates pyproject.toml + uv.lock
+uv add --dev <pkg>              # add a test-only dep
+uv run pytest                   # run inside the venv without activating it
+```
+
+Both paths work and agree; pick by what you already have:
+
+| Environment | Command | Gets |
+| --- | --- | --- |
+| Has Nix | `nix develop` | Python + node + caddy + pre-commit + TeX |
+| No Nix | `uv sync --frozen --all-groups` | Python only, same versions |
+
+Notes and gotchas:
+
+- `sourcePreference = "wheel"` in `flake.nix` — every dependency here publishes a
+  wheel, and sdists are where uv2nix needs hand-written overrides. Prefer a
+  dependency that ships wheels; that is why the lock carries `psycopg2-binary`
+  rather than `psycopg2`, which is sdist-only and would want `pg_config`.
+- uv does not lock build systems, so they come from the
+  `pyproject-build-systems` overlay rather than `uv.lock`. If a new dependency
+  fails to build complaining about a missing build backend, that overlay is
+  where it belongs.
+- The git revision baked into the deployed package (`backend/VERSION`, served by
+  `/api/get_version`) is applied by the `versionOverlay` in `flake.nix`.
+- After changing `pyproject.toml`, commit the regenerated `uv.lock` with it.
 
 ## Testing
 
