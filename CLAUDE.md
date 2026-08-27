@@ -62,6 +62,11 @@ minimal changes over large refactors.
   - `shot_identification.py` — which player a shot photograph shows: builds the
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
+  - `shot_escalation.py` — the hard cases (roadmap #11): too few readable
+    garments sends the queue head to a second, stronger vision model
+    (`OPENROUTER_ESCALATION_MODEL`) with the GPS-ranked candidates and their
+    reference photos; its verdict re-enters the auto-action gate, with
+    "unsure" landing the shot back with the admin.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who
@@ -214,6 +219,8 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
+| `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = escalation off) |
+| `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort override for the escalation model |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
@@ -254,7 +261,12 @@ Images are built from the Nix flake
   (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an ambiguous head stays with the
-  admin and blocks the shots behind it.
+  admin and blocks the shots behind it. The same drain escalates hard cases
+  (3 readable channels without armbands, or fewer) to a stronger model
+  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL` — unset means
+  no escalation); a pending or punted escalation blocks the queue the same
+  way, and "too few channels" is never a bystander verdict on its own —
+  `classify()`'s old mapping to that is retired.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.

@@ -71,7 +71,7 @@ software with a real deadline, which is not where it started on the list.
 | 15b   | **R8** Players appeal, admin sees only the contested | —                    | The structural fix rather than another accuracy point: it makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Wants #5/#2 first, pairs with R4. |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
 | 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
-| 18    | **#11** Escalation to a stronger model      | —                            | Design decided and prerequisites shipped (#5's posterior, R7's reference photos); see the rewritten entry.     |
+| 18    | **#11** Escalation to a stronger model      | Shipped                      | Shipped 2026-08-27; see the entry for the decisions taken on the open questions.                               |
 | —     | **#14** Native app                          | **Parked**                   | Decided against: the Apple fee is unavoidable for iOS in any form. Analysis kept for whenever it is revisited. |
 
 ---
@@ -626,7 +626,8 @@ remaining false misses are unchanged and are *not* the model's error — they
 are `classify()`'s two-readable-channels → `hit_bystander` mapping (the
 model's channel observations match the admin notes exactly; whether that
 mapping should instead escalate to a stronger reviewer is the separate
-question in the 2026-08-24 handover), not a prompt problem.
+question in the 2026-08-24 handover — answered since: #11 retired the
+mapping), not a prompt problem.
 **Shipped:** the live path (`backend/ai_shot_review.review_shot`) now passes
 `always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
 old behaviour survives as the `optional_zoom` variant for comparison runs.
@@ -1157,7 +1158,66 @@ is a one-line change that R1 can score.
 
 ---
 
-### #11 — Escalate the hard cases to a stronger model
+### #11 — Escalate the hard cases to a stronger model *(shipped)*
+
+**Shipped 2026-08-27** as `backend/shot_escalation.py` (the escalation
+contract and the async runner, mirroring `ai_shot_review.py`), the rewritten
+`classify()` in `backend/shot_vision.py` (the "no armbands ⇒ bystander"
+mapping is retired: a shot that hit a person is always `hit_player` now, with
+the readable-channel count in the reason — bystander is a conclusion only the
+stronger model or the admin can reach), the ladder in
+`backend/shot_auto_actions._decide` (gated on `confident_channel_count` and
+the new `shot_vision.armbands_confident`), `vision_client.
+get_escalation_client()` (`OPENROUTER_ESCALATION_MODEL` — unset means
+escalation is off and everything behaves as before), two columns on `Shot`
+(`ai_escalation_state`, `ai_escalation`), and the escalation block in the
+admin queue (`ShotQueue.js`), which shows the strong model's verdict,
+reasoning and the ranked candidate list it was given.
+
+**Decisions taken on the open questions, and along the way:**
+
+- **Storage:** a second column pair on `Shot` (`ai_escalation_state`,
+  `ai_escalation`), not folded into `ai_review` — the weak and strong payloads
+  stay separately inspectable (R2 will want to score them separately), and the
+  queue endpoint (`admin_get_shot_ai_review`) simply grew
+  `escalation_state`/`escalation` keys.
+- **Queue blocking: yes**, same FIFO discipline as an ambiguous head — a
+  pending or punted escalation blocks the shots behind it. A punted shot
+  ("unsure", or a verdict below threshold, or an errored call) simply stays
+  with the admin, which is where every shot went before any of this existed.
+- **What the admin sees for a punted shot:** the strong model's verdict tag
+  ("Needs your call"), its reasoning, and the ranked candidates with
+  probabilities and whether each one's reference photo was shown — #3's
+  surface, fed from the stored escalation payload.
+- **The trigger lives in the auto-action drain** (`process_queue_head`), so
+  escalation runs only when `ai_auto_actions_enabled` is on, only for the
+  queue head, and only when `OPENROUTER_ESCALATION_MODEL` is configured —
+  three separate reasons the safety valve survives. The escalated verdict
+  re-enters `_decide`: auto-act on a confident player/miss/bystander, admin
+  on the human rung.
+- **0 or 1 readable channels escalate too**, not just the ladder's "2": the
+  old code called those bystanders, which is exactly the retired mapping, and
+  the strong model with reference photos can still judge them.
+- **The weak model's overall confidence does not gate the escalate rungs**
+  (it still gates the auto-eligible ones): the weak model being unsure is
+  what escalation is *for*.
+- **A re-run of the weak review clears the stored escalation** (storing a
+  pending review nulls both columns): a new reading invalidates the old
+  escalated verdict, and this doubles as the admin's way to retry an errored
+  escalation.
+- **Python owns the thresholds**, in `shot_escalation.py`:
+  `ESCALATION_HIT_THRESHOLD = 0.75` (a wrong "player X" takes a life; a wrong
+  "unsure" costs an admin thirty seconds — so naming a player needs more than
+  the generic 0.6) and `ESCALATION_OUTCOME_THRESHOLD = 0.6` for miss and
+  bystander (one bullet at stake, same as the weak auto-actions). Both are
+  guesses awaiting R2's data.
+- **One consequence worth naming:** three readable channels *without*
+  armbands used to be able to auto-fire (the old `k + 1` readability gate
+  passed); it now escalates instead, so with no escalation model configured
+  those shots go to the admin rather than auto-firing. Deliberate — that rung
+  is the one where the missing channel is the player marker.
+
+The original design brief follows.
 
 **Design decided 2026-08-27; reference photos (the prerequisite, R7) are
 shipped.** This section is the handoff for the remaining work. The one-line
