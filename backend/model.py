@@ -145,6 +145,18 @@ class Shot(Base):
     # "error". Text JSON matches how location_context is already stored.
     ai_review = Column(String, nullable=True)
 
+    # The escalated second opinion (backend/shot_escalation.py): a stronger
+    # model, shown the candidate list and their reference photos, asked which
+    # player this is. Only reached when the cheap review above read too little
+    # of the outfit to act on; an escalation in flight blocks the queue behind
+    # it, exactly as an ambiguous head does.
+    # State is null (never escalated) / "pending" / "done" / "error".
+    ai_escalation_state = Column(String, nullable=True)
+    # The verdict, its candidate list and the transcript as JSON text, or the
+    # error message when the state is "error" -- same shape of storage as
+    # ai_review above.
+    ai_escalation = Column(String, nullable=True)
+
     # Free-text annotation from the admin explaining an adjudication. No game
     # logic reads this: it exists so the reasoning behind each verdict survives
     # for the offline replay harness (scripts/replay_shot_reviews.py).
@@ -452,6 +464,9 @@ class ShotModel(pydantic.BaseModel):
 
     ai_review_state: Optional[str] = None
     ai_review: Optional[str] = None
+
+    ai_escalation_state: Optional[str] = None
+    ai_escalation: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

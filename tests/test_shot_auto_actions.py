@@ -13,6 +13,7 @@ from fastapi import HTTPException
 
 from backend import ai_shot_review
 from backend import shot_auto_actions
+from backend import shot_escalation
 from backend import shot_vision
 from backend.admin_interface import AdminInterface
 from backend.identity.config import default_scheme
@@ -61,10 +62,11 @@ def miss_reply(confidence=0.9):
     }
 
 
-def bystander_reply(confidence=0.9):
+def unreadable_reply(confidence=0.9):
+    """Somebody was hit, but nothing they are wearing could be read."""
     return {
         "shot_hit_a_person": True,
-        "reasoning": "a passer-by in plain clothes",
+        "reasoning": "too dark to make out any clothing",
         "confidence": confidence,
         "channels": {
             name: {"visible": False, "colour": "unknown", "confidence": 0.9}
@@ -73,10 +75,37 @@ def bystander_reply(confidence=0.9):
     }
 
 
+def partly_read_reply(hidden, confidence=0.9):
+    """A confident hit with ``hidden`` read too shakily to count."""
+    reply = confident_hit_reply(confidence=confidence)
+    for name in hidden:
+        reply["channels"][name]["confidence"] = 0.4
+    return reply
+
+
+def escalation_payload(verdict, confidence=0.9, target_user_id=None):
+    """The payload a completed escalation would have stored."""
+    return {
+        "verdict": verdict,
+        "candidate": 1 if target_user_id else None,
+        "target_user_id": str(target_user_id) if target_user_id else None,
+        "target_name": "somebody",
+        "confidence": confidence,
+        "reasoning": "the reference photo settles it",
+        "candidates": [],
+        "requested_reference_photos": [],
+        "transcript": [],
+    }
+
+
 def store_done_review(shot_id, raw):
     """Store the payload review_shot would have produced for reply ``raw``."""
     payload = shot_vision.classify(shot_vision.parse_result(raw), SCHEME).to_dict()
     AdminInterface().store_shot_ai_review(shot_id, ai_shot_review.STATE_DONE, payload)
+
+
+def store_escalation(shot_id, state, payload=None):
+    AdminInterface().store_shot_escalation(shot_id, state, payload)
 
 
 def shot_row(db_session, shot_id) -> Shot:
@@ -134,6 +163,8 @@ def test_get_queue_head_returns_the_light_fields(
     assert head.user_id == user_in_team
     assert head.ai_review_state is None
     assert head.ai_review is None
+    assert head.ai_escalation_state is None
+    assert head.ai_escalation is None
     assert not hasattr(head, "image_base64")
 
 
@@ -158,18 +189,22 @@ async def test_a_confident_miss_resolves_the_head(db_session, shot_from_user_in_
 
 
 @pytest.mark.asyncio
-async def test_a_confident_bystander_hit_is_marked_bystander(
-    db_session, shot_from_user_in_team
+async def test_an_unreadable_hit_is_never_auto_bystandered(
+    mocker, db_session, shot_from_user_in_team
 ):
+    # This used to be the auto-bystander case. Roadmap #11 retired it: nothing
+    # auto-bystanders off the weak model any more, because "we could not read
+    # any of it" is not evidence that the person is not playing.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
     enable_ai(game_of(shot_from_user_in_team))
 
     await ai_shot_review.review_shot(
-        shot_from_user_in_team, FakeVisionClient(bystander_reply(confidence=0.9))
+        shot_from_user_in_team, FakeVisionClient(unreadable_reply(confidence=0.9))
     )
 
     shot = shot_row(db_session, shot_from_user_in_team)
-    assert shot.checked is True
-    assert shot.result == "bystander"
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
 
 
 @pytest.mark.asyncio
@@ -226,14 +261,15 @@ def test_a_legacy_review_without_confidence_never_fires(
 async def test_a_hit_with_shaky_channels_stays_queued(
     db_session, shot_from_user_in_team, target_with_slot
 ):
-    # High overall confidence, but only the armbands were read confidently:
-    # the outcome is hit_player, yet one readable channel identifies nobody.
-    reply = confident_hit_reply(confidence=0.9)
-    for name in ("tshirt", "trousers", "hat"):
-        reply["channels"][name]["confidence"] = 0.5
+    # High overall confidence, but only the armbands were read confidently: one
+    # readable channel names nobody, so this goes up the ladder rather than
+    # taking a life. With no escalation model configured it waits for the admin.
     enable_ai(game_of(shot_from_user_in_team))
 
-    await ai_shot_review.review_shot(shot_from_user_in_team, FakeVisionClient(reply))
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team,
+        FakeVisionClient(partly_read_reply(("tshirt", "trousers", "hat"))),
+    )
 
     shot = shot_row(db_session, shot_from_user_in_team)
     assert shot.ai_review_state == ai_shot_review.STATE_DONE
@@ -252,6 +288,226 @@ async def test_an_errored_review_blocks_the_drain(db_session, shot_from_user_in_
     shot = shot_row(db_session, shot_from_user_in_team)
     assert shot.ai_review_state == ai_shot_review.STATE_ERROR
     assert shot.checked is False
+
+
+# -- the escalation ladder ---------------------------------------------------
+
+
+@pytest.fixture
+def no_escalation_model(monkeypatch):
+    """The default state of the world: escalation is not configured."""
+    monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
+
+
+def drain_with(db_session, shot_id, raw):
+    """Store ``raw`` as the head's review and run the drain."""
+    game_id = game_of(shot_id)
+    enable_ai(game_id)
+    store_done_review(shot_id, raw)
+    shot_auto_actions.process_queue_head(game_id)
+    return shot_row(db_session, shot_id)
+
+
+def test_four_readable_channels_are_acted_on(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    shot = drain_with(db_session, shot_from_user_in_team, confident_hit_reply())
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_three_channels_with_the_armbands_are_acted_on(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    # The armbands are the garment the game hands out, so player-ness is solid
+    # and one erasure is well within the code: no second opinion needed.
+    shot = drain_with(db_session, shot_from_user_in_team, partly_read_reply(("hat",)))
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_three_channels_without_the_armbands_are_escalated(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    # The missing channel is the player marker, so however well the other three
+    # read, this one gets a second opinion rather than a life taken off it.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+
+    shot = drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_two_readable_channels_are_escalated(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+
+    shot = drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands", "hat"))
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_a_legacy_bystander_review_is_left_to_the_admin(
+    mocker, db_session, shot_from_user_in_team
+):
+    # Reviews stored before #11 carry outcome "hit_bystander". They are not
+    # acted on and they are not escalated: they are simply the admin's.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        {"outcome": shot_vision.HIT_BYSTANDER, "is_hit": False, "confidence": 0.95},
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    enqueue.assert_not_called()
+
+
+def test_an_escalation_in_flight_blocks_the_queue_and_is_not_re_enqueued(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_PENDING)
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    enqueue.assert_not_called()
+
+
+def test_an_errored_escalation_is_left_to_the_admin(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_ERROR, "timed out")
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    enqueue.assert_not_called()
+
+
+def drain_with_escalation(db_session, shot_id, payload):
+    game_id = game_of(shot_id)
+    enable_ai(game_id)
+    store_done_review(shot_id, partly_read_reply(("armbands",)))
+    store_escalation(shot_id, ai_shot_review.STATE_DONE, payload)
+    shot_auto_actions.process_queue_head(game_id)
+    return shot_row(db_session, shot_id)
+
+
+def test_a_confident_escalated_player_verdict_takes_the_hit(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    shot = drain_with_escalation(
+        db_session,
+        shot_from_user_in_team,
+        escalation_payload("player", confidence=0.9, target_user_id=target_with_slot),
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+    assert UserInterface(target_with_slot).get_user_model().hit_points == 0
+
+
+def test_an_unconfident_escalated_player_verdict_stays_queued(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    # Naming a player takes a life off somebody, so it needs more than the
+    # generic threshold: 0.7 clears CONFIDENT and still fails this.
+    shot = drain_with_escalation(
+        db_session,
+        shot_from_user_in_team,
+        escalation_payload("player", confidence=0.7, target_user_id=target_with_slot),
+    )
+
+    assert shot.checked is False
+    assert UserInterface(target_with_slot).get_user_model().hit_points == 1
+
+
+def test_an_escalated_player_verdict_on_a_dead_target_stays_queued(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    with UserInterface(target_with_slot) as ui:
+        ui.hit(1)  # knocked out between the escalation and the drain
+
+    shot = drain_with_escalation(
+        db_session,
+        shot_from_user_in_team,
+        escalation_payload("player", confidence=0.9, target_user_id=target_with_slot),
+    )
+
+    assert shot.checked is False
+
+
+def test_an_escalated_miss_resolves_the_head(db_session, shot_from_user_in_team):
+    shot = drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload("miss")
+    )
+
+    assert shot.result == "miss"
+
+
+def test_an_escalated_bystander_resolves_the_head(db_session, shot_from_user_in_team):
+    shot = drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload("bystander")
+    )
+
+    assert shot.result == "bystander"
+
+
+def test_an_escalated_unsure_verdict_is_the_admins(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    # The human rung: a player was hit but which one is undecidable, which is
+    # exactly where every shot went before any of this existed.
+    shot = drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload("unsure")
+    )
+
+    assert shot.checked is False
+
+
+def test_an_unconfident_escalated_miss_stays_queued(db_session, shot_from_user_in_team):
+    shot = drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload("miss", confidence=0.4)
+    )
+
+    assert shot.checked is False
+
+
+def test_without_an_escalation_model_the_drain_stops_cleanly(
+    no_escalation_model, db_session, shot_from_user_in_team, target_with_slot
+):
+    # The safety valve: nothing is enqueued, nothing is acted on, and the drain
+    # terminates rather than spinning on a head it cannot resolve.
+    assert shot_escalation.enqueue_escalation(shot_from_user_in_team) is None
+
+    shot = drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.checked is False
+    assert shot.ai_escalation_state is None
 
 
 # -- mapping the identified slot to a target --------------------------------
