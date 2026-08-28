@@ -40,3 +40,48 @@
 .exitButton img {
   width: 3em;
 }
+
+/* The nudge that the box scrolls. Big enough to tap one-handed mid-game, and
+   the chevron inside it bobs so the eye catches it: a static arrow over a
+   dark box reads as decoration. Only the chevron moves - a tap target that
+   slides about is one a thumb misses. It floats over the last line of
+   content rather than taking space, and goes as soon as the bottom is in
+   view. */
+.scrollHint {
+  position: absolute;
+  left: 50%;
+  bottom: 0.5em;
+  transform: translateX(-50%);
+  width: 3em;
+  height: 3em;
+  padding: 0.6em;
+  border: 2px solid rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  background-color: rgba(0, 0, 0, 0.85);
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 0.75em rgba(0, 0, 0, 0.8);
+}
+
+.scrollHint svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  animation: scrollHintBob 1.6s ease-in-out infinite;
+}
+
+@keyframes scrollHintBob {
+  0%,
+  100% {
+    transform: translateY(-15%);
+  }
+  50% {
+    transform: translateY(15%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scrollHint svg {
+    animation: none;
+  }
+}
