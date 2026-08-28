@@ -143,6 +143,20 @@ function TeamSection({ team }) {
         />{" "}
         <button type="submit">Rename team</button>
       </form>
+      <button
+        onClick={() => {
+          if (
+            window.confirm(
+              `Delete team ${team.name}? This also deletes its ` +
+                `${team.users.length} player(s) entirely.`,
+            )
+          ) {
+            adminPost("admin_delete_team", { team_id: team.id });
+          }
+        }}
+      >
+        Delete team
+      </button>
       <ul>
         {team.users.map((user) => (
           <UserControls key={user.id} user={user} />
