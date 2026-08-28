@@ -55,6 +55,40 @@ describe("markShotsSeen / countUnseenShots", () => {
     expect(store.countUnseenShots([aiDone])).toBe(1);
   });
 
+  test("a newly-named AI target counts a previously-seen shot as unseen again", () => {
+    const shot = makeShot({
+      id: "s1",
+      checked: false,
+      ai_review_state: "done",
+      ai_suggestion: "hit",
+      ai_target_name: null,
+    });
+
+    store.markShotsSeen([shot]);
+    expect(store.countUnseenShots([shot])).toBe(0);
+
+    const named = { ...shot, ai_target_name: "Ann" };
+    expect(store.countUnseenShots([named])).toBe(1);
+  });
+
+  test("an appeal being lodged, and then ruled on, each re-flag the shot as unseen", () => {
+    const shot = makeShot({ id: "s1", checked: true, result: "hit" });
+
+    store.markShotsSeen([shot]);
+    expect(store.countUnseenShots([shot])).toBe(0);
+
+    const appealed = { ...shot, appeal_state: "open" };
+    expect(store.countUnseenShots([appealed])).toBe(1);
+
+    store.markShotsSeen([appealed]);
+    expect(store.countUnseenShots([appealed])).toBe(0);
+
+    // The referee rules: news again, to both parties.
+    expect(
+      store.countUnseenShots([{ ...appealed, appeal_state: "upheld" }]),
+    ).toBe(1);
+  });
+
   test("ignores ai_suggestion while ai_review_state is not 'done'", () => {
     const shot = makeShot({
       id: "s1",
@@ -115,16 +149,30 @@ describe("corrupt localStorage", () => {
   });
 });
 
+// The store fetches both halves of the history (fired and received) on every
+// refresh; this serves a route table like installFetchMock does for
+// components, so a test only has to say what each endpoint returns.
+function mockShotEndpoints({ fired = [], received = [] } = {}) {
+  sendAPIRequest.mockImplementation((endpoint) => {
+    if (endpoint === "user_shots") return Promise.resolve(jsonResponse(fired));
+    if (endpoint === "user_shots_received")
+      return Promise.resolve(jsonResponse(received));
+    return Promise.resolve(jsonResponse(null, false));
+  });
+}
+
 describe("subscribeShots", () => {
   test("fires on refreshShots and on markShotsSeen, and unsubscribe stops it", async () => {
     const shots = [makeShot({ id: "s1" })];
-    sendAPIRequest.mockResolvedValue(jsonResponse(shots));
+    mockShotEndpoints({ fired: shots });
 
     const callback = jest.fn();
     const unsubscribe = store.subscribeShots(callback);
 
     await store.refreshShots();
-    expect(callback).toHaveBeenCalledWith(shots);
+    expect(callback).toHaveBeenCalledWith([
+      { ...shots[0], direction: "fired" },
+    ]);
 
     callback.mockClear();
     store.markShotsSeen(shots);
@@ -140,21 +188,59 @@ describe("subscribeShots", () => {
 });
 
 describe("refreshShots", () => {
-  test("leaves the stored list untouched when the API responds non-ok", async () => {
+  test("leaves the stored list untouched when both endpoints respond non-ok", async () => {
     const initialShots = [makeShot({ id: "s1" })];
-    sendAPIRequest.mockResolvedValueOnce(jsonResponse(initialShots));
+    mockShotEndpoints({ fired: initialShots });
     await store.refreshShots();
-    expect(store.getShots()).toEqual(initialShots);
+    expect(store.getShots()).toEqual([
+      { ...initialShots[0], direction: "fired" },
+    ]);
 
-    sendAPIRequest.mockResolvedValueOnce(jsonResponse(null, false));
+    sendAPIRequest.mockResolvedValue(jsonResponse(null, false));
     await store.refreshShots();
-    expect(store.getShots()).toEqual(initialShots);
+    expect(store.getShots()).toEqual([
+      { ...initialShots[0], direction: "fired" },
+    ]);
   });
 
-  test("calls the user_shots endpoint", async () => {
-    sendAPIRequest.mockResolvedValue(jsonResponse([]));
+  test("keeps the half that succeeded when the other endpoint fails", async () => {
+    const fired = [makeShot({ id: "s1" })];
+    sendAPIRequest.mockImplementation((endpoint) =>
+      Promise.resolve(
+        endpoint === "user_shots"
+          ? jsonResponse(fired)
+          : jsonResponse(null, false),
+      ),
+    );
+
+    await store.refreshShots();
+    expect(store.getShots()).toEqual([{ ...fired[0], direction: "fired" }]);
+  });
+
+  test("merges the shots fired and the shots received, newest first", async () => {
+    const fired = [
+      makeShot({ id: "fired-old", time_created: "2026-08-15T10:00:00Z" }),
+      makeShot({ id: "fired-new", time_created: "2026-08-15T10:20:00Z" }),
+    ];
+    const received = [
+      makeShot({ id: "received", time_created: "2026-08-15T10:10:00Z" }),
+    ];
+    mockShotEndpoints({ fired, received });
+
+    await store.refreshShots();
+
+    expect(store.getShots().map((shot) => [shot.id, shot.direction])).toEqual([
+      ["fired-new", "fired"],
+      ["received", "received"],
+      ["fired-old", "fired"],
+    ]);
+  });
+
+  test("calls both shot-list endpoints", async () => {
+    mockShotEndpoints();
     await store.refreshShots();
     expect(sendAPIRequest).toHaveBeenCalledWith("user_shots");
+    expect(sendAPIRequest).toHaveBeenCalledWith("user_shots_received");
   });
 });
 

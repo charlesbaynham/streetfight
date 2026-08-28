@@ -26,6 +26,17 @@ never made because no escalation model is configured or the game's escalation
 toggle is off -- all land in the same place: the admin queue, where every shot
 went before any of this existed.
 
+**Resolve everything** (roadmap R8) relaxes the *accuracy* half of that, and
+only that half. With the game's toggle on, a rung that would hand the head to
+the admin because nothing here is sure enough resolves it as best the evidence
+allows instead: ``_decide`` stops meaning "stop the drain" and starts meaning
+"resolve it as best you can, the players will complain if it is wrong". It is
+appeals that make that safe -- an automatic error stops being silent and final
+and becomes loud and recoverable. Three things are never forced, because
+forcing them would produce a verdict nobody can appeal or nobody deserves: a
+head with no completed review, a ranking the reading itself contradicts, and a
+hit that ranks nobody at all (nobody to notify means nobody to complain).
+
 **Strict queue order.** Only the oldest unchecked shot of a game is ever acted
 on. Resolving a shot can invalidate the shots behind it (a knockout refunds the
 victim's queued shots), so an ambiguous head blocks the whole queue -- and so
@@ -48,6 +59,7 @@ from .identity.config import DEFAULT_THRESHOLDS
 from .identity.config import default_scheme
 from .model import AI_REVIEW_STATE_DONE
 from .shot_identification import rank_candidates
+from .shot_vision import HIT_BYSTANDER
 from .shot_vision import HIT_PLAYER
 from .shot_vision import MISS
 from .shot_vision import armbands_confident
@@ -85,7 +97,11 @@ def process_queue_head(game_id: UUID) -> None:
         if head is None:
             return
 
-        decision = _decide(head, game_id)
+        # Re-read per iteration rather than once per drain: the admin flips
+        # this mid-game, and it is one cheap query beside the others here.
+        resolve_everything = AdminInterface().is_ai_resolve_everything_enabled(game_id)
+
+        decision = _decide(head, game_id, resolve_everything)
         if decision is None:
             # An ambiguous head blocks everything behind it: that is the
             # required ordering, not a missed opportunity.
@@ -95,15 +111,26 @@ def process_queue_head(game_id: UUID) -> None:
         if action == _ESCALATE:
             from . import shot_escalation
 
+            started = None
             if AdminInterface().is_ai_escalation_enabled(game_id):
                 logger.info("Escalating shot %s to the stronger model", head.id)
-                shot_escalation.enqueue_escalation(head.id)
-            # Return either way. With an escalation in flight the head blocks
-            # the queue behind it; with the escalation toggle off, or with no
-            # escalation client configured, nothing started at all and the head
-            # simply waits for the admin -- the same safety valve, reachable
-            # from the admin panel as well as from the environment.
-            return
+                started = shot_escalation.enqueue_escalation(head.id)
+
+            if started is not None or not resolve_everything:
+                # With an escalation in flight the head blocks the queue behind
+                # it; with the escalation toggle off, or with no escalation
+                # client configured, nothing started at all and the head simply
+                # waits for the admin -- the same safety valve, reachable from
+                # the admin panel as well as from the environment.
+                return
+
+            # ...unless we have been told to resolve everything, in which case
+            # a second opinion that is never coming must not be the reason
+            # nobody gets a verdict to appeal.
+            decision = _forced_fallback(head, game_id)
+            if decision is None:
+                return
+            action, target_id = decision
 
         try:
             if action == _HIT:
@@ -129,30 +156,41 @@ def process_queue_head(game_id: UUID) -> None:
             )
 
 
-def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
-    """What to do with the queue head: (action, target_id), or None to stop.
-
-    The ladder, in order (see the module docstring for why each rung is where
-    it is):
-
-    1. no completed review, or an unparseable one -> the admin's;
-    2. a miss, confidently -> resolve it. Legacy reviews stored without a
-       confidence field parse as 0.0 and can never fire;
-    3. any outcome other than a hit on a player -- including a ``hit_bystander``
-       stored before roadmap #11 retired that mapping -- > the admin's. Nothing
-       auto-bystanders off the weak model any more;
-    4. a hit with the whole outfit read (or all but one, armbands included) ->
-       the auto-eligible rung, gated on confidence and the posterior;
-    5. any other hit -> the escalation rung, which is about what the *stronger*
-       model has said so far, not what this one thinks.
-    """
+def _stored_review(head) -> Optional[dict]:
+    """The head's completed reading, or None if there isn't a usable one."""
     if head.ai_review_state != AI_REVIEW_STATE_DONE or not head.ai_review:
         return None
     try:
         review = json.loads(head.ai_review)
     except ValueError:
         return None
-    if not isinstance(review, dict):
+    return review if isinstance(review, dict) else None
+
+
+def _decide(
+    head, game_id: UUID, resolve_everything: bool = False
+) -> Optional[Tuple[str, Optional[UUID]]]:
+    """What to do with the queue head: (action, target_id), or None to stop.
+
+    The ladder, in order (see the module docstring for why each rung is where
+    it is):
+
+    1. no completed review, or an unparseable one -> the admin's, in both
+       modes: there is nothing here to resolve it *from*;
+    2. a miss, confidently -> resolve it. Legacy reviews stored without a
+       confidence field parse as 0.0 and can never fire -- unless
+       ``resolve_everything``, which drops the threshold rather than the
+       reading;
+    3. a ``hit_bystander`` stored before roadmap #11 retired that mapping ->
+       the admin's, or the bystander call itself when forced (it takes nothing
+       off anybody). Any other unrecognised outcome is the admin's either way;
+    4. a hit with the whole outfit read (or all but one, armbands included) ->
+       the auto-eligible rung, gated on confidence and the posterior;
+    5. any other hit -> the escalation rung, which is about what the *stronger*
+       model has said so far, not what this one thinks.
+    """
+    review = _stored_review(head)
+    if review is None:
         return None
 
     try:
@@ -162,7 +200,9 @@ def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
 
     outcome = review.get("outcome")
     if outcome == MISS:
-        return (_MISS, None) if confidence >= CONFIDENT else None
+        return (_MISS, None) if confidence >= CONFIDENT or resolve_everything else None
+    if outcome == HIT_BYSTANDER:
+        return (_BYSTANDER, None) if resolve_everything else None
     if outcome != HIT_PLAYER:
         return None
 
@@ -170,41 +210,30 @@ def _decide(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
     if readable == DEFAULT_SCHEME.channels.n or (
         readable == DEFAULT_SCHEME.channels.n - 1 and armbands_confident(review)
     ):
-        return _decide_auto_hit(head, game_id, review, confidence)
+        return _decide_auto_hit(head, game_id, review, confidence, resolve_everything)
 
-    return _decide_escalated(head, game_id)
+    return _decide_escalated(head, game_id, resolve_everything)
 
 
-def _decide_auto_hit(
-    head, game_id: UUID, review: dict, confidence: float
+def _target_from_ranking(
+    head, users, ranked, resolve_everything: bool
 ) -> Optional[Tuple[str, Optional[UUID]]]:
-    """The auto-eligible rung: enough of the outfit was read that this reading
-    can name somebody on its own.
+    """Turn a ranking of the candidates into a hit, or None.
 
-    It still has to: the reply has to be confident overall, and the reading has
-    to pick out one non-shooter candidate confidently and without a tie -- see
-    backend.shot_identification.rank_candidates, which scores the reading
-    against what each candidate is *actually wearing* rather than decoding it
-    against the code.
+    Unforced this is the conservatism the slot-decode gate had, expressed
+    against the posterior instead of the code: act only on a confident, untied
+    ranking that nothing in the reading contradicts.
 
-    A candidate who is already knocked out is acted on like any other: the shot
-    genuinely hit them, it simply takes nothing off them. Withholding it would
-    leave the shot behind a kill blocking the queue for an admin to rubber-stamp.
+    Forced, an unconfident or tied ranking is acted on anyway -- naming the most
+    likely candidate is what gives the two people who were there a verdict to
+    appeal. Two things are never forced, because they leave nothing worth
+    appealing: a ranking the reading itself *contradicts*, which would name
+    somebody the evidence argues against, and no ranking at all, which names
+    nobody to notify and so nobody who can complain.
     """
-    from .admin_interface import AdminInterface
-
-    if confidence < CONFIDENT:
+    if ranked is None or ranked.inconsistent:
         return None
-
-    users = AdminInterface().get_users_for_game(game_id)
-    ranked = rank_candidates(head, users, review)
-    if ranked is None:
-        return None
-
-    # The same conservatism the slot-decode gate had, expressed against the
-    # posterior instead of the code: act only on a confident, untied ranking
-    # that nothing in the reading contradicts.
-    if not ranked.confident or ranked.ambiguous or ranked.inconsistent:
+    if not resolve_everything and (not ranked.confident or ranked.ambiguous):
         return None
 
     target = next((u for u in users if u.id == ranked.best), None)
@@ -214,18 +243,99 @@ def _decide_auto_hit(
     return (_HIT, target.id)
 
 
-def _decide_escalated(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
+def _decide_auto_hit(
+    head, game_id: UUID, review: dict, confidence: float, resolve_everything: bool
+) -> Optional[Tuple[str, Optional[UUID]]]:
+    """The auto-eligible rung: enough of the outfit was read that this reading
+    can name somebody on its own.
+
+    It still has to: the reply has to be confident overall, and the reading has
+    to pick out one non-shooter candidate confidently and without a tie -- see
+    backend.shot_identification.rank_candidates, which scores the reading
+    against what each candidate is *actually wearing* rather than decoding it
+    against the code. ``resolve_everything`` drops both of those bars; see
+    :func:`_target_from_ranking` for the two it never drops.
+
+    A candidate who is already knocked out is acted on like any other: the shot
+    genuinely hit them, it simply takes nothing off them. Withholding it would
+    leave the shot behind a kill blocking the queue for an admin to rubber-stamp.
+    """
+    from .admin_interface import AdminInterface
+
+    if confidence < CONFIDENT and not resolve_everything:
+        return None
+
+    users = AdminInterface().get_users_for_game(game_id)
+    ranked = rank_candidates(head, users, review)
+
+    return _target_from_ranking(head, users, ranked, resolve_everything)
+
+
+def _forced_fallback(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
+    """The weak reading's best guess, for a head "resolve everything" must not
+    leave sitting there.
+
+    Reached when the stronger model was never going to answer -- escalation off
+    or unconfigured -- or answered "unsure". The ranking's own gates come off;
+    the two that mean there is nothing to say stay on.
+    """
+    from .admin_interface import AdminInterface
+
+    review = _stored_review(head)
+    if review is None:
+        return None
+
+    users = AdminInterface().get_users_for_game(game_id)
+    ranked = rank_candidates(head, users, review)
+
+    return _target_from_ranking(head, users, ranked, True)
+
+
+def _forced_escalated_verdict(payload) -> Optional[Tuple[str, Optional[UUID]]]:
+    """What a stored escalation says once its thresholds are off.
+
+    backend.shot_escalation.decide_from_escalation refuses a verdict it is not
+    confident enough in, because naming the wrong player takes somebody's life.
+    Forced, it is named anyway: a verdict is the thing a player can appeal, and
+    an unappealed silence is not. "unsure" -- and anything malformed -- still
+    says nothing, and the caller falls back to the weak reading instead.
+    """
+    from . import shot_escalation
+
+    if not isinstance(payload, dict):
+        return None
+
+    verdict = payload.get("verdict")
+    if verdict == shot_escalation.VERDICT_MISS:
+        return (shot_escalation.ACTION_MISS, None)
+    if verdict == shot_escalation.VERDICT_BYSTANDER:
+        return (shot_escalation.ACTION_BYSTANDER, None)
+    if verdict != shot_escalation.VERDICT_PLAYER:
+        return None
+
+    try:
+        return (shot_escalation.ACTION_HIT, UUID(str(payload.get("target_user_id"))))
+    except (TypeError, ValueError):
+        return None
+
+
+def _decide_escalated(
+    head, game_id: UUID, resolve_everything: bool
+) -> Optional[Tuple[str, Optional[UUID]]]:
     """The escalation rung: too little was read for this reading to name
     anybody, so what happens next depends on the stronger model.
 
-    Never escalated -> escalate now. Pending -> wait, blocking the queue behind
-    it exactly as an ambiguous head does. Errored -> the admin's (a re-run of
-    the weak review clears it, see AdminInterface.store_shot_ai_review). Done ->
-    whatever backend.shot_escalation makes of the verdict, re-validated here
-    against the roster because the escalation may have finished minutes ago.
-    That re-validation asks only whether the named player is still somebody
-    this shot could have hit, not whether they are still alive: somebody
-    knocked out in the meantime was still hit, for no damage.
+    Never escalated -> escalate now, in both modes: a second opinion that is
+    actually coming beats a forced guess. Pending -> wait, blocking the queue
+    behind it exactly as an ambiguous head does. Errored -> the admin's (a
+    re-run of the weak review clears it, see
+    AdminInterface.store_shot_ai_review); neither of those is ever forced, one
+    being a verdict still coming and the other a verdict that never came.
+    Done -> whatever backend.shot_escalation makes of the verdict,
+    re-validated here against the roster because the escalation may have
+    finished minutes ago. That re-validation asks only whether the named player
+    is still somebody this shot could have hit, not whether they are still
+    alive: somebody knocked out in the meantime was still hit, for no damage.
     """
     from . import shot_escalation
     from .admin_interface import AdminInterface
@@ -242,6 +352,13 @@ def _decide_escalated(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]
         return None
 
     decision = shot_escalation.decide_from_escalation(payload)
+    if decision is None and resolve_everything:
+        decision = _forced_escalated_verdict(payload)
+        if decision is None:
+            # "unsure", or a reply that never matched the contract: the
+            # stronger model has nothing to add, so the weak reading's ranking
+            # is the best there is.
+            return _forced_fallback(head, game_id)
     if decision is None:
         return None
 

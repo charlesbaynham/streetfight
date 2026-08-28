@@ -296,10 +296,29 @@ Images are built from the Nix flake
   blocks the queue the same way, and "too few channels" is never a bystander
   verdict on its own — `classify()`'s old mapping to that is retired. The
   admin can also fire one by hand (`admin_escalate_shot`, "Run escalated
-  review" in the queue), which runs whatever the toggles say.
+  review" in the queue), which runs whatever the toggles say. A fourth
+  per-game toggle, `ai_resolve_everything_enabled` (default off), relaxes only
+  the confidence gate: an unconfident miss/bystander/ambiguous-hit ranking
+  resolves to the best call so the players can appeal it (see appeals,
+  below), rather than waiting on the admin. It never forces a resolution with
+  nothing to resolve *from* — no usable review, an inconsistent reading, no
+  ranking at all, an errored escalation — since with nobody to notify, nobody
+  can appeal; strict queue ordering is untouched either way.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
-  and never assume structured-output support.
+  and never assume structured-output support. User-facing strings call all of
+  this **"CharlesBot"**, never "AI" — the `ai_*` field, column and module
+  names stay as they are (renaming would invalidate stored review payloads),
+  with a boundary comment at each display site recording the convention.
+- **Appeals** (roadmap R8): either party to a resolved shot may appeal it once,
+  from a per-game budget (`User.appeals_remaining`, `APPEALS_PER_GAME = 3` in
+  `backend/model.py`), refunded when upheld. Appeal columns live on `Shot`
+  (`appeal_state`, `appealed_at`, `shooter_appeal_reason`,
+  `target_appeal_reason`) — appealing marks the shot contested and re-opens it
+  for the admin, but never re-enters the auto-action drain: contested shots
+  have their own list (`admin_get_contested_shots_info`), ordered oldest
+  complaint first. A checked shot stays checked otherwise; resolutions are
+  terminal.
 - The **replay workbench** (`/admin/replay`, `react-ui/src/ShotReplay.js` →
   `admin_replay_shot_review`) trials a vision contract against real shots
   without storing anything. That contract is three things, and they must stay

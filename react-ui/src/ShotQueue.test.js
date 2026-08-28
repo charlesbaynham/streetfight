@@ -2,7 +2,7 @@ import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
-import ShotQueue, { rankShotCandidates } from "./ShotQueue";
+import ShotQueue, { charlesBotVerdict, rankShotCandidates } from "./ShotQueue";
 import {
   installFetchMock,
   getAPICalls,
@@ -116,6 +116,100 @@ describe("rankShotCandidates", () => {
     expect(ranked.map((u) => u.user_id)).toEqual(["u-near", "u-mid", "u-far"]);
     expect(ranked[0].distance).toBeLessThan(ranked[1].distance);
     expect(ranked[1].distance).toBeLessThan(ranked[2].distance);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// charlesBotVerdict - the one-sentence verdict, pure function.
+// ---------------------------------------------------------------------------
+
+describe("charlesBotVerdict", () => {
+  const hitPlayer = { outcome: "hit_player" };
+  const identified = (overrides = {}) => ({
+    ranked: [
+      { user_id: "u-alice", name: "Alice", probability: 0.82 },
+      { user_id: "u-bob", name: "Bob", probability: 0.11 },
+    ],
+    readable_channels: 4,
+    confident: true,
+    ambiguous: false,
+    inconsistent: false,
+    ...overrides,
+  });
+
+  test("an escalated player verdict names its target, over anything below it", () => {
+    expect(
+      charlesBotVerdict({
+        review: { outcome: "miss" },
+        identification: identified(),
+        escalationState: "done",
+        escalation: { verdict: "player", target_name: "Carol" },
+      }),
+    ).toBe("CharlesBot thinks: hit on Carol");
+  });
+
+  test("a confident, unambiguous identification names the top candidate", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: identified(),
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit on Alice");
+  });
+
+  test("an unconfident ranking offers the top two rather than picking one", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: identified({
+          confident: false,
+          ranked: [
+            { user_id: "u-alice", name: "Alice", probability: 0.52 },
+            { user_id: "u-bob", name: "Bob", probability: 0.44 },
+          ],
+        }),
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit - probably Alice (0.5) or Bob (0.4)");
+  });
+
+  test("a hit with nothing to identify against names nobody", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit on a player, but can't tell who");
+  });
+
+  test.each([
+    ["hit_bystander", "CharlesBot thinks: that's a bystander, not a hit"],
+    ["miss", "CharlesBot thinks: miss"],
+  ])("says what %s means in words", (outcome, sentence) => {
+    expect(
+      charlesBotVerdict({
+        review: { outcome },
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe(sentence);
+  });
+
+  test("says nothing without a review", () => {
+    expect(
+      charlesBotVerdict({
+        review: null,
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -352,10 +446,12 @@ describe("ShotQueuePanel", () => {
     );
   });
 
-  test('"Re-run AI review" posts admin_review_shot for the shown shot', async () => {
+  test('"Re-run CharlesBot review" posts admin_review_shot for the shown shot', async () => {
     await renderQueue();
 
-    userEvent.click(screen.getByRole("button", { name: "Re-run AI review" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Re-run CharlesBot review" }),
+    );
 
     await waitFor(() =>
       expect(getLastAPICall("admin_review_shot").query).toEqual({
@@ -489,7 +585,9 @@ describe("ShotAiTags", () => {
     await renderQueue();
 
     expect(screen.queryByText(/Reviewing/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/AI review failed/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/CharlesBot review failed/),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("HIT")).not.toBeInTheDocument();
   });
 
@@ -510,14 +608,14 @@ describe("ShotAiTags", () => {
     };
     await renderQueue();
 
-    await screen.findByText("AI review failed: vision model timed out");
+    await screen.findByText("CharlesBot review failed: vision model timed out");
   });
 
   test("falls back to a generic message when the error carries no reason", async () => {
     aiReviewResponse = { status: 200, body: { state: "error", review: null } };
     await renderQueue();
 
-    await screen.findByText("AI review failed: unknown error");
+    await screen.findByText("CharlesBot review failed: unknown error");
   });
 
   test.each([
@@ -766,6 +864,31 @@ describe("ShotAiTags", () => {
     await screen.findByText("HIT on Alice (82%)");
   });
 
+  test("shows the one-sentence verdict above the tags", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "armbands visible",
+          reasoning: "",
+          channels: {},
+        },
+        identification: {
+          ranked: [{ user_id: "u-alice", name: "Alice", probability: 0.9 }],
+          readable_channels: 4,
+          confident: true,
+          ambiguous: false,
+          inconsistent: false,
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("CharlesBot thinks: hit on Alice");
+  });
+
   test('refetches when a "shots" SSE update arrives, even though the shot id has not changed', async () => {
     aiReviewResponse = {
       status: 200,
@@ -790,5 +913,250 @@ describe("ShotAiTags", () => {
     await actAndFlush(() => emitUpdate("shots"));
 
     await screen.findByText("Miss");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RankedCandidates - the decoder's ranking, with the GPS distances alongside
+// ---------------------------------------------------------------------------
+
+describe("RankedCandidates", () => {
+  let identification;
+
+  // Alice has a fix 120m from the shooter; Bob was never located.
+  const shotWithFixes = () =>
+    makeShotDetail("shot-1", {
+      location_context: JSON.stringify([
+        locationEntry({ user_id: "shot-1-shooter", user: "Shooter" }),
+        locationEntry({
+          user_id: "u-alice",
+          user: "Alice",
+          latitude: 51.5 + degreesNorthFor(120),
+        }),
+      ]),
+    });
+
+  beforeEach(() => {
+    identification = {
+      ranked: [
+        {
+          user_id: "u-alice",
+          name: "Alice",
+          team_name: "Reds",
+          probability: 0.82,
+          code_distance: 0,
+        },
+        {
+          user_id: "u-bob",
+          name: "Bob",
+          team_name: "Blues",
+          probability: 0.12,
+          code_distance: 2,
+        },
+      ],
+      readable_channels: 3,
+      confident: true,
+      ambiguous: false,
+      inconsistent: false,
+    };
+  });
+
+  async function renderQueue() {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: () => ["shot-1"],
+      admin_get_shot: () => shotWithFixes(),
+      admin_get_shot_ai_review: () => ({
+        status: 200,
+        body: {
+          state: "done",
+          review: {
+            outcome: "hit_player",
+            outcome_reason: "armbands visible",
+            reasoning: "",
+            channels: {},
+          },
+          identification,
+        },
+      }),
+      admin_shot_hit_user: {},
+      admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
+      admin_refund_shot: {},
+      admin_review_shot: {},
+      admin_escalate_shot: {},
+    });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
+    );
+    await screen.findByText("By Shooter of shot-1");
+    await flushEffects();
+  }
+
+  test("ranks the candidates with their probability, code distance and distance from the shooter", async () => {
+    await renderQueue();
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    expect(within(alice).getByText("Reds")).toBeInTheDocument();
+    expect(
+      within(alice).getByText("p=0.82 - code distance 0 - 120 m"),
+    ).toBeInTheDocument();
+
+    // Nobody located Bob, so there is no distance to show - and an em dash
+    // rather than a zero, which would read as "on top of the shooter".
+    const bob = screen.getByText("Bob").closest("li");
+    expect(
+      within(bob).getByText("p=0.12 - code distance 2 - —"),
+    ).toBeInTheDocument();
+  });
+
+  test("warns when two candidates are too close to call", async () => {
+    identification.ambiguous = true;
+    await renderQueue();
+
+    await screen.findByText("Two candidates are too close to call");
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+  });
+
+  test("warns when the reading fits nobody cleanly", async () => {
+    identification.inconsistent = true;
+    await renderQueue();
+
+    await screen.findByText("The reading fits nobody cleanly");
+  });
+
+  test("shows no ranking at all when nothing in the photo was readable", async () => {
+    identification = {
+      ranked: [],
+      readable_channels: 0,
+      confident: false,
+      ambiguous: false,
+      inconsistent: false,
+    };
+    await renderQueue();
+
+    await screen.findByText(
+      "Nothing readable in this photo - a ranking would be a guess",
+    );
+    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The contested queue (roadmap R8): appealed shots, and the one re-ruling the
+// admin is allowed to make on them.
+// ---------------------------------------------------------------------------
+
+describe("contested shots", () => {
+  let appeal;
+
+  beforeEach(() => {
+    appeal = {
+      appeal_state: "open",
+      shooter_appeal_reason: null,
+      target_appeal_reason: "missed",
+      appealed_at: 1755250000,
+      result: "hit",
+      shooter_name: "Shooter of shot-1",
+      target_name: "Target Red",
+    };
+  });
+
+  async function renderQueue(routeOverrides = {}) {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: () => ["shot-9"],
+      admin_get_contested_shots_info: () => ["shot-1"],
+      admin_get_shot: ({ query }) =>
+        makeShotDetail(query.shot_id, {
+          checked: true,
+          result: "hit",
+          target_user_id: "shot-1-target-red",
+        }),
+      admin_get_shot_ai_review: () => NO_REVIEW_YET,
+      admin_get_shot_appeal: () => appeal,
+      admin_shot_hit_user: {},
+      admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
+      admin_refund_shot: {},
+      admin_review_shot: {},
+      admin_escalate_shot: {},
+      ...routeOverrides,
+    });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
+    );
+    await screen.findByText("Shot 1 of 1:");
+    await flushEffects();
+  }
+
+  test("switching to Contested sources the list from the contested endpoint", async () => {
+    await renderQueue();
+    expect(getAPICalls("admin_get_contested_shots_info")).toHaveLength(0);
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await waitFor(() =>
+      expect(
+        getAPICalls("admin_get_contested_shots_info").length,
+      ).toBeGreaterThan(0),
+    );
+    await screen.findByText("By Shooter of shot-1");
+  });
+
+  test("an appealed shot says who is contesting it and why", async () => {
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Contested - awaiting your ruling");
+    expect(
+      screen.getByText('Target Red (target): "it missed me"'),
+    ).toBeInTheDocument();
+  });
+
+  test("an adjudicated shot with an open appeal gets its verdict buttons back", async () => {
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Contested - awaiting your ruling");
+    expect(screen.getByRole("button", { name: "Missed" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Hit" }).length,
+    ).toBeGreaterThan(0);
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Missed" })),
+    );
+
+    expect(getLastAPICall("admin_mark_shot_missed").query).toEqual({
+      shot_id: "shot-1",
+    });
+  });
+
+  test("an adjudicated shot whose appeal has been settled stays final", async () => {
+    appeal = { ...appeal, appeal_state: "rejected" };
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Appeal rejected");
+    expect(
+      screen.queryByRole("button", { name: "Missed" }),
+    ).not.toBeInTheDocument();
   });
 });

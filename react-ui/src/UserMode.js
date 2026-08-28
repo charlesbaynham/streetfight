@@ -22,10 +22,13 @@ import {
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
+import useWakeLock from "./useWakeLock";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
 function GetView({ user }) {
+  useWakeLock();
+
   const [triggerShot, setTriggerShot] = useState(0);
   const [triggerPermissionsRecheck, setTriggerPermissionsRecheck] = useState(0);
 

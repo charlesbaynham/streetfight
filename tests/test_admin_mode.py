@@ -7,6 +7,7 @@ from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
 from backend.model import Shot
+from backend.model import TickerEntry
 from backend.model import User
 from backend.user_interface import UserInterface
 
@@ -241,6 +242,240 @@ def test_shots_info_includes_checked_only_when_asked(
 
     assert queue_ids() == []
     assert queue_ids(include_checked=True) == [str(shot_id)]
+
+
+# -- re-adjudicating a contested shot (roadmap R8) ---------------------------
+
+
+def contest(db_session, shot_id):
+    """Mark a shot contested without going through the appeal endpoint."""
+    db_session.query(Shot).filter_by(id=shot_id).update({"appeal_state": "open"})
+    db_session.commit()
+
+
+def test_a_contested_checked_shot_can_be_re_adjudicated(
+    db_session, two_users_in_different_teams, test_image_string
+):
+    shooter, target = two_users_in_different_teams
+    UserInterface(shooter).award_ammo(1)
+    UserInterface(shooter).set_weapon_data(1, 6)
+    shot_id = UserInterface(shooter).submit_shot(test_image_string)
+    AdminInterface().hit_user(shot_id, target)
+
+    contest(db_session, shot_id)
+    AdminInterface().mark_shot_missed(shot_id)
+
+    db_session.expire_all()
+    shot = db_session.get(Shot, shot_id)
+    assert shot.result == "miss"
+    # A shot that is no longer a hit is nobody's hit
+    assert shot.target_user_id is None
+
+
+def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
+    db_session, user_in_team, test_image_string
+):
+    UserInterface(user_in_team).award_ammo(1)
+    UserInterface(user_in_team).set_weapon_data(1, 6)
+    shot_id = UserInterface(user_in_team).submit_shot(test_image_string)
+    AdminInterface().mark_shot_missed(shot_id)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().mark_shot_bystander(shot_id)
+
+    assert excinfo.value.status_code == 400
+
+
+# -- settling the appeal (roadmap R8) ----------------------------------------
+
+
+@pytest.fixture
+def contested_hit(two_users_in_different_teams, test_image_string):
+    """A shot ruled a hit and then appealed by its target."""
+    shooter, target = two_users_in_different_teams
+    UserInterface(shooter).award_ammo(1)
+    UserInterface(shooter).set_weapon_data(1, 6)
+    shot_id = UserInterface(shooter).submit_shot(test_image_string)
+    AdminInterface().hit_user(shot_id, target)
+    UserInterface(target).appeal_shot(shot_id, "missed")
+    return shooter, target, shot_id
+
+
+def appeal_state(db_session, shot_id):
+    db_session.expire_all()
+    return db_session.get(Shot, shot_id).appeal_state
+
+
+def test_a_different_ruling_upholds_the_appeal(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+    assert UserInterface(target).get_user_model().appeals_remaining == 2
+
+    AdminInterface().mark_shot_missed(shot_id)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(target).get_user_model().appeals_remaining == 3
+
+
+def test_the_same_ruling_rejects_the_appeal(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    AdminInterface().hit_user(shot_id, target)
+
+    assert appeal_state(db_session, shot_id) == "rejected"
+    # The price is on being wrong, not on appealing - and this appeal was wrong
+    assert UserInterface(target).get_user_model().appeals_remaining == 2
+
+
+def test_re_ruling_the_hit_onto_somebody_else_upholds_it(
+    db_session, contested_hit, user_factory, team_factory
+):
+    shooter, target, shot_id = contested_hit
+    somebody_else = user_factory()
+    UserInterface(somebody_else).join_team(team_factory())
+
+    AdminInterface().hit_user(shot_id, somebody_else)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(target).get_user_model().appeals_remaining == 3
+    assert db_session.get(Shot, shot_id).target_user_id == somebody_else
+
+
+def test_a_refund_gives_the_benefit_of_the_doubt(db_session, contested_hit):
+    # Not a judgement either way, so the appeal comes back. Falls out of the
+    # rule - "refunded" differs from "hit" - rather than needing a special case
+    shooter, target, shot_id = contested_hit
+
+    AdminInterface().refund_shot(shot_id)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(target).get_user_model().appeals_remaining == 3
+
+
+def test_both_appellants_are_refunded_when_both_appealed(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+    UserInterface(shooter).appeal_shot(shot_id, "actually_hit")
+
+    AdminInterface().mark_shot_bystander(shot_id)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(target).get_user_model().appeals_remaining == 3
+    assert UserInterface(shooter).get_user_model().appeals_remaining == 3
+
+
+def test_a_ruled_appeal_is_terminal(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+    AdminInterface().mark_shot_missed(shot_id)
+
+    # The admin's word ends the loop: nobody appeals the same shot twice, and
+    # the shot cannot be re-adjudicated again either
+    (shot,) = UserInterface(shooter).get_own_shots()
+    assert shot["can_appeal"] is False
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().mark_shot_bystander(shot_id)
+
+    assert excinfo.value.status_code == 400
+
+
+def test_upholding_an_appeal_is_announced(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    AdminInterface().mark_shot_missed(shot_id)
+
+    public = UserInterface(shooter).get_messages(20, private=False)
+    assert any("referee overturned" in message for _, message, _ in public)
+
+    private = UserInterface(target).get_messages(20, private=True)
+    assert any("appeal was upheld" in message for _, message, _ in private)
+
+
+def test_rejecting_an_appeal_tells_the_appellant_only(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    AdminInterface().hit_user(shot_id, target)
+
+    private = UserInterface(target).get_messages(20, private=True)
+    assert any("appeal was rejected" in message for _, message, _ in private)
+
+    public = UserInterface(shooter).get_messages(20, private=False)
+    assert not any("referee overturned" in message for _, message, _ in public)
+
+
+def test_re_ruling_never_unwinds_hit_points(db_session, contested_hit):
+    """The admin repairs a wrongly-taken life by hand, with set_user_HP: there
+    is no compensating action for a knockout's cascade anywhere here."""
+    shooter, target, shot_id = contested_hit
+    assert UserInterface(target).get_user_model().hit_points == 0
+
+    AdminInterface().mark_shot_missed(shot_id)
+
+    assert UserInterface(target).get_user_model().hit_points == 0
+
+
+def test_the_private_hit_message_carries_the_shot_id(db_session, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    entry = (
+        db_session.query(TickerEntry)
+        .filter_by(private_user_id=target)
+        .order_by(TickerEntry.id)
+        .first()
+    )
+    assert entry.shot_id == shot_id
+
+
+# -- the contested queue -----------------------------------------------------
+
+
+def test_contested_shots_are_listed_oldest_complaint_first(
+    db_session, contested_hit, user_factory, team_factory, test_image_string
+):
+    shooter, target, first = contested_hit
+
+    UserInterface(shooter).award_ammo(1)
+    second = UserInterface(shooter).submit_shot(test_image_string)
+    AdminInterface().mark_shot_missed(second)
+    UserInterface(shooter).appeal_shot(second, "actually_hit")
+
+    assert AdminInterface().get_contested_shot_ids() == [first, second]
+
+    AdminInterface().mark_shot_missed(first)
+    assert AdminInterface().get_contested_shot_ids() == [second]
+
+
+def test_contested_shots_endpoint(admin_api_client, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    response = admin_api_client.get("/api/admin_get_contested_shots_info")
+    assert response.is_success
+    assert response.json() == [str(shot_id)]
+
+
+def test_shot_appeal_endpoint(admin_api_client, contested_hit):
+    shooter, target, shot_id = contested_hit
+
+    response = admin_api_client.get(
+        "/api/admin_get_shot_appeal", params={"shot_id": str(shot_id)}
+    )
+    assert response.is_success
+
+    appeal = response.json()
+    assert appeal["appeal_state"] == "open"
+    assert appeal["target_appeal_reason"] == "missed"
+    assert appeal["shooter_appeal_reason"] is None
+    assert appeal["result"] == "hit"
+    assert appeal["appealed_at"] is not None
+    assert appeal["shooter_name"] == UserInterface(shooter).get_user_model().name
+    assert appeal["target_name"] == UserInterface(target).get_user_model().name
+
+
+def test_resetting_the_game_restores_the_appeal_budget(contested_hit):
+    shooter, target, shot_id = contested_hit
+    assert UserInterface(target).get_user_model().appeals_remaining == 2
+
+    AdminInterface().reset_game(UserInterface(target).get_game_id())
+
+    assert UserInterface(target).get_user_model().appeals_remaining == 3
 
 
 def test_set_circle(admin_api_client, user_in_team):

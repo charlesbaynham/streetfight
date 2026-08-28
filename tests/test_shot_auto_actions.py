@@ -720,8 +720,8 @@ def test_racing_an_admin_is_swallowed_and_the_drain_terminates(
 
     real_decide = shot_auto_actions._decide
 
-    def racing_decide(head, game_id_):
-        decision = real_decide(head, game_id_)
+    def racing_decide(head, game_id_, resolve_everything=False):
+        decision = real_decide(head, game_id_, resolve_everything)
         # An admin resolves the same shot between the decision and the action
         AdminInterface().mark_shot_missed(head.id)
         return decision
@@ -841,6 +841,335 @@ def test_auto_actions_endpoint_needs_admin_auth(api_client, one_game):
     )
 
     assert response.status_code == 403
+
+
+# -- "resolve everything" (roadmap R8) ---------------------------------------
+#
+# The relaxed mode: a rung that would hand the head to the admin resolves it as
+# best the evidence allows instead, because an appeal makes the error loud and
+# recoverable. Every row of the table is here, in both modes.
+
+OTHER_SLOT = 2
+
+
+@pytest.fixture
+def second_target_with_slot(db_session, team_factory, user_factory):
+    """A third player wearing the *same* outfit as target_with_slot: the two
+    tie, so the ranking is ambiguous and unconfident."""
+    team_id = team_factory()
+    user_id = user_factory()
+    with UserInterface(user_id) as ui:
+        ui.join_team(team_id)
+    db_session.query(User).filter_by(id=user_id).update({"identity_slot": TARGET_SLOT})
+    db_session.commit()
+    return user_id
+
+
+def force(game_id):
+    """Both AI flags on, plus resolve-everything."""
+    enable_ai(game_id)
+    AdminInterface().set_ai_resolve_everything_enabled(game_id, True)
+
+
+def forced_drain_with(db_session, shot_id, raw):
+    game_id = game_of(shot_id)
+    force(game_id)
+    store_done_review(shot_id, raw)
+    shot_auto_actions.process_queue_head(game_id)
+    return shot_row(db_session, shot_id)
+
+
+def forced_drain_with_escalation(db_session, shot_id, payload):
+    game_id = game_of(shot_id)
+    force(game_id)
+    store_done_review(shot_id, partly_read_reply(("armbands",)))
+    store_escalation(shot_id, ai_shot_review.STATE_DONE, payload)
+    shot_auto_actions.process_queue_head(game_id)
+    return shot_row(db_session, shot_id)
+
+
+def test_resolve_everything_defaults_to_off(db_session, one_game):
+    assert AdminInterface().is_ai_resolve_everything_enabled(one_game) is False
+
+
+# ...nothing to resolve *from* is never forced
+
+
+def test_forcing_does_not_resolve_a_head_with_no_review(
+    db_session, shot_from_user_in_team
+):
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+@pytest.mark.parametrize(
+    "state,payload",
+    [
+        (ai_shot_review.STATE_PENDING, None),
+        (ai_shot_review.STATE_ERROR, "the model timed out"),
+        (ai_shot_review.STATE_DONE, "not json at all"),
+    ],
+)
+def test_forcing_does_not_resolve_an_unusable_review(
+    db_session, shot_from_user_in_team, state, payload
+):
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    AdminInterface().store_shot_ai_review(shot_from_user_in_team, state, payload)
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+# ...but an unconfident verdict is
+
+
+def test_forcing_resolves_an_unconfident_miss(db_session, shot_from_user_in_team):
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, miss_reply(confidence=0.3)
+    )
+
+    assert shot.result == "miss"
+
+
+def test_forcing_resolves_a_stored_bystander_outcome(
+    mocker, db_session, shot_from_user_in_team
+):
+    # Retired as an auto-action by #11 because "we could not read any of it" is
+    # not evidence the person is not playing. Forced, it is still the best the
+    # reading offers, and a bystander call takes nothing off anybody.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        {"outcome": shot_vision.HIT_BYSTANDER, "is_hit": False, "confidence": 0.4},
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).result == "bystander"
+    enqueue.assert_not_called()
+
+
+def test_forcing_leaves_an_unrecognised_outcome_alone(
+    db_session, shot_from_user_in_team
+):
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        {"outcome": "something_new", "confidence": 0.95},
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+def test_forcing_resolves_an_unconfident_hit(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, confident_hit_reply(confidence=0.3)
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_forcing_resolves_an_ambiguous_ranking(
+    db_session, shot_from_user_in_team, target_with_slot, second_target_with_slot
+):
+    # Two players in the same outfit: the ranking ties, so unforced this is the
+    # admin's. Forced, the most likely candidate is named - being wrong is what
+    # the appeal is for.
+    shot = drain_with(db_session, shot_from_user_in_team, confident_hit_reply())
+    assert shot.checked is False
+
+    shot = forced_drain_with(db_session, shot_from_user_in_team, confident_hit_reply())
+
+    assert shot.result == "hit"
+    assert shot.target_user_id in (target_with_slot, second_target_with_slot)
+
+
+def test_forcing_never_names_somebody_the_reading_contradicts(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    # The photograph reads as an outfit nobody here is wearing. Naming the only
+    # candidate anyway would take a life off somebody the evidence argues
+    # against, which is worse than asking the admin.
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, confident_hit_reply(slot=OTHER_SLOT)
+    )
+
+    assert shot.checked is False
+
+
+def test_forcing_never_resolves_a_hit_that_ranks_nobody(
+    db_session, shot_from_user_in_team
+):
+    # Nobody in the game wears a slot, so there is nobody to notify - and so
+    # nobody who could appeal the verdict this would invent.
+    shot = forced_drain_with(db_session, shot_from_user_in_team, confident_hit_reply())
+
+    assert shot.checked is False
+
+
+# ...and the escalation ladder relaxes the same way
+
+
+def test_forcing_still_escalates_first(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    # A second opinion that is actually coming beats a forced guess
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_forcing_still_waits_for_an_escalation_in_flight(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_PENDING)
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+def test_forcing_leaves_an_errored_escalation_to_the_admin(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_ERROR, "timed out")
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+def test_forcing_acts_on_an_unconfident_escalated_player_verdict(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    shot = forced_drain_with_escalation(
+        db_session,
+        shot_from_user_in_team,
+        escalation_payload("player", confidence=0.4, target_user_id=target_with_slot),
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+@pytest.mark.parametrize("verdict", ["miss", "bystander"])
+def test_forcing_acts_on_an_unconfident_escalated_miss_or_bystander(
+    db_session, shot_from_user_in_team, target_with_slot, verdict
+):
+    shot = forced_drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload(verdict, confidence=0.2)
+    )
+
+    assert shot.result == verdict
+
+
+def test_forcing_falls_back_to_the_weak_ranking_when_the_escalation_is_unsure(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    # The stronger model has nothing to add, so the weak reading's ranking is
+    # the best there is - and it is still a verdict somebody can appeal.
+    shot = forced_drain_with_escalation(
+        db_session, shot_from_user_in_team, escalation_payload("unsure")
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_forcing_falls_back_when_escalation_is_switched_off(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    AdminInterface().set_ai_escalation_enabled(game_of(shot_from_user_in_team), False)
+
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+    enqueue.assert_not_called()
+
+
+def test_forcing_falls_back_when_no_escalation_model_is_configured(
+    no_escalation_model, db_session, shot_from_user_in_team, target_with_slot
+):
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_the_fallback_still_refuses_a_head_that_ranks_nobody(
+    no_escalation_model, db_session, shot_from_user_in_team
+):
+    shot = forced_drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.checked is False
+
+
+def test_resolve_everything_endpoint_flips_the_game_flag(admin_api_client, one_game):
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_resolve_everything?game_id={one_game}&enabled=true"
+    )
+
+    assert response.status_code == 200
+    assert AdminInterface().is_ai_resolve_everything_enabled(one_game) is True
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_resolve_everything?game_id={one_game}&enabled=false"
+    )
+
+    assert response.is_success
+    assert AdminInterface().is_ai_resolve_everything_enabled(one_game) is False
+
+
+def test_enabling_resolve_everything_drains_a_head_that_was_waiting(
+    db_session, admin_api_client, shot_from_user_in_team
+):
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, miss_reply(confidence=0.3))
+    shot_auto_actions.process_queue_head(game_id)
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_resolve_everything?game_id={game_id}&enabled=true"
+    )
+
+    assert response.is_success
+    assert shot_row(db_session, shot_from_user_in_team).result == "miss"
 
 
 def test_escalation_endpoint_flips_the_game_flag(admin_api_client, one_game):

@@ -27,11 +27,24 @@
   padding: 0.25em 0;
 }
 
-
 .tickerview li:global(.user) {
   font-style: italic;
 }
 
 .tickerview li:global(.highlight) {
   color: red;
+}
+
+/* A ticker line about one of this player's own shots opens it. Looks like the
+   line it replaces - underlined so it reads as somewhere to go - rather than
+   like a button, which would shout over the rest of the ticker. */
+.shotLink {
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: inherit;
+  text-decoration: underline;
+  cursor: pointer;
 }

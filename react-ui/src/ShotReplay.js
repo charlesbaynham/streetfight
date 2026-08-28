@@ -370,11 +370,13 @@ function ShotReplayPanel() {
       <h1>Shot replay workbench</h1>
       <Row>
         <Col>
+          {/* "CharlesBot" is the display name for what the API calls ai_review (#1). */}
           <p>
-            Replays real shots through the AI reviewer with the contract below.
-            Nothing is stored and the game is not affected. Pick shots, edit the
-            prompt, the conversation shape and the schema its reply must match,
-            run. A reply that is not a standard reading is shown as it landed.
+            Replays real shots through the CharlesBot reviewer with the contract
+            below. Nothing is stored and the game is not affected. Pick shots,
+            edit the prompt, the conversation shape and the schema its reply
+            must match, run. A reply that is not a standard reading is shown as
+            it landed.
           </p>
           <textarea
             aria-label="Vision prompt"

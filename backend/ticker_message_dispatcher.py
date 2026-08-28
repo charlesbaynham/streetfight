@@ -36,6 +36,10 @@ class TickerMessageType(Enum):
     ADMIN_GAVE_ARMOUR = auto()
     ADMIN_REVIVED_USER = auto()
     ADMIN_GAVE_AMMO = auto()
+    ADMIN_GAVE_APPEALS = auto()
+    APPEAL_UPHELD = auto()
+    APPEAL_UPHELD_PRIVATE = auto()
+    APPEAL_REJECTED_PRIVATE = auto()
     ADMIN_SET_CIRCLE_NEXT = auto()
     ADMIN_SET_CIRCLE_EXCLUSION = auto()
     ADMIN_SET_CIRCLE_BOTH = auto()
@@ -116,6 +120,22 @@ TICKER_MESSAGES = {
         TickerTarget.PRIVATE_USER,
         "You were given {num}x ammo!",
     ),
+    TickerMessageType.ADMIN_GAVE_APPEALS: (
+        TickerTarget.PRIVATE_USER,
+        "You were given {num}x appeals!",
+    ),
+    TickerMessageType.APPEAL_UPHELD: (
+        TickerTarget.PUBLIC,
+        "The referee overturned CharlesBot: {user}'s shot is now ruled {result}",
+    ),
+    TickerMessageType.APPEAL_UPHELD_PRIVATE: (
+        TickerTarget.PRIVATE_USER,
+        "Your appeal was upheld - your appeal has been refunded",
+    ),
+    TickerMessageType.APPEAL_REJECTED_PRIVATE: (
+        TickerTarget.PRIVATE_USER,
+        "Your appeal was rejected - the referee agreed with the call",
+    ),
     TickerMessageType.ADMIN_SET_CIRCLE_NEXT: (
         TickerTarget.PUBLIC,
         "The next circle has been announced! Check the map...",
@@ -159,6 +179,7 @@ def send_ticker_message(
     game_id: Optional[UUID] = None,
     session: Optional[Session] = None,
     highlight_user_id: Optional[UUID] = None,
+    shot_id: Optional[UUID] = None,
 ):
     """
     Sends a message to the appropriate ticker(s).
@@ -177,6 +198,9 @@ def send_ticker_message(
         highlight_user_id (UUID, optional):
                             If provided, the message will be
                             highlighted for this user id. Defaults to None
+        shot_id (Optional[UUID]): The shot this message is about, if it is
+                            about one - carried so the line can be the way in
+                            to that shot. Defaults to None.
     """
 
     logger.debug(
@@ -202,7 +226,9 @@ def send_ticker_message(
             raise ValueError("Game ID required for public ticker messages")
 
         Ticker(game_id, user_id=None, session=session).post_message(
-            message=formatted_msg, highlight_user_id=highlight_user_id
+            message=formatted_msg,
+            highlight_user_id=highlight_user_id,
+            shot_id=shot_id,
         )
     elif target == TickerTarget.PRIVATE_USER:
         if not game_id:
@@ -214,6 +240,7 @@ def send_ticker_message(
             message=formatted_msg,
             private_for_user_id=user_id,
             highlight_user_id=highlight_user_id,
+            shot_id=shot_id,
         )
     elif target == TickerTarget.PRIVATE_TEAM:
         raise NotImplementedError("Private team messages not yet implemented")

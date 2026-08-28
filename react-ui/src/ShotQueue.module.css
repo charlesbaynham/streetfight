@@ -108,6 +108,97 @@
   font-weight: bold;
 }
 
+/* What the machine makes of the shot, in one sentence. Deliberately neither
+   green nor red: on this page colour means certainty, and the sentence covers
+   confident answers and hedged guesses alike - the blue is the same "a model
+   said this" blue as the escalation block. */
+.botVerdict {
+  border-left: 3px solid #4a76c9;
+  background: #f7f9fd;
+  padding: 0.4em 0.6em;
+  margin: 0.4em 0;
+  font-size: 1.1em;
+  font-weight: bold;
+}
+
+/* --- The identification ranking (colours follow ReferencePhotos.module.css,
+   so a candidate reads the same here as at the door) --- */
+
+.candidateList {
+  list-style: none;
+  margin: 0.3em 0 0.6em 0;
+  padding: 0;
+}
+
+.candidateRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.5em;
+  min-height: 3em;
+  padding: 0.6em 0.8em;
+  margin-bottom: 0.4em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.5em;
+  background: #f8f9fa;
+}
+
+.candidateName {
+  font-weight: 600;
+}
+
+.candidateTeam {
+  color: #6c757d;
+}
+
+.candidateFacts {
+  color: #555;
+  font-size: 0.9em;
+}
+
+/* Amber, because every one of these says the ranking is not an answer. */
+.candidateFlag {
+  background: #fdf0d5;
+  border-left: 4px solid #d9a441;
+  color: #7a5410;
+  padding: 0.4em 0.6em;
+  margin: 0.3em 0;
+  font-size: 0.9em;
+}
+
+/* An open appeal is amber for the same reason the candidate flags are: the
+   verdict on this shot is not an answer until the admin gives one. A settled
+   one is just a record, so it says so quietly. */
+.appealOpen {
+  background: #fdf0d5;
+  border-left: 4px solid #d9a441;
+  color: #7a5410;
+  padding: 0.5em 0.7em;
+  margin: 0.4em 0;
+}
+
+.appealSettled {
+  background: #f4f4f4;
+  border-left: 4px solid #aaaaaa;
+  padding: 0.5em 0.7em;
+  margin: 0.4em 0;
+}
+
+.appealLabel {
+  font-weight: bold;
+  margin: 0 0 0.3em 0;
+}
+
+.appealReasons {
+  margin: 0 0 0.3em 1.2em;
+  padding: 0;
+}
+
+.appealFacts {
+  font-size: 0.85em;
+  margin: 0;
+}
+
 .showCheckedToggle {
   margin-left: 1em;
   font-size: 0.9em;

@@ -20,11 +20,35 @@ const ESCALATION_VERDICT_LABELS = {
   unsure: ["Needs your call", styles.outcomeUnsure],
 };
 
+// What each party meant by their reason for appealing (backend/model.py's
+// APPEAL_REASONS). The same enum value reads differently depending on who
+// said it: "wrong_target" from the shooter is "it hit somebody else", from
+// the target it is "that wasn't me".
+const APPEAL_REASON_LABELS = {
+  shooter: {
+    actually_hit: "it actually hit",
+    wrong_target: "it hit someone else",
+  },
+  target: {
+    missed: "it missed me",
+    wrong_target: "that wasn't me",
+    not_a_player: "that's not a player",
+    already_out: "I was already out",
+  },
+};
+
+const APPEAL_STATE_LABELS = {
+  open: "Contested - awaiting your ruling",
+  upheld: "Appeal upheld",
+  rejected: "Appeal rejected",
+};
+
 // The AI's reading of a shot, shown as tags under the photo. Advisory only -
 // the admin still decides every shot with the buttons alongside.
 function ShotAiTags({ shot_id }) {
   const [state, setState] = useState(null);
   const [review, setReview] = useState(null);
+  const [identification, setIdentification] = useState(null);
   const [escalationState, setEscalationState] = useState(null);
   const [escalation, setEscalation] = useState(null);
 
@@ -39,6 +63,7 @@ function ShotAiTags({ shot_id }) {
         const body = await response.json();
         setState(body.state);
         setReview(body.review);
+        setIdentification(body.identification);
         setEscalationState(body.escalation_state);
         setEscalation(body.escalation);
       },
@@ -67,8 +92,9 @@ function ShotAiTags({ shot_id }) {
       <>
         {listener}
         <div className={styles.tagRow}>
+          {/* "CharlesBot" is the display name for what the API calls ai_review (#1). */}
           <span className={`${styles.tag} ${styles.outcomeError}`}>
-            AI review failed: {review ? review.error : "unknown error"}
+            CharlesBot review failed: {review ? review.error : "unknown error"}
           </span>
         </div>
       </>
@@ -77,9 +103,17 @@ function ShotAiTags({ shot_id }) {
 
   if (!review) return listener;
 
+  const verdict = charlesBotVerdict({
+    review,
+    identification,
+    escalation,
+    escalationState,
+  });
+
   return (
     <>
       {listener}
+      {verdict ? <p className={styles.botVerdict}>{verdict}</p> : null}
       <div className={styles.tagRow}>
         {outcomeTag(review)}
         {zoomTag(review)}
@@ -92,6 +126,58 @@ function ShotAiTags({ shot_id }) {
       <ShotEscalation state={escalationState} escalation={escalation} />
     </>
   );
+}
+
+// One sentence saying what the machine makes of this shot, in the words the
+// admin would use themselves - the tags below it are the working, this is the
+// answer. Null when there is nothing to say.
+//
+// The ladder is ordered by what actually knows most: an escalation was asked
+// for precisely because the cheap reading was not good enough, so it wins;
+// then a confident identification, which can name somebody; then the two-way
+// call the admin has to break; then a hit with no name attached.
+export function charlesBotVerdict({
+  review,
+  identification,
+  escalation,
+  escalationState,
+}) {
+  const NO_NAME = "CharlesBot thinks: hit on a player, but can't tell who";
+
+  if (
+    escalationState === "done" &&
+    escalation &&
+    escalation.verdict === "player"
+  )
+    return escalation.target_name
+      ? `CharlesBot thinks: hit on ${escalation.target_name}`
+      : NO_NAME;
+
+  if (!review) return null;
+
+  if (review.outcome === "hit_player") {
+    const ranked = (identification && identification.ranked) || [];
+    const clean =
+      identification &&
+      identification.confident &&
+      !identification.ambiguous &&
+      !identification.inconsistent;
+
+    if (clean && ranked.length)
+      return `CharlesBot thinks: hit on ${ranked[0].name}`;
+    if (ranked.length >= 2)
+      return (
+        `CharlesBot thinks: hit - probably ${ranked[0].name} ` +
+        `(${ranked[0].probability.toFixed(1)}) or ${ranked[1].name} ` +
+        `(${ranked[1].probability.toFixed(1)})`
+      );
+    return NO_NAME;
+  }
+
+  if (review.outcome === "hit_bystander")
+    return "CharlesBot thinks: that's a bystander, not a hit";
+  if (review.outcome === "miss") return "CharlesBot thinks: miss";
+  return null;
 }
 
 // The strong model's verdict, when a shot was hard enough for the cheap
@@ -312,6 +398,69 @@ function ShotNotes({ shot_id }) {
   );
 }
 
+// Who is contesting this shot and on what grounds (roadmap R8). Fetched
+// through its own endpoint for the same reason ShotAiTags is: the appeal
+// changes after the shot model was cached, so a cached model would show a
+// state that had since moved on. Renders nothing for a shot nobody appealed,
+// and tells the panel what it found so the adjudication buttons can come back
+// for an open appeal.
+function AppealDetails({ shot_id, onAppealState }) {
+  const [appeal, setAppeal] = useState(null);
+
+  const update = useCallback(() => {
+    if (!shot_id) return;
+    sendAPIRequest("admin_get_shot_appeal", { shot_id: shot_id }).then(
+      async (response) => {
+        if (!response.ok) return;
+        const body = await response.json();
+        setAppeal(body);
+        onAppealState(body.appeal_state);
+      },
+    );
+  }, [shot_id, onAppealState]);
+
+  useEffect(update, [update]);
+
+  // An appeal can be lodged (or settled) while the admin is looking at the
+  // shot, and both fire a "shots" update.
+  const listener = <UpdateListener update_type="shots" callback={update} />;
+
+  if (!appeal || !appeal.appeal_state) return listener;
+
+  const open = appeal.appeal_state === "open";
+  const appellants = [
+    ["shooter", appeal.shooter_name, appeal.shooter_appeal_reason],
+    ["target", appeal.target_name, appeal.target_appeal_reason],
+  ].filter(([, , reason]) => reason);
+
+  return (
+    <>
+      {listener}
+      <div className={open ? styles.appealOpen : styles.appealSettled}>
+        <p className={styles.appealLabel}>
+          {APPEAL_STATE_LABELS[appeal.appeal_state] || appeal.appeal_state}
+        </p>
+        <ul className={styles.appealReasons}>
+          {appellants.map(([party, name, reason]) => (
+            <li key={party}>
+              {name || "unnamed"} ({party}): "
+              {(APPEAL_REASON_LABELS[party] || {})[reason] || reason}"
+            </li>
+          ))}
+        </ul>
+        <p className={styles.appealFacts}>
+          Standing verdict: {appeal.result || "unadjudicated"}
+          {appeal.appealed_at
+            ? ` - appealed at ${new Date(
+                appeal.appealed_at * 1000,
+              ).toLocaleTimeString()}`
+            : null}
+        </p>
+      </div>
+    </>
+  );
+}
+
 // the shot's location context, with their distance from the shooter at the
 // moment it was taken. Excludes the shooter themselves.
 export function rankShotCandidates(shot_data) {
@@ -322,7 +471,6 @@ export function rankShotCandidates(shot_data) {
   const userIndex = context.findIndex(
     (location) => location.user_id === shooting_user_id,
   );
-  console.log("User index in context array:", userIndex);
 
   const shooting_user_data = context[userIndex];
   const shooting_user_latitude = shooting_user_data.latitude;
@@ -332,7 +480,6 @@ export function rankShotCandidates(shot_data) {
   const otherUsersContext = context.filter(
     (location) => location.user_id !== shooting_user_id,
   );
-  console.log("Updated context array:", otherUsersContext);
 
   // For each remaining player, calculate the distance from them to the shooting player
   const shooting_users = otherUsersContext.map(
@@ -380,23 +527,102 @@ export function rankShotCandidates(shot_data) {
   return shooting_users;
 }
 
-function NearestPlayers({ shot_data }) {
-  if (shot_data === null) return;
+// How far each player was from the shooter, by user id. A shot whose location
+// context is missing or malformed still has an identification worth showing,
+// so a bad fix costs the metres column and nothing else.
+function metresByUser(shot) {
+  const metres = {};
+  try {
+    rankShotCandidates(shot).forEach((candidate) => {
+      metres[candidate.user_id] = candidate.distance;
+    });
+  } catch (e) {
+    // no usable location context
+  }
+  return metres;
+}
 
-  const shooting_users = rankShotCandidates(shot_data);
+// Who this shot's reading actually looks like: the decoder's ranking over the
+// living players (backend/shot_identification.py), with the GPS distance that
+// went into it alongside. Replaces the old nearest-first list, which ranked on
+// proximity alone and so put the shooter's own teammate at the top.
+//
+// Fetched here rather than passed down from ShotAiTags: the ranking is scored
+// against the current outfits every time it is asked for, so it arrives (and
+// changes) with the review rather than with the shot.
+function RankedCandidates({ shot }) {
+  const [state, setState] = useState(null);
+  const [identification, setIdentification] = useState(null);
+
+  const shot_id = shot ? shot.id : null;
+
+  const update = useCallback(() => {
+    if (!shot_id) return;
+    sendAPIRequest("admin_get_shot_ai_review", { shot_id: shot_id }).then(
+      async (response) => {
+        if (!response.ok) return;
+        const body = await response.json();
+        setState(body.state);
+        setIdentification(body.identification);
+      },
+    );
+  }, [shot_id]);
+
+  useEffect(update, [update]);
+
+  const listener = <UpdateListener update_type="shots" callback={update} />;
+
+  if (state !== "done" || !identification) return listener;
+
+  const metres = metresByUser(shot);
+  const unreadable = identification.readable_channels === 0;
+  const ranked = unreadable ? [] : (identification.ranked || []).slice(0, 6);
 
   return (
     <>
+      {listener}
       <h3>Candidates:</h3>
-      <ul>
-        {shooting_users.map((user, idx) => (
-          <li key={idx}>
-            {user.user} - {user.team} - ({user.distance.toFixed(2)}m)
+      {unreadable ? (
+        <p className={styles.candidateFlag}>
+          Nothing readable in this photo - a ranking would be a guess
+        </p>
+      ) : null}
+      {identification.ambiguous ? (
+        <p className={styles.candidateFlag}>
+          Two candidates are too close to call
+        </p>
+      ) : null}
+      {identification.inconsistent ? (
+        <p className={styles.candidateFlag}>The reading fits nobody cleanly</p>
+      ) : null}
+      <ul className={styles.candidateList}>
+        {ranked.map((candidate) => (
+          <li key={candidate.user_id} className={styles.candidateRow}>
+            <span className={styles.candidateName}>
+              {candidate.name || candidate.user_id}
+            </span>
+            <span className={styles.candidateTeam}>
+              {candidate.team_name || "no team"}
+            </span>
+            <span className={styles.candidateFacts}>
+              {candidateFacts(candidate, metres[candidate.user_id])}
+            </span>
           </li>
         ))}
       </ul>
     </>
   );
+}
+
+// The numbers behind one candidate's place in the ranking. An em dash for the
+// distance rather than a zero: no fix at all is not the same as standing on
+// top of the shooter.
+function candidateFacts(candidate, distance) {
+  const facts = [`p=${candidate.probability.toFixed(2)}`];
+  if (candidate.code_distance !== null && candidate.code_distance !== undefined)
+    facts.push(`code distance ${candidate.code_distance}`);
+  facts.push(typeof distance === "number" ? `${Math.round(distance)} m` : "—");
+  return facts.join(" - ");
 }
 
 function ShotQueuePanel() {
@@ -406,12 +632,18 @@ function ShotQueuePanel() {
   // Off by default: the queue's job during a game is only what needs
   // adjudicating. On, it doubles as the history view for reviewing a game.
   const [showChecked, setShowChecked] = useState(false);
+  // The contested list is a different queue, not a filter on this one: those
+  // shots are all adjudicated already, and are an argument to settle rather
+  // than a backlog to drain (roadmap R8).
+  const [contested, setContested] = useState(false);
+  const [appealState, setAppealState] = useState(null);
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
-    sendAPIRequest("admin_get_shots_info", {
-      include_checked: showChecked,
-    }).then(async (response) => {
+    sendAPIRequest(
+      contested ? "admin_get_contested_shots_info" : "admin_get_shots_info",
+      contested ? null : { include_checked: showChecked },
+    ).then(async (response) => {
       if (!response.ok) return;
       const shot_ids = await response.json();
 
@@ -437,10 +669,12 @@ function ShotQueuePanel() {
         }),
       );
     });
-  }, [currentShotIdx, showChecked]);
+  }, [currentShotIdx, showChecked, contested]);
 
   // If current shot ID changes, load the shot from the cache into the state
   useEffect(() => {
+    // Whatever AppealDetails knew was about the shot we are leaving
+    setAppealState(null);
     getShotFromCache(shotsInQueue[currentShotIdx]).then((shot) => {
       console.log("Setting shot", shot);
       setShot(shot);
@@ -504,6 +738,10 @@ function ShotQueuePanel() {
     }
   }, [currentShotIdx]);
 
+  // An adjudicated shot is normally final, but an open appeal re-opens it for
+  // exactly one re-ruling - which is what the contested queue is for.
+  const canAdjudicate = shot && (!shot.checked || appealState === "open");
+
   return (
     <>
       {/* The queue changes under us: new shots arrive, and AI reviews land
@@ -533,12 +771,32 @@ function ShotQueuePanel() {
         </button>
         <label className={styles.showCheckedToggle}>
           <input
-            type="checkbox"
-            checked={showChecked}
-            onChange={(event) => setShowChecked(event.target.checked)}
+            type="radio"
+            name="queue-mode"
+            checked={!contested}
+            onChange={() => setContested(false)}
           />
-          Show adjudicated shots
+          Queue
         </label>
+        <label className={styles.showCheckedToggle}>
+          <input
+            type="radio"
+            name="queue-mode"
+            checked={contested}
+            onChange={() => setContested(true)}
+          />
+          Contested
+        </label>
+        {contested ? null : (
+          <label className={styles.showCheckedToggle}>
+            <input
+              type="checkbox"
+              checked={showChecked}
+              onChange={(event) => setShowChecked(event.target.checked)}
+            />
+            Show adjudicated shots
+          </label>
+        )}
       </Row>
 
       {shot ? (
@@ -556,6 +814,7 @@ function ShotQueuePanel() {
                   Adjudicated: {verdictText(shot)}
                 </p>
               ) : null}
+              <AppealDetails shot_id={shot.id} onAppealState={setAppealState} />
               <ShotAiTags shot_id={shot.id} />
               <ShotNotes shot_id={shot.id} />
               <button
@@ -563,7 +822,7 @@ function ShotQueuePanel() {
                   adminPost("admin_review_shot", { shot_id: shot.id })
                 }
               >
-                Re-run AI review
+                Re-run CharlesBot review
               </button>
               <button onClick={() => escalateShot()}>
                 Run escalated review
@@ -572,8 +831,8 @@ function ShotQueuePanel() {
             <Col>
               <h3>Where it was fired from:</h3>
               <ShotMap shot={shot} />
-              <NearestPlayers shot_data={shot} />
-              {shot.checked ? null : (
+              <RankedCandidates shot={shot} />
+              {canAdjudicate ? (
                 <>
                   {shot.game.teams.map((team, idx_team) => (
                     <div key={idx_team}>
@@ -595,10 +854,10 @@ function ShotQueuePanel() {
                     </div>
                   ))}
                 </>
-              )}
+              ) : null}
             </Col>
           </Row>
-          {shot.checked ? null : (
+          {canAdjudicate ? (
             <Row>
               <button
                 onClick={() => {
@@ -622,7 +881,7 @@ function ShotQueuePanel() {
                 Refund
               </button>
             </Row>
-          )}
+          ) : null}
         </>
       ) : null}
     </>

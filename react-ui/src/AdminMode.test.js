@@ -169,11 +169,13 @@ function defaultRoutes(fixtures) {
     admin_set_hp: {},
     admin_hit_user: {},
     admin_give_ammo: {},
+    admin_give_appeals: {},
     admin_set_weapon: {},
     admin_set_game_active: {},
     admin_set_ai_shot_review: {},
     admin_set_ai_auto_actions: {},
     admin_set_ai_escalation: {},
+    admin_set_ai_resolve_everything: {},
     admin_reset_game: {},
     admin_create_team: {},
     admin_set_team_name: {},
@@ -307,6 +309,39 @@ describe("UserControls", () => {
     );
   });
 
+  test("the appeals buttons post admin_give_appeals with +1/-1", async () => {
+    await renderAdmin();
+    const aliceRow = screen.getByText("Alice").closest("li");
+
+    userEvent.click(
+      within(aliceRow).getByRole("button", { name: "Appeals +1" }),
+    );
+    await waitFor(() =>
+      expect(getLastAPICall("admin_give_appeals").query).toEqual({
+        user_id: "user-pewster",
+        num: "1",
+      }),
+    );
+
+    userEvent.click(
+      within(aliceRow).getByRole("button", { name: "Appeals -1" }),
+    );
+    await waitFor(() =>
+      expect(getLastAPICall("admin_give_appeals").query).toEqual({
+        user_id: "user-pewster",
+        num: "-1",
+      }),
+    );
+  });
+
+  test("shows the appeal budget alongside the ammo count", async () => {
+    await renderAdmin();
+
+    expect(screen.getByText("Alice").closest("li")).toHaveTextContent(
+      "3 appeals",
+    );
+  });
+
   test("the weapon dropdown posts admin_set_weapon with the selected name", async () => {
     await renderAdmin();
     const aliceRow = screen.getByText("Alice").closest("li");
@@ -382,10 +417,10 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     expect(
-      screen.getByLabelText(/AI reviews shot photos automatically/),
+      screen.getByLabelText(/CharlesBot reviews shot photos automatically/),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/AI verdicts resolve shots automatically/),
+      screen.getByLabelText(/CharlesBot verdicts resolve shots automatically/),
     ).toBeInTheDocument();
   });
 
@@ -393,7 +428,7 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     const checkbox = screen.getByLabelText(
-      /AI reviews shot photos automatically/,
+      /CharlesBot reviews shot photos automatically/,
     );
     expect(checkbox).not.toBeChecked();
 
@@ -412,7 +447,7 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     const checkbox = screen.getByLabelText(
-      /AI verdicts resolve shots automatically/,
+      /CharlesBot verdicts resolve shots automatically/,
     );
     expect(checkbox).not.toBeChecked();
 
@@ -425,6 +460,24 @@ describe("GamePanel", () => {
       game_id: "game-1",
       enabled: "true",
     });
+  });
+
+  test("the resolve-everything checkbox reflects ai_resolve_everything_enabled and posts on toggle", async () => {
+    await renderAdmin();
+
+    const checkbox = screen.getByLabelText(
+      /CharlesBot resolves every shot it can/,
+    );
+    expect(checkbox).not.toBeChecked();
+
+    userEvent.click(checkbox);
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_set_ai_resolve_everything").query).toEqual({
+        game_id: "game-1",
+        enabled: "true",
+      }),
+    );
   });
 
   test("Reset game asks for confirmation first and does nothing if declined", async () => {

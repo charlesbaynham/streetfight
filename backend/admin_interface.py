@@ -26,6 +26,7 @@ from .items import ItemModel
 from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
+from .model import APPEALS_PER_GAME
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
@@ -37,7 +38,11 @@ from .model import TeamModel
 from .model import TickerEntry
 from .model import User
 from .model import UserModel
+from .shot_identification import identification_payload
 from .ticker import Ticker
+from .user_interface import APPEAL_OPEN
+from .user_interface import APPEAL_REJECTED
+from .user_interface import APPEAL_UPHELD
 from .user_interface import UserInterface
 from .utils import add_params_to_url
 
@@ -114,6 +119,15 @@ def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
         "confident": identification.get("confident"),
         "readable_channels": identification.get("readable_channels"),
     }
+
+
+# How each verdict reads in the public line announcing an overturned one.
+_APPEAL_RESULT_WORDS = {
+    "hit": "a hit",
+    "miss": "a miss",
+    "bystander": "a bystander",
+    "refunded": "unreadable",
+}
 
 
 class CircleTypes(str, Enum):
@@ -484,6 +498,70 @@ class AdminInterface:
         return bool(self._get_game_orm(game_id).ai_escalation_enabled)
 
     @db_scoped
+    def set_ai_resolve_everything_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn "resolve everything" on or off for a game.
+
+        With it on, an unconfident or unidentifiable head is resolved as best
+        the reading allows instead of going to the admin: _decide() stops
+        meaning "stop the drain" and starts meaning "the players will complain
+        if it is wrong". Only sound alongside appeals (roadmap R8), which is
+        what makes an automatic error loud and recoverable.
+        """
+        logger.info(
+            "AdminInterface - set_ai_resolve_everything_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_resolve_everything_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_resolve_everything_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_resolve_everything_enabled)
+
+    @db_scoped
+    def get_contested_shot_ids(self) -> list[UUID]:
+        """The contested queue (roadmap R8): every shot with an open appeal,
+        oldest complaint first.
+
+        A list of its own rather than a re-entry into the live queue: an
+        appealed shot rejoining that with its original timestamp would become
+        the head and jam the drain behind a twenty-minute-old argument.
+        """
+        return [
+            shot_id[0]
+            for shot_id in self._session.query(Shot.id)
+            .filter_by(appeal_state=APPEAL_OPEN)
+            .order_by(Shot.appealed_at, Shot.id)
+            .all()
+        ]
+
+    @db_scoped
+    def get_shot_appeal(self, shot_id: UUID) -> dict:
+        """What is being argued about on one shot.
+
+        Its own endpoint for the reason the AI review has one: the frontend
+        caches shot models permanently by id, and every field here is mutable.
+        """
+        shot = self._get_shot_orm(shot_id)
+        target = (
+            self._session.get(User, shot.target_user_id)
+            if shot.target_user_id
+            else None
+        )
+        return {
+            "appeal_state": shot.appeal_state,
+            "shooter_appeal_reason": shot.shooter_appeal_reason,
+            "target_appeal_reason": shot.target_appeal_reason,
+            "appealed_at": shot.appealed_at,
+            "result": shot.result,
+            "shooter_name": shot.user.name if shot.user else None,
+            "target_name": target.name if target else None,
+        }
+
+    @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:
         """The stored AI review for one shot, and any escalation of it.
 
@@ -493,9 +571,21 @@ class AdminInterface:
         image cached and this small payload live avoids that.
         """
         shot = self._get_shot_orm(shot_id)
+        review = _stored_json(shot.ai_review)
+
+        # Scored here rather than stored with the review: an outfit correction
+        # made after the review must change who this reading looks like,
+        # without rewriting the reading itself.
+        identification = None
+        if shot.ai_review_state == AI_REVIEW_STATE_DONE and isinstance(review, dict):
+            identification = identification_payload(
+                shot, self.get_users_for_game(shot.game_id), review
+            )
+
         return {
             "state": shot.ai_review_state,
-            "review": _stored_json(shot.ai_review),
+            "review": review,
+            "identification": identification,
             "escalation_state": shot.ai_escalation_state,
             "escalation": _stored_json(shot.ai_escalation),
         }
@@ -709,6 +799,15 @@ class AdminInterface:
         for item in list(user.items):
             self._session.delete(item)
 
+        # Ticker lines pointing at a shot that is about to vanish just lose the
+        # pointer - they have to go before the shots do, or the foreign key
+        # breaks
+        shot_ids = [shot.id for shot in user.shots]
+        if shot_ids:
+            self._session.query(TickerEntry).filter(
+                TickerEntry.shot_id.in_(shot_ids)
+            ).update({"shot_id": None}, synchronize_session=False)
+
         for shot in list(user.shots):
             self._session.delete(shot)
 
@@ -890,24 +989,35 @@ class AdminInterface:
             game_id=u_from.team.game_id,
             user_id=u_to.id,
             session=self._session,
+            # So the line itself is the way in to the shot - and to appealing
+            # it - rather than making the player go looking (roadmap R8)
+            shot_id=shot.id,
         )
 
         try:
-            self._mark_shot_checked(shot_id, "hit")
+            _, previous = self._mark_shot_checked(shot_id, "hit")
         except HTTPException:
             # Handle the edge case where a user shoots themselves: the knockout
             # above already marked their unchecked shots as refunded
             shot.result = "hit"
+            previous = None
 
         # Record the target user in the db
         shot.target_user_id = target_user_id
 
+        # Settled after the new target is written, since who this shot now hits
+        # is half of what decides whether the appeal was right
+        if previous is not None:
+            self._settle_appeal(shot, *previous)
+
         self._session.commit()
 
-        # The shot has left the queue, so tell any admin watching it - and the
-        # shooter, whose shot history has a new outcome
+        # The shot has left the queue, so tell any admin watching it - the
+        # shooter, whose shot history has a new outcome, and the target, who
+        # has just lost a hit point and gained something to appeal
         trigger_update_event("shots", shot.game_id)
         trigger_update_event("user", u_from.id)
+        trigger_update_event("user", u_to.id)
 
     def set_user_HP(self, user_id, num=1):
         with UserInterface(user_id) as ui:
@@ -946,6 +1056,27 @@ class AdminInterface:
                 session=ui.get_session(),
             )
 
+    def award_user_appeals(self, user_id, num=1):
+        """Hand a player appeals back.
+
+        A referee who has just talked something through with a player needs to
+        be able to give them another go: a budget with no override turns a
+        judgement call into a dead end (roadmap R8).
+        """
+        with UserInterface(user_id) as ui:
+            ui.award_appeals(num=num)
+
+            user_model = ui.get_user_model()
+
+            tk.send_ticker_message(
+                tk.TickerMessageType.ADMIN_GAVE_APPEALS,
+                {"user": user_model.name, "num": num},
+                user_id=user_id,
+                game_id=user_model.game_id,
+                team_id=user_model.team_id,
+                session=ui.get_session(),
+            )
+
     def set_user_name(self, user_id, name: str):
         with UserInterface(user_id) as ui:
             ui.set_name(name)
@@ -959,31 +1090,132 @@ class AdminInterface:
                 pass
 
     @db_scoped
-    def _mark_shot_checked(self, shot_id, result: str) -> Shot:
+    def _mark_shot_checked(
+        self, shot_id, result: str
+    ) -> Tuple[Shot, Optional[Tuple[Optional[str], Optional[UUID]]]]:
         """
         Mark a shot as checked and record how it was adjudicated. Ticker
         messages and update events are the caller's job.
 
+        A checked shot is normally final. The exception is a contested one
+        (roadmap R8): an open appeal re-opens the verdict for exactly one
+        re-ruling, and what the shot used to say comes back with it so the
+        caller can settle the appeal against it.
+
+        Returns:
+            (shot, previous), where ``previous`` is the (result, target user
+            id) pair being overruled when this was a re-adjudication, and None
+            when it was the first ruling on this shot.
+
         Raises:
             HTTPException: 404 if shot not found
-            HTTPException: 400 if shot has already been checked
+            HTTPException: 400 if shot has already been checked and nobody is
+                contesting it
         """
         shot = self._session.query(Shot).filter_by(id=shot_id).first()
 
         if not shot:
             raise HTTPException(404, f"Shot id {shot_id} not found")
 
+        previous = None
         if shot.checked:
-            raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+            if shot.appeal_state != APPEAL_OPEN:
+                raise HTTPException(400, f"Shot id {shot_id} has already been checked")
+            previous = (shot.result, shot.target_user_id)
 
         shot.checked = True
         shot.result = result
 
-        return shot
+        # A shot that is no longer a hit is nobody's hit. hit_user writes the
+        # new target back itself, immediately after calling this.
+        if result != "hit":
+            shot.target_user_id = None
+
+        return shot, previous
+
+    @db_scoped
+    def _settle_appeal(self, shot: Shot, old_result, old_target_id) -> None:
+        """Rule on the open appeal against a shot that has just been re-adjudicated.
+
+        Upheld or rejected is *inferred* rather than asked for: if the admin's
+        ruling differs from the one that was appealed, the appeal was right.
+        A shot the admin ends up refunding differs from whatever it said
+        before, so the benefit of the doubt falls out of that rule rather than
+        needing a case of its own. An admin who agrees with the outcome but for
+        different reasons is a rejection, which is the right answer anyway
+        since the game state is unchanged.
+
+        **Nothing is unwound here.** Re-ruling a shot changes no HP and no
+        ammo: there is no compensating action anywhere in this codebase for a
+        knockout's cascade, and writing a general unwind is far more than this
+        is worth. A wrongly-taken life is handed back by the admin with
+        set_user_HP, by hand (roadmap R8).
+        """
+        upheld = shot.result != old_result or (
+            shot.result == "hit" and shot.target_user_id != old_target_id
+        )
+
+        appellants = []
+        if shot.shooter_appeal_reason is not None:
+            appellants.append(shot.user_id)
+        if shot.target_appeal_reason is not None and old_target_id is not None:
+            # The party who appealed is whoever the verdict said was hit at the
+            # time, which is not necessarily who it says now
+            if old_target_id not in appellants:
+                appellants.append(old_target_id)
+
+        shot.appeal_state = APPEAL_UPHELD if upheld else APPEAL_REJECTED
+        game_id = shot.game_id
+        shooter_name = shot.user.name
+
+        for user_id in appellants:
+            if upheld:
+                # If both parties appealed, both are refunded: working out
+                # which of them was vindicated is machinery this game does not
+                # need, and the appeal only ever cost the one who was wrong.
+                UserInterface(user_id, session=self._session).award_appeals(1)
+
+            tk.send_ticker_message(
+                (
+                    tk.TickerMessageType.APPEAL_UPHELD_PRIVATE
+                    if upheld
+                    else tk.TickerMessageType.APPEAL_REJECTED_PRIVATE
+                ),
+                {},
+                user_id=user_id,
+                game_id=game_id,
+                session=self._session,
+                shot_id=shot.id,
+            )
+
+        if upheld:
+            # A correction is a social event, not a database update
+            tk.send_ticker_message(
+                tk.TickerMessageType.APPEAL_UPHELD,
+                {
+                    "user": shooter_name,
+                    "result": _APPEAL_RESULT_WORDS.get(shot.result, shot.result),
+                },
+                game_id=game_id,
+                session=self._session,
+                shot_id=shot.id,
+            )
+
+        self._session.commit()
+
+        for user_id in {
+            shot.user_id,
+            old_target_id,
+            shot.target_user_id,
+            *appellants,
+        }:
+            if user_id is not None:
+                trigger_update_event("user", user_id)
+        trigger_update_event("shots", game_id)
 
     @db_scoped
     def mark_shot_missed(self, shot_id):
-        shot = self._mark_shot_checked(shot_id, "miss")
+        shot, previous = self._mark_shot_checked(shot_id, "miss")
         user_id = shot.user_id
         game_id = shot.game_id
 
@@ -994,6 +1226,9 @@ class AdminInterface:
             game_id=game_id,
             session=self._session,
         )
+
+        if previous is not None:
+            self._settle_appeal(shot, *previous)
 
         self._session.commit()
 
@@ -1011,7 +1246,7 @@ class AdminInterface:
         damage - but recorded separately so the shooter's history (and the
         ticker) can say what actually happened.
         """
-        shot = self._mark_shot_checked(shot_id, "bystander")
+        shot, previous = self._mark_shot_checked(shot_id, "bystander")
         user_id = shot.user_id
         game_id = shot.game_id
 
@@ -1022,6 +1257,9 @@ class AdminInterface:
             game_id=game_id,
             session=self._session,
         )
+
+        if previous is not None:
+            self._settle_appeal(shot, *previous)
 
         self._session.commit()
 
@@ -1042,7 +1280,7 @@ class AdminInterface:
             HTTPException: 404 if shot not found
             HTTPException: 400 if shot has already been checked
         """
-        shot = self._mark_shot_checked(shot_id, "refunded")
+        shot, previous = self._mark_shot_checked(shot_id, "refunded")
         user_id = shot.user_id
         game_id = shot.game_id
 
@@ -1057,6 +1295,9 @@ class AdminInterface:
             user_id=user_id,
             session=self._session,
         )
+
+        if previous is not None:
+            self._settle_appeal(shot, *previous)
 
         self._session.commit()
 
@@ -1231,6 +1472,7 @@ class AdminInterface:
             user.num_bullets = 0
             user.hit_points = 1
             user.time_of_death = None
+            user.appeals_remaining = APPEALS_PER_GAME
 
             # The kit-check photos are photographs of identifiable people and
             # have no meaning once the night they were taken for is over.

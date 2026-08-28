@@ -1,6 +1,7 @@
 import asyncio
 import logging
 from typing import List
+from typing import Optional
 from typing import Tuple
 from uuid import UUID
 
@@ -44,14 +45,20 @@ class Ticker:
         self._session: Session = session
 
     @db_scoped
-    def get_messages(self, num_messages, newest_first=True) -> List[Tuple[str, str]]:
+    def get_messages(
+        self, num_messages, newest_first=True
+    ) -> List[Tuple[str, str, Optional[UUID]]]:
         """
         Retrieve a list of messages from the ticker entries for the current game.
         Args:
             num_messages (int): The number of messages to retrieve.
             newest_first (bool): If True, retrieve the newest messages first. Defaults to True.
         Returns:
-            List[Tuple[str,str]]: A list of messages, each as a tuple of (type, message)
+            List[Tuple[str,str,Optional[UUID]]]: A list of messages, each as a
+            tuple of (type, message, shot_id). The shot id is None for every
+            message that isn't about a shot, and a third element rather than a
+            new shape because the frontend reads these positionally - an older
+            client simply ignores it.
         """
         if newest_first:
             order = TickerEntry.id.desc()
@@ -63,6 +70,7 @@ class Ticker:
                 TickerEntry.private_user_id,
                 TickerEntry.highlight_user_id,
                 TickerEntry.message,
+                TickerEntry.shot_id,
             )
             .filter_by(game_id=self.game_id)
             .filter(
@@ -83,7 +91,7 @@ class Ticker:
         )
 
         out = []
-        for private_user_id, highlight_user_id, message in ticker_entries:
+        for private_user_id, highlight_user_id, message, shot_id in ticker_entries:
             message_class = "public"
 
             if private_user_id:
@@ -92,7 +100,7 @@ class Ticker:
             if highlight_user_id is not None and highlight_user_id == self.user_id:
                 message_class = "highlight"
 
-            out.append((message_class, message))
+            out.append((message_class, message, shot_id))
 
         return out
 
@@ -111,6 +119,7 @@ class Ticker:
         message: str,
         private_for_user_id: UUID = None,
         highlight_user_id: UUID = None,
+        shot_id: UUID = None,
     ):
         """Post a message to this game's ticker
 
@@ -122,6 +131,10 @@ class Ticker:
             highlight_user_id (UUID, optional):
                             If provided, the message will be
                             highlighted for this user id. Defaults to None.
+            shot_id (UUID, optional):
+                            The shot this message is about, if it is about one,
+                            so the line itself can be the way in to that shot.
+                            Defaults to None.
         """
         logger.info(
             '(Game Ticker %s) Adding ticker entry "%s", user_filter = %s, highlight = %s',
@@ -137,6 +150,7 @@ class Ticker:
                 message=message,
                 private_user_id=private_for_user_id,
                 highlight_user_id=highlight_user_id,
+                shot_id=shot_id,
             )
         )
 

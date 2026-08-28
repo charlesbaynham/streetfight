@@ -291,6 +291,7 @@ export function makeUser(overrides = {}) {
     state: "alive", // "alive" | "knocked out" | "dead"
     hit_points: 3,
     num_bullets: 5,
+    appeals_remaining: 3,
     shot_damage: 1,
     shot_timeout: 6,
     identity_slot: null,
@@ -298,6 +299,9 @@ export function makeUser(overrides = {}) {
   };
 }
 
+// A shot as the player's own history sees it. `direction` is added client-side
+// by shotHistoryStore (fired vs received), so it's absent here - a fixture
+// stands in for what the API returns.
 export function makeShot(overrides = {}) {
   return {
     id: nextFixtureId("shot"),
@@ -307,6 +311,10 @@ export function makeShot(overrides = {}) {
     time_created: new Date().toISOString(),
     ai_review_state: null,
     ai_suggestion: null,
+    ai_target_name: null,
+    appeal_state: null,
+    my_appeal_reason: null,
+    can_appeal: false,
     ...overrides,
   };
 }
@@ -330,6 +338,7 @@ export function makeGame(overrides = {}) {
     ai_shot_review_enabled: false,
     ai_auto_actions_enabled: false,
     ai_escalation_enabled: true,
+    ai_resolve_everything_enabled: false,
     ...overrides,
   };
 }
