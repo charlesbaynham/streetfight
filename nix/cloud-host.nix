@@ -12,10 +12,11 @@
 { config, lib, ... }:
 
 let
-  # Replace with the real deploy key before installing; the assertion below
+  # The keys that can deploy (and get root on) this host. The assertion below
   # refuses to build a system that would be installed with no way in.
   deployKeys = [
-    "REPLACE-ME with the deploy ssh public key"
+    "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIGK5nWZ5ORwLuuiLzwzcOTJGyJfavI0ZAQ6GAsAlT0NJ JuiceSSH"
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCs2CID/pgMVIdyWwkP/cjic12rIBT62LSay2rD+9cx6W7ko9Y4qziireen0wWxYralR0rTuXGtGEAnZ1i9Eozoj/tqAgJ2kJk9UYkfrBLGPJyc+yT9L8A80wGauZxaUWrgQ0c1E8EqVMu8sVotfc13HdHW21TMoDzFh3x3y6K8/KDZUjtiv7XRlf6hX3RdL+zbN9KTzurRrt/VnSjRC0A+TrP9HEuzlcPOVKC39OCVZ9OWRbdoUPJPL3hE5vh6Wbf6bVrYhROrQJjxVCiCWQrhHfSa09wmhLg+dgnk1gkuX2OlIgLWe8j74lNr5z+I8XxT6JAko8I7J9chJHE1w5n9uvUII1+WgDmWhlov9lEia7io/vJ1IZR8CBJg7IfPmd5HZijQof8Md6sR3bdDxQ0ZuvhGn/juvKyP7fYUmQgX8uy1e5ZNKgD6rDgZOOPM2KD+lCAxfrt5gRujxJyig7MfZv08eV62ye8DkdXJ3DTyBEs91LgD83yVBrs/a/Yr5WC/3i9TnfDCKZ3TbcOgcViD8qnFmF5t9neF3e8EOc8uWfWso0MfK5EUUBAiRH8Kefoe7PaffShihWZDOz5D9YlcCLepQMMgKd5YOhnscmLQXyl3bOg7aCYiM0GT0Z53dinrh27qf5ioGrPXO4KWStyU5U8gRYBrxGuxK0kcmUiwgw== (none)"
   ];
 in
 {

@@ -30,11 +30,12 @@ fallback, not the plan.)
 1. **Droplet size**: `nixos-anywhere` runs its installer from RAM - 2 GB is
    comfortable. If the droplet is smaller, resize it before starting rather
    than fighting it.
-2. **Deploy key**: put the real SSH public key in `deployKeys` in
-   `nix/cloud-host.nix`. The config *refuses to evaluate* while the
-   placeholder is in place (password auth is off, so a host installed
-   without a key is unreachable). The stock droplet must also accept that
-   key for root - add it when provisioning.
+2. **Deploy key**: the deploy public keys are committed in `deployKeys` in
+   `nix/cloud-host.nix` (an assertion refuses to evaluate a config with the
+   placeholder instead - password auth is off, so a host installed without
+   a key is unreachable). Check the key you'll deploy with is among them,
+   and give the same key root access on the stock droplet when
+   provisioning it.
 3. **Confirm the disk**: run
    `nixos-anywhere --generate-hardware-config` against the droplet and check
    the device node and firmware it reports. `nix/disko-cloud.nix` assumes
@@ -79,11 +80,11 @@ nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>
 `streetfight.cachix.org` substituter from the flake's `nixConfig`) and pushes
 the closure, so the droplet itself never has to build or trust anything.
 
-Note what this means for updates: unlike the LXC (and unlike the
-watchtower-based docker path), **a master push does not update the droplet
-by itself** - somebody runs the `nixos-rebuild` line. On a game day that is
-arguably a feature; if hands-off updates are wanted later, that is a
-decision to take deliberately, not a thing this setup half-does.
+Note what this means for updates today: **a master push does not update the
+droplet by itself** - somebody runs the `nixos-rebuild` line. That gap is
+deliberate but temporary: auto-deploy (a pull-based systemd timer on the
+droplet, the same trust model as the LXC's) is specced as roadmap **R10**
+and closes it. Until R10 ships, the manual line above is the deploy.
 
 ## State and backups
 
