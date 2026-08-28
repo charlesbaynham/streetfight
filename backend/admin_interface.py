@@ -373,6 +373,50 @@ class AdminInterface:
         team.identity_colour = colour
 
     @db_scoped
+    def delete_team(self, team_id: UUID) -> None:
+        """Remove a team entirely - the repair for one created by mistake or
+        no longer wanted.
+
+        Its current players go with it, each removed the same way
+        ``delete_user`` removes a lone player. A team's ``id`` also lives on
+        ``Shot.team_id`` (not nullable, recorded at the moment a shot was
+        fired so it survives a later team switch) - any shots still pointing
+        at this team once its current players are gone are historical only
+        and are deleted the same way a departing player's shots are.
+
+        Raises:
+            HTTPException: 404 if the team is not found
+        """
+        logger.info("AdminInterface - delete_team %s", team_id)
+
+        team = self._get_team_orm(team_id)
+        game_id = team.game_id
+        team_name = team.name
+
+        for user in list(team.users):
+            self.delete_user(user.id)
+
+        stray_shots = self._session.query(Shot).filter_by(team_id=team_id).all()
+        if stray_shots:
+            shot_ids = [shot.id for shot in stray_shots]
+            self._session.query(TickerEntry).filter(
+                TickerEntry.shot_id.in_(shot_ids)
+            ).update({"shot_id": None}, synchronize_session=False)
+            for shot in stray_shots:
+                self._session.delete(shot)
+
+        self._session.delete(team)
+
+        # Posting the message also touches the game's ticker tag and commits
+        # the session, mirroring delete_user's announcement
+        tk.send_generic_message(
+            game_id, f"Team {team_name} has been deleted", session=self._session
+        )
+
+        trigger_update_event("shots", game_id)
+        trigger_update_event("ticker", game_id)
+
+    @db_scoped
     def _get_game_ticker(self, game_id: UUID) -> Ticker:
         return Ticker(game_id, user_id=None, session=self._session)
 
