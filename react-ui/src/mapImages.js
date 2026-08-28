@@ -10,9 +10,10 @@
 // Imagery (c) Esri, Maxar, Earthstar Geographics and the GIS User Community.
 import koyaoResort from "./images/map_koyao_resort.jpg";
 import kingston from "./images/map.png";
-// OpenStreetMap tiles of Westminster, zoom 17, 3 x 3 km centred on Monck
-// Street. Map data (c) OpenStreetMap contributors, ODbL; tiles from
-// openstreetmap.org under CC BY-SA.
+// Westminster drawn in the Kingston style, traced from OpenStreetMap: 1.3 x
+// 1.3 km centred on House Absolute. Placeholder for a hand-drawn map, but the
+// streets are accurate. Traced from map data (c) OpenStreetMap contributors,
+// ODbL.
 import westminster from "./images/map_westminster.jpg";
 
 const MAP_IMAGES = {

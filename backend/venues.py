@@ -184,39 +184,47 @@ KOYAO_RESORT = Venue(
 WESTMINSTER = Venue(
     name="Westminster",
     map=VenueMap(
-        # Stitched from whole web mercator tiles at zoom 17 and cropped to a
-        # 3 x 3 km box centred on Monck Street, so these reference points are
-        # exact rather than measured by eye: ref 1 is the top left pixel of
-        # the image, ref 2 the bottom right. The crop covers everything within
-        # 1.5 km of the flat, which is a generous superset of any walkable
-        # game - re-crop tighter once the pub list is settled.
+        # Drawn in the Kingston style from an OpenStreetMap tracing, so the
+        # streets are where they actually are rather than where they looked
+        # good. A placeholder for a hand-drawn map (roadmap #12), but an
+        # accurate one: every pub below sits on its correct street.
         #
-        # The image is 1.17 m/px, coarser than the Kingston map's 0.51, which
-        # is the price of covering nine times the area in a comparable file.
+        # The play area is defined by three things - House Absolute at the
+        # exact centre, the crop symmetric about it, and Big Ben inside the
+        # frame. Big Ben is 537 m north of the house, so symmetry forces a
+        # half-span of at least that; 650 m leaves room to draw the tower.
+        # The reference points are that crop's corners, so they are exact by
+        # construction rather than measured off the drawing.
         image="westminster",
-        width_px=2560,
-        height_px=2560,
-        ref_1=MapReferencePoint(
-            x=0, y=0, lat=51.50934653766138, long=-0.15256698299731397
-        ),
-        ref_2=MapReferencePoint(
-            x=2560, y=2560, lat=51.48239707899232, long=-0.10927961700269861
-        ),
-        corner_width_km=0.115,
+        width_px=1024,
+        height_px=1024,
+        ref_1=MapReferencePoint(x=0, y=0, lat=51.501752, long=-0.140302),
+        ref_2=MapReferencePoint(x=1024, y=1024, lat=51.489995, long=-0.121544),
+        # Wider than Kingston's 0.115. The drawing is 1.27 m/px against
+        # Kingston's 0.51, so a window that tight would be showing the player
+        # ninety pixels of blur; this trades some zoom for something legible.
+        corner_width_km=0.2,
     ),
-    # Seeded with the pubs already shortlisted in "the search for the New
-    # Norbiton", located against OpenStreetMap. This is a starting set, not a
-    # finished game: add from the wider survey of everything within 1.5 km.
+    # Everything drawn on the map, so an admin can only place a circle
+    # somewhere the players can actually see. The ten pubs are those from the
+    # "New Norbiton" survey that fall inside the crop.
     landmarks={
+        "WHITE_HORSE": (51.495027, -0.130857),
+        "BARLEY_MOW": (51.495077, -0.131687),
+        "SPEAKER": (51.496905, -0.132260),
+        "ROYAL_OAK": (51.494215, -0.132538),
+        "MARQUIS_OF_GRANBY": (51.495177, -0.127175),
+        "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
+        "GRAFTON_ARMS": (51.497468, -0.134108),
+        "GREENCOAT_BOY": (51.496300, -0.135863),
         "QUEENS_ARMS": (51.492593, -0.139175),
-        "BRASS_MONKEY": (51.494418, -0.140717),
-        "THE_WARWICK": (51.492414, -0.139704),
-        "PRIDE_OF_PIMLICO": (51.489894, -0.135364),
-        "MORPETH_ARMS": (51.489376, -0.128682),
-        "PRINCE_OF_WALES": (51.492592, -0.140636),
+        "WARWICK": (51.492414, -0.139704),
+        "HOUSE_ABSOLUTE": (51.4958738, -0.1309233),
+        "BIG_BEN": (51.50073, -0.12462),
+        "WESTMINSTER_ABBEY": (51.49940, -0.12764),
+        "PARLIAMENT": (51.49900, -0.12460),
     },
 )
-
 
 VENUES = {
     "kingston": KINGSTON,
