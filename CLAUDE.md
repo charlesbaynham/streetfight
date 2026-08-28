@@ -256,7 +256,12 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 `docker compose up` runs three services (`compose.yml`): a **Caddy** frontend
 (serves the React build, reverse-proxies `/api`), the **FastAPI** backend, and a
 **Cloudflare DDNS** sidecar. Optional overlays add Traefik
-(`compose.traefik.yml`) or auto-update via Watchtower (`compose.watchtower.yml`).
+(`compose.traefik.yml`), auto-update via Watchtower (`compose.watchtower.yml`),
+or the prebuilt ghcr.io images without auto-update (`compose.ghcr.yml` — what a
+cloud VM uses; see `docs/deployment_droplet.md` for the full droplet runbook).
+`SITE_ADDRESS` sets the public hostname Caddy serves and gets a certificate
+for (unset = `localhost`); it must agree with `WEBSITE_URL`, which is what
+join links and item QRs encode.
 Images are built from the Nix flake
 (`nix build .#dockerFrontend .#dockerBackend`) and published to ghcr.io by CI
 (`.github/workflows/build_images.yml`).

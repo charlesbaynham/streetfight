@@ -2,7 +2,8 @@ services:
   frontend:
     image: streetfight-frontend
     environment:
-    - API_URL
+    - API_URL=${API_URL:-http://backend:8000}
+    - SITE_ADDRESS
     - WEBSITE_URL
     - XDG_CONFIG_HOME=/config
     - XDG_DATA_HOME=/data
@@ -28,6 +29,9 @@ services:
     - OPENROUTER_API_KEY
     - OPENROUTER_MODEL
     - OPENROUTER_TIMEOUT_SECONDS
+    - OPENROUTER_REASONING_EFFORT
+    - OPENROUTER_ESCALATION_MODEL
+    - OPENROUTER_ESCALATION_REASONING_EFFORT
     - AI_SHOT_REVIEW_CONCURRENCY
     - POSTPROCESS_OUTPUT_DIR=/data/processed_shots
     volumes:

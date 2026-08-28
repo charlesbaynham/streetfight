@@ -47,6 +47,23 @@ appearance card until they have chosen an appearance, and nobody can choose one
 until the page exists. That makes the colour-picking page the single piece of
 software with a real deadline, which is not where it started on the list.
 
+### The dry run: Sunday 30 August
+
+A casual test game with ~10 people, two days before the ~31 Aug row above -
+the first time real players touch any of this, and so the first pass at R9's
+checklist with someone other than an agent driving. Decisions taken for it:
+
+- **Deployed on a cloud VM (DigitalOcean droplet), not the home server** -
+  capacity is guaranteed and nothing on the home network needs exposing.
+  Runbook: `docs/deployment_droplet.md`; the code half (configurable
+  `SITE_ADDRESS` in the Caddyfile, `compose.ghcr.yml`, the escalation env
+  vars passed through compose) shipped 28 Aug.
+- **QR codes go out on WhatsApp**, not paper - #8's print run is not pulled
+  forward, players follow links.
+- It is not the 19th: bugs found are the *point*, and anything broken is
+  fixed or written down rather than worked around silently. Findings land on
+  the R9 checklist.
+
 ## Priority order
 
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |

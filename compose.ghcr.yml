@@ -1,0 +1,13 @@
+# Pull prebuilt images from the GitHub container registry instead of using
+# locally built ones (`nix run` / `docker compose build`). This is the overlay
+# for a host that has Docker but not Nix - e.g. a cloud VM. Unlike
+# compose.watchtower.yml it does not auto-update anything: you decide when to
+# `docker compose pull`, which is what you want on a game day.
+#
+# Usage: COMPOSE_FILE=compose.yml:compose.ghcr.yml docker compose up -d
+services:
+  frontend:
+    image: ${FRONTEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-frontend:latest}
+
+  backend:
+    image: ${BACKEND_IMAGE:-ghcr.io/charlesbaynham/streetfight-backend:latest}
