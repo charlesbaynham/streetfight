@@ -135,6 +135,14 @@ class Shot(Base):
 
     location_context = Column(String, nullable=True)
 
+    # Which way the shooter's phone was pointing when the photo was taken:
+    # degrees clockwise from true north, or null when the device could not say
+    # (no compass, permission refused, or an older shot taken before this was
+    # recorded). Captured because it cannot be recovered afterwards; nothing
+    # reads it yet - it is the input that turns a future engagement envelope
+    # from a disc into a cone. See docs/roadmap.md R5b.
+    heading = Column(Float, nullable=True)
+
     # AI review of the photo. Shown as tags under the image in the queue, and
     # -- when the game's toggle is on -- acted on automatically for the queue
     # head when confident enough (backend/shot_auto_actions.py); everything
@@ -220,6 +228,11 @@ class User(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     location_timestamp = Column(Float, nullable=True)
+    # The browser's own estimate of how good that fix is: the radius in metres
+    # of the 95% confidence circle (`position.coords.accuracy`). Null when the
+    # fix predates this being recorded. Like Shot.heading, captured now and
+    # consumed by nothing yet. See docs/roadmap.md R5a.
+    location_accuracy = Column(Float, nullable=True)
 
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
@@ -406,6 +419,7 @@ class UserModel(pydantic.BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_timestamp: Optional[float] = None
+    location_accuracy: Optional[float] = None
 
     # These are retrieved from the Game associated with the Team this user is in
     game_id: Optional[UUID] = None
@@ -449,6 +463,7 @@ class ShotModel(pydantic.BaseModel):
     shot_damage: int
 
     location_context: Optional[str] = None
+    heading: Optional[float] = None
 
     ai_review_state: Optional[str] = None
     ai_review: Optional[str] = None

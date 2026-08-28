@@ -14,6 +14,8 @@ import logo from "./images/art/logo.png";
 import {
   isLocationPermissionGranted,
   isCameraPermissionGranted,
+  isOrientationPermissionGranted,
+  requestOrientationPermission,
 } from "./utils";
 
 import styles from "./OnboardingView.module.css";
@@ -90,6 +92,8 @@ function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
     useState(false);
+  const [compassPermissionGranted, setCompassPermissionGranted] =
+    useState(false);
 
   // Check if permissions have already been granted on load
   useEffect(() => {
@@ -101,6 +105,12 @@ function OnboardingView({ user }) {
   useEffect(() => {
     isLocationPermissionGranted().then((result) => {
       setLocationPermissionGranted(result);
+    });
+  }, []);
+
+  useEffect(() => {
+    isOrientationPermissionGranted().then((result) => {
+      setCompassPermissionGranted(result);
     });
   }, []);
 
@@ -140,6 +150,22 @@ function OnboardingView({ user }) {
         />,
       );
     else return actionItems;
+
+    // The compass rung. Unlike the two above it this one does not gate what
+    // follows: a heading is telemetry, and a phone without a compass (or a
+    // player who says no) must still be able to finish joining and play.
+    if (locationPermissionGranted)
+      actionItems.push(
+        <ActionItem
+          text={"Grant compass permission:"}
+          done={compassPermissionGranted}
+          onClick={async () => {
+            const success = await requestOrientationPermission();
+            setCompassPermissionGranted(success);
+          }}
+          key={"compass"}
+        />,
+      );
 
     const outfit =
       user.identity_slot !== null && user.identity_slot !== undefined
