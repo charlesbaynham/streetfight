@@ -1,8 +1,8 @@
 # Roadmap
 
 The planned work, re-ordered from the order it was thought of into the order it
-wants doing. Nothing here is implemented yet: this file is the record of intent,
-not a changelog.
+wants doing. This file is the record of intent, not a changelog — each entry's
+status line says what has actually shipped.
 
 Each item keeps its **original number** (`#1` … `#14`) so it can be matched back
 to the list it came from. Items prefixed `R` are additions proposed while
@@ -61,14 +61,14 @@ software with a real deadline, which is not where it started on the list.
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
-| 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
+| 10    | **R3** Screen Wake Lock                     | Shipped 28 Aug               | Mounted unconditionally in user mode, no toggle — the phone's own button is the off switch.                    |
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
-| 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
+| 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
-| 14    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
-| 15    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
-| 15b   | **R8** Players appeal, admin sees only the contested | —                    | The structural fix rather than another accuracy point: it makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Wants #5/#2 first, pairs with R4. |
+| 14    | **#3** Ranked candidates in the review UI   | Shipped 28 Aug               | The surface of #5, computed at read time so identity corrections need no rewrite of history.                   |
+| 15    | **#2** "CharlesBot thinks: hit on *name*"   | Shipped 28 Aug               | Shipped alongside #3; the player-facing history names the target too (open question 1, answered).              |
+| 15b   | **R8** Players appeal, admin sees only the contested | Shipped 28 Aug        | The structural fix rather than another accuracy point: makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Shipped off by default (`ai_resolve_everything_enabled`). |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
 | 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
 | 18    | **#11** Escalation to a stronger model      | Shipped                      | Shipped 2026-08-27; see the entry for the decisions taken on the open questions.                               |
@@ -905,9 +905,9 @@ data than everything to date, so build this to consume it.
 ### #5 — Two readable channels should still identify somebody *(shipped)*
 
 **Shipped** as `backend/shot_identification.py`, with the auto-action hit path
-in `backend/shot_auto_actions.py` rewired onto it. What is *not* yet done is #3,
-the admin-facing surface: the ranking is computed and acted on, but the queue UI
-still shows only the old tags, so an admin cannot see the runners-up.
+in `backend/shot_auto_actions.py` rewired onto it. The admin-facing surface,
+#3, has since shipped too (28 Aug): the queue UI now shows the ranking and
+the runners-up, not just the old tags.
 
 
 **Symptom.** A distant shot read two of the four channels correctly. Two erasures
@@ -1081,7 +1081,21 @@ the auto-action behaviour is unchanged. **Feeds:** #3, #2, #11.
 
 ---
 
-### #3 — Show the ranked candidates in the admin review UI
+### #3 — Show the ranked candidates in the admin review UI *(shipped)*
+
+**Shipped 28 Aug** as `identification_payload` in
+`backend/shot_identification.py`, attached at read time to
+`admin_get_shot_ai_review` — never stored, so an identity correction is
+reflected without rewriting history. Per-candidate code distance comes from
+the decoder's own `_hamming_distance`, and a zero-readable-channels reading
+gets the same guard R7's reference photos use. Frontend: `RankedCandidates`
+in `react-ui/src/ShotQueue.js` replaces the GPS-only `NearestPlayers` list —
+name, team, posterior, code distance and metres (the last still joined
+client-side); ambiguous, inconsistent and unreadable readings each say so in
+words, in amber, rather than leaving the admin to infer it from an empty
+table.
+
+The original brief follows.
 
 **What.** In review mode, list the people CharlesBot thinks it hit, ranked by
 posterior probability, each with its distance in **code space**.
@@ -1106,7 +1120,21 @@ nobody". **Depends on:** #5.
 
 ---
 
-### #2 — "CharlesBot thinks this is a hit on *Alice*"
+### #2 — "CharlesBot thinks this is a hit on *Alice*" *(shipped)*
+
+**Shipped 28 Aug**, alongside #3: `charlesBotVerdict` in
+`react-ui/src/ShotQueue.js` implements this entry's wording ladder for the
+admin, resolving the stored review's slot to a name server-side at read
+time so a later identity correction is reflected without rewriting history.
+On the player side, `get_own_shots` grew `ai_target_name`, named only when
+the ranking clears the same confident/unambiguous/consistent bar the
+auto-action drain itself requires; the player's shot history reads
+"CharlesBot thinks: hit on X" or "hit — can't tell who" accordingly. **Open
+question 1 is answered: yes**, the player-facing history does name the
+target — decided alongside R8, which needs both parties to see enough to
+appeal a verdict they were never otherwise told.
+
+The original brief follows.
 
 **What.** The verdict should name the person, not just the outcome.
 
@@ -1134,7 +1162,17 @@ target at all. **Depends on:** #5, #3.
 
 ---
 
-### #1 — Call it "CharlesBot", not "AI"
+### #1 — Call it "CharlesBot", not "AI" *(shipped)*
+
+**Shipped 28 Aug**, exactly as this entry prescribed: every user-facing
+display string renamed (`ShotQueue.js`, `ShotHistory.js`, `AdminMode.js`'s
+toggle labels, `ShotReplay.js`, and the tests asserting on those strings).
+API fields, database columns and module names keep their `ai_*` names —
+renaming them would have invalidated stored review payloads for nothing —
+with a boundary comment at each site recording that "CharlesBot" is the
+display name for what the code calls `ai_review`.
+
+The original brief follows.
 
 **What.** Every user-facing string that says "AI" says "CharlesBot".
 
@@ -1758,7 +1796,15 @@ the 19th would be exactly the wrong risk to take.
 
 ---
 
-### R3 — Screen Wake Lock *(proposed, and now the answer rather than a spike)*
+### R3 — Screen Wake Lock *(shipped)*
+
+**Shipped 28 Aug** as a `useWakeLock` hook, mounted unconditionally in
+`UserMode.js` and re-acquiring on `visibilitychange`. **Deliberately no
+toggle**: Charles's call was that an extra toggle confuses more than a
+battery drain costs, and the phone's own power button is already the way to
+turn the screen off if a player wants that.
+
+The original brief follows.
 
 `navigator.wakeLock.request("screen")` stops the phone locking itself while the
 app is in front — see #14 for the mechanics and the re-acquisition trap. Roughly
@@ -1877,7 +1923,56 @@ deliberately.
 
 ---
 
-### R8 — Let the players adjudicate: appeal, don't review *(proposed — Gaby's idea)*
+### R8 — Let the players adjudicate: appeal, don't review *(shipped — Gaby's idea)*
+
+**Shipped 28 Aug**, backend and frontend both. Decisions taken, matching this
+entry's own "decide up front" list:
+
+- **Budget.** `User.appeals_remaining`, `APPEALS_PER_GAME = 3` as a single
+  constant in `backend/model.py` — decremented on lodging an appeal, refunded
+  on upheld, reset alongside HP and ammo when the game resets. The admin's
+  give-back control is a roster row, **Appeals: +1 / −1**
+  (`admin_give_appeals`), the same shape as `admin_give_ammo`.
+- **One appeal per shot per party, structurally.** `shooter_appeal_reason` and
+  `target_appeal_reason` are separate columns on `Shot`, not a shared slot —
+  both parties are refunded when either one's appeal is upheld.
+- **Reasons** are this entry's four (`missed`, `wrong_target`, `not_a_player`,
+  `already_out`) plus a fifth, `actually_hit`, for the shooter's own case:
+  appealing a miss or bystander call that should have been a hit.
+- **An appeal re-opens the shot; it never undoes it**, exactly as recommended
+  below. `Shot.appeal_state` (`open` / `upheld` / `rejected`) marks it
+  contested; a checked shot stays checked, so a contested shot can never
+  re-enter the auto-action drain. Contested shots get their own admin list
+  (`admin_get_contested_shots_info`), ordered by `appealed_at`, leaving
+  `get_unchecked_shots` and the drain untouched.
+- **Upheld is inferred at re-adjudication**, not a second verdict button: the
+  ruling changed, or the hit moved to a different target, or the admin
+  refunded the shot outright (benefit of the doubt). Resolutions are
+  **terminal** — the admin's word ends the loop, which answers this entry's
+  re-appeal question.
+- **HP is never auto-unwound** (open question 6, answered as this entry
+  recommended): the admin repairs HP and ammo by hand at re-adjudication. The
+  public `APPEAL_UPHELD` ticker entry is the correction's social event; a
+  private line tells each appellant directly.
+- **`TickerEntry` gained `shot_id`.** The private "you were hit" line carries
+  it and is tappable in the app, opening straight onto the shot — the way in
+  this entry asked for, rather than making the player go looking.
+- **A fourth per-game toggle, `ai_resolve_everything_enabled`** (default off),
+  ships the "resolve harder, let appeals catch the errors" half: it relaxes
+  only the confidence gate, so an unconfident miss/bystander/ambiguous-hit
+  ranking resolves to the best call for the players to appeal. It is never
+  forced when there is nothing to resolve *from* — no usable review, an
+  inconsistent reading, no ranking at all (nobody to notify means nobody can
+  appeal), or an errored escalation. The strict FIFO queue ordering is
+  untouched either way.
+- **`hit_user` now also fires the target's own `user` SSE event** — a real
+  gap this entry surfaced rather than one it predicted: the victim's HUD
+  never updated live before this.
+- **Shipped before the 19th, off by default everywhere.** This entry's "not
+  before the 19th" caution was about switching appeals on for a live game,
+  not about having the mechanism built and ready to switch on later.
+
+The original brief follows.
 
 **The idea.** Stop asking the admin to check every shot. CharlesBot resolves each
 shot the moment the photo lands, and the two people who were actually there — the
@@ -2105,14 +2200,15 @@ on the night, which is not a thing to try for the first time on the night.
 
 Answers to these change the shape of the work, not just its order.
 
-1. **Should the player-facing shot history name the target?** #2 gives the admin
-   a name. Telling a shooter "CharlesBot thinks you hit Alice" before an admin has
-   confirmed it leaks a player's position and identity to the other team, and it
-   is wrong often enough to be a poor promise. Suggestion: name the target in the
-   admin queue, and keep the player's view to hit / miss / bystander. **R8 reopens
-   this**: if CharlesBot's verdict is final unless a player appeals it, there is
-   no unconfirmed-guess state to protect and both parties have to be shown enough
-   to appeal against.
+1. ~~**Should the player-facing shot history name the target?**~~ **Answered:
+   yes**, decided alongside R8 (shipped 28 Aug). #2 gives the admin a name, and
+   the original suggestion here was to keep the player's view to hit / miss /
+   bystander, on the grounds that an unconfirmed guess shouldn't leak a
+   player's identity to the other team before an admin has confirmed it. R8
+   overturned that: once CharlesBot's verdict is final unless appealed, there
+   is no unconfirmed-guess state left to protect, and a shooter cannot appeal a
+   misattribution they were never told about — both parties have to be shown
+   enough to appeal against. `get_own_shots` now carries `ai_target_name`.
 2. ~~**Do we ask players for a photo of themselves in their outfit at pick
    time?**~~ **Answered: no.** The photo moves to the door on the night, taken by
    the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
@@ -2135,11 +2231,12 @@ Answers to these change the shape of the work, not just its order.
    either way. What free choice adds is that those outfits can be chosen to fit
    the team's actual wardrobes — 82.8% of players in clothes they own against
    the code's 57.4%. See plan §12.6.
-6. **When an appeal is upheld, how far back does the correction reach?** R8's
-   recommendation is that it doesn't: the appeal re-opens the shot and the admin
-   fixes HP and ammo by hand, because a knockout has already refunded the
-   victim's queued shots and announced itself in the ticker, and a general unwind
-   is more machinery than the game is worth. Worth confirming before building —
-   the alternative (hold each auto-verdict for an appeal window and only then
-   apply it) needs no unwind at all, but delays every knockout by the length of
-   the window, which in a game measured in seconds is its own problem.
+6. ~~**When an appeal is upheld, how far back does the correction reach?**~~
+   **Answered: it doesn't.** Shipped 28 Aug as R8 recommended: the appeal
+   re-opens the shot and the admin fixes HP and ammo by hand, because a
+   knockout has already refunded the victim's queued shots and announced
+   itself in the ticker, and a general unwind is more machinery than the game
+   is worth. The alternative considered — holding each auto-verdict for an
+   appeal window before applying it — needs no unwind at all, but delays every
+   knockout by the length of the window, which in a game measured in seconds
+   is its own problem, so it was not built.
