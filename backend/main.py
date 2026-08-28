@@ -486,6 +486,12 @@ async def admin_set_team_name(team_id: UUID, name: str) -> None:
     AdminInterface().set_team_name(team_id=team_id, name=name)
 
 
+@admin_method(path="/admin_delete_team", method="POST")
+async def admin_delete_team(team_id: UUID) -> None:
+    logger.info("admin_delete_team %s", team_id)
+    AdminInterface().delete_team(team_id)
+
+
 @admin_method(path="/admin_add_user_to_team", method="POST")
 async def admin_add_user_to_team(
     user_id: UUID, team_id: UUID, slot: Optional[int] = None

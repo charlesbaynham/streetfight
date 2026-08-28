@@ -523,3 +523,81 @@ def test_admin_delete_user(
 def test_admin_delete_user_unknown_404(admin_api_client, db_session):
     response = admin_api_client.post(f"/api/admin_delete_user?user_id={get_uuid()}")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# admin_delete_team
+# ---------------------------------------------------------------------------
+
+
+def test_admin_delete_team(
+    admin_api_client, db_session, two_users_in_different_teams, test_image_string
+):
+    from backend.items import ItemModel
+
+    user_a, user_b = two_users_in_different_teams
+    team_a = db_session.get(User, user_a).team_id
+    team_b = db_session.get(User, user_b).team_id
+
+    # A collects an item and fires a shot from team A
+    item = ItemModel(
+        id=get_uuid(),
+        itype="ammo",
+        data={"num": 3},
+        collected_only_once=True,
+        collected_as_team=False,
+    ).sign()
+    UserInterface(user_a).collect_item(item.to_base64())
+    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_a).submit_shot(test_image_string)
+
+    response = admin_api_client.post(f"/api/admin_delete_team?team_id={team_a}")
+    assert response.is_success
+
+    db_session.expire_all()
+
+    # The team and its only player are gone, along with their shots and items
+    assert db_session.get(Team, team_a) is None
+    assert db_session.get(User, user_a) is None
+    assert db_session.query(Shot).filter_by(team_id=team_a).count() == 0
+    assert db_session.get(Item, item.id) is None
+
+    # B and their team are untouched
+    assert db_session.get(Team, team_b) is not None
+    assert db_session.get(User, user_b) is not None
+
+
+def test_admin_delete_team_removes_shots_from_players_who_switched_out(
+    admin_api_client, db_session, user_in_team, team_factory, test_image_string
+):
+    """A shot's ``team_id`` records the team the shooter was on when they
+    fired, not their current one, so it survives a later team switch. It
+    should not survive its recorded team being deleted, since ``team_id`` is
+    not nullable."""
+    old_team_id = db_session.get(User, user_in_team).team_id
+
+    UserInterface(user_in_team).award_ammo(1)
+    UserInterface(user_in_team).set_weapon_data(1, 6)
+    shot_id = UserInterface(user_in_team).submit_shot(test_image_string)
+
+    new_team_id = team_factory()
+    admin_api_client.post(
+        f"/api/admin_add_user_to_team?user_id={user_in_team}&team_id={new_team_id}"
+    )
+
+    response = admin_api_client.post(f"/api/admin_delete_team?team_id={old_team_id}")
+    assert response.is_success
+
+    db_session.expire_all()
+
+    assert db_session.get(Team, old_team_id) is None
+    assert db_session.get(Shot, shot_id) is None
+
+    # The player themselves is untouched - they had already left the team
+    assert db_session.get(User, user_in_team) is not None
+    assert db_session.get(User, user_in_team).team_id == new_team_id
+
+
+def test_admin_delete_team_unknown_404(admin_api_client, db_session):
+    response = admin_api_client.post(f"/api/admin_delete_team?team_id={get_uuid()}")
+    assert response.status_code == 404
