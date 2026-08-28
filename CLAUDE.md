@@ -264,9 +264,13 @@ Images are built from the Nix flake
   admin and blocks the shots behind it. The same drain escalates hard cases
   (3 readable channels without armbands, or fewer) to a stronger model
   (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL` — unset means
-  no escalation); a pending or punted escalation blocks the queue the same
-  way, and "too few channels" is never a bystander verdict on its own —
-  `classify()`'s old mapping to that is retired.
+  no escalation, as does the per-game `ai_escalation_enabled` toggle, which
+  unlike its siblings defaults **on**: it is a kill switch inside an
+  opted-in feature, not a third opt-in); a pending or punted escalation
+  blocks the queue the same way, and "too few channels" is never a bystander
+  verdict on its own — `classify()`'s old mapping to that is retired. The
+  admin can also fire one by hand (`admin_escalate_shot`, "Run escalated
+  review" in the queue), which runs whatever the toggles say.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.

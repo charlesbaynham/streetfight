@@ -1216,6 +1216,19 @@ reasoning and the ranked candidate list it was given.
   passed); it now escalates instead, so with no escalation model configured
   those shots go to the admin rather than auto-firing. Deliberate — that rung
   is the one where the missing channel is the player marker.
+- **The escalation layer has its own per-game toggle** (`Game.
+  ai_escalation_enabled`, third checkbox on the admin game panel): off means
+  the escalate rungs go straight to the admin, exactly as if no escalation
+  model were configured. Unlike its two siblings it **defaults on** — they
+  are the opt-in for the AI features, while this is a kill switch inside an
+  already-opted-in feature (escalation only ever runs with auto-actions on
+  and `OPENROUTER_ESCALATION_MODEL` set), so configuring the model should be
+  enough to get it on the night.
+- **The admin can fire an escalation by hand** ("Run escalated review" beside
+  "Re-run AI review" in the queue): `admin_escalate_shot` runs whatever the
+  toggles say — like `admin_review_shot`, an explicit admin ask — and needs a
+  completed weak review to rank from (400 otherwise, and 400 with no
+  escalation model configured). A manual run replaces any stored escalation.
 - **A hit on an already-dead player is just a hit that does nothing** — never
   an escalation, never the admin's. Dead players stay in the candidate set
   (`eligible_candidates` no longer filters on `hit_points`; a knocked-out
