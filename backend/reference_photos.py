@@ -14,7 +14,8 @@ scored against everyone in the game who has picked an outfit
 (:func:`backend.shot_identification.rank_reference_candidates`) and the ranking
 is folded into the stored payload as an ``identification`` section. That is the
 answer the person at the door actually needs -- recognised as themselves, or
-recognised as somebody else and fixable while there is still time.
+recognised as somebody else and fixable while there is still time, or nothing
+readable in the photograph at all, which is a retake rather than a verdict.
 
 The same two constraints as :mod:`backend.ai_shot_review` shape it: never hold
 a database session across an ``await``, and never let a failure escape -- a
@@ -32,6 +33,7 @@ from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
 from .shot_identification import rank_reference_candidates
+from .shot_vision import readable_channel_count
 from .vision_client import get_vision_client
 
 logger = logging.getLogger(__name__)
@@ -81,8 +83,17 @@ def _identification(user_id: UUID, review: dict) -> Optional[dict]:
 
     ``None`` when there is nothing to rank against: the photographed player is
     in no game, or nobody in it has an identity slot yet. ``matches_expected``
-    is ``None`` rather than ``False`` when the photographed player has no slot
-    of their own -- the question is unanswerable, not answered no.
+    is ``None`` rather than ``False`` when the question is unanswerable rather
+    than answered no -- the photographed player has no slot of their own, or
+    the photograph carries no reading to answer it with.
+
+    That second case is the one worth spelling out. The posterior is a product
+    of the prior and the image evidence, so a reading of four erasures returns
+    the prior untouched: an even split between the candidates, or ``p=1.00``
+    when the photographed player is the only one who has picked an outfit. A
+    photograph of a floor therefore ranks somebody top, which is how one came
+    back "recognised". ``readable_channels`` is what separates that from a
+    real answer, and at zero there is no ranking to report at all.
     """
     from .admin_interface import AdminInterface
 
@@ -95,6 +106,18 @@ def _identification(user_id: UUID, review: dict) -> Optional[dict]:
     if ranked is None:
         return None
 
+    readable = readable_channel_count(review)
+    if readable == 0:
+        return {
+            "ranked": [],
+            "readable_channels": 0,
+            "expected_user_id": str(user_id),
+            "matches_expected": None,
+            "confident": False,
+            "ambiguous": False,
+            "inconsistent": False,
+        }
+
     names = {u.id: u.name for u in users}
     return {
         "ranked": [
@@ -105,6 +128,7 @@ def _identification(user_id: UUID, review: dict) -> Optional[dict]:
             }
             for candidate_id, probability in ranked.ranked
         ],
+        "readable_channels": readable,
         "expected_user_id": str(user_id),
         "matches_expected": (
             None if user.identity_slot is None else ranked.best == user.id

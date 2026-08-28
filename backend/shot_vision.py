@@ -725,6 +725,24 @@ def _stored_channel(review_dict: dict, channel):
     return (colour, confidence)
 
 
+def readable_channel_count(review_dict: dict, scheme=None) -> int:
+    """How many channels a *stored* review says anything usable about at all.
+
+    The softer count: a shaky read still moves a posterior, so this asks only
+    whether the channel was read, not whether it was read well. Zero means the
+    reading is entirely erasures and carries **no** image evidence -- whatever
+    a ranking built on it comes back with is its prior handed straight back,
+    which is a thing to say "retake the photograph" about rather than a
+    recognition (backend.reference_photos).
+    """
+    scheme = scheme or default_scheme()
+    return sum(
+        1
+        for channel in scheme.channels
+        if _stored_channel(review_dict, channel)[0] is not None
+    )
+
+
 def confident_channel_count(review_dict: dict, scheme=None) -> int:
     """How many channels a *stored* review read at or above the confidence
     threshold -- i.e. how many the code would treat as readable rather than
