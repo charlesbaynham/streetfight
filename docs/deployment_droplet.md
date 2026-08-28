@@ -4,6 +4,24 @@ The runbook for running the game from a public cloud VM - written for the dry
 run of 30 Aug 2026, but nothing in it is specific to that day. The droplet
 replaces the home-lab LXC deployment (see the cutover section at the bottom).
 
+> **Status, 28 Aug 2026**: cutover in progress on the live droplet
+> `167.172.62.186`. The first two installs completed cleanly and then never
+> booted - two independent holes, both invisible from outside (a dark
+> droplet, no SSH, no ping) and both now fixed in `nix/cloud-host.nix`:
+> the default initrd carries **no virtio drivers**, so stage 1 hung looking
+> for `/dev/vda`; and **DigitalOcean provides no DHCP** - the stock image's
+> netplan is fully static from cloud-init metadata, so `useDHCP` boots with
+> no addresses (the installer masks this by replaying the live config
+> through kexec). The static values are baked in; re-capture them from a
+> stock rebuild if the droplet is ever rebuilt. Root also gained a hashed
+> *console* password (plaintext escrowed on homeserver) so the DO web
+> console can reach a network-dead host; SSH stays key-only, and the deploy
+> key that did the install is now in `deployKeys` alongside Charles's own.
+> The `--vm-test` step was initially skipped (no KVM in the deploying
+> container) in favour of a disk/firmware pre-check, which caught neither
+> hole - the vm-test *does* (it boots the installed disk), and it runs fine
+> under plain TCG emulation, just slowly. Don't skip it again.
+
 The droplet is a **NixOS host**: `nixosConfigurations.streetfight-cloud` in
 the flake, installed destructively onto the stock droplet with
 `nixos-anywhere` and updated afterwards with `nixos-rebuild --target-host`.

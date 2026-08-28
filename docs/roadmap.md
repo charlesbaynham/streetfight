@@ -64,7 +64,10 @@ checklist with someone other than an agent driving. Decisions taken for it:
   behind traefik: its secrets are escrowed across, DNS for
   `streetfight.houseabsolute.co.uk` moves to the droplet, and the
   hypervisor's pull-based auto-redeploy is disabled - the cutover section
-  of the runbook is the procedure. Updates are an explicit `nixos-rebuild`
+  of the runbook is the procedure. **Installed onto the live droplet
+  28 Aug; cutover in progress** - DNS repointing and the home LXC's
+  stand-down (hold file in place, `services.yaml` removal pending merge)
+  still await verification. Updates are an explicit `nixos-rebuild`
   push, not a master-push auto-deploy. (The docker-compose path with
   `SITE_ADDRESS`/`compose.ghcr.yml`/watchtower, also fixed up 28 Aug,
   remains as the fallback.)
