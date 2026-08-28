@@ -7,6 +7,11 @@
   inputs.flake-utils.url = "github:numtide/flake-utils";
   inputs.nixpkgs.url = "github:NixOS/nixpkgs/nixos-26.05";
   inputs.cattle.url = "git+https://github.com/charlesbaynham/nix-proxmox-cattle?ref=v1";
+  # Declarative disk layout for the cloud droplet, applied by nixos-anywhere.
+  inputs.disko = {
+    url = "git+https://github.com/nix-community/disko";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
   # Python dependencies are resolved by uv into ./uv.lock and built from it by
   # uv2nix, so the LXC container, the dev shell, CI and a bare `uv sync` in a
@@ -29,7 +34,7 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils, cattle, pyproject-nix, uv2nix, pyproject-build-systems }:
+  outputs = { self, nixpkgs, flake-utils, cattle, disko, pyproject-nix, uv2nix, pyproject-build-systems }:
     let
       inherit (nixpkgs) lib;
 
@@ -252,7 +257,36 @@
           }
         ];
       };
+
+      # `.#nixosConfigurations.streetfight-cloud` is the public cloud VM (a
+      # DigitalOcean droplet): same deployment-agnostic service module, but
+      # installed as a whole NixOS host by nixos-anywhere and updated with
+      # `nixos-rebuild --target-host`, with Caddy terminating TLS itself
+      # (`hostname`) since there is no border router in front of it. See
+      # docs/deployment_droplet.md for the install and deploy loop.
+      cloudHost = {
+        nixosConfigurations.streetfight-cloud = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            disko.nixosModules.disko
+            ./nix/disko-cloud.nix
+            ./nix/cloud-host.nix
+            streetfightModule
+            {
+              services.streetfight = {
+                enable = true;
+                backend = perSystem.packages.x86_64-linux.backendEnv;
+                frontend = perSystem.packages.x86_64-linux.frontendBuild;
+                hostname = "streetfight.houseabsolute.co.uk";
+              };
+            }
+          ];
+        };
+      };
     in
-    nixpkgs.lib.recursiveUpdate perSystem
-      (lxcTemplate // { nixosModules.streetfight = streetfightModule; });
+    lib.foldl lib.recursiveUpdate perSystem [
+      lxcTemplate
+      cloudHost
+      { nixosModules.streetfight = streetfightModule; }
+    ];
 }

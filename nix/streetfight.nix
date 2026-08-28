@@ -37,6 +37,32 @@ let
       password) fail "ADMIN_PASSWORD is still a well-known placeholder." ;;
     esac
   '';
+
+  # One site definition whichever way TLS is handled; only the virtualHost
+  # address differs (see `services.caddy` below).
+  siteConfig = ''
+    handle /api/* {
+      reverse_proxy 127.0.0.1:${toString cfg.backendPort}
+    }
+
+    handle /docs* {
+      reverse_proxy 127.0.0.1:${toString cfg.backendPort}
+    }
+
+    handle /openapi.json {
+      reverse_proxy 127.0.0.1:${toString cfg.backendPort}
+    }
+
+    handle {
+      root * ${cfg.frontend}
+
+      encode gzip zstd
+
+      # Make the HTML file extension optional
+      try_files {path} /index.html
+      file_server
+    }
+  '';
 in
 {
   options.services.streetfight = {
@@ -59,9 +85,11 @@ in
       type = lib.types.path;
       default = "/data";
       description = ''
-        Directory holding all state that must survive container replacement.
-        Expected to be a Proxmox mountpoint, declared outside this flake; the
-        cattle module refuses to finish booting if it is not one.
+        Directory holding all state that must survive redeployment. Under the
+        cattle deployment it is a Proxmox mountpoint, declared outside this
+        flake (the cattle module refuses to finish booting if it is not one);
+        under the cloud host it is an ordinary directory on the root disk,
+        which is why that host is not disposable (see nix/cloud-host.nix).
       '';
     };
 
@@ -69,8 +97,25 @@ in
       type = lib.types.port;
       default = 80;
       description = ''
-        Port Caddy listens on. TLS is terminated upstream by the border router,
-        so this is plain HTTP and the container never does ACME.
+        Port Caddy listens on when TLS is terminated upstream by the border
+        router: plain HTTP, no ACME. Unused when
+        {option}`services.streetfight.hostname` is set - Caddy then owns 80
+        and 443 itself.
+      '';
+    };
+
+    hostname = lib.mkOption {
+      type = lib.types.nullOr lib.types.str;
+      default = null;
+      example = "streetfight.example.com";
+      description = ''
+        Public hostname to serve with automatic TLS. When set, Caddy serves
+        `https://<hostname>` with Let's Encrypt certificates (and the usual
+        HTTP-to-HTTPS redirect on 80), for a host with no border router in
+        front of it - a public cloud VM. DNS for the name must resolve
+        directly to this host (not through a proxy) so the ACME HTTP
+        challenge can arrive. When null, behaviour is unchanged: plain HTTP
+        on {option}`services.streetfight.port`, TLS somebody else's job.
       '';
     };
 
@@ -179,34 +224,19 @@ in
 
     services.caddy = {
       enable = true;
-      # Mirrors the repo's Caddyfile, minus the TLS handling: the border router
-      # terminates TLS, so Caddy's data/config directories carry nothing worth
-      # persisting and are left in the disposable rootfs.
-      virtualHosts.":${toString cfg.port}".extraConfig = ''
-        handle /api/* {
-          reverse_proxy 127.0.0.1:${toString cfg.backendPort}
-        }
-
-        handle /docs* {
-          reverse_proxy 127.0.0.1:${toString cfg.backendPort}
-        }
-
-        handle /openapi.json {
-          reverse_proxy 127.0.0.1:${toString cfg.backendPort}
-        }
-
-        handle {
-          root * ${cfg.frontend}
-
-          encode gzip zstd
-
-          # Make the HTML file extension optional
-          try_files {path} /index.html
-          file_server
-        }
-      '';
+      # Mirrors the repo's Caddyfile. The virtualHost address decides the TLS
+      # story, exactly as SITE_ADDRESS does there: a bare `:port` is plain
+      # HTTP (border router terminates TLS, and Caddy's data/config
+      # directories carry nothing worth persisting), while a hostname makes
+      # Caddy do ACME itself - in which case /var/lib/caddy holds the
+      # certificates and is worth keeping.
+      virtualHosts.${
+        if cfg.hostname != null then cfg.hostname else ":${toString cfg.port}"
+      }.extraConfig =
+        siteConfig;
     };
 
-    networking.firewall.allowedTCPPorts = [ cfg.port ];
+    networking.firewall.allowedTCPPorts =
+      if cfg.hostname != null then [ 80 443 ] else [ cfg.port ];
   };
 }

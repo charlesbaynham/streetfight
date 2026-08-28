@@ -56,14 +56,18 @@ checklist with someone other than an agent driving. Decisions taken for it:
 - **Played in Westminster**, on the live venue - no venue work needed.
 - **Deployed on a cloud VM (DigitalOcean droplet), not the home server** -
   capacity is guaranteed and nothing on the home network needs exposing.
-  Runbook: `docs/deployment_droplet.md`; the code half (configurable
-  `SITE_ADDRESS` in the Caddyfile, `compose.ghcr.yml`, the escalation env
-  vars passed through compose) shipped 28 Aug. The droplet **replaces** the
-  home LXC deployment behind traefik: its secrets are escrowed across, DNS
-  for `streetfight.houseabsolute.co.uk` moves to the droplet, and the
-  hypervisor's pull-based auto-redeploy is disabled - the cutover section of
-  the runbook is the procedure. Auto-deploy on master pushes is kept, via
-  watchtower on the droplet.
+  The droplet is a **NixOS host** (`nixosConfigurations.streetfight-cloud`,
+  shipped 28 Aug): installed with `nixos-anywhere`, updated with
+  `nixos-rebuild --target-host`, reusing the same service module as the LXC
+  with Caddy doing ACME itself (`services.streetfight.hostname`). Runbook:
+  `docs/deployment_droplet.md`. It **replaces** the home LXC deployment
+  behind traefik: its secrets are escrowed across, DNS for
+  `streetfight.houseabsolute.co.uk` moves to the droplet, and the
+  hypervisor's pull-based auto-redeploy is disabled - the cutover section
+  of the runbook is the procedure. Updates are an explicit `nixos-rebuild`
+  push, not a master-push auto-deploy. (The docker-compose path with
+  `SITE_ADDRESS`/`compose.ghcr.yml`/watchtower, also fixed up 28 Aug,
+  remains as the fallback.)
 - **QR codes go out on WhatsApp**, not paper - #8's print run is not pulled
   forward, players follow links.
 - **Pubs stay placeholders**: ammo is handed out directly, so #6's landlord
