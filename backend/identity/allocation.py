@@ -13,12 +13,12 @@ distinct codewords of the same scheme -- it merely constrains *which* of the
 usable slots each team draws from.
 
 The constraint has a hard ceiling: a hat colour only covers as many slots as
-there are codewords carrying it (five each in the default scheme, four for
-black). Past that a team needs a second colour, and
-:func:`allocate_team_slots` gives it one *whole* extra colour rather than
-sharing a part-used one, so a hat colour still names exactly one team. Slots
-are emitted primary-colour-first, so a team that never fills its block never
-reaches the second colour at all.
+there are codewords carrying it (seven each in the default scheme, six for
+black -- the all-black slot 0 is never handed out). Past that a team needs a
+second colour, and :func:`allocate_team_slots` gives it one *whole* extra
+colour rather than sharing a part-used one, so a hat colour still names exactly
+one team. Slots are emitted primary-colour-first, so a team that never fills its
+block never reaches the second colour at all.
 
 This module is pure: slots, labels and schemes only, no database (the
 package-wide rule -- see :mod:`backend.identity.overrides`).
@@ -131,6 +131,51 @@ def allocate_team_slots(
         TeamAllocation(slots=slots, labels=_ordered_unique(label_of[s] for s in slots))
         for slots in team_slots
     ]
+
+
+def colour_capacity(scheme, channel_name: str) -> Dict[str, int]:
+    """``{label: number of usable slots wearing it}`` -- 5 per colour in the
+    default scheme, 4 for black (slot 0 is excluded).
+    """
+    return {
+        label: len(slots)
+        for label, slots in group_slots_by_channel(scheme, channel_name)
+    }
+
+
+def assign_team_colours(
+    scheme, channel_name: str, existing: Dict[object, object]
+) -> Dict[object, str]:
+    """Colour each team in ``existing`` (team key -> pinned colour, or ``None``).
+
+    Pinned teams keep their colour; unpinned teams take the remaining colour
+    buckets in :func:`group_slots_by_channel` order (roomiest first), assigned
+    in ``existing``'s own insertion order so the result is deterministic.
+
+    Honouring pinned colours -- rather than recomputing every team's colour
+    from scratch each time -- is what makes adding a team later never re-colour
+    an existing one. That is the entire reason a team's colour is *stored*
+    rather than *derived*: derived state would recompute, and reshuffle, on
+    every call.
+
+    Raises ``ValueError`` if there are more teams than the channel has colours.
+    """
+    buckets = group_slots_by_channel(scheme, channel_name)
+    all_labels = [label for label, _ in buckets]
+
+    if len(existing) > len(all_labels):
+        raise ValueError(
+            f"{len(existing)} teams need a colour each, "
+            f"but {channel_name!r} only has {len(all_labels)}"
+        )
+
+    taken = {colour for colour in existing.values() if colour is not None}
+    available = iter(label for label in all_labels if label not in taken)
+
+    result: Dict[object, str] = {}
+    for team, colour in existing.items():
+        result[team] = colour if colour is not None else next(available)
+    return result
 
 
 def _ordered_unique(labels: Iterable[str]) -> List[str]:

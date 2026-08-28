@@ -14,6 +14,21 @@ the photos and validate hits. It is a full-stack app:
 - **Frontend** — Create React App (`react-ui/`), a mobile-first PWA-style client.
 - Glued together by a root `package.json`, a Nix flake, and Docker Compose.
 
+## Not deployed yet — breaking changes are free
+
+The game has **not been run or deployed**, and **nobody has picked their
+clothes yet**: there are no live players, no assigned identity slots, no
+production database to migrate. So a change that would normally be off the
+table — renumbering the identity scheme's symbols, swapping a palette, or
+reshaping a model — costs nothing here. Don't contort a design to preserve
+data that does not exist, and don't warn about re-clothing players who have
+not chosen anything.
+
+Charles will say explicitly when that changes. Until he does, treat this as
+still true; after he does, the compatibility of already-assigned identity
+slots (`User.identity_slot`, `Team.identity_colour`) becomes real and the
+usual care applies.
+
 ## Planned work
 
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
@@ -27,6 +42,10 @@ rewrite they sound like. Keep it current: when an item ships, say so there.
 Attempt to match existing code styles where possible. Prefer self-documenting code over verbose comments. Where a pattern has already been demonstrated elsewhere in the codebase, generalise and reuse it rather than minting a new, different version.
 
 For a feature that affects the backend or the frontend functionality, ensure to add unit tests. One caveat to this is: don't add unit tests that test very simple behaviour. For example, if you add a button that says "hello", do not add a unit test that says, "Does the button say 'hello'?" We can trust code that far.
+
+When fixing a bug, use a TDD workflow: first write a test that reproduces the
+bug (it should fail against the current code), then make the fix and confirm
+the test passes.
 
 Keep the agent documentation up to date, such as this file and any other documentation for agents in the repository.
 
@@ -47,6 +66,15 @@ minimal changes over large refactors.
   - `shot_identification.py` — which player a shot photograph shows: builds the
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
+  - `shot_escalation.py` — the hard cases (roadmap #11): too few readable
+    garments sends the queue head to a second, stronger vision model
+    (`OPENROUTER_ESCALATION_MODEL`) with the GPS-ranked candidates and their
+    reference photos; its verdict re-enters the auto-action gate, with
+    "unsure" landing the shot back with the admin.
+  - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
+    photo of a player, put through the *same* vision path a shot takes
+    (`ai_shot_review._review_image_data`) and then scored against everyone who
+    has picked an outfit. Stored on the `User`, never as a `Shot`.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
@@ -63,9 +91,17 @@ minimal changes over large refactors.
   - `src/setupProxy.js` — dev proxy: forwards `/api`, `/docs`, `/openapi.json` to
     the backend at `http://127.0.0.1:8000`.
   - `src/venue.js` + `src/mapImages.js` — fetches the venue from the backend and
-    turns its reference points into map geometry; `mapImages.js` is the bundled
-    map images the server's `map.image` key resolves against.
+    turns its reference points into map geometry (`mapGeometry`) and pixel
+    positions inside a box (`mapProjection`, shared by `MapView.js` and the
+    admin's per-shot `ShotMap.js`); `mapImages.js` is the bundled map images
+    the server's `map.image` key resolves against.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
+    `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
+    team join code lands on; it shares the colour `Swatch.js` component with
+    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
+    (roadmap R7): capture a reference photo per player and see whether it
+    decodes to them, reusing `ShotQueue.js`'s exported tag renderers.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).
@@ -77,8 +113,9 @@ minimal changes over large refactors.
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and
   `shared_fixtures.py`).
-- Root: `package.json` (orchestration scripts), `flake.nix` / `.envrc` (Nix dev
-  env), `compose*.yml` + `Caddyfile` (deployment).
+- Root: `package.json` (orchestration scripts), `pyproject.toml` + `uv.lock`
+  (the Python dependencies), `flake.nix` / `.envrc` (Nix dev env),
+  `compose*.yml` + `Caddyfile` (deployment).
 
 ## Setup & run (development)
 
@@ -107,6 +144,43 @@ reset the dev DB with `npm run resetdb`.
 
 Nix alternative: `nix develop` to enter the dev shell, then `nix run .#backend`
 and `nix run .#frontend` in separate terminals.
+
+## Python dependencies
+
+Declared **once**, in `pyproject.toml`, and resolved by **uv** into `uv.lock`.
+Nix does not carry a second list: `flake.nix` feeds `uv.lock` to **uv2nix**,
+which builds the dev shell, the CI shell and the deployed `backendEnv` from it.
+So a bare `uv sync` in a throwaway container installs the same versions the LXC
+container runs — that parity is the whole point, so **do not** hand-install
+packages with `pip` and **do not** add a Python dependency to `flake.nix`.
+
+```bash
+uv sync --frozen --all-groups   # exactly what the lock says (agents, CI, containers)
+uv add <pkg>                    # add a runtime dep; updates pyproject.toml + uv.lock
+uv add --dev <pkg>              # add a test-only dep
+uv run pytest                   # run inside the venv without activating it
+```
+
+Both paths work and agree; pick by what you already have:
+
+| Environment | Command | Gets |
+| --- | --- | --- |
+| Has Nix | `nix develop` | Python + node + caddy + pre-commit + TeX |
+| No Nix | `uv sync --frozen --all-groups` | Python only, same versions |
+
+Notes and gotchas:
+
+- `sourcePreference = "wheel"` in `flake.nix` — every dependency here publishes a
+  wheel, and sdists are where uv2nix needs hand-written overrides. Prefer a
+  dependency that ships wheels; that is why the lock carries `psycopg2-binary`
+  rather than `psycopg2`, which is sdist-only and would want `pg_config`.
+- uv does not lock build systems, so they come from the
+  `pyproject-build-systems` overlay rather than `uv.lock`. If a new dependency
+  fails to build complaining about a missing build backend, that overlay is
+  where it belongs.
+- The git revision baked into the deployed package (`backend/VERSION`, served by
+  `/api/get_version`) is applied by the `versionOverlay` in `flake.nix`.
+- After changing `pyproject.toml`, commit the regenerated `uv.lock` with it.
 
 ## Testing
 
@@ -151,7 +225,10 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
+| `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = escalation off) |
+| `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort override for the escalation model |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
+| `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
 
 ## Deployment (brief)
@@ -190,10 +267,36 @@ Images are built from the Nix flake
   (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an ambiguous head stays with the
-  admin and blocks the shots behind it.
+  admin and blocks the shots behind it. The same drain escalates hard cases
+  (3 readable channels without armbands, or fewer) to a stronger model
+  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL` — unset means
+  no escalation, as does the per-game `ai_escalation_enabled` toggle, which
+  unlike its siblings defaults **on**: it is a kill switch inside an
+  opted-in feature, not a third opt-in); a pending or punted escalation
+  blocks the queue the same way, and "too few channels" is never a bystander
+  verdict on its own — `classify()`'s old mapping to that is retired. The
+  admin can also fire one by hand (`admin_escalate_shot`, "Run escalated
+  review" in the queue), which runs whatever the toggles say.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support.
+- The **replay workbench** (`/admin/replay`, `react-ui/src/ShotReplay.js` →
+  `admin_replay_shot_review`) trials a vision contract against real shots
+  without storing anything. That contract is three things, and they must stay
+  editable *together*: the prompt, the `zoom_mode` (`shot_vision.ZOOM_SCREENED`
+  / `ZOOM_UPFRONT` / `ZOOM_SINGLE` — which decides the follow-up turns) and the
+  response `schema`. Vary the wording alone and the model is still forced to
+  answer the old schema through the old follow-ups, so the new prompt has no
+  effect — that was a real bug (roadmap R1). `build_prompt(zoom_mode=…)` writes
+  the zoom wording that matches the shape being run; keep them in step.
+- **`User.location_accuracy` and `Shot.heading` are captured, not consumed.**
+  The fix accuracy that rides each `set_location` (and so lands in every shot's
+  `location_context`) and the compass heading captured in `MyWebcam.js` at the
+  moment of a shot exist because they cannot be recovered after a game night.
+  Nothing in `backend/shot_identification.py` or `backend/identity/` reads
+  them, and that is deliberate until there is real data to fit a model against
+  — the admin's per-shot map (`react-ui/src/ShotMap.js`) only displays them.
+  See `docs/roadmap.md` R5 and #5.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)
@@ -208,10 +311,37 @@ Images are built from the Nix flake
   (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
   pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
+- **Trousers are their own palette** (`TROUSERS_PALETTE`), simulated separately
+  for legs and sharing only `black` with the main one, hex and all: black, grey,
+  off-white, blue, red, olive, mustard. Three achromatics spread across the
+  lightness range plus four chromatics spread around the hue circle — the
+  neutrals are separated by `L*`, which survives a colour cast, rather than by
+  hue. Only the *cardinality* reaches the code, so nothing has to match the main
+  palette and almost nothing does. See plan §9.1.
+- **Colour definitions (`COLOUR_BUCKETS`) are keyed per channel**, like
+  `PALETTE_HEX`, with a per-colour fallback to `main` — because the channels
+  genuinely disagree: charcoal is `black` on the legs (grey is two stops away)
+  and explicitly not black on a top (no grey to catch it). Both audiences that
+  answer in these words render each channel's own: the swatch notes on `/pick`
+  (`channels[].notes` from `_channels_payload`) and the vision prompt, which
+  puts them inside that channel's question rather than in one shared list. Keep
+  the two in step — identification scores what the player said against what the
+  model said, so they must mean the same thing by a colour name.
 - One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
   teams apart by eye: the join-QR pre-allocation
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
   each team a block of slots sharing one hat colour, and no two teams share a
   colour. That is an allocation policy only — the decoder is unaffected. A hat
-  colour covers five slots (four for black), so a bigger team picks up a whole
+  colour covers seven slots (six for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
+- `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
+  for a game, and left untouched on every later call (even after a new team is
+  added) — so a team that has already started picking outfits never gets
+  re-coloured out from under players who chose against its original hat.
+- Players choose their own outfit rather than being assigned one: a team join
+  code (`slot=None` in `JoinCodeModel`) sends the scanner to `/pick`, which
+  offers a ranked, paginated list built by
+  `identity_admin.outfit_options`. Ranking is canonical-first — an option
+  needing zero overrides from a Reed–Solomon codeword always outranks a rarer
+  one needing even one — then rarity, gated throughout on Hamming distance
+  against everyone already placed in the game.

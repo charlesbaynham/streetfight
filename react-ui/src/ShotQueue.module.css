@@ -59,6 +59,13 @@
   border-color: #c0392b;
 }
 
+/* A colour the model did read, but only just - at the door that is the
+   difference between a kit check that passed and one that got lucky. */
+.tagMarginal {
+  background: #fdf0d5;
+  border-color: #d9a441;
+}
+
 .tagZoom {
   background: #e3ecfb;
   border-color: #4a76c9;
@@ -68,6 +75,37 @@
   font-size: 0.8em;
   color: #666;
   margin: 0.2em 0 0.6em 0;
+}
+
+/* The stronger model's verdict, punted to from the cheap review above. Set
+   apart with a border + tint rather than another tag row, since this is the
+   admin's actual decision material for an "unsure" shot. */
+.escalationBlock {
+  border-left: 3px solid #4a76c9;
+  background: #f7f9fd;
+  padding: 0.4em 0.6em;
+  margin: 0.4em 0 0.6em 0;
+}
+
+.escalationLabel {
+  font-size: 0.75em;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4a76c9;
+  margin: 0 0 0.3em 0;
+}
+
+.escalationCandidates {
+  font-size: 0.85em;
+  margin: 0.3em 0 0.1em 1.2em;
+  padding: 0;
+}
+
+.outcomeUnsure {
+  background: #fff3cd;
+  border-color: #d9a441;
+  font-weight: bold;
 }
 
 .showCheckedToggle {

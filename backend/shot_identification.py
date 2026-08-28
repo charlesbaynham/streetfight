@@ -228,17 +228,24 @@ def structural_prior(candidates: List[UserModel], shooter_team_id) -> Dict[UUID,
 def eligible_candidates(
     users: List[UserModel], shooter_id: Optional[UUID]
 ) -> List[UserModel]:
-    """Who could have been photographed: living players other than the shooter.
+    """Who could have been photographed: anybody in the game but the shooter.
 
     A player with no identity slot is excluded -- they have no effective word,
     so there is nothing to score them against.
+
+    **Being knocked out does not remove a candidate.** A dead player is still
+    standing there to be photographed, most obviously in the seconds after the
+    shot that killed them: the next shot in the queue is often of exactly that
+    person, and dropping them makes it match nobody, climb the escalation
+    ladder for nothing and land back with the admin. Resolving it as a hit that
+    does no damage is both cheaper and true. The prior stays flat for the dead
+    -- a down-weight by how long ago they died is plausible, but it is a
+    constant to fit from R2's data rather than to invent here.
     """
     return [
         user
         for user in users
-        if user.id != shooter_id
-        and user.hit_points > 0
-        and user.identity_slot is not None
+        if user.id != shooter_id and user.identity_slot is not None
     ]
 
 
@@ -286,32 +293,22 @@ def candidate_words(
     return effective_words(candidates, scheme)
 
 
-def rank_candidates(
-    shot: ShotModel,
-    users: List[UserModel],
+def _rank(
+    candidates: List[UserModel],
     review: dict,
-    scheme: Optional[IdentityScheme] = None,
-    at_time: Optional[float] = None,
+    scheme: IdentityScheme,
+    make_prior,
 ) -> Optional[DecodeResult]:
-    """Rank the living players by how well they explain this shot's photograph.
+    """Score a reading against a candidate set: the shared tail of the ranking
+    functions, which differ only in who is eligible and what the prior is.
 
-    Returns ``None`` when there is nobody to rank. Every candidate keeps a
-    non-zero posterior, so the caller decides what is good enough to act on --
-    this function never refuses on its own account.
+    ``make_prior`` is handed the candidates that survived having an effective
+    word, since a prior over anybody else would never be looked up.
     """
-    scheme = scheme or default_scheme()
-    candidates = eligible_candidates(users, shot.user_id)
-    if not candidates:
-        return None
-
     words = candidate_words(candidates, scheme)
     if not words:
         return None
     candidates = [user for user in candidates if user.id in words]
-
-    at_time = at_time if at_time is not None else time.time()
-    fixes = parse_location_context(shot.location_context)
-    shooter = next((u for u in users if u.id == shot.user_id), None)
 
     # The candidates' own separation, not the code's nominal d: an overridden
     # or freely-chosen outfit is not a codeword, so d no longer bounds how far
@@ -323,7 +320,64 @@ def rank_candidates(
         reading=reading_from_review(review, scheme),
         candidates=words,
         channels=scheme.channels,
-        prior=build_prior(candidates, shooter, fixes, at_time),
+        prior=make_prior(candidates),
         thresholds=DEFAULT_THRESHOLDS,
         code_min_distance=effective_min_distance,
+    )
+
+
+def rank_candidates(
+    shot: ShotModel,
+    users: List[UserModel],
+    review: dict,
+    scheme: Optional[IdentityScheme] = None,
+    at_time: Optional[float] = None,
+) -> Optional[DecodeResult]:
+    """Rank the game's players by how well they explain this shot's photograph.
+
+    Returns ``None`` when there is nobody to rank. Every candidate keeps a
+    non-zero posterior, so the caller decides what is good enough to act on --
+    this function never refuses on its own account.
+    """
+    scheme = scheme or default_scheme()
+    candidates = eligible_candidates(users, shot.user_id)
+    if not candidates:
+        return None
+
+    at_time = at_time if at_time is not None else time.time()
+    fixes = parse_location_context(shot.location_context)
+    shooter = next((u for u in users if u.id == shot.user_id), None)
+
+    return _rank(
+        candidates,
+        review,
+        scheme,
+        lambda survivors: build_prior(survivors, shooter, fixes, at_time),
+    )
+
+
+def rank_reference_candidates(
+    users: List[UserModel],
+    review: dict,
+    scheme: Optional[IdentityScheme] = None,
+) -> Optional[DecodeResult]:
+    """Rank the whole game against a reference photo taken at the door.
+
+    The same scoring as :func:`rank_candidates` with the shot-specific terms
+    dropped, because at the door none of them apply: there is no shooter to
+    exclude or to treat as a teammate, and a reference photo carries no
+    ``location_context`` to build a location term from. What is left is every
+    player who has picked an outfit, under a flat prior -- ``build_prior`` with
+    no shooter and no fixes is exactly that, floor and all.
+    """
+    scheme = scheme or default_scheme()
+    candidates = [user for user in users if user.identity_slot is not None]
+    if not candidates:
+        return None
+
+    return _rank(
+        candidates,
+        review,
+        scheme,
+        lambda survivors: build_prior(survivors, None, {}, time.time()),
     )

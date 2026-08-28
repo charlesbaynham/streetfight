@@ -23,7 +23,9 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
+from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
+from .model import AI_REVIEW_STATE_PENDING
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
@@ -50,8 +52,55 @@ db_scoped = AdminScopeWrapper.db_scoped
 # queue -- deliberately not a ShotModel, so image_base64 is never loaded.
 QueueHead = namedtuple(
     "QueueHead",
-    ["id", "user_id", "ai_review_state", "ai_review", "location_context"],
+    [
+        "id",
+        "user_id",
+        "ai_review_state",
+        "ai_review",
+        "ai_escalation_state",
+        "ai_escalation",
+        "location_context",
+    ],
 )
+
+
+def _stored_json(raw: Optional[str]) -> Optional[dict]:
+    """One of the review columns, decoded for the admin API.
+
+    ``None`` stays None; an "error" state stores a plain message rather than
+    JSON, which comes back wrapped as ``{"error": ...}`` so the frontend has
+    one shape to render.
+    """
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return {"error": raw}
+
+
+def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
+    """The kit check's headline, pulled out of a stored reference review.
+
+    Null throughout unless the review completed and carried an identification
+    section: a pending, errored or pre-identification review has no verdict.
+    """
+    blank = {"matches_expected": None, "top_name": None, "top_probability": None}
+    if state != AI_REVIEW_STATE_DONE or not review:
+        return blank
+    try:
+        identification = (json.loads(review) or {}).get("identification")
+    except ValueError:
+        return blank
+    if not isinstance(identification, dict):
+        return blank
+
+    ranked = identification.get("ranked") or [{}]
+    return {
+        "matches_expected": identification.get("matches_expected"),
+        "top_name": ranked[0].get("name"),
+        "top_probability": ranked[0].get("probability"),
+    }
 
 
 class CircleTypes(str, Enum):
@@ -108,6 +157,20 @@ class AdminInterface:
         return row[0]
 
     @db_scoped
+    def get_shot_image_base64(self, shot_id) -> str:
+        """Just the image for a shot, without loading the whole model.
+
+        The vision-images endpoint only needs the base64 data; loading a
+        ShotModel would also instantiate the GameModel via ShotModel.game
+        and its teams/users.
+        404s if the shot is unknown.
+        """
+        row = self._session.query(Shot.image_base64).filter_by(id=shot_id).first()
+        if not row:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+        return row[0]
+
+    @db_scoped
     def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
         """The oldest unchecked shot in a game, or None if the queue is empty.
 
@@ -115,7 +178,10 @@ class AdminInterface:
         breaks ties deterministically. Selects columns only -- never
         image_base64, which the auto-action drain has no use for.
         ``location_context`` is here because the drain's identification step
-        builds its location term from it (backend.shot_identification).
+        builds its location term from it (backend.shot_identification), and the
+        escalation columns because the drain's ladder reads them to decide
+        whether this head is still waiting on a stronger model
+        (backend.shot_escalation).
         """
         row = (
             self._session.query(
@@ -123,6 +189,8 @@ class AdminInterface:
                 Shot.user_id,
                 Shot.ai_review_state,
                 Shot.ai_review,
+                Shot.ai_escalation_state,
+                Shot.ai_escalation,
                 Shot.location_context,
             )
             .filter_by(game_id=game_id, checked=False)
@@ -268,6 +336,16 @@ class AdminInterface:
             trigger_update_event("user", user_id)
 
     @db_scoped
+    def set_team_identity_colour(self, team_id: UUID, colour: str) -> None:
+        """Pin a team's TEAM_CHANNEL colour. Once set, join code generation
+        for this team must reuse it rather than re-deriving from
+        allocate_team_slots, so adding a new team doesn't re-colour teams
+        that have already picked."""
+        logger.info("AdminInterface - set_team_identity_colour %s %s", team_id, colour)
+        team = self._get_team_orm(team_id)
+        team.identity_colour = colour
+
+    @db_scoped
     def _get_game_ticker(self, game_id: UUID) -> Ticker:
         return Ticker(game_id, user_id=None, session=self._session)
 
@@ -370,8 +448,31 @@ class AdminInterface:
         return bool(self._get_game_orm(game_id).ai_auto_actions_enabled)
 
     @db_scoped
+    def set_ai_escalation_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn escalation of hard shots to the stronger model on or off.
+
+        A kill switch inside the auto-actions feature rather than an opt-in of
+        its own, which is why it defaults on: with it off, a shot the ladder
+        wants escalated (backend.shot_escalation) simply waits for the admin,
+        exactly as it does when no escalation model is configured.
+        """
+        logger.info(
+            "AdminInterface - set_ai_escalation_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_escalation_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_escalation_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_escalation_enabled)
+
+    @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:
-        """The stored AI review for one shot.
+        """The stored AI review for one shot, and any escalation of it.
 
         Deliberately its own endpoint rather than a field on the shot: the
         frontend caches shot responses permanently by id, so a review that
@@ -379,20 +480,24 @@ class AdminInterface:
         image cached and this small payload live avoids that.
         """
         shot = self._get_shot_orm(shot_id)
-        review = None
-        if shot.ai_review:
-            try:
-                review = json.loads(shot.ai_review)
-            except ValueError:
-                # An "error" state stores a plain message, not JSON
-                review = {"error": shot.ai_review}
-        return {"state": shot.ai_review_state, "review": review}
+        return {
+            "state": shot.ai_review_state,
+            "review": _stored_json(shot.ai_review),
+            "escalation_state": shot.ai_escalation_state,
+            "escalation": _stored_json(shot.ai_escalation),
+        }
 
     @db_scoped
     def store_shot_ai_review(
         self, shot_id: UUID, state: str, payload=None
     ) -> Tuple[UUID, UUID]:
         """Record the outcome of a review. The single writer of these columns.
+
+        Starting a fresh review (state "pending") also clears any escalation:
+        the escalated verdict was drawn from the old reading, and a re-run
+        replaces that reading. It is also how an admin unsticks an errored
+        escalation -- "Re-run AI review" puts the shot back on the ladder from
+        the bottom.
 
         Returns the shot's game id and shooter id so the caller can fire
         update events without needing a second session.
@@ -405,8 +510,148 @@ class AdminInterface:
             shot.ai_review = payload
         else:
             shot.ai_review = json.dumps(payload, default=str)
+        if state == AI_REVIEW_STATE_PENDING:
+            shot.ai_escalation_state = None
+            shot.ai_escalation = None
         self._session.commit()
         return shot.game_id, shot.user_id
+
+    @db_scoped
+    def store_shot_escalation(
+        self, shot_id: UUID, state: str, payload=None
+    ) -> Tuple[UUID, UUID]:
+        """Record the outcome of an escalation (backend/shot_escalation.py).
+        The single writer of these columns, and the counterpart of
+        :meth:`store_shot_ai_review`, down to what it returns.
+        """
+        shot = self._get_shot_orm(shot_id)
+        shot.ai_escalation_state = state
+        if payload is None:
+            shot.ai_escalation = None
+        elif isinstance(payload, str):
+            shot.ai_escalation = payload
+        else:
+            shot.ai_escalation = json.dumps(payload, default=str)
+        self._session.commit()
+        return shot.game_id, shot.user_id
+
+    @db_scoped
+    def set_reference_photo(self, user_id: UUID, image_base64: str) -> Optional[UUID]:
+        """Store the kit-check photo taken at the door for one player.
+
+        Any previous review goes with it: the old reading describes the old
+        photo, and leaving it behind would show a verdict for a picture that is
+        no longer there. Returns the player's game id (None if they are in no
+        team) so the caller can fire update events.
+        """
+        user = self._get_user_orm(user_id)
+        user.reference_photo_base64 = image_base64
+        user.reference_review_state = None
+        user.reference_review = None
+        user.touch()
+        self._session.commit()
+
+        game_id = user.game_id
+        trigger_update_event("user", user_id)
+        if game_id is not None:
+            trigger_update_event("shots", game_id)
+        return game_id
+
+    @db_scoped
+    def clear_reference_photo(self, user_id: UUID) -> Optional[UUID]:
+        """Delete a player's reference photo and its review."""
+        user = self._get_user_orm(user_id)
+        user.reference_photo_base64 = None
+        user.reference_review_state = None
+        user.reference_review = None
+        user.touch()
+        self._session.commit()
+
+        game_id = user.game_id
+        trigger_update_event("user", user_id)
+        if game_id is not None:
+            trigger_update_event("shots", game_id)
+        return game_id
+
+    @db_scoped
+    def get_reference_photo(self, user_id: UUID) -> Optional[str]:
+        """Just the reference photo, without loading the whole user."""
+        row = (
+            self._session.query(User.reference_photo_base64)
+            .filter_by(id=user_id)
+            .first()
+        )
+        if not row:
+            raise HTTPException(404, f"User {user_id} not found")
+        return row[0]
+
+    @db_scoped
+    def get_reference_review(self, user_id: UUID) -> dict:
+        """The stored kit-check review for one player, shaped like
+        :meth:`get_shot_ai_review`."""
+        user = self._get_user_orm(user_id)
+        return {
+            "state": user.reference_review_state,
+            "review": _stored_json(user.reference_review),
+        }
+
+    @db_scoped
+    def store_reference_review(
+        self, user_id: UUID, state: str, payload=None
+    ) -> Optional[UUID]:
+        """Record the outcome of a kit-check review. The single writer of these
+        columns.
+
+        Returns the player's game id so the caller can fire update events
+        without needing a second session.
+        """
+        user = self._get_user_orm(user_id)
+        user.reference_review_state = state
+        if payload is None:
+            user.reference_review = None
+        elif isinstance(payload, str):
+            user.reference_review = payload
+        else:
+            user.reference_review = json.dumps(payload, default=str)
+        self._session.commit()
+        return user.game_id
+
+    @db_scoped
+    def get_reference_photo_status(self, game_id: UUID) -> List[dict]:
+        """One row per player in a game: have they been photographed, and did
+        the photo resolve to them?
+
+        Selects columns only -- never reference_photo_base64, which the roster
+        has no use for and which would make this response enormous.
+        """
+        self._get_game_orm(game_id)  # 404 if the game doesn't exist
+
+        rows = (
+            self._session.query(
+                User.id,
+                User.name,
+                Team.name,
+                User.reference_photo_base64.isnot(None),
+                User.reference_review_state,
+                User.reference_review,
+            )
+            .join(Team, User.team_id == Team.id)
+            .filter(Team.game_id == game_id)
+            .order_by(Team.name, User.name)
+            .all()
+        )
+
+        return [
+            {
+                "user_id": user_id,
+                "name": name,
+                "team_name": team_name,
+                "has_photo": bool(has_photo),
+                "review_state": state,
+                **_reference_verdict(state, review),
+            }
+            for user_id, name, team_name, has_photo, state, review in rows
+        ]
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
@@ -599,11 +844,17 @@ class AdminInterface:
         u_from = shot.user
         ui_target = UserInterface(target_user_id, session=self._session)
 
+        # A shot that hits somebody already knocked out is just a hit that does
+        # nothing: it is announced as a plain hit, and only the blow that
+        # actually kills announces a knockout and refunds the victim's queue.
+        # Reading the HP afterwards alone would credit a second killer.
+        already_dead = self._get_user_orm(target_user_id).hit_points <= 0
+
         ui_target.hit(shot.shot_damage)
 
         u_to = self._get_user_orm(target_user_id)
 
-        if u_to.hit_points > 0:
+        if already_dead or u_to.hit_points > 0:
             message_type_public = tk.TickerMessageType.HIT_AND_DAMAGE
             message_type_private = tk.TickerMessageType.USER_GOT_HIT
 
@@ -872,6 +1123,9 @@ class AdminInterface:
                         "longitude": user.longitude,
                         "state": user.state,
                         "timestamp": user.location_timestamp,
+                        # How good that fix was, in metres. Serialises into
+                        # every shot's location_context along with the rest.
+                        "accuracy": user.location_accuracy,
                     }
                 )
         return locations
@@ -964,6 +1218,12 @@ class AdminInterface:
             user.num_bullets = 0
             user.hit_points = 1
             user.time_of_death = None
+
+            # The kit-check photos are photographs of identifiable people and
+            # have no meaning once the night they were taken for is over.
+            user.reference_photo_base64 = None
+            user.reference_review_state = None
+            user.reference_review = None
 
             if not keep_weapons:
                 user.shot_damage = 1

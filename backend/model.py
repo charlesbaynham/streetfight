@@ -62,6 +62,15 @@ class Game(Base):
     # they were produced.
     ai_auto_actions_enabled = Column(Boolean, nullable=False, default=False)
 
+    # When off, the ladder's escalate rungs go straight to the admin instead of
+    # to the stronger model (backend/shot_escalation.py) -- exactly what happens
+    # with no OPENROUTER_ESCALATION_MODEL configured. Defaults *on*, unlike the
+    # two above: those are the opt-in for the AI features, while escalation only
+    # ever runs when auto-actions are on and an escalation model is configured,
+    # so this is a kill switch inside a feature already opted into rather than a
+    # third opt-in.
+    ai_escalation_enabled = Column(Boolean, nullable=False, default=True)
+
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
@@ -135,6 +144,14 @@ class Shot(Base):
 
     location_context = Column(String, nullable=True)
 
+    # Which way the shooter's phone was pointing when the photo was taken:
+    # degrees clockwise from true north, or null when the device could not say
+    # (no compass, permission refused, or an older shot taken before this was
+    # recorded). Captured because it cannot be recovered afterwards; nothing
+    # reads it yet - it is the input that turns a future engagement envelope
+    # from a disc into a cone. See docs/roadmap.md R5b.
+    heading = Column(Float, nullable=True)
+
     # AI review of the photo. Shown as tags under the image in the queue, and
     # -- when the game's toggle is on -- acted on automatically for the queue
     # head when confident enough (backend/shot_auto_actions.py); everything
@@ -144,6 +161,18 @@ class Shot(Base):
     # The ShotVisionResult as JSON text, or the error message when the state is
     # "error". Text JSON matches how location_context is already stored.
     ai_review = Column(String, nullable=True)
+
+    # The escalated second opinion (backend/shot_escalation.py): a stronger
+    # model, shown the candidate list and their reference photos, asked which
+    # player this is. Only reached when the cheap review above read too little
+    # of the outfit to act on; an escalation in flight blocks the queue behind
+    # it, exactly as an ambiguous head does.
+    # State is null (never escalated) / "pending" / "done" / "error".
+    ai_escalation_state = Column(String, nullable=True)
+    # The verdict, its candidate list and the transcript as JSON text, or the
+    # error message when the state is "error" -- same shape of storage as
+    # ai_review above.
+    ai_escalation = Column(String, nullable=True)
 
     # Free-text annotation from the admin explaining an adjudication. No game
     # logic reads this: it exists so the reasoning behind each verdict survives
@@ -169,6 +198,13 @@ class Team(Base):
 
     users = relationship("User", lazy=True, back_populates="team")
     shots = relationship("Shot", lazy=True, back_populates="team")
+
+    # The label this team wears in TEAM_CHANNEL, pinned the first time its
+    # join code is generated. Stored rather than derived: it used to be
+    # re-derived from allocate_team_slots(scheme, len(teams), slots_per_team,
+    # ...) on every call, so adding a new team silently re-coloured every
+    # team that had already picked. None until a join code has been built.
+    identity_colour = Column(String, nullable=True)
 
 
 user_item_association_table = Table(
@@ -213,6 +249,11 @@ class User(Base):
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
     location_timestamp = Column(Float, nullable=True)
+    # The browser's own estimate of how good that fix is: the radius in metres
+    # of the 95% confidence circle (`position.coords.accuracy`). Null when the
+    # fix predates this being recorded. Like Shot.heading, captured now and
+    # consumed by nothing yet. See docs/roadmap.md R5a.
+    location_accuracy = Column(Float, nullable=True)
 
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
@@ -227,6 +268,20 @@ class User(Base):
     # the assignment. Stored as JSON text, same pattern as Shot.ai_review;
     # null means no overrides. Only meaningful when identity_slot is set.
     identity_overrides = Column(String, nullable=True)
+    # The colours the player declared they own, {channel_name: [label, ...]}
+    # as JSON text, same pattern as identity_overrides. Null before they pick.
+    identity_wardrobe = Column(String, nullable=True)
+
+    # The kit check taken at the door (backend/reference_photos.py): a photo of
+    # the player in the outfit they turned up in, run through the same vision
+    # pipeline a real shot uses. Same columns as Shot's, for the same reasons -
+    # the image is a base64 data URL, the review is JSON text (or the error
+    # message when the state is "error"), and the state is null (never queued)
+    # / "pending" / "done" / "error". Never exposed on UserModel: the photo is
+    # of an identifiable person and travels only through the admin endpoints.
+    reference_photo_base64 = Column(String, nullable=True)
+    reference_review_state = Column(String, nullable=True)
+    reference_review = Column(String, nullable=True)
 
     shots = relationship(
         "Shot", lazy=True, back_populates="user", foreign_keys=[Shot.user_id]
@@ -354,6 +409,7 @@ class GameModel(pydantic.BaseModel):
     active: bool
     ai_shot_review_enabled: bool = False
     ai_auto_actions_enabled: bool = False
+    ai_escalation_enabled: bool = True
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None
@@ -385,6 +441,7 @@ class UserModel(pydantic.BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
     location_timestamp: Optional[float] = None
+    location_accuracy: Optional[float] = None
 
     # These are retrieved from the Game associated with the Team this user is in
     game_id: Optional[UUID] = None
@@ -396,6 +453,7 @@ class UserModel(pydantic.BaseModel):
 
     identity_slot: Optional[int] = None
     identity_overrides: Optional[str] = None
+    identity_wardrobe: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
@@ -405,6 +463,7 @@ class TeamModel(pydantic.BaseModel):
     name: str
     game_id: UUID
     users: List[UserModel]
+    identity_colour: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
@@ -426,9 +485,13 @@ class ShotModel(pydantic.BaseModel):
     shot_damage: int
 
     location_context: Optional[str] = None
+    heading: Optional[float] = None
 
     ai_review_state: Optional[str] = None
     ai_review: Optional[str] = None
+
+    ai_escalation_state: Optional[str] = None
+    ai_escalation: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

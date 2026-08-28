@@ -3,15 +3,18 @@
 import pytest
 
 from backend.identity.allocation import allocate_team_slots
+from backend.identity.allocation import assign_team_colours
+from backend.identity.allocation import colour_capacity
 from backend.identity.allocation import group_slots_by_channel
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 
 SCHEME = default_scheme()
 
-# The default scheme's team channel holds seven colours, six worth five usable
-# slots and black worth four (34 usable slots in total).
-BUCKET_SIZE = 5
+# The default scheme's team channel holds seven colours, six worth seven usable
+# slots and black worth six (48 usable slots in total -- slot 0, the all-black
+# codeword, is the one black loses).
+BUCKET_SIZE = 7
 
 
 def hats(slots):
@@ -90,8 +93,8 @@ def test_allocation_is_deterministic_so_reprints_match():
 
 
 def test_colours_run_out_before_slots_do_and_the_leftovers_still_fill():
-    # 2 x 17 = every usable slot, far more than seven colours can keep apart
-    allocations = allocate_team_slots(SCHEME, 2, 17, TEAM_CHANNEL)
+    # 2 x 24 = every usable slot, far more than seven colours can keep apart
+    allocations = allocate_team_slots(SCHEME, 2, 24, TEAM_CHANNEL)
 
     slots = [slot for a in allocations for slot in a.slots]
     assert sorted(slots) == SCHEME.usable_slots()
@@ -107,10 +110,52 @@ def test_colours_run_out_before_slots_do_and_the_leftovers_still_fill():
 
 def test_more_slots_than_the_scheme_has_is_an_error():
     with pytest.raises(ValueError):
-        allocate_team_slots(SCHEME, 2, 18, TEAM_CHANNEL)  # 36 > 34 usable
+        allocate_team_slots(SCHEME, 2, 25, TEAM_CHANNEL)  # 50 > 48 usable
 
 
 @pytest.mark.parametrize("n_teams,slots_per_team", [(0, 4), (2, 0), (-1, 4)])
 def test_nonsense_requests_are_rejected(n_teams, slots_per_team):
     with pytest.raises(ValueError):
         allocate_team_slots(SCHEME, n_teams, slots_per_team, TEAM_CHANNEL)
+
+
+def test_assign_team_colours_keeps_pinned_teams_and_colours_the_rest_freshly():
+    existing = {"reds": "red", "blues": "blue", "newcomers": None}
+
+    assigned = assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+    assert assigned["reds"] == "red"
+    assert assigned["blues"] == "blue"
+    assert assigned["newcomers"] not in {"red", "blue"}
+
+
+def test_assign_team_colours_rejects_more_teams_than_the_channel_has_colours():
+    existing = {
+        f"team{i}": None for i in range(len(colour_capacity(SCHEME, TEAM_CHANNEL)) + 1)
+    }
+
+    with pytest.raises(ValueError):
+        assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+
+def test_assign_team_colours_on_a_fresh_game_follows_the_bucket_order():
+    buckets = group_slots_by_channel(SCHEME, TEAM_CHANNEL)
+    existing = {f"team{i}": None for i in range(len(buckets))}
+
+    assigned = assign_team_colours(SCHEME, TEAM_CHANNEL, existing)
+
+    assert [assigned[f"team{i}"] for i in range(len(buckets))] == [
+        label for label, _ in buckets
+    ]
+
+
+def test_colour_capacity_matches_group_slots_by_channel_bucket_sizes():
+    capacity = colour_capacity(SCHEME, TEAM_CHANNEL)
+
+    assert capacity == {
+        label: len(slots)
+        for label, slots in group_slots_by_channel(SCHEME, TEAM_CHANNEL)
+    }
+    assert capacity["black"] == BUCKET_SIZE - 1
+    non_black = {label: size for label, size in capacity.items() if label != "black"}
+    assert set(non_black.values()) == {BUCKET_SIZE}

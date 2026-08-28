@@ -28,6 +28,9 @@ from .model import Team
 from .model import TeamModel
 from .model import User
 from .model import UserModel
+from .shot_escalation import VERDICT_BYSTANDER
+from .shot_escalation import VERDICT_MISS
+from .shot_escalation import VERDICT_PLAYER
 from .shot_vision import HIT_BYSTANDER
 from .ticker import Ticker
 
@@ -41,6 +44,47 @@ DEFAULT_SHOT_TIMEOUT = 6.0
 DEFAULT_SHOT_DAMAGE = 0
 
 make_user_lock = RLock()
+
+# The escalated verdicts that are a bottom line, in the shooter's vocabulary.
+# "unsure" is deliberately absent: it means an admin still has to look, so
+# there is nothing to tell the shooter that the weak review didn't already say.
+_ESCALATED_SUGGESTIONS = {
+    VERDICT_PLAYER: "hit",
+    VERDICT_MISS: "miss",
+    VERDICT_BYSTANDER: "bystander",
+}
+
+
+def _ai_suggestion(shot: Shot) -> Optional[str]:
+    """The AI's provisional verdict for the shooter's own shot history.
+
+    Only ever the bottom line -- the reasoning and the clothing readings stay
+    admin-only. A completed escalation wins over the cheap review, because the
+    whole reason the shot was escalated is that the cheap reading was not good
+    enough to act on; anything else falls back to it.
+    """
+    if shot.ai_escalation_state == "done" and shot.ai_escalation:
+        try:
+            escalation = json.loads(shot.ai_escalation)
+        except ValueError:
+            escalation = None
+        if isinstance(escalation, dict):
+            suggestion = _ESCALATED_SUGGESTIONS.get(escalation.get("verdict"))
+            if suggestion is not None:
+                return suggestion
+
+    if shot.ai_review_state != "done" or not shot.ai_review:
+        return None
+    try:
+        review = json.loads(shot.ai_review)
+    except ValueError:
+        return None
+    if review is None:
+        return None
+    if review.get("outcome") == HIT_BYSTANDER:
+        return "bystander"
+    # Reviews stored before outcomes existed only have is_hit
+    return "hit" if review.get("is_hit") else "miss"
 
 
 def touch_user(user_interface: "UserInterface"):
@@ -222,6 +266,19 @@ class UserInterface:
         u.identity_overrides = overrides_json
 
     @db_scoped
+    def clear_identity(self):
+        """Null the identity slot, overrides and wardrobe, freeing the
+        outfit for everyone else. Just the column write -- the player stays
+        in their team (see backend/identity_admin.py's clear_identity, which
+        is the admin-facing entry point; team removal is admin_delete_user's
+        job, not this).
+        """
+        u = self.get_user()
+        u.identity_slot = None
+        u.identity_overrides = None
+        u.identity_wardrobe = None
+
+    @db_scoped
     def set_weapon_data(self, damage: int, fire_delay: float):
         u = self.get_user()
         u.shot_timeout = fire_delay
@@ -263,7 +320,13 @@ class UserInterface:
         team.users.append(self.get_user())
 
     @db_scoped
-    def join_team_and_claim_slot(self, team_id: UUID, slot: int):
+    def join_team_and_claim_slot(
+        self,
+        team_id: UUID,
+        slot: int,
+        overrides_json: Optional[str] = None,
+        wardrobe_json: Optional[str] = None,
+    ):
         """Join ``team_id`` and claim identity ``slot`` in one transaction.
 
         Unlike join_team this never auto-creates the team: join codes are
@@ -271,6 +334,10 @@ class UserInterface:
         provisioning request. The slot-holder check is re-run here, inside
         the same transaction as the write, so two players scanning the same
         code can't both claim it - the loser gets a 409.
+
+        Claiming a slot rewrites the whole identity, so a canonical claim
+        (which passes neither ``overrides_json`` nor ``wardrobe_json``) clears
+        any previous overrides and wardrobe. That is deliberate and symmetric.
         """
         team = self._session.query(Team).filter_by(id=team_id).first()
 
@@ -295,10 +362,14 @@ class UserInterface:
         user = self.get_user()
         team.users.append(user)
         user.identity_slot = slot
-        user.identity_overrides = None
+        user.identity_overrides = overrides_json
+        user.identity_wardrobe = wardrobe_json
 
     @db_scoped
-    def submit_shot(self, image_base64: str):
+    def submit_shot(self, image_base64: str, heading: Optional[float] = None):
+        """Record a shot. ``heading`` is where the phone was pointing in
+        degrees clockwise from north, and is None whenever the device could
+        not say - telemetry must never stop somebody firing."""
         from .admin_interface import AdminInterface
 
         user: User = self.get_user()
@@ -335,6 +406,7 @@ class UserInterface:
             image_base64=image_base64,
             shot_damage=user.shot_damage,
             location_context=json.dumps(all_user_locations, default=str),
+            heading=heading,
         )
         self._session.add(shot_entry)
 
@@ -368,22 +440,6 @@ class UserInterface:
                 target = self._session.get(User, shot.target_user_id)
                 target_name = target.name if target else None
 
-            # Only the AI's bottom line is shared with the player - the full
-            # review (reasoning, clothing readings) stays admin-only
-            ai_suggestion = None
-            if shot.ai_review_state == "done" and shot.ai_review:
-                try:
-                    review = json.loads(shot.ai_review)
-                except ValueError:
-                    review = None
-                if review is not None:
-                    if review.get("outcome") == HIT_BYSTANDER:
-                        ai_suggestion = "bystander"
-                    else:
-                        # Reviews stored before outcomes existed only have
-                        # is_hit
-                        ai_suggestion = "hit" if review.get("is_hit") else "miss"
-
             out.append(
                 {
                     "id": shot.id,
@@ -392,7 +448,7 @@ class UserInterface:
                     "result": shot.result,
                     "target_name": target_name,
                     "ai_review_state": shot.ai_review_state,
-                    "ai_suggestion": ai_suggestion,
+                    "ai_suggestion": _ai_suggestion(shot),
                 }
             )
 
@@ -586,9 +642,14 @@ class UserInterface:
 
         self.award_ammo(bullet_refunds)
 
-    def set_location(self, latitute: float, longitude: float):
+    def set_location(
+        self, latitute: float, longitude: float, accuracy: Optional[float] = None
+    ):
         """
         Record the location of the user
+
+        ``accuracy`` is the browser's own radius-in-metres estimate for the
+        fix, and is None when the client didn't send one.
 
         This method should be quick and _does not_ prompt a user update event
         """
@@ -600,6 +661,7 @@ class UserInterface:
             user.latitude = latitute
             user.longitude = longitude
             user.location_timestamp = timestamp
+            user.location_accuracy = accuracy
 
     async def generate_user_updates(self, timeout=None):
         """

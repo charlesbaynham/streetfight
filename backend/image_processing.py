@@ -114,28 +114,22 @@ def _to_base64(
 
 
 def _draw_aim_marker_on(image: Image.Image) -> None:
-    """Draw the crosshair onto a PIL image, in place."""
+    """Draw the crosshair onto a PIL image, in place.
+
+    A single-pixel-wide red cross spans the full frame -- one horizontal line,
+    one vertical line -- so the marker survives downsizing and JPEG
+    compression even far from the centre, rather than the old short arms
+    which could visually touch a target without actually being over it
+    (roadmap R1). The lines themselves are guides only: the one pixel where
+    they cross is the aim point (see the vision prompt), nothing else they
+    happen to pass over.
+    """
     draw = ImageDraw.Draw(image)
     width, height = image.size
     centre_x, centre_y = width // 2, height // 2
 
-    # Scale the marker with the image so it stays visible after downsizing
-    arm = max(width, height) // 20
-    gap = arm // 3
-    thickness = max(2, max(width, height) // 300)
-
-    for colour, offset in (((0, 0, 0), thickness), ((255, 255, 255), 0)):
-        for x0, y0, x1, y1 in (
-            (centre_x - arm, centre_y, centre_x - gap, centre_y),
-            (centre_x + gap, centre_y, centre_x + arm, centre_y),
-            (centre_x, centre_y - arm, centre_x, centre_y - gap),
-            (centre_x, centre_y + gap, centre_x, centre_y + arm),
-        ):
-            draw.line(
-                [(x0 + offset, y0 + offset), (x1 + offset, y1 + offset)],
-                fill=colour,
-                width=thickness,
-            )
+    draw.line([(0, centre_y), (width - 1, centre_y)], fill=(255, 0, 0), width=1)
+    draw.line([(centre_x, 0), (centre_x, height - 1)], fill=(255, 0, 0), width=1)
 
 
 def draw_aim_marker(base64_image: str) -> str:
@@ -189,7 +183,7 @@ def prepare_for_vision(
 
 
 def zoom_image(
-    base64_image: str, factor: int = 4, max_dimension: int = 1024, quality: int = 85
+    base64_image: str, factor: int = 8, max_dimension: int = 1024, quality: int = 85
 ) -> str:
     """The centre of a photo, magnified: crop 1/``factor`` of each dimension.
 
@@ -199,8 +193,8 @@ def zoom_image(
     magnifies the blur.
 
     The shot lands at the centre of the frame, so a central crop keeps the
-    target centred and a fresh aim marker is drawn afterwards at a size suited
-    to the cropped frame.
+    target centred and a fresh aim marker is drawn afterwards, spanning the
+    cropped frame the same way it spans the full photo.
     """
     if factor < 1:
         raise ValueError(f"zoom factor must be at least 1; got {factor}")
@@ -219,7 +213,7 @@ def zoom_image(
         cropped = cropped.convert("RGB")
 
     # Scale back up to the same output size the un-zoomed image was sent at, so
-    # the model sees the target four times larger rather than a small crop.
+    # the model sees the target eight times larger rather than a small crop.
     longest = max(cropped.size)
     if longest != max_dimension and longest > 0:
         scale = max_dimension / longest

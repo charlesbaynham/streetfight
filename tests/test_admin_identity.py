@@ -1,10 +1,14 @@
 import json
+from uuid import uuid4 as get_uuid
 
 import pytest
 from fastapi.exceptions import HTTPException
 
 from backend import identity_admin
+from backend.admin_interface import AdminInterface
+from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity_admin import IdentityAdminError
 from backend.identity_admin import IdentitySetRequest
 from backend.identity_admin import IdentitySuggestRequest
@@ -12,6 +16,10 @@ from backend.model import User
 from backend.user_interface import UserInterface
 
 SCHEME = default_scheme()
+
+# What slot 1 says to wear. Spelled out from the scheme rather than by colour
+# name, so a palette change moves the fixtures below with it.
+SLOT_1 = SCHEME.appearance_of_slot(1)
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop, same
@@ -60,11 +68,12 @@ def test_report_empty_game(one_game):
         "hat",
         "armbands",
     ]
-    # hex is keyed by the addressable labels for that channel
+    # Each channel reports its own addressable labels, with a hex for each
+    for channel in report["channels"]:
+        assert channel["labels"] == palette_for_channel(channel["name"])
+        assert all(channel["hex"][label] for label in channel["labels"])
     tshirt = next(c for c in report["channels"] if c["name"] == "tshirt")
     assert tshirt["hex"]["purple"] == "#6A1B9A"
-    trousers = next(c for c in report["channels"] if c["name"] == "trousers")
-    assert set(trousers["labels"]) == {"black", "blue", "green", "red", "white"}
 
 
 def test_report_unknown_game_404():
@@ -154,12 +163,7 @@ def test_report_pairs_and_levels(db_session, one_game, one_team, user_factory):
         db_session,
         b,
         2,
-        overrides={
-            "tshirt": "purple",
-            "trousers": "blue",
-            "hat": "purple",
-            "armbands": "purple",
-        },
+        overrides=dict(SLOT_1),
     )
     report = identity_admin.build_report(one_game)
     assert len(report["pairs"]) == 1
@@ -247,7 +251,7 @@ def test_set_bad_label_400(db_session, one_game, one_team, user_factory):
         identity_admin.set_identity(
             IdentitySetRequest(
                 user_id=u1, slot=1, overrides={"trousers": "yellow"}
-            )  # yellow isn't in the restricted trousers palette
+            )  # trousers fold yellow into "white" and have no yellow of their own
         )
 
 
@@ -261,12 +265,7 @@ def test_set_collision_400_names_player(db_session, one_game, one_team, user_fac
             IdentitySetRequest(
                 user_id=b,
                 slot=2,
-                overrides={
-                    "tshirt": "purple",
-                    "trousers": "blue",
-                    "hat": "purple",
-                    "armbands": "purple",
-                },
+                overrides=dict(SLOT_1),
             )
         )
     assert "Aardvark" in str(exc_info.value)
@@ -281,12 +280,7 @@ def test_set_force_overrides_collision(db_session, one_game, one_team, user_fact
         IdentitySetRequest(
             user_id=b,
             slot=2,
-            overrides={
-                "tshirt": "purple",
-                "trousers": "blue",
-                "hat": "purple",
-                "armbands": "purple",
-            },
+            overrides=dict(SLOT_1),
             force=True,
         )
     )
@@ -326,6 +320,101 @@ def test_set_overrides_full_replacement(db_session, one_game, one_team, user_fac
     assert result["overrides"] == {"armbands": "yellow"}
     assert "hat" not in result["overrides"]
     assert "tshirt" not in result["overrides"]
+
+
+# ---------------------------------------------------------------------------
+# clear (plan C5)
+# ---------------------------------------------------------------------------
+
+
+def test_clear_nulls_all_three_fields_but_keeps_team(
+    db_session, one_game, one_team, user_factory
+):
+    u1 = add_player(db_session, user_factory, one_team, name="Alice")
+    set_identity_raw(db_session, u1, 1, overrides={"tshirt": "yellow"})
+    db_session.get(User, u1).identity_wardrobe = json.dumps({"tshirt": ["yellow"]})
+    db_session.commit()
+
+    result = identity_admin.clear_identity(u1)
+
+    assert result["slot"] is None
+    assert result["overrides"] is None
+    assert result["wardrobe"] is None
+    assert result["overridden"] is False
+
+    db_session.expire_all()
+    after = db_session.get(User, u1)
+    assert after.identity_slot is None
+    assert after.identity_overrides is None
+    assert after.identity_wardrobe is None
+    assert after.team_id == one_team  # clearing the outfit doesn't remove them
+
+
+def test_clear_unknown_user_404():
+    with pytest.raises(HTTPException) as exc_info:
+        identity_admin.clear_identity(get_uuid())
+    assert exc_info.value.status_code == 404
+
+
+def test_clear_frees_the_outfit_for_outfit_options(
+    db_session, one_game, one_team, user_factory
+):
+    """The reason this feature exists: an outfit that outfit_options refused
+    to offer while it was claimed (its slot taken) is offered again, to a
+    different player, the moment it's cleared.
+    """
+    a = add_player(db_session, user_factory, one_team, name="Aardvark")
+    claimed = identity_admin.set_identity(
+        IdentitySetRequest(user_id=a, slot=1, overrides=None)
+    )
+    a_appearance = claimed["effective_appearance"]
+    team_colour = a_appearance[TEAM_CHANNEL]
+
+    threshold = SCHEME.code.min_distance()
+    candidate = get_uuid()  # a hypothetical other player, not yet in the game
+
+    game_users = AdminInterface().get_users_for_game(one_game)
+    before = identity_admin.outfit_options(
+        SCHEME, team_colour, {}, game_users, candidate, threshold
+    )
+    assert not any(o.appearance == a_appearance for o in before)
+
+    identity_admin.clear_identity(a)
+
+    game_users = AdminInterface().get_users_for_game(one_game)
+    after = identity_admin.outfit_options(
+        SCHEME, team_colour, {}, game_users, candidate, threshold
+    )
+    assert any(o.appearance == a_appearance for o in after)
+
+
+def test_admin_clear_identity_endpoint(
+    admin_api_client, db_session, one_game, one_team, user_factory
+):
+    u1 = add_player(db_session, user_factory, one_team, name="Alice")
+    set_identity_raw(db_session, u1, 1, overrides={"tshirt": "yellow"})
+
+    response = admin_api_client.post(
+        "/api/admin_clear_identity", json={"user_id": str(u1)}
+    )
+    assert response.is_success
+    data = response.json()
+    assert data["slot"] is None
+    assert data["overrides"] is None
+    assert data["wardrobe"] is None
+
+    db_session.expire_all()
+    after = db_session.get(User, u1)
+    assert after.identity_slot is None
+    assert after.identity_overrides is None
+    assert after.identity_wardrobe is None
+
+
+def test_admin_clear_identity_endpoint_404_on_unknown_user(admin_api_client):
+    response = admin_api_client.post(
+        "/api/admin_clear_identity", json={"user_id": str(get_uuid())}
+    )
+    assert response.status_code == 404
 
 
 # ---------------------------------------------------------------------------

@@ -4,8 +4,11 @@ import * as ReactDOM from "react-dom/client";
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
 import UserMode from "./UserMode";
+import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
+import ShotReplay from "./ShotReplay";
+import ReferencePhotos from "./ReferencePhotos";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -20,6 +23,10 @@ const router = createBrowserRouter([
     element: <UserMode />,
   },
   {
+    path: "pick",
+    element: <PickOutfit />,
+  },
+  {
     path: "admin",
     element: <AdminMode />,
   },
@@ -30,6 +37,14 @@ const router = createBrowserRouter([
   {
     path: "admin/shots",
     element: <ShotQueue />,
+  },
+  {
+    path: "admin/replay",
+    element: <ShotReplay />,
+  },
+  {
+    path: "admin/reference",
+    element: <ReferencePhotos />,
   },
   {
     path: "admin/identity",

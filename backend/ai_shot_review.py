@@ -105,6 +105,81 @@ def enqueue_reviews(shot_ids, client=None) -> int:
     return sum(1 for shot_id in shot_ids if enqueue_review(shot_id, client))
 
 
+async def _review_image_data(
+    image_base64: str,
+    client,
+    prompt: Optional[str] = None,
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+    schema: Optional[dict] = None,
+    tolerate_unparsed: bool = False,
+) -> "shot_vision.ShotVisionResult":
+    """One shot photo through the vision pipeline: marker, resize, review.
+
+    The aim marker tells the model where the shot landed; the resize keeps the
+    image bill sane. The zoom is cut from the *original*, not from the prepared
+    image -- the resize has already discarded the camera resolution that makes
+    a distant target readable, which is the only reason to zoom at all. It is
+    spent only when the model's screening answer says the person fills less
+    than half of the screen; ``zoom_mode`` (see ``shot_vision.ZOOM_*``) picks
+    another shape of exchange for replay comparisons.
+    """
+    prepared = prepare_for_vision(draw_aim_marker(image_base64))
+
+    def zoom_provider(level):
+        # Each level compounds the factor against the original, so the second
+        # zoom is ZOOM_FACTOR**2 into the camera's full resolution.
+        return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR**level)
+
+    return await shot_vision.review_image(
+        client,
+        prepared,
+        zoom_provider=zoom_provider,
+        prompt=prompt,
+        zoom_mode=zoom_mode,
+        schema=schema,
+        tolerate_unparsed=tolerate_unparsed,
+    )
+
+
+async def replay_shot_review(
+    shot_id: UUID,
+    client,
+    prompt: Optional[str] = None,
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+    schema: Optional[dict] = None,
+) -> dict:
+    """Review one shot on demand -- with a contract of its own if given -- and
+    hand the reading straight back.
+
+    ``prompt``, ``zoom_mode`` and ``schema`` are the three halves of what the
+    workbench can vary: the wording, the shape of the exchange, and the shape
+    of the reply. All three have to travel together, since a prompt asking a
+    new question while the pipeline still asks for the old schema and sends the
+    old follow-up turns is a prompt that has been overruled.
+
+    Unlike :func:`review_shot` this stores nothing, fires no update events and
+    runs no auto-actions: it is the admin replay workbench's scratch pad, not
+    part of the game. The reply carries the full turn-by-turn transcript
+    (``include_transcript=True``) so the workbench can show exactly what was
+    sent and said back -- a live review's stored payload leaves it out -- and a
+    reply that is not a standard reading comes back raw rather than as an
+    error.
+    """
+    from .admin_interface import AdminInterface
+
+    image_base64 = AdminInterface().get_shot_model(shot_id).image_base64
+    async with _get_semaphore():
+        result = await _review_image_data(
+            image_base64,
+            client,
+            prompt=prompt,
+            zoom_mode=zoom_mode,
+            schema=schema,
+            tolerate_unparsed=True,
+        )
+    return result.to_dict(include_transcript=True)
+
+
 async def review_shot(shot_id: UUID, client=None) -> None:
     """Review one shot and store the result. Never raises."""
     from .admin_interface import AdminInterface
@@ -124,20 +199,7 @@ async def review_shot(shot_id: UUID, client=None) -> None:
     payload = None
     try:
         async with _get_semaphore():
-            # The aim marker tells the model where the shot landed; the resize
-            # keeps the image bill sane.
-            prepared = prepare_for_vision(draw_aim_marker(image_base64))
-
-            # Cut the zoom from the *original*, not from `prepared`. The resize
-            # above has already discarded the camera resolution that makes a
-            # distant target readable, which is the only reason to zoom at all.
-            # Only called if the model asks, so an unzoomed shot costs nothing.
-            def zoom_provider():
-                return zoom_image(image_base64, factor=shot_vision.ZOOM_FACTOR)
-
-            result = await shot_vision.review_image(
-                client, prepared, zoom_provider=zoom_provider
-            )
+            result = await _review_image_data(image_base64, client)
         payload = result.to_dict()
         logger.info(
             "Shot %s reviewed: %s (%s)", shot_id, result.outcome, result.outcome_reason

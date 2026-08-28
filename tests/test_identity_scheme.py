@@ -3,13 +3,40 @@ appearance<->codeword<->slot consistency; and the restricted-channel handling.""
 
 import pytest
 
+from backend.identity.channels import Channel
+from backend.identity.channels import ChannelSet
+from backend.identity.code import build_code
+from backend.identity.config import DEFAULT_PALETTE
 from backend.identity.config import DEFAULT_Q
-from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.config import DEFAULT_TARGET_DISTANCE
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.identity.scheme import IdentityScheme
 
-# 49 codewords, less the 14 whose trousers symbol has no colour, less slot 0.
-NUM_USABLE = 34
+# 49 codewords, less slot 0. Every channel of the configured scheme is full
+# width now that the trousers palette has been widened back to seven, so
+# nothing is ruled out for being unwearable.
+NUM_USABLE = 48
+
+
+def narrowed_scheme(trousers_colours):
+    """A scheme whose trousers channel carries fewer than ``q`` colours.
+
+    The configured scheme no longer has a narrowed channel, but the handling of
+    one is still live code (and one config line away from being live again), so
+    the tests below build their own.
+    """
+    channels = ChannelSet(
+        channels=[
+            Channel(name="tshirt", labels=DEFAULT_PALETTE),
+            Channel(name="trousers", labels=trousers_colours),
+            Channel(name="hat", labels=DEFAULT_PALETTE),
+            Channel(name="armbands", labels=DEFAULT_PALETTE),
+        ],
+        q=DEFAULT_Q,
+    )
+    code = build_code(n=4, q=DEFAULT_Q, target_distance=DEFAULT_TARGET_DISTANCE)
+    return IdentityScheme(channels=channels, code=code)
 
 
 def test_default_scheme_capacity():
@@ -29,7 +56,17 @@ def test_usable_slots_excludes_unwearable_codewords_and_slot_zero():
 
     trousers_index = scheme.channels.names.index("trousers")
     for slot in slots:
-        assert scheme.codeword_of_slot(slot)[trousers_index] < len(TROUSERS_PALETTE)
+        assert scheme.codeword_of_slot(slot)[trousers_index] < len(
+            palette_for_channel("trousers")
+        )
+
+
+def test_narrowing_a_channel_costs_the_codewords_it_cannot_wear():
+    # The old five-colour trousers palette: 49 codewords less the 14 whose
+    # trousers symbol is 5 or 6, less slot 0.
+    scheme = narrowed_scheme(["black", "blue", "green", "red", "white"])
+
+    assert len(scheme.usable_slots()) == 34
 
 
 def test_slot_zero_is_all_black():
@@ -43,9 +80,9 @@ def test_slot_zero_is_all_black():
 
 
 def test_unwearable_slots_raise_rather_than_inventing_a_colour():
-    scheme = default_scheme()
+    scheme = narrowed_scheme(["black", "blue", "green", "red", "white"])
     unusable = set(range(scheme.capacity)) - set(scheme.usable_slots()) - {0}
-    assert unusable  # the restricted trousers palette must rule *something* out
+    assert unusable  # a restricted trousers palette must rule *something* out
 
     for slot in unusable:
         with pytest.raises(ValueError):

@@ -14,6 +14,8 @@ import logo from "./images/art/logo.png";
 import {
   isLocationPermissionGranted,
   isCameraPermissionGranted,
+  isOrientationPermissionGranted,
+  requestOrientationPermission,
 } from "./utils";
 
 import styles from "./OnboardingView.module.css";
@@ -38,12 +40,20 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
   </button>
 );
 
-function NameEntry({ user }) {
+// onNameSet, when given, is called with the saved name - PickOutfit needs to
+// know the moment the player stops being anonymous, since it will not let an
+// outfit be claimed before then. A blank box is not a name: it is neither
+// posted nor reported.
+function NameEntry({ user, className, onNameSet = null }) {
   const [nameBoxValue, setNameBoxValue] = useState(user.name ? user.name : "");
 
   const setUserName = useCallback(() => {
-    sendAPIRequest("set_name", { name: nameBoxValue }, "POST", null);
-  }, [nameBoxValue]);
+    const name = nameBoxValue.trim();
+    if (!name) return;
+    sendAPIRequest("set_name", { name }, "POST", () => {
+      if (onNameSet) onNameSet(name);
+    });
+  }, [nameBoxValue, onNameSet]);
 
   const handleKeyDown = (event) => {
     if (event.key === "Enter") {
@@ -56,7 +66,9 @@ function NameEntry({ user }) {
   return (
     <motion.div
       layout
-      className={styles.stackedItem + (done ? " " + styles.done : "")}
+      className={[styles.stackedItem, done ? styles.done : "", className || ""]
+        .filter(Boolean)
+        .join(" ")}
     >
       <input
         className={styles.nameInput}
@@ -74,9 +86,13 @@ function NameEntry({ user }) {
   );
 }
 
+export { NameEntry };
+
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
+    useState(false);
+  const [compassPermissionGranted, setCompassPermissionGranted] =
     useState(false);
 
   // Check if permissions have already been granted on load
@@ -89,6 +105,12 @@ function OnboardingView({ user }) {
   useEffect(() => {
     isLocationPermissionGranted().then((result) => {
       setLocationPermissionGranted(result);
+    });
+  }, []);
+
+  useEffect(() => {
+    isOrientationPermissionGranted().then((result) => {
+      setCompassPermissionGranted(result);
     });
   }, []);
 
@@ -128,6 +150,22 @@ function OnboardingView({ user }) {
         />,
       );
     else return actionItems;
+
+    // The compass rung. Unlike the two above it this one does not gate what
+    // follows: a heading is telemetry, and a phone without a compass (or a
+    // player who says no) must still be able to finish joining and play.
+    if (locationPermissionGranted)
+      actionItems.push(
+        <ActionItem
+          text={"Grant compass permission:"}
+          done={compassPermissionGranted}
+          onClick={async () => {
+            const success = await requestOrientationPermission();
+            setCompassPermissionGranted(success);
+          }}
+          key={"compass"}
+        />,
+      );
 
     const outfit =
       user.identity_slot !== null && user.identity_slot !== undefined

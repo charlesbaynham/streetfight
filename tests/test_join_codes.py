@@ -5,10 +5,13 @@ from uuid import uuid4 as get_uuid
 
 import pytest
 
+from backend.identity.allocation import colour_capacity
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
+from backend.identity.config import hex_for
 from backend.join_codes import JoinCodeModel
 from backend.join_codes import make_join_url
+from backend.join_codes import make_team_join_url
 from backend.model import Item
 from backend.model import Shot
 from backend.model import Team
@@ -99,6 +102,35 @@ def test_join_code_tamper_detected():
 
 def test_join_and_item_signatures_are_domain_separated():
     assert sign_payload("join", "x") != sign_payload("item", "x")
+
+
+def test_team_join_code_roundtrip_and_tamper():
+    game_id, team_id = get_uuid(), get_uuid()
+    url = make_team_join_url(game_id, team_id)
+
+    decoded = JoinCodeModel.from_base64(url)
+    assert decoded.game_id == game_id
+    assert decoded.team_id == team_id
+    assert decoded.slot is None
+    assert decoded.validate_signature() is None
+
+    tampered = decoded.model_copy()
+    tampered.team_id = get_uuid()
+    assert tampered.validate_signature() == "Signature mismatch"
+
+
+def test_team_and_slot_codes_sign_differently():
+    game_id, team_id = get_uuid(), get_uuid()
+
+    team_code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=None).sign()
+    slot_code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=SLOT).sign()
+
+    assert team_code.sig != slot_code.sig
+    # And a slot code can't be re-signed as a team code by nulling its slot -
+    # the signature is bound to which kind it is, not just the ids.
+    forged = slot_code.model_copy()
+    forged.slot = None
+    assert forged.validate_signature() == "Signature mismatch"
 
 
 # ---------------------------------------------------------------------------
@@ -200,12 +232,7 @@ def test_join_game_override_collision_400_and_joins_nothing(
         db_session,
         holder,
         2,
-        overrides={
-            "tshirt": "purple",
-            "trousers": "blue",
-            "hat": "purple",
-            "armbands": "purple",
-        },
+        overrides=dict(SCHEME.appearance_of_slot(1)),
     )
 
     user_id = scanner_id(api_client)
@@ -275,6 +302,27 @@ def test_join_game_slot_zero_400(api_client, db_session, one_game, one_team):
     assert db_session.get(User, user_id).team_id is None
 
 
+def test_join_game_team_code_needs_pick_and_writes_nothing(
+    api_client, db_session, one_game, one_team
+):
+    user_id = scanner_id(api_client)
+
+    response = api_client.post(
+        "/api/join_game",
+        json={"data": make_team_join_url(one_game, one_team)},
+    )
+
+    assert response.is_success
+    data = response.json()
+    assert data["needs_pick"] is True
+    assert UUID(data["team_id"]) == one_team
+
+    db_session.expire_all()
+    user = db_session.get(User, user_id)
+    assert user.team_id is None
+    assert user.identity_slot is None
+
+
 # ---------------------------------------------------------------------------
 # admin_add_user_to_team slot picker
 # ---------------------------------------------------------------------------
@@ -337,95 +385,86 @@ def test_admin_add_user_to_team_occupied_slot_400_but_user_in_team(
 # ---------------------------------------------------------------------------
 
 
-def test_admin_join_qr_codes_partitions_without_overlap(
+def test_admin_join_qr_codes_one_code_per_team_distinct_colours(
     admin_api_client, db_session, one_game, team_factory
 ):
     team_a = team_factory()
     team_b = team_factory()
 
-    response = admin_api_client.get(
-        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=3"
-    )
-
-    assert response.is_success
-    teams = response.json()["teams"]
-    assert {UUID(t["team_id"]) for t in teams} == {team_a, team_b}
-
-    all_slots = []
-    for team in teams:
-        assert len(team["codes"]) == 3
-        for entry in team["codes"]:
-            all_slots.append(entry["slot"])
-
-            # Every code decodes, validates, and matches its team and slot
-            code = JoinCodeModel.from_base64(entry["encoded_url"])
-            assert code.validate_signature() is None
-            assert code.game_id == one_game
-            assert code.team_id == UUID(team["team_id"])
-            assert code.slot == entry["slot"]
-
-            assert entry["appearance"] == SCHEME.appearance_of_slot(entry["slot"])
-
-    # No slot is handed to two teams, and all are usable
-    assert len(all_slots) == len(set(all_slots)) == 6
-    assert set(all_slots) <= set(SCHEME.usable_slots())
-
-
-def test_admin_join_qr_codes_gives_each_team_one_team_colour(
-    admin_api_client, db_session, one_game, team_factory
-):
-    team_factory()
-    team_factory()
-    team_factory()
-
-    response = admin_api_client.get(
-        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=4"
-    )
+    response = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}")
 
     assert response.is_success
     body = response.json()
     assert body["team_channel"] == TEAM_CHANNEL
 
+    teams = body["teams"]
+    assert {UUID(t["team_id"]) for t in teams} == {team_a, team_b}
+
     colours = []
-    for team in body["teams"]:
-        # Every outfit in the team wears the team's one colour...
-        assert (
-            team["team_colours"]
-            == [entry["appearance"][TEAM_CHANNEL] for entry in team["codes"]][:1]
-        )
-        worn = {entry["appearance"][TEAM_CHANNEL] for entry in team["codes"]}
-        assert worn == set(team["team_colours"])
-        colours.extend(team["team_colours"])
+    for team in teams:
+        # Exactly one code per team, decoding to a signed team code (no slot)
+        code = JoinCodeModel.from_base64(team["encoded_url"])
+        assert code.validate_signature() is None
+        assert code.game_id == one_game
+        assert code.team_id == UUID(team["team_id"])
+        assert code.slot is None
 
-    # ...and no two teams wear the same one
-    assert len(set(colours)) == 3
+        assert team["team_colour_hex"] == hex_for(TEAM_CHANNEL, team["team_colour"])
+        assert team["capacity"] > 0
+        colours.append(team["team_colour"])
+
+    # No two teams share a hat colour
+    assert len(set(colours)) == 2
+
+    # And the colours were actually pinned to the teams in the database
+    db_session.expire_all()
+    stored = {db_session.get(Team, t).identity_colour for t in (team_a, team_b)}
+    assert stored == set(colours)
 
 
-def test_admin_join_qr_codes_too_many_slots_400(
+def test_admin_join_qr_codes_regenerating_after_new_team_keeps_existing_colours(
     admin_api_client, db_session, one_game, team_factory
 ):
-    team_factory()
-    team_factory()
+    team_a = team_factory()
+    team_b = team_factory()
 
-    # 2 teams x 20 slots > the scheme's 34 usable slots
-    response = admin_api_client.get(
-        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=20"
-    )
+    first = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}").json()
+    colour_by_team = {UUID(t["team_id"]): t["team_colour"] for t in first["teams"]}
+
+    team_c = team_factory()
+
+    second = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}").json()
+    second_by_team = {UUID(t["team_id"]): t["team_colour"] for t in second["teams"]}
+
+    # The original two teams' colours - and therefore their printed codes -
+    # are byte-identical after adding a third team and regenerating.
+    assert second_by_team[team_a] == colour_by_team[team_a]
+    assert second_by_team[team_b] == colour_by_team[team_b]
+    assert second_by_team[team_c] not in {
+        colour_by_team[team_a],
+        colour_by_team[team_b],
+    }
+
+
+def test_admin_join_qr_codes_more_teams_than_colours_400(
+    admin_api_client, db_session, one_game, team_factory
+):
+    num_colours = len(colour_capacity(default_scheme(), TEAM_CHANNEL))
+    for _ in range(num_colours + 1):
+        team_factory()
+
+    response = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}")
 
     assert response.status_code == 400
 
 
 def test_admin_join_qr_codes_no_teams_400(admin_api_client, db_session, one_game):
-    response = admin_api_client.get(
-        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=8"
-    )
+    response = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}")
     assert response.status_code == 400
 
 
 def test_admin_join_qr_codes_requires_admin_auth(api_client, one_game):
-    response = api_client.get(
-        f"/api/admin_join_qr_codes?game_id={one_game}&slots_per_team=8"
-    )
+    response = api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}")
     assert response.status_code in (401, 403)
 
 

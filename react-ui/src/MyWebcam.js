@@ -9,6 +9,7 @@ import {
 } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 import { refreshShots } from "./shotHistoryStore";
+import { watchCompassHeading } from "./utils";
 
 const constraints = {
   audio: false,
@@ -20,11 +21,30 @@ const constraints = {
 };
 
 export const MyWebcam = forwardRef(
-  ({ trigger, className = "" }, refFromParent) => {
+  ({ trigger, className = "", onCapture = null }, refFromParent) => {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
 
     const mediaStream = useRef(null);
+
+    // Which way the phone is pointing, kept up to date while the camera is on
+    // screen so that firing can read it without waiting for a sensor event.
+    // Stays null on anything that can't or won't tell us - the shot is
+    // submitted either way (docs/roadmap.md R5b).
+    const headingRef = useRef(null);
+
+    useEffect(
+      () => watchCompassHeading((heading) => (headingRef.current = heading)),
+      [],
+    );
+
+    // Held in a ref rather than read straight from props: the trigger effect
+    // below depends on captureAndUpload, so a parent passing an inline
+    // onCapture would rebuild it every render and fire a capture each time.
+    const onCaptureRef = useRef(onCapture);
+    useEffect(() => {
+      onCaptureRef.current = onCapture;
+    }, [onCapture]);
 
     // Return the current frame as a base64-encoded image
     const capture = useCallback(() => {
@@ -48,11 +68,20 @@ export const MyWebcam = forwardRef(
       return imageSrc;
     }, [videoRef, canvasRef]);
 
-    // Take a shot and upload it when trigger changes
+    // Take a shot and upload it when trigger changes. With an onCapture prop
+    // the frame is handed to the parent instead of being submitted as a shot:
+    // same camera, a different sink (the admin's reference photos).
     const captureAndUpload = useCallback(() => {
       const imageSrc = capture();
+
+      if (onCaptureRef.current) {
+        onCaptureRef.current(imageSrc);
+        return;
+      }
+
       const query = JSON.stringify({
         photo: imageSrc,
+        heading: headingRef.current,
       });
 
       const requestOptions = {

@@ -157,38 +157,12 @@
 }
 
 /* --- Swatches --- */
+/* .swatch / .swatchSmall / .swatchUnknown moved to Swatch.module.css, shared
+   with the (unwritten yet) player-facing outfit picker. */
 
 .channelSwatch {
   position: relative;
   display: inline-flex;
-}
-
-.swatch {
-  width: 1.5em;
-  height: 1.5em;
-  border-radius: 0.3em;
-  border: 1px solid rgba(0, 0, 0, 0.4);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.75em;
-  color: rgba(0, 0, 0, 0.55);
-  flex: none;
-}
-
-.swatchSmall {
-  width: 1.1em;
-  height: 1.1em;
-}
-
-.swatchUnknown {
-  background: repeating-linear-gradient(
-    45deg,
-    #eeeeee,
-    #eeeeee 4px,
-    #cccccc 4px,
-    #cccccc 8px
-  );
 }
 
 .canonicalDot {

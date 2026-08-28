@@ -88,7 +88,11 @@ load_env_vars()
 setup_logging()
 
 from . import ai_shot_review
+from . import image_processing
+from . import reference_photos
 from . import shot_auto_actions
+from . import shot_escalation
+from . import shot_vision
 from . import sse_event_streams
 from .admin_auth import is_admin_authed
 from .admin_auth import mark_admin_authed
@@ -97,11 +101,14 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .asyncio_triggers import trigger_update_event
+from .model import AI_REVIEW_STATE_DONE
 from .model import GameModel
 from .model import ShotModel
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
+from .vision_client import get_escalation_client
+from .vision_client import get_vision_client
 
 app = FastAPI()
 router = APIRouter()
@@ -184,6 +191,10 @@ async def get_circles(
 
 class _Shot(BaseModel):
     photo: str
+    # Degrees clockwise from north at the moment of capture. Optional on
+    # purpose: a client with no compass, or a player who refused the
+    # permission, still gets to fire.
+    heading: Optional[float] = None
 
 
 @router.post("/submit_shot")
@@ -194,7 +205,7 @@ async def submit_shot(
     logger.info("Received shot from user %s", user_id)
 
     with UserInterface(user_id) as ui:
-        shot_id = ui.submit_shot(shot.photo)
+        shot_id = ui.submit_shot(shot.photo, heading=shot.heading)
         game_id = ui.get_user().team.game_id
 
     # Outside the session: queueing the review must not slow down the player
@@ -241,17 +252,14 @@ class _EncodedJoinCode(BaseModel):
     data: str
 
 
-@router.post("/join_game")
-async def join_game(
-    encoded_code: _EncodedJoinCode,
-    user_id=Depends(get_user_id),
-):
-    """Join a team and claim an identity slot by scanning a signed join code.
-
-    The body is ``{"data": <url-or-b64>}``, same shape as collect_item.
+def _decoded_join_code(data: str) -> JoinCodeModel:
+    """Decode and signature-check a join code, the way every join-code
+    endpoint must. Raises the same ``HTTPException``s ``join_game`` always
+    has, so later endpoints (e.g. ``join_options``) can reuse this rather
+    than re-deriving the checks.
     """
     try:
-        code = JoinCodeModel.from_base64(encoded_code.data)
+        code = JoinCodeModel.from_base64(data)
     except ValueError:
         raise HTTPException(400, "Malformed data")
 
@@ -261,12 +269,85 @@ async def join_game(
             403, f"The scanned join code is invalid - error {code_validation_error}"
         )
 
+    return code
+
+
+@router.post("/join_game")
+async def join_game(
+    encoded_code: _EncodedJoinCode,
+    user_id=Depends(get_user_id),
+):
+    """Join a team by scanning a signed join code.
+
+    The body is ``{"data": <url-or-b64>}``, same shape as collect_item. A
+    code with a concrete ``slot`` claims it immediately (unchanged). A *team*
+    code (``slot is None``) writes nothing - it hands back ``needs_pick`` so
+    the frontend can route the player to the outfit-picking flow instead.
+    """
+    code = _decoded_join_code(encoded_code.data)
+
     logger.info(
         "User %s joining team %s with slot %s", user_id, code.team_id, code.slot
     )
 
+    if code.slot is None:
+        team = AdminInterface().get_team_model(code.team_id)  # 404s if missing
+        if team.game_id != code.game_id:
+            raise HTTPException(400, "join code's team does not belong to its game")
+        return {"needs_pick": True, "team_id": team.id, "team_name": team.name}
+
     with _identity_admin_errors():
         return identity_admin.claim_join_slot(user_id, code)
+
+
+@router.get("/join_options")
+async def join_options(data: str, user_id=Depends(get_user_id)) -> dict:
+    """The outfit-picking page's first load: team identity, palette and the
+    caller's own state if they have one. Non-mutating on purpose - see
+    ``identity_admin.join_options``."""
+    code = _decoded_join_code(data)
+    with _identity_admin_errors():
+        return identity_admin.join_options(user_id, code)
+
+
+class _OutfitOptionsRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    relaxed: bool = False
+    page: int = 0
+
+
+@router.post("/outfit_options")
+async def outfit_options(
+    request: _OutfitOptionsRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """A ranked, paginated page of candidate outfits. A POST because the
+    wardrobe is a body, but it writes nothing - see
+    ``identity_admin.outfit_options_page``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.outfit_options_page(
+            user_id, code, request.wardrobe, request.relaxed, request.page
+        )
+
+
+class _PickOutfitRequest(BaseModel):
+    data: str
+    wardrobe: Dict[str, List[str]] = {}
+    appearance: Dict[str, str] = {}
+    confirmed: bool = False
+
+
+@router.post("/pick_outfit")
+async def pick_outfit(
+    request: _PickOutfitRequest, user_id=Depends(get_user_id)
+) -> dict:
+    """Claim a picked outfit - see ``identity_admin.pick_outfit``."""
+    code = _decoded_join_code(request.data)
+    with _identity_admin_errors():
+        return identity_admin.pick_outfit(
+            user_id, code, request.wardrobe, request.appearance, request.confirmed
+        )
 
 
 class _EncodedItem(BaseModel):
@@ -324,11 +405,12 @@ async def get_scoreboard(user_id=Depends(get_user_id)):
 async def set_location(
     latitude: float,
     longitude: float,
+    accuracy: Optional[float] = None,
     user_id=Depends(get_user_id),
 ):
     logger.info("Setting location for user %s to %f, %f", user_id, latitude, longitude)
     with UserInterface(user_id) as ui:
-        ui.set_location(latitude, longitude)
+        ui.set_location(latitude, longitude, accuracy=accuracy)
 
 
 ######## ADMIN ###########
@@ -517,6 +599,22 @@ async def admin_set_ai_auto_actions(game_id: UUID, enabled: bool):
     return {"enabled": enabled}
 
 
+@admin_method(path="/admin_set_ai_escalation", method="POST")
+async def admin_set_ai_escalation(game_id: UUID, enabled: bool):
+    """Turn escalation of hard shots to the stronger model on or off for a game.
+
+    A kill switch inside auto-actions rather than a third opt-in: with it off,
+    a shot the ladder wants escalated waits for the admin instead, exactly as
+    it does with no escalation model configured. Switching it on also drains a
+    head that has been sitting on the escalate rung, so it gets its second
+    opinion now rather than whenever the queue next moves.
+    """
+    AdminInterface().set_ai_escalation_enabled(game_id, enabled)
+    if enabled:
+        shot_auto_actions.process_queue_head(game_id)
+    return {"enabled": enabled}
+
+
 @admin_method("/admin_get_shot_ai_review", method="GET")
 async def admin_get_shot_ai_review(shot_id: UUID):
     """The AI's reading of one shot.
@@ -536,6 +634,193 @@ async def admin_review_shot(shot_id: UUID):
     if ai_shot_review.enqueue_review(shot_id) is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
     return {"queued": True}
+
+
+@admin_method(path="/admin_escalate_shot", method="POST")
+async def admin_escalate_shot(shot_id: UUID):
+    """Escalate one shot to the stronger model now, whatever the toggles say.
+
+    The admin asking for the second opinion by hand, so neither the
+    auto-actions toggle nor the escalation one gates it. Re-running over an
+    existing escalation is the point of the button as often as not: the old
+    verdict is replaced by a fresh one.
+    """
+    client = get_escalation_client()
+    if client is None:
+        raise HTTPException(
+            400, "No escalation model configured - set OPENROUTER_ESCALATION_MODEL"
+        )
+    review = AdminInterface().get_shot_ai_review(shot_id)
+    if review["state"] != AI_REVIEW_STATE_DONE or not review["review"]:
+        # The candidate ranking the stronger model is given is built from that
+        # reading, so there is nothing to escalate without one.
+        raise HTTPException(
+            400,
+            "This shot has no completed AI review to escalate from - run the AI "
+            "review first",
+        )
+    shot_escalation.enqueue_escalation(shot_id, client)
+    return {"queued": True}
+
+
+class _ReplayRequest(BaseModel):
+    shot_id: UUID
+    prompt: Optional[str] = None
+    # The shape of the exchange and the shape of the reply. Both travel with
+    # the prompt: a custom prompt answered against the pipeline's own schema,
+    # through the pipeline's own follow-up turns, has been overruled -- the
+    # model can only answer the question the schema asks, whatever it was told.
+    zoom_mode: str = shot_vision.ZOOM_SCREENED
+    # Named "response_schema" rather than "schema": pydantic's BaseModel owns
+    # the latter.
+    response_schema: Optional[dict] = None
+    reasoning_effort: Optional[str] = None
+
+
+@admin_method(path="/admin_replay_shot_review", method="POST")
+async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
+    """Fire one shot through the vision pipeline and return the reading.
+
+    The admin replay workbench: the same pipeline as a real review (aim marker,
+    resize, the zoom), but with the whole contract -- prompt, conversation
+    shape and response schema -- customisable on the fly, and nothing stored:
+    no state changes, no events, no auto-actions. A reply that is not a
+    standard reading comes back raw rather than as an error, since under a
+    custom contract that is the answer rather than a failure.
+    ``reasoning_effort`` overrides OPENROUTER_REASONING_EFFORT for this replay
+    only, for trialling reasoning depth against real shots.
+    """
+    if request.zoom_mode not in shot_vision.ZOOM_MODES:
+        raise HTTPException(
+            400,
+            f"Unknown zoom_mode {request.zoom_mode!r}; "
+            f"expected one of {', '.join(shot_vision.ZOOM_MODES)}",
+        )
+    client = get_vision_client(reasoning_effort=request.reasoning_effort)
+    if client is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    try:
+        return await ai_shot_review.replay_shot_review(
+            request.shot_id,
+            client,
+            prompt=request.prompt or None,
+            zoom_mode=request.zoom_mode,
+            schema=request.response_schema or None,
+        )
+    except Exception as e:
+        raise HTTPException(502, f"Replay failed: {e}")
+
+
+@admin_method("/admin_get_shot_vision_images", method="GET")
+async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
+    """Return the shot image formatted exactly as the vision model sees it, at
+    every zoom level the pipeline can reach.
+
+    Three images are returned:
+    - full: the whole frame with aim marker, downscaled to 1024px max (what
+      prepare_for_vision produces)
+    - zoomed: the centre 12.5% of the original, cropped and upscaled to 1024px
+      with a fresh aim marker -- the first zoom (what zoom_image produces)
+    - zoomed2: the centre 12.5% of *that*, i.e. 1/ZOOM_FACTOR**2 of the
+      original -- the second zoom, spent only if the first wasn't enough
+
+    Which of these a replay actually used is ShotVisionResult.zoom_count, not
+    anything about the shot itself, so the caller decides how many to show.
+    All three are JPEG data URLs ready to render in <img>.
+    """
+    original = AdminInterface().get_shot_image_base64(shot_id)
+
+    # Full frame: aim marker + downscale to 1024px max
+    full = image_processing.prepare_for_vision(
+        image_processing.draw_aim_marker(original)
+    )
+
+    # Zoomed frames: successive centre crops from ORIGINAL, each upscaled to
+    # 1024px with its own aim marker, compounding as ZOOM_FACTOR**level exactly
+    # as backend.ai_shot_review's zoom_provider does.
+    zoomed = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR)
+    zoomed2 = image_processing.zoom_image(original, factor=shot_vision.ZOOM_FACTOR**2)
+
+    return {"full": full, "zoomed": zoomed, "zoomed2": zoomed2}
+
+
+@admin_method("/admin_get_default_vision_prompt", method="GET")
+async def admin_get_default_vision_prompt(
+    zoom_mode: str = shot_vision.ZOOM_SCREENED,
+) -> dict:
+    """The contract the live pipeline currently uses, to seed the workbench's.
+
+    Both halves of it: the prompt and the JSON schema the reply is asked to
+    match. ``zoom_mode`` picks which conversation shape the prompt should
+    describe -- the zoom wording is part of the prompt, so the default text
+    only makes sense alongside the exchange it is about to be sent into.
+    """
+    if zoom_mode not in shot_vision.ZOOM_MODES:
+        raise HTTPException(
+            400,
+            f"Unknown zoom_mode {zoom_mode!r}; "
+            f"expected one of {', '.join(shot_vision.ZOOM_MODES)}",
+        )
+    return {
+        "prompt": shot_vision.build_prompt(zoom_mode=zoom_mode),
+        "schema": shot_vision.build_schema(),
+    }
+
+
+class _ReferencePhoto(BaseModel):
+    user_id: UUID
+    photo: str
+
+
+@admin_method(path="/admin_capture_reference_photo", method="POST")
+async def admin_capture_reference_photo(reference: _ReferencePhoto) -> UUID:
+    """Store the kit-check photo of one player, taken at the door.
+
+    The review that follows is not gated on the game's ai_shot_review toggle:
+    that toggle is about annotating the shot queue, and this is its own
+    feature. It is only skipped when there is no vision client at all, in
+    which case the photo is still stored and the review state simply stays
+    null -- capture must never fail because the AI is off.
+    """
+    logger.info("Storing a reference photo for user %s", reference.user_id)
+    AdminInterface().set_reference_photo(reference.user_id, reference.photo)
+    reference_photos.enqueue_review(reference.user_id)
+    return reference.user_id
+
+
+@admin_method("/admin_get_reference_photo", method="GET")
+async def admin_get_reference_photo(user_id: UUID) -> str:
+    photo = AdminInterface().get_reference_photo(user_id)
+    if not photo:
+        raise HTTPException(404, f"No reference photo stored for user {user_id}")
+    return photo
+
+
+@admin_method("/admin_get_reference_review", method="GET")
+async def admin_get_reference_review(user_id: UUID):
+    """The AI's reading of one player's reference photo, plus who it decoded to."""
+    return AdminInterface().get_reference_review(user_id)
+
+
+@admin_method(path="/admin_review_reference_photo", method="POST")
+async def admin_review_reference_photo(user_id: UUID):
+    """Review (or re-review) the stored reference photo of one player now."""
+    if not AdminInterface().get_reference_photo(user_id):
+        raise HTTPException(404, f"No reference photo stored for user {user_id}")
+    if reference_photos.enqueue_review(user_id) is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    return {"queued": True}
+
+
+@admin_method(path="/admin_delete_reference_photo", method="POST")
+async def admin_delete_reference_photo(user_id: UUID):
+    AdminInterface().clear_reference_photo(user_id)
+
+
+@admin_method("/admin_get_reference_photo_status", method="GET")
+async def admin_get_reference_photo_status(game_id: UUID) -> List[dict]:
+    """The door roster: every player in the game and how their kit check went."""
+    return AdminInterface().get_reference_photo_status(game_id)
 
 
 @admin_method("/admin_get_locations", method="GET")
@@ -741,17 +1026,24 @@ async def admin_identity_report(game_id: UUID) -> dict:
 
 
 @admin_method(path="/admin_join_qr_codes", method="GET")
-async def admin_join_qr_codes(game_id: UUID, slots_per_team: int = 8) -> dict:
-    """Signed join QR URLs for every team in a game: scanning one joins that
-    team and claims that identity slot. Deterministic, so reprints match."""
+async def admin_join_qr_codes(game_id: UUID) -> dict:
+    """One signed team join QR per team: scanning it lets a player pick their
+    own outfit in that team's colour. See ``identity_admin.build_join_codes``
+    for why this GET writes (it pins each team's hat colour)."""
     with _identity_admin_errors():
-        return identity_admin.build_join_codes(game_id, slots_per_team)
+        return identity_admin.build_join_codes(game_id)
 
 
 @admin_method(path="/admin_identity_set", method="POST")
 async def admin_identity_set(request: identity_admin.IdentitySetRequest) -> dict:
     with _identity_admin_errors():
         return identity_admin.set_identity(request)
+
+
+@admin_method(path="/admin_clear_identity", method="POST")
+async def admin_clear_identity(request: identity_admin.IdentityClearRequest) -> dict:
+    with _identity_admin_errors():
+        return identity_admin.clear_identity(request.user_id)
 
 
 @admin_method(path="/admin_identity_suggest", method="POST")
@@ -764,9 +1056,17 @@ async def admin_identity_suggest(
 
 @contextmanager
 def _identity_admin_errors():
-    """Turn identity_admin's complaints into a readable HTTP 400."""
+    """Turn identity_admin's complaints into a readable HTTP error.
+
+    ``OutfitUnavailableError`` (a ``pick_outfit`` claim that failed
+    re-validation - someone just took it, or it stopped qualifying) maps to
+    409, distinguishable from the plain 400 a malformed request gets; check
+    it first since it subclasses ``IdentityAdminError``.
+    """
     try:
         yield
+    except identity_admin.OutfitUnavailableError as e:
+        raise HTTPException(409, str(e))
     except identity_admin.IdentityAdminError as e:
         raise HTTPException(400, str(e))
 

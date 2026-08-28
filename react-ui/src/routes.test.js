@@ -13,10 +13,14 @@ import { MemoryRouter } from "react-router-dom";
 import { installFetchMock } from "./testUtils";
 
 import UserMode from "./UserMode";
+import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
+import ShotReplay from "./ShotReplay";
+import ReferencePhotos from "./ReferencePhotos";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
+import AdminIdentity from "./AdminIdentity";
 import AdminLogin from "./AdminLogin";
 import { AdminPage } from "./AdminCommon";
 
@@ -83,6 +87,38 @@ describe("/ (UserMode)", () => {
   });
 });
 
+describe("/pick (PickOutfit)", () => {
+  test("mounts and shows the team header once join_options resolves", async () => {
+    installFetchMock({
+      join_options: {
+        team_id: "team-1",
+        team_name: "Reds",
+        team_colour: "red",
+        team_channel: "hat",
+        provided_channel: "armbands",
+        wardrobe_channels: ["tshirt", "trousers"],
+        channels: [
+          { name: "tshirt", labels: ["black"], hex: { black: "#222222" } },
+          { name: "trousers", labels: ["black"], hex: { black: "#222222" } },
+          { name: "hat", labels: ["red"], hex: { red: "#B00020" } },
+          { name: "armbands", labels: ["red"], hex: { red: "#B00020" } },
+        ],
+        you: null,
+      },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter initialEntries={["/pick?j=ABC123"]}>
+        <PickOutfit />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Team Reds" }),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("/admin (AdminMode)", () => {
   test("mounts and reaches the admin panel once authenticated", async () => {
     installFetchMock({
@@ -141,6 +177,59 @@ describe("/admin/shots (ShotQueue)", () => {
   });
 });
 
+describe("/admin/replay (ShotReplay)", () => {
+  test("mounts and shows the workbench once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_get_default_vision_prompt: { prompt: "The live prompt" },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <ShotReplay />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Shot replay workbench" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("/admin/reference (ReferencePhotos)", () => {
+  test("mounts and shows the roster once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_list_games: [{ id: "game-1", teams: [{ name: "Reds" }] }],
+      admin_get_reference_photo_status: [
+        {
+          user_id: "user-1",
+          name: "Alice",
+          team_name: "Reds",
+          has_photo: false,
+          review_state: null,
+          matches_expected: null,
+          top_name: null,
+          top_probability: null,
+        },
+      ],
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <ReferencePhotos />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Reference photos" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No photo yet")).toBeInTheDocument();
+  });
+});
+
 describe("/admin/identity (AdminPage wrapping IdentityDemo)", () => {
   test("mounts and shows the workbench once authenticated", async () => {
     installFetchMock({
@@ -160,6 +249,54 @@ describe("/admin/identity (AdminPage wrapping IdentityDemo)", () => {
     expect(
       screen.getByRole("heading", { name: "Identity code workbench" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("/admin/identity-overrides (AdminPage wrapping AdminIdentity)", () => {
+  test("mounts and shows the player table once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_list_games: [{ id: "game-1", teams: [{ name: "Red" }] }],
+      admin_identity_report: {
+        nominal_min_distance: 3,
+        effective_min_distance: null,
+        pairs: [],
+        free_slots: [2],
+        channels: [
+          {
+            name: "hat",
+            labels: ["red", "blue"],
+            hex: { red: "#ff0000", blue: "#0000ff" },
+          },
+        ],
+        players: [
+          {
+            user_id: "u1",
+            name: "Alice",
+            team_name: "Red",
+            slot: 1,
+            overridden: false,
+            overrides: {},
+            canonical_appearance: { hat: "red" },
+            effective_appearance: { hat: "red" },
+          },
+        ],
+      },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <AdminPage>
+          <AdminIdentity />
+        </AdminPage>
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Identity overrides" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Alice")).toBeInTheDocument();
   });
 });
 

@@ -33,11 +33,11 @@ allowed to become a blocker for the night — it is all upside.
 
 | By             | What must be true                                                                                                                          | Items        |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| **Now**        | Armbands ordered. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
+| **Now**        | Armbands and hats bought. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
 | **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
-| **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded.               | R5           |
+| **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded. **Shipped.**  | R5           |
 | **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
 | **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
 
@@ -50,27 +50,28 @@ software with a real deadline, which is not where it started on the list.
 
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 1     | **#9** Buy armbands                         | Now                          | Longest lead time; #10 and #8 both wait on it. In flight.                                                      |
+| 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
-| 4     | **#10** Colour-picking page                 | ~31 Aug build, live ~7 Sept  | The only software on the critical path. Also the mitigation for bring-your-own garments (see #9).              |
+| 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
-| 9     | **R5** Capture GPS accuracy and heading      | **Before the 19th**          | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline.             |
+| 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
 | 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
-| 10b   | **R7** Reference photo as a kit check       | Before the 19th *if it fits* | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
+| 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
 | 14    | **#3** Ranked candidates in the review UI   | —                            | The surface of #5; same piece of plumbing.                                                                     |
 | 15    | **#2** "CharlesBot thinks: hit on *name*"   | —                            | Needs the name, so it needs #5/#3.                                                                             |
+| 15b   | **R8** Players appeal, admin sees only the contested | —                    | The structural fix rather than another accuracy point: it makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Wants #5/#2 first, pairs with R4. |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
 | 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
-| 18    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
+| 18    | **#11** Escalation to a stronger model      | Shipped                      | Shipped 2026-08-27; see the entry for the decisions taken on the open questions.                               |
 | —     | **#14** Native app                          | **Parked**                   | Decided against: the Apple fee is unavoidable for iOS in any form. Analysis kept for whenever it is revisited. |
 
 ---
@@ -81,8 +82,9 @@ Recorded here so they are not re-litigated:
 
 - **The game is on 19 September 2026, in Westminster.** House Absolute is in
   Westminster, so #6, #7 and #12 are all the same venue.
-- **We provide the armbands only** (#9). Hats, tops and trousers are the
-  player's own. See #9 for what that costs and what to do about it.
+- **We provide the armbands and the hats** (#9); both have been bought. Only
+  the t-shirt and trousers are the player's own. See #9 for what that costs
+  and what to do about it.
 - **Players pick their own colours from a pre-game web page** (#10), not on the
   night and not assigned by an admin.
 - **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
@@ -97,18 +99,43 @@ Recorded here so they are not re-litigated:
   wore what they said they would, so it has to be done by the person who can
   send them home to change. Answers open question 2.
 - **`TEAM_CHANNEL` stays on the hat**, reversing the earlier decision to move it
-  to the armbands. Each team bulk-buys hats in its colour; the armbands stay the
-  free per-player channel we set on the night. See #9 and plan §12.6 — no code
-  change, `TEAM_CHANNEL` is already `"hat"`.
+  to the armbands. We now buy and supply each team's hats outright (#9), rather
+  than leaving that to the team, so the armband stays the free per-player
+  channel we set on the night — for a stronger reason than originally argued,
+  since we control the hat colour directly instead of trusting a team's bulk
+  order to get it right. See #9 and plan §12.6 — no code change, `TEAM_CHANNEL`
+  is already `"hat"`.
 - **Auto-actions must work on the night.** They are the point of the recognition
   work, not a bonus. This promotes **#5** onto the critical path, because the
   code-decode path in `slot_candidates_from_review` cannot see a player who is
   not wearing their exact codeword — which, with overrides or free choice, is
   most of them.
-- **Players choose freely, seated as far apart as their wardrobe allows** (#10),
-  rather than picking a canonical slot or being held to a hard distance
-  threshold. Plan §12.6: everyone gets clothes they own, ~55% keep the full
-  `d = 3`, ~45% sit at 2, ~0.2% at 1.
+- **Players choose their own outfit from a ranked, paginated list** (#10),
+  gated on Hamming distance (the scheme's nominal minimum, `d >= 3`, against
+  everyone already placed in the whole game — relaxed to `d >= 2` only once
+  the player confirms they have no more clothes) rather than auto-seated by
+  the backend or restricted to a canonical slot. Canonical Reed–Solomon
+  codewords rank at the top of the list, so most players land on one with no
+  overrides at all. See plan §12.6's "as implemented" note and the #10 entry
+  below for the ranking rule.
+- **The trousers channel carries seven colours**, up from five, so the scheme
+  offers 48 usable slots instead of 34. The guest list outgrew the 35 identities
+  the restriction allowed, and widening it is the remedy plan §2.6 and §11.1
+  both name. The seven are a **separately simulated set for legs** — black,
+  grey, off-white, blue, red, olive, mustard — sharing only `black` with the
+  main palette, hex and all. Three achromatics spread across the lightness range
+  (L\* 11 / 54 / 94) and four chromatics spread around the hue circle, so the
+  neutrals are told apart by lightness alone, which survives the colour cast
+  that would wreck a hue judgement. See plan §9.1 for the table and the
+  reasoning.
+- **Colour definitions are per channel** (`COLOUR_BUCKETS`), because the two
+  vocabularies genuinely disagree: charcoal is `black` on the legs, where grey
+  is two stops away, and explicitly not black on a top, where there is no grey
+  to catch it. The picking page and the vision prompt both render each channel's
+  own — the prompt inside that channel's question rather than in one shared
+  list, which could not state both. Keep them reading the same source: the
+  identification scores a player's answer against the model's, so the two have
+  to mean the same thing by a colour name.
 - **Pub and drop locations live in the repo** as venue landmarks (#6, #7). The
   repository is public, so this publishes every hiding place to anyone who
   thinks to look; accepted deliberately on the grounds that this is a game
@@ -118,7 +145,7 @@ Recorded here so they are not re-litigated:
 
 ## Track B — the critical path
 
-### #9 — Buy armbands *(in flight)*
+### #9 — Buy armbands and hats *(bought)*
 
 **The constraint.** The palettes in `backend/identity/config.py` were chosen by
 optimising worst-case CIEDE2000 separation across three illuminants (daylight,
@@ -128,29 +155,37 @@ whole scheme rests on. Buy against the hex values, and where a real product
 misses, **record what was actually bought** so the palette can be re-checked
 rather than silently drifting.
 
-Needed: **7 armband colours** (the main palette).
+**Bought: 7 armband colours (the main palette), plus one hat per team in that
+team's colour.** The original plan here was to supply the armbands only and
+leave hats to each team to bulk-buy; that changed before ordering, and we
+bought the hats ourselves too. Only the t-shirt and trousers remain the
+player's own.
 
-**The consequence of not providing hats.** `backend/identity/allocation.py`
-currently spends the hat channel (`TEAM_CHANNEL`) on telling teams apart by eye:
-every member of a team gets the same hat colour and no two teams share one. That
-only works if people turn up wearing a hat in a specific one of seven colours —
-which, with hats now bring-your-own, most will not.
+**Why the hat channel matters.** `backend/identity/allocation.py` spends the
+hat channel (`TEAM_CHANNEL`) on telling teams apart by eye: every member of a
+team gets the same hat colour and no two teams share one. That only works if
+people turn up wearing a hat in the exact colour their team was allocated —
+which is exactly why we now hand the hats out ourselves rather than leave it
+to each team to buy correctly.
 
-**Reversed: `TEAM_CHANNEL` stays on the hat, and each team bulk-buys its hats.**
-An earlier draft of this section decided to move it to the armbands, on the
-grounds that the armbands are the one garment we control. That reasoning was
-right about the premise and wrong about the conclusion, and the numbers in plan
-§12.6 say so:
+**`TEAM_CHANNEL` stays on the hat.** An earlier draft of this section had
+argued for moving it to the armbands, on the grounds that the armbands are the
+one garment we control; a later draft reversed that back onto the hat, with
+each team bulk-buying its own hat colour to get there. Buying the hats
+ourselves removes the weak link in that second plan — a team's bulk order can
+no longer come out wrong — but the underlying argument for keeping
+`TEAM_CHANNEL` on the hat is unchanged, and the numbers in plan §12.6 still
+support it:
 
 - **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
   garments determine the other two. Pinning *any* channel to the team leaves
-  exactly one bucket of five slots (four for black) — identical for hat, t-shirt
+  exactly one bucket of seven slots (six for black) — identical for hat, t-shirt
   and armbands. The team-channel choice does not change capacity at all.
 - **It decides which garments a player has to source.** With the team on the
-  armbands, the five slots in a team each need a *different* hat colour, and
-  almost nobody owns a coloured hat. With the team on the hat, the hat is a
-  single bulk purchase — one person buys five caps — and the player sources only
-  a t-shirt and trousers, which are things people own.
+  armbands, the slots in a team each need a *different* hat colour, and
+  almost nobody owns a coloured hat. With the team on the hat, the hat is ours
+  to hand out — one colour per team — and the player sources only a t-shirt and
+  trousers, which are things people own.
 - **It is the difference between having a free channel and not having one.**
   Teammates share the team colour, so if that colour is the armbands, then within
   a team we have *no* channel left that we control — nothing to turn at handout
@@ -161,17 +196,20 @@ right about the premise and wrong about the conclusion, and the numbers in plan
 
 Measured (§12.6): with the team on the armbands, a player can fully wear ~0.06 of
 their team's free slots and 46% wear at most one of their three garments as
-recorded. With the team on the hat, that becomes ~0.56 and 10%.
+recorded. With the team on the hat, that becomes ~0.56 and 10%. Those figures
+were modelled against a team *bulk-buying* its own hat colour; buying the hats
+ourselves removes even the residual risk that model priced in — there is no
+"wrong hat colour" outcome left to have.
 
-**No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changes is
-the shopping list: seven armband colours (already ordered, #9) *plus* one hat
-colour per team, bought by the team.
+**No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changed
+was the shopping list: seven armband colours and one hat colour per team, all
+bought by us rather than left to the teams.
 
-**Risk to name out loud:** two of the four channels are bring-your-own in the
-free sense (t-shirt, trousers), the hat is bring-your-own but bulk-bought to a
-single colour per team, and only the armbands are ours. The scheme's accuracy on
-the night still depends on players owning and wearing what they picked. #10 is
-the mitigation, and R7 is the check that it worked.
+**Risk to name out loud:** two of the four channels remain bring-your-own —
+t-shirt and trousers — and the hat and armbands are both ours now. The
+scheme's accuracy on the night still depends on players owning and wearing the
+t-shirt and trousers they picked. #10 is the mitigation, and R7 is the check
+that it worked.
 
 ---
 
@@ -249,60 +287,149 @@ is the natural place to sanity-check the game area's extent.
 
 ---
 
-### #10 — Let players pick their own colours *(the software on the critical path)*
+### #10 — Let players pick their own colours *(shipped)*
 
-**Current state.** `identity_admin.build_join_codes(game_id, slots_per_team)`
-pre-allocates a block of slots per team (one team-channel colour each, via
-`allocation.allocate_team_slots`) and mints one signed join URL **per slot**;
-`claim_join_slot()` claims whatever slot the scanned code carries. So today a
-player is handed an outfit, they do not choose one.
+**Shipped** as `backend/identity/config.py` (`PROVIDED_CHANNEL`,
+`COLOUR_COMMONNESS`, `commonness_for`), `backend/identity/allocation.py`
+(`assign_team_colours`, `colour_capacity`), `backend/model.py`
+(`Team.identity_colour`, `User.identity_wardrobe`), `backend/join_codes.py`
+(`slot` now optional — `None` marks a *team* code — plus
+`make_team_join_url`), `backend/identity_admin.py` (`build_join_codes`
+rewritten, `outfit_options`, `join_options`, `outfit_options_page`,
+`pick_outfit`, `clear_identity`), the new `GET /join_options` /
+`POST /outfit_options` / `POST /pick_outfit` / `POST /admin_clear_identity`
+endpoints in `backend/main.py`, and the player-facing page at
+`react-ui/src/PickOutfit.js` (route `/pick`), sharing the extracted
+`react-ui/src/Swatch.js` with `AdminIdentity.js`.
 
-**Suggested shape** (minimal change to what exists): keep the signed join code as
-the entry point, but let it carry the **team's block** rather than a single slot,
-and have the claim flow present the unclaimed slots in that block and take the
-player's pick. `build_join_codes` then mints one code per team instead of one per
-slot, which also makes the print run smaller.
+**How the design differs from what this entry used to say.** The rest of
+this entry, kept below for the "before" picture, said the backend would
+**auto-seat** a player "on the outfit that is as far as possible from
+everyone already placed" — that is not what shipped, and the description is
+corrected here rather than left standing. What actually happens: the player
+is offered a **ranked, paginated list of outfits and picks one themselves**.
+An option must be wearable from the colours the player ticked and clear a
+**hard Hamming-distance gate** — the scheme's nominal minimum distance
+against every other placed player in the *whole game*, not just the team
+(inside a team this costs nothing; plan §12.6 shows the team partition
+already caps a team at the code's own per-colour capacity), relaxed by one
+once the player confirms "I'm sure I don't have any more clothes". Survivors
+are then ranked **overrides needed from a canonical Reed–Solomon codeword
+first (ascending), rarity second** (descending, summed `1 - commonness` over
+the player's own t-shirt/trousers channels only — the hat is fixed and the
+armband is ours). Distance from a canonical codeword beats rarity absolutely,
+so most players land on an unclaimed codeword carrying no overrides at all,
+and free choice is graceful degradation rather than the norm. See
+`backend.identity_admin.outfit_options` for the implementation and plan
+§12.6's "as implemented" note for the reasoning.
 
-**What the page needs:**
+**The page only asks about what the player actually sources.** The hat and
+armbands are ours (#9), not the player's choice, so the picking page shows and
+ticks colours for the t-shirt and trousers only — the two garments a player
+needs to go and find.
 
-- the team's *unclaimed* slots rendered as outfits with colour swatches —
-  `hex_for()` and the swatch rendering in `AdminIdentity.js` / `IdentityDemo.js`
-  already exist to reuse;
-- an explanation that the armbands are fixed by the team (see #9) and the choice
-  is across the other three channels;
-- an **atomic** claim: several people will be picking at once on their phones,
-  and two players must never end up wearing the same codeword;
-- it must work **before the night** and before anybody has a `User` row — plan
-  §8.2 is explicit about this, and the whole point is that people need to know
-  what to wear in advance.
+**Two risks worth naming that the rest of this entry doesn't:**
 
-**Self-selection is now load-bearing, not a nicety.** With only the armbands
-provided (#9), three channels depend on players owning the right colours. Letting
-someone choose the slot whose t-shirt, trousers and hat they *already have* is
-the single best lever on how accurate the identification is on the night. So the
-page should be built around "which of these can you actually wear on Saturday",
-not "which is prettiest".
+- **Slots remain the real ceiling.** 48 usable slots
+  (`IdentityScheme.usable_slots`) — it was 34 until the guest list outgrew the
+  five-colour trousers palette and that channel joined the main one (plan §2.6)
+  — so the game caps there regardless of how generous anyone's wardrobe is.
+- **The team join code is a shareable bearer token.** One link per team means
+  one leaked link can burn every outfit in that team, not just one —
+  `/join_game`'s older per-slot code had this property per outfit; pooling by
+  team widens the blast radius.
 
-**Settled: the choice is free within the team, and seated by distance.** The
-player is not offered a list of canonical slots. They say which t-shirt and
-trouser colours they own; the backend seats them on the outfit that is as far as
-possible from everyone already placed, with the hat fixed to the team and the
-armband chosen by us. §12.5's capacity tax does not apply, because pinning the
-hat to the team partitions the space and prevents the stranding that causes it —
-inside a team, free choice and the code fit the same five players. See plan
-§12.6 for the numbers and open question 5 for the reasoning.
+**Current state, before this shipped.** `identity_admin.build_join_codes(game_id, slots_per_team)`
+pre-allocated a block of slots per team (one team-channel colour each, via
+`allocation.allocate_team_slots`) and minted one signed join URL **per
+slot**; `claim_join_slot()` claimed whatever slot the scanned code carried.
+So a player was handed an outfit; they did not choose one.
 
-**This depends on #5.** Freely chosen outfits are not codewords, so the
-code-decode path in `shot_vision.slot_candidates_from_review` cannot identify
-their wearers — and can confidently identify the *wrong* one. Auto-actions are
-required on the night, so #5 ships first.
+**What the page needed, and delivered:**
 
-**Do ask each player to confirm they have the garments.** Do **not** ask them to
-photograph themselves: that is deliberately deferred to R7, where the admin takes
-the photo at the door on the night. A self-taken photo verifies nothing, because
-the person submitting it is the person with a reason to fudge it.
+- the team's *unclaimed* outfits rendered with colour swatches — reusing
+  `hex_for()` and the swatch rendering already proven in `AdminIdentity.js` /
+  `IdentityDemo.js` (now the shared `Swatch.js`);
+- an explanation that the hat and armbands are ours (see #9) and the choice is
+  across the t-shirt and trousers;
+- an **atomic** claim, guarded by `identity_admin.pick_outfit_lock` plus
+  re-validation against freshly read state: several people pick at once on
+  their phones, and two players must never end up wearing the same codeword;
+- it works **before the night** and before anybody has a `User` row — plan
+  §8.2 is explicit about this, and `join_options` deliberately creates no
+  `User` row so a link-preview bot prefetching the URL can't burn an outfit.
 
-**Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move). **Feeds:** #8.
+**Self-selection is load-bearing, not a nicety.** With the hat and armbands
+provided (#9), two channels still depend on players owning the right colours.
+Letting someone choose the outfit whose t-shirt and trousers they *already
+have* is the single best lever on how accurate the identification is on the
+night. So the page is built around "which of these can you actually
+wear on Saturday", not "which is prettiest".
+
+**Depended on #5, now shipped.** Freely chosen outfits are not codewords, so
+the code-decode path in `shot_vision.slot_candidates_from_review` cannot
+identify their wearers — and can confidently identify the *wrong* one.
+Auto-actions are required on the night, so #5 shipped first.
+
+**Each player confirms they have the garments** before picking, via an "I
+will wear this on the night" checkbox - moved, after a mobile walkthrough,
+from gating "show me outfits" (committing before seeing what you're
+committing to) to a dedicated confirm screen shown after tapping an option
+and before it's claimed, with a "choose a different outfit" way back.
+Players are **not** asked to photograph themselves: that is deliberately
+deferred to R7, where the admin takes the photo at the door on the night. A
+self-taken photo verifies nothing, because the person submitting it is the
+person with a reason to fudge it.
+
+**Post-ship UX revision (mobile walkthrough).** Four further fixes beyond
+the confirm-step move above, all in `react-ui/src/PickOutfit.js` /
+`backend/identity_admin.py`: (1) `outfit_options` now collapses to one
+option per distinct tshirt+trousers combination - the armband varying
+underneath was a choice the player has no stake in, since it's ours to
+assign - keeping `outfit_options_page`'s `total`/pagination honest against
+the smaller, deduplicated list; (2) option rows, the confirm screen and the
+result screen now show only the wardrobe channels (`join_options`'
+`wardrobe_channels`), dropping the hat/armband and the "yours"/"ours" tags
+they needed; (3) the wardrobe form collapses to a one-line summary once
+options are showing, so a phone screen reaches the options without first
+scrolling past every colour swatch, with a "Change what I own" link back;
+(4) the options list now shows **only the canonical options** (the ranking's
+top tier), with the rest - and the pagination - behind a "Show more
+outfits" link. Showing both tiers together invited a player to spend
+identification accuracy on whichever colours they liked the look of; a
+canonical outfit is still one tap away and the long tail takes a deliberate
+one. Frontend-only: `outfit_options` still returns the full ranked list, and
+a wardrobe supporting no canonical option at all falls back to showing
+everything rather than an empty page.
+
+**Badging revision.** The green "recommended" badge no longer marks every
+canonical option - only the head of the first page, plus anything tying with
+it on rarity (the ranking's tie-break within the canonical tier), so the
+badge points at *the* best outfit rather than a dozen equally-badged ones.
+The remaining canonical options go unbadged, and the non-canonical ones
+revealed by "Show more outfits" carry an orange "not ideal" badge instead.
+
+**A name is now required to claim an outfit.** The name box was on the page
+from the start but gated nothing, and `NameEntry` posted `set_name` without
+telling the page - so a player could lock in an outfit anonymously, leaving a
+slot claimed that #8 has no card to print a name on. The name is now tracked
+in `PickOutfitForm` (seeded from `join_options`' `you.name`, updated by
+`NameEntry`'s new optional `onNameSet` callback), the box follows the player
+onto the confirm screen, and "Lock in my choice" stays disabled until both it
+and the checkbox are satisfied. `NameEntry` also no longer posts a
+whitespace-only name, in `OnboardingView` as well as here.
+
+**The box stays visible and editable, always - it no longer hides itself once
+a name is known.** `join_options` only ever reports a name for a player an
+admin has already added to the team ahead of picking (`team_id` and
+`identity_slot` are otherwise set together, atomically, by `pick_outfit`
+alone) - a real but uncommon case, and one worth showing correctly: the box
+pre-fills from that name rather than reappearing blank and asking again, and
+stays open to a correction the whole way through, including on the confirm
+screen.
+
+**Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
+**Feeds:** #8.
 
 ---
 
@@ -343,9 +470,12 @@ than a fright. Cheap, and it converts the failure mode from "incident" to
    from #7 to the template.
 2. **Pub handouts** (#6) — probably a different format: something a bar will
    actually keep on display.
-3. **Player appearance cards** (#10) — what to wear, per player, plus their join
-   code. `build_join_codes` already returns `appearance` per slot for exactly
-   this.
+3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
+   their join code. Each player already knows this, having picked it via
+   `/pick`; the print step reads it off each player's picked
+   `effective_appearance` (the same shape `admin_identity_report` returns),
+   not from `build_join_codes` — that now mints one code per *team*, not one
+   appearance per slot.
 
 **If the schedule slips**, the drop codes are the ones with a hard dependency on
 physical placement; the appearance cards can be sent digitally as a fallback,
@@ -356,6 +486,10 @@ since by then #10 has already told each player what they are wearing.
 ## Track A — recognition correctness
 
 ### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
+
+**Status: fixed on the replay set (2026-08-25) by making the zoom mandatory**
+— false-hit rate 0/40 over 5 replay runs, false-miss rate unchanged; details
+at the bottom of this section. Awaiting confirmation on real game data.
 
 **Symptom.** Shots that visibly miss are reported as hits.
 
@@ -398,6 +532,218 @@ max_dim // 20`, `gap = arm // 3`. On the 1024 px image that
    `classify()` then applies the rule, so tightening or loosening it is a
    constant in Python and a test, not a prompt rewrite.
 
+**Tried this session (2026-08-24): suspects 1 and 2, together.** The crosshair
+is now a single-pixel-wide red cross spanning the *entire* frame (no gap, no
+short arms that can visually touch a target without the true centre landing on
+it), and the prompt was rewritten around the single centre point per suspect 1
+("only the pixel at the centre of the cross matters", explicitly told to
+ignore anything the lines merely pass over). A first colour-coded version
+(red/blue lines + a green centre pixel, to make the exact point unmistakable)
+was tried and dropped: the single green pixel does not survive
+`prepare_for_vision`'s downsize and JPEG re-encode — it lands as a muddy grey,
+not identifiably green — so a uniform red cross is what actually ships.
+
+Replayed 5x over all 13 fixtures (65 trials, `google/gemini-3.7-flash-20260813`,
+0 errors; results at `tests/fixtures/shot_replay/replay_single_red_cross_run{1..5}.jsonl`).
+**No measurable improvement**: false-hit rate 5/40 (12%), false-miss rate 20/25
+(80%) — statistically identical to the original baseline. d91548d3, the
+flagship false hit, came back `hit_player` at 0.95 confidence in **5/5** runs
+(previously investigated as the marker-geometry bug; that bug is now fixed and
+made no difference here). Reasoning text each time claims the crosshair lands
+"directly on" the face/neck/forehead. Most other shots were equally consistent
+run to run (11/13 unanimous across all 5), so this is not sampling noise — the
+model has a *systematic* bias to call it a hit whenever the person is merely
+close to centre-frame, and rewording/redrawing the marker around a single
+point didn't move that bias. Likely reason: in this photo the subject really
+is near the geometric centre of the frame (the miss is by inches, in foliage
+above his head), which is exactly the kind of close call suspect 3
+(asymmetric pressure: "when in doubt, it is a miss") and especially suspect 4
+(replacing the hit/miss boolean with an observation like
+`on_body`/`touching_outline`/`clearly_beside`/`nobody_near` that Python can
+threshold) were aimed at. Suspects 3 and 4 are still untried — try those next,
+not more marker-geometry tweaks.
+
+**Also tried this session: suspects 3 and 4, folded into one prompt variant.**
+`backend/shot_vision.build_prompt` was refactored to take the hit/miss
+decision paragraph as a `decision_rule` parameter (default unchanged), so a
+variant can swap it without duplicating the rest of the template. Added
+`scripts/replay_shot_reviews.PROMPT_VARIANTS["boundary_scale"]`: instead of a
+bare yes/no, it asks the model to place the cross's centre point into one of
+four buckets -- *clearly hitting*, *on the boundary but just hitting*, *on the
+boundary but just missing*, *miles away* -- and states the asymmetry
+explicitly (a wrongly-called miss costs one bullet; a wrongly-called hit takes
+a life from somebody never shot), telling the model to prefer "just missing"
+when genuinely torn between the two boundary buckets. Same JSON contract, so
+this is a pure reasoning-scaffold change.
+
+Replayed 5x over all 13 fixtures (65 trials, 1 transient empty-reply error
+retried and resolved; results at
+`tests/fixtures/shot_replay/replay_boundary_scale_run{1..5}.jsonl`). **Still no
+measurable improvement**, and the numbers are eerily exact: false-hit rate
+5/40 (12%), false-miss rate 20/25 (80%) -- eleven of thirteen shots landed the
+same outcome, run for run, as the plain single-red-cross variant above.
+d91548d3 is `hit_player` at 0.95 confidence in all 5 runs here too, and in all
+15 runs across both variants it **never once requests the zoom** — it isn't
+torn between the boundary buckets, it just doesn't perceive that the centre
+point is off the person at all. That rules out "the model is unsure but the
+prompt doesn't reward saying so" as the explanation; asymmetric framing and an
+explicit tie-breaker only help when the model registers a tie in the first
+place.
+
+At this point three independently-worded prompts (the original arms-with-a-gap
+marker, the single-point red cross, and the four-bucket boundary scale) have
+all landed on the *same* false-hit and false-miss ids at the *same* rates.
+That points away from prompt wording entirely and toward one of: (a) a
+resolution/perception limit -- the true aim point in this photo is only a few
+percent of the frame width from the person, plausibly below what the vision
+encoder can localise reliably at 1024px after JPEG compression, so nothing
+written in English fixes it; or (b) making the zoom mandatory rather than
+optional, since the model's self-assessed certainty is not tracking its actual
+accuracy here (0.95 confidence on a shot it gets wrong every time). Try (b)
+before spending more session time on further prompt rewording -- it's a
+one-line change (drop the "if it is difficult to tell" gate and always take
+the zoom) and directly tests the "it never asks because it never doubts itself"
+theory.
+
+**Tried 2026-08-25: (b), the mandatory zoom — and it worked.** `review_image`
+grew an `always_zoom` mode (`backend/shot_vision.py`): the full frame and the
+zoomed centre go in a *single* call as two user turns (one API call, so the
+zoom no longer costs a second round-trip), the prompt tells the model both
+views are already in front of it and `request_zoom` must be false, and the
+reply is final. Replayed 5x over all 13 fixtures (65 trials,
+`google/gemini-3.7-flash-20260813`, 3 transient empty-reply errors retried and
+resolved; results at
+`tests/fixtures/shot_replay/replay_always_zoom_run{1..5}.jsonl`). **False-hit
+rate 0/40 (0%) — down from 5/40 in every previous variant — with the
+false-miss rate unchanged at 20/25 (80%).** d91548d3, the flagship false hit
+that survived all three prompt rewordings at 0.95 confidence, is now called
+`miss` in 5/5 runs at 0.98 confidence, with reasoning that finally sees the
+geometry: "the centre of the cross lands on the background foliage and sea to
+the left of the person's head". The hypothesis was right: the model never
+asked for the zoom because it never doubted itself, and with the zoom always
+in front of it the aim point is no longer below its perception limit. The four
+remaining false misses are unchanged and are *not* the model's error — they
+are `classify()`'s two-readable-channels → `hit_bystander` mapping (the
+model's channel observations match the admin notes exactly; whether that
+mapping should instead escalate to a stronger reviewer is the separate
+question in the 2026-08-24 handover — answered since: #11 retired the
+mapping), not a prompt problem.
+**Shipped:** the live path (`backend/ai_shot_review.review_shot`) now passes
+`always_zoom=True`, and the replay harness's `baseline` variant tracks it; the
+old behaviour survives as the `optional_zoom` variant for comparison runs.
+
+**Updated 2026-08-25 (later): the zoom is now gated on a screening question,
+not sent unconditionally.** With the zoom factor doubled (`ZOOM_FACTOR = 8`)
+the remaining failure mode was close shots that actually miss being called
+hits, so `review_image`'s default flow changed again: turn one asks only "does
+the person fill less than half of the screen?"
+(`person_fills_less_than_half`); that reply is discarded and turn two is either
+the zoomed view (small target, with the same question repeated) or a plain
+request for the full reading. A still-small target after the first zoom gets
+one final, closer view (`MAX_ZOOMS = 2`, compounding as `ZOOM_FACTOR**level`).
+The `request_zoom` field is gone — the model never chooses the zoom, it only
+ever answers how big the person is. `always_zoom=True` survives for replay
+comparisons; the harness's `baseline` variant tracks the screening flow and
+`optional_zoom` is retired.
+
+**Replay-scored 2026-08-25:** one run of `baseline` over all 13 fixtures
+(`tests/fixtures/shot_replay/replay_screening_gate_run1.jsonl`) — **false-hit
+rate 0/8 (0%), false-miss rate 4/5 (80%)**, matching the always-zoom numbers
+this variant replaces. d91548d3, the flagship false hit, is `miss` at 0.99
+confidence. The four false misses are the same `hit_bystander` mapping noted
+above (armbands hidden, other channels incomplete), not a regression from the
+screening gate. Single run, not the 5x done for the earlier variants — worth
+repeating before fully trusting the rate, but it confirms the screening gate
+did not reintroduce the false-hit problem it was built to avoid.
+
+**Admin visibility (2026-08-25):** two zooms sharing one `zoom_used` bool made
+it impossible to tell from the queue or the replay workbench whether a shot
+spent one zoom or two, and the workbench showed only the parsed final reading
+-- nothing of what was actually said turn by turn. `ShotVisionResult` grew
+`zoom_count` (0/1/2, `to_dict()` always) and `transcript` (every turn sent
+plus the raw reply, `to_dict(include_transcript=True)` -- opt-in so a live
+review's stored payload does not carry it on every shot). The queue and
+workbench tags now read "Zoomed in ×N" (`ShotQueue.zoomTag`, falling back to
+a bare "Zoomed in" for reviews stored before this); the workbench also gets a
+collapsible "Full model transcript" per replayed shot, with a "Prettified
+JSON" toggle that dumps the whole exchange instead of the per-turn cards.
+
+**Refined 2026-08-25 (later):** two follow-up fixes once this was actually
+used. First, the vision-images panel showed the full frame and one zoom crop
+unconditionally, regardless of whether a zoom was actually spent -- now it
+shows only the full frame until a replay runs, then exactly as many zoom
+crops as `zoom_count` says were used (`admin_get_shot_vision_images` grew a
+`zoomed2` alongside `zoomed`). Second, `transcript` was a list of *cumulative*
+snapshots -- each exchange repeating every earlier turn verbatim before
+adding its own -- which read as duplication once printed as JSON. The
+conversation is append-only (nothing sent earlier is ever revised), so
+`transcript` is now that flat chronological list directly: one entry per
+turn, user prompts as text and assistant replies as the parsed JSON, with
+nothing repeated. (Also checked: each turn already sends its text before its
+image in the message content, which is what you want for prompt caching.)
+
+**Reasoning trace surfaced (2026-08-26):** the transcript carried each
+assistant turn's *parsed reply* only -- for a "thinking" model, OpenRouter
+also returns the model's extended reasoning trace on `message.reasoning`
+(included by default, no opt-in needed), and that was silently dropped.
+`VisionClient` gained a `last_reasoning` property (`OpenRouterVisionClient`
+reads it off the response; `FakeVisionClient` takes a `reasoning=` arg for
+tests), and `shot_vision._assistant_turn` attaches it to each transcript
+entry the workbench renders. The workbench shows it under a per-turn
+"Model reasoning" disclosure, distinct from the short `reasoning` field the
+model fills in as part of its JSON reply itself.
+
+**Reasoning-continuity bug fixed (2026-08-26):** surfacing the trace for
+display exposed a real bug in the pipeline itself -- the screening -> zoom ->
+full-reading loop re-sent only each turn's bare parsed JSON as the assistant's
+prior turn, never the reasoning that produced it. Per OpenRouter's own
+guidance, a "thinking" model needs its `reasoning_details` (its
+provider-independent, pass-back-verbatim structured form -- some providers'
+blocks are encrypted, so this is not the same as the human-readable
+`reasoning` string above) fed back on the next turn's assistant message to
+continue reasoning from where it left off; without it, every turn after the
+first re-reasons from nothing but the previous turn's bare verdict, which
+measurably degrades multi-turn (zoomed) cases. `VisionClient` gained
+`last_reasoning_details`, `shot_vision.review_image` now threads it into
+each follow-up turn via `_previous_answer_turn`, and `_as_message` passes it
+through to OpenRouter unmodified.
+
+**Reasoning-effort knob added, and measured (2026-08-26).** Looking at a real
+production shot's transcript raised a further question: the displayed
+reasoning read as if it decided the hit, then filled in colours with no
+visible deliberation. Live calls through the real pipeline (screening-gated,
+`google/gemini-3.7-flash-20260813`) confirmed this is genuine, unrelated to
+the bug above -- Gemini's `reasoning` is a short **thought summary** (Google's
+term: a synopsis, not the raw chain-of-thought), and its length tracked
+`usage.completion_tokens_details.reasoning_tokens` exactly on every call, so
+nothing was being truncated in flight. `OPENROUTER_REASONING_EFFORT`
+(`none`/`minimal`/`low`/`medium`/`high`/`xhigh`/`max`) now requests a deeper
+one via OpenRouter's `reasoning: {"effort": ...}` parameter -- unset by
+default (identical behaviour to before), overridable per replay in the
+workbench regardless of the env setting.
+
+Measured on 3 fixture shots (one each of miss/hit/bystander ground truth),
+gated flow, Gemini only, one run per effort level:
+
+| effort | final-turn reasoning chars (3 shots) | verdict vs. `unset` |
+| --- | --- | --- |
+| unset | 219 / 355 / 259 | -- |
+| low | 0 / 0 / 0 | same outcome every time |
+| medium | 238 / 319 / 485 | same outcome every time |
+| high | 485 / 1465 / 1855 | same outcome every time |
+
+Two findings, both from real data, not the 3-shot sample size: **`low` is
+worse than doing nothing** -- it suppressed the visible summary to zero chars
+on every single call while still spending real `reasoning_tokens` (72-271)
+computing it, so if transparency is the goal, never configure `low`. **`high`
+gives the long, multi-paragraph, per-channel deliberation** the admin UI was
+missing (2-6x `unset`'s length), at a modest cost increase (~$0.006-0.008 vs
+~$0.005-0.008 per shot review, all three calls). None of the three shots'
+*verdicts* changed across any effort level -- one (`697899ee`, a hit
+misread as `hit_bystander`) stayed wrong at every level, so effort is a
+narration-depth and transparency knob here, not a demonstrated accuracy fix;
+that needs the full replay-set treatment (R1) to say anything at N > 3.
+
 **Done when** the replay set from R1 shows the false-hit rate down to something
 an admin can live with, with the false-miss rate reported alongside it (this
 trade is the whole game; do not optimise one silently).
@@ -427,11 +773,48 @@ API calls), `replay` re-runs the real vision pipeline over the saved photos
 with a chosen model and prompt variant into a resumable JSONL, `score` turns a
 replay file into the same report, and `extract` dumps shots' photos to PNG for
 eyeballing the false hits. `export` writes shots to a fixture directory
-(photos + `manifest.json`) which the other subcommands read back via
-`--fixtures`; the first such set lives at `tests/fixtures/shot_replay/` (the
-six resort test shots of 2026-08-21), with per-shot `human_label`s that stand
-in for verdicts until the admin adjudicates. Prompt variants for #4 land in
-its `PROMPT_VARIANTS` registry.
+(photos + `manifest.json`, including each shot's `admin_notes`) which the
+other subcommands read back via `--fixtures`; the live set lives at
+`tests/fixtures/shot_replay/` (thirteen resort test shots: the six of
+2026-08-21 plus seven of 2026-08-24), all with real admin verdicts and
+per-shot notes explaining what the vision agent should have returned. Prompt
+variants for #4 land in its `PROMPT_VARIANTS` registry.
+
+**In-browser counterpart (2026-08-25):** the admin "Shot replay" workbench
+(`/admin/replay`, `react-ui/src/ShotReplay.js`) fires any selection of the
+shots actually in the database through the same pipeline with the prompt
+editable on the fly (`admin_replay_shot_review`, plus
+`admin_get_default_vision_prompt` to seed the textarea). It stores nothing and
+flags where the reading disagrees with the admin's verdict — the quick
+half of the harness, for trialling a prompt edit before measuring it properly
+with `replay`.
+
+**The custom prompt was being overruled — fixed (2026-08-27).** The workbench
+let you edit the prompt, and only the prompt: the schemas the model was asked
+for and the follow-up turns between them stayed the pipeline's own. So a
+prompt asking for something else — say, pixel coordinates for each garment —
+was sent, and then answered against `build_screening_schema()`
+(`{"person_fills_less_than_half": …}`), followed up with "answer in full with
+the JSON described above", and finally forced into `build_schema()`'s four
+channels. The transcript looked as if the custom prompt had never been sent,
+because structurally it had not been: a model can only answer the question its
+schema asks.
+
+The contract is now three things that travel together —
+`shot_vision.review_image` takes a `zoom_mode` (`ZOOM_SCREENED`, the live
+shape, `ZOOM_UPFRONT`, both views in one call, or `ZOOM_SINGLE`, one turn with
+no screening and no zoom) and a `schema` override alongside `prompt`, and
+`build_prompt(zoom_mode=…)` writes the zoom wording that matches the shape
+about to be run. `always_zoom: bool` is gone, replaced by `zoom_mode`
+throughout (`PROMPT_VARIANTS["always_zoom"]` keeps its name, since that is
+what the `replay_always_zoom_run*.jsonl` files record). The workbench gained a
+schema box and a conversation-shape selector; changing the shape reseeds an
+*untouched* prompt so it never describes an exchange that is not about to
+happen, and leaves an edited one alone. Replays also stopped 502-ing on a
+reply that is not a standard reading: `review_image(tolerate_unparsed=True)`
+returns it as `raw_reply` + `parse_error` and the workbench renders it, since
+under a contract of its own that is the answer rather than a failure. Live
+reviews still raise — storing a meaningless verdict is worse than erroring.
 
 **What the first run found.** The live database held no admin verdicts at all
 (the queue was never adjudicated), so the fixture labels are by eye. Even so:
@@ -445,6 +828,27 @@ produce proper verdicts, the admin queue grew a **"Show adjudicated shots"**
 toggle and a per-shot **admin notes** field (`Shot.admin_notes`,
 `admin_get_shot_notes` / `admin_set_shot_notes`) so future exports carry real
 adjudications and the reasoning behind them.
+
+**Model-family sweep (2026-08-25).** `scripts/replay_shot_reviews.py` grew
+`replay_to_file`, the reusable core of `cmd_replay`, and
+`scripts/benchmark_vision_family.py` drives it over a list of models --
+every size OpenRouter currently lists under Qwen3-VL (235B-A22B, 32B,
+30B-A3B, 8B, instruct and thinking variants) plus the pipeline's own default
+`google/gemini-3.7-flash-20260813` -- writing one resumable JSONL per model
+under `--out-dir` and printing a side-by-side accuracy table plus a tool-use
+tally (JSON-schema/parse failures, empty replies, rejected requests). A full
+run against all 13 fixture shots is committed at
+`tests/fixtures/shot_replay/family_benchmark/`; see
+`docs/vision_model_family_benchmark_2026-08-25.md` for the results. Headline:
+`gemini-3.7-flash` (the current default) remains the best-calibrated model
+(0 false hits at 0.92 mean confidence); `qwen3-vl-235b-a22b-instruct` failed
+outright (whitespace, no JSON) on 4/13 shots; `qwen3-vl-8b-thinking`
+hallucinated confident hits on two shots every other model in the family,
+including its own non-thinking sibling, correctly called empty/ambiguous.
+The `d91548d3` marker-geometry false hit and the four-shot false-miss
+cluster from the 2026-08-24 handover both reproduced across most of the
+family, reinforcing that the aim-marker geometry and `classify()`'s
+two-channel rule (not model choice) are the higher-leverage fixes.
 
 **R2, after the game — the scorecard.** The admin-facing version: an endpoint and
 a page reporting CharlesBot's outcome against the admin's over a game or all
@@ -482,7 +886,7 @@ codeword, so the code vouches for nothing) — but it answers the wrong question
   genuinely are strong evidence — more so now that they are the one garment we
   supply (#9). Keep that, but as *evidence*, not as a gate.
 - **"Which player is it?"** does **not** need the full codeword space. The
-  candidate set is not the 34 usable slots, it is the handful of living players
+  candidate set is not the 48 usable slots, it is the handful of living players
   on other teams who were near the shooter — and two correctly-read channels
   discriminate sharply within a set that small, especially once the GPS prior is
   applied.
@@ -605,8 +1009,10 @@ to suit the caller.
 
 `position.coords.accuracy` (which is `sigma_fix`) and the shooter's compass
 heading (which turns the envelope from a disc into a cone) are both discarded
-today and both unrecoverable after the fact. Written up as **R5**, which has to
-happen before the 19th for that reason.
+today and both unrecoverable after the fact. Written up as **R5**, which had to
+happen before the 19th for that reason — and has now shipped, so both are
+being recorded (`User.location_accuracy`, `Shot.heading`) and are waiting here
+for whoever builds this model.
 
 **Two things already in place.** `User.location_timestamp` is returned by
 `get_locations`, so the age of every fix is already inside every shot's
@@ -754,42 +1160,191 @@ is a one-line change that R1 can score.
 
 ---
 
-### #11 — Escalate the hard cases to a stronger model
+### #11 — Escalate the hard cases to a stronger model *(shipped)*
 
-**The idea.** When the posterior from #5 — GPS prior included — leaves the top
-candidate below a threshold, or leaves two candidates tied, hand the case to a
-stronger model (Opus, or Gemini) together with everything the cheap pass could
-not use: the full-resolution photo, the zoom, the ranked candidate list *with
-their prior probabilities and their outfits*, and **reference photographs of each
-candidate taken at the start of the game**.
+**Shipped 2026-08-27** as `backend/shot_escalation.py` (the escalation
+contract and the async runner, mirroring `ai_shot_review.py`), the rewritten
+`classify()` in `backend/shot_vision.py` (the "no armbands ⇒ bystander"
+mapping is retired: a shot that hit a person is always `hit_player` now, with
+the readable-channel count in the reason — bystander is a conclusion only the
+stronger model or the admin can reach), the ladder in
+`backend/shot_auto_actions._decide` (gated on `confident_channel_count` and
+the new `shot_vision.armbands_confident`), `vision_client.
+get_escalation_client()` (`OPENROUTER_ESCALATION_MODEL` — unset means
+escalation is off and everything behaves as before), two columns on `Shot`
+(`ai_escalation_state`, `ai_escalation`), and the escalation block in the
+admin queue (`ShotQueue.js`), which shows the strong model's verdict,
+reasoning and the ranked candidate list it was given.
 
-This is the largest item in track A/C. It has three separable pieces:
+**Decisions taken on the open questions, and along the way:**
 
-**(a) Reference photos of players — a prerequisite, and useful on its own.**
-There is no capture flow today. Needs: where the photo is taken, a place to store
-it (following `Shot.image_base64`'s pattern is the pragmatic choice, at the cost
-of database size), and a deletion story — these are photographs of identifiable
-people and they should not outlive the game; a game reset should take them with
-it. **See #10:** the colour-picking page is the natural place to capture these,
-since it is the one moment every player is already in the app and thinking about
-what they will be wearing.
+- **Storage:** a second column pair on `Shot` (`ai_escalation_state`,
+  `ai_escalation`), not folded into `ai_review` — the weak and strong payloads
+  stay separately inspectable (R2 will want to score them separately), and the
+  queue endpoint (`admin_get_shot_ai_review`) simply grew
+  `escalation_state`/`escalation` keys.
+- **Queue blocking: yes**, same FIFO discipline as an ambiguous head — a
+  pending or punted escalation blocks the shots behind it. A punted shot
+  ("unsure", or a verdict below threshold, or an errored call) simply stays
+  with the admin, which is where every shot went before any of this existed.
+- **What the admin sees for a punted shot:** the strong model's verdict tag
+  ("Needs your call"), its reasoning, and the ranked candidates with
+  probabilities and whether each one's reference photo was shown — #3's
+  surface, fed from the stored escalation payload.
+- **The trigger lives in the auto-action drain** (`process_queue_head`), so
+  escalation runs only when `ai_auto_actions_enabled` is on, only for the
+  queue head, and only when `OPENROUTER_ESCALATION_MODEL` is configured —
+  three separate reasons the safety valve survives. The escalated verdict
+  re-enters `_decide`: auto-act on a confident player/miss/bystander, admin
+  on the human rung.
+- **0 or 1 readable channels escalate too**, not just the ladder's "2": the
+  old code called those bystanders, which is exactly the retired mapping, and
+  the strong model with reference photos can still judge them.
+- **The weak model's overall confidence does not gate the escalate rungs**
+  (it still gates the auto-eligible ones): the weak model being unsure is
+  what escalation is *for*.
+- **A re-run of the weak review clears the stored escalation** (storing a
+  pending review nulls both columns): a new reading invalidates the old
+  escalated verdict, and this doubles as the admin's way to retry an errored
+  escalation.
+- **Python owns the thresholds**, in `shot_escalation.py`:
+  `ESCALATION_HIT_THRESHOLD = 0.75` (a wrong "player X" takes a life; a wrong
+  "unsure" costs an admin thirty seconds — so naming a player needs more than
+  the generic 0.6) and `ESCALATION_OUTCOME_THRESHOLD = 0.6` for miss and
+  bystander (one bullet at stake, same as the weak auto-actions). Both are
+  guesses awaiting R2's data.
+- **One consequence worth naming:** three readable channels *without*
+  armbands used to be able to auto-fire (the old `k + 1` readability gate
+  passed); it now escalates instead, so with no escalation model configured
+  those shots go to the admin rather than auto-firing. Deliberate — that rung
+  is the one where the missing channel is the player marker.
+- **The escalation layer has its own per-game toggle** (`Game.
+  ai_escalation_enabled`, third checkbox on the admin game panel): off means
+  the escalate rungs go straight to the admin, exactly as if no escalation
+  model were configured. Unlike its two siblings it **defaults on** — they
+  are the opt-in for the AI features, while this is a kill switch inside an
+  already-opted-in feature (escalation only ever runs with auto-actions on
+  and `OPENROUTER_ESCALATION_MODEL` set), so configuring the model should be
+  enough to get it on the night.
+- **The admin can fire an escalation by hand** ("Run escalated review" beside
+  "Re-run AI review" in the queue): `admin_escalate_shot` runs whatever the
+  toggles say — like `admin_review_shot`, an explicit admin ask — and needs a
+  completed weak review to rank from (400 otherwise, and 400 with no
+  escalation model configured). A manual run replaces any stored escalation.
+- **A hit on an already-dead player is just a hit that does nothing** — never
+  an escalation, never the admin's. Dead players stay in the candidate set
+  (`eligible_candidates` no longer filters on `hit_points`; a knocked-out
+  player is still physically there to be photographed, especially in the
+  seconds after the killing shot resolves), so a shot queued behind the one
+  that killed its target identifies normally and resolves as a hit — no
+  damage, no second knockout announcement (`hit_user` now announces a plain
+  hit for an already-dead target, which also fixes the manual admin path's
+  double-knockout wart). The prior stays flat for the dead; a death-age
+  down-weight is R2-fitting territory.
 
-**(b) The escalation trigger and the second client.** `backend/vision_client.py`
-is already model-agnostic and reads `OPENROUTER_MODEL` from the environment, so a
-second model is a second configured client rather than a new integration. The
-trigger belongs next to the decode from #5 — escalate on
-`not confident or ambiguous`, with its own threshold, and cap the candidate set
-by the GPS prior (top ~5), because each candidate adds a reference photo to the
-request and the bill scales with it.
+The original design brief follows.
 
-**(c) The prompt for the escalated call is a different question.** The cheap pass
-asks "what colours is this person wearing"; the escalation asks "which of these
-five people is this, or none of them", with the priors stated. Keep it in the
-same observe-then-decide shape: the model reports which candidate it matches and
-how sure it is, Python applies the threshold.
+**Design decided 2026-08-27; reference photos (the prerequisite, R7) are
+shipped.** This section is the handoff for the remaining work. The one-line
+version: stop treating "no armbands visible" as "bystander", identify with
+whatever channels *are* readable at honestly reduced confidence, and route the
+cases that reduced confidence cannot carry to a stronger model that sees the
+reference photos — with a human admin as the final rung.
 
-**Depends on:** #5 (the posterior is its trigger), R2 (its threshold), and
-benefits from #13 or #14.
+**What is wrong today.** `classify()` in `backend/shot_vision.py` uses the
+armbands as the player gate: armbands read ⇒ player; armbands hidden ⇒ demand
+all three other channels complete to a codeword, else **bystander**. Quite
+often no armbands are visible on a genuine hit (all four of #4's residual
+false misses are exactly this), and two or three readable channels are enough
+information to *guess who it is* — the candidate set is a handful of nearby
+living players, not the whole code space (#5's argument). The guess just
+deserves much less confidence, and the confidence is what should decide
+whether a machine acts on it, not whether the reading is discarded.
+
+**The escalation ladder, by what was readable.** Confidence-gated throughout
+(`confident_channel_count` is the existing readable-channel counter):
+
+- **4 channels readable** — as today: identify via #5's posterior;
+  auto-actionable when confident.
+- **3 channels, armbands among them** — a good candidate for **no** review:
+  the armbands are the one garment we supply, so player-ness is solid and one
+  erasure is well within the code. Auto-actionable when the posterior is
+  confident.
+- **3 channels, armbands hidden** — probably **does** need review: identify
+  anyway, but the missing channel is the player marker, so send it to the
+  stronger model rather than auto-acting.
+- **2 channels** (armbands or not) — **always** goes to the stronger model.
+  Identification still runs and still produces the ranking (two correct reads
+  discriminate sharply within a small candidate set), but at `k = 2` readable
+  positions the code itself vouches for nothing, so no auto-action.
+
+Bystander/miss remain possible *conclusions*, but "too few channels" stops
+being the *route* to bystander — that mapping in `classify()` is retired.
+
+**The ranking handed up.** The escalation input is #5's ranked posterior over
+the game's living candidates, built from whichever channels were readable plus
+the GPS location term (`shot_identification.rank_candidates` already computes
+exactly this). When R5b's compass heading lands and the engagement envelope
+becomes a cone, that folds into the same prior and the escalation inherits it
+for free — the contract is simply "players ranked by probability".
+
+**What the stronger model gets.** The full-resolution photo and zoom, the
+ranked candidate list with priors and outfits, and the **reference photos of
+the top three candidates** attached up front. It does *not* get the weak
+model's conclusions — it draws its own from the pixels; the ranking is the
+only thing it inherits. It must also be able to **request the reference photo
+of any other listed candidate**: keep this model-agnostic by doing it as
+another turn in the existing multi-turn shape (the reply schema carries a
+`request_reference_photos: [candidate ids]` field and the follow-up turn
+supplies the images — the same pattern as the screening/zoom loop), not as
+provider tool-calling.
+
+**It must decide, and the fence has a name.** The escalated call returns
+exactly one of:
+
+- **a specific player** (with confidence — Python still applies thresholds);
+- **miss** — only when the shot genuinely missed;
+- **bystander** — only when it genuinely hit a non-player;
+- **escalate to the human admin** — the *only* valid answer for "this is a
+  player but I cannot tell which". Miss and bystander must never be used as
+  a dodge for that case; an undecidable player hit goes to a human, which
+  lands the shot back where every shot went before any of this existed: the
+  admin queue.
+
+**The pieces, updated:**
+
+**(a) Reference photos — shipped (R7).** Stored per player
+(`User.reference_photo_base64`), captured by the admin at the door, already
+run through the live vision pipeline as a kit check. The escalation reads
+them from there; a game reset deletes them.
+
+**(b) The trigger and the second client.** `backend/vision_client.py` is
+model-agnostic and reads `OPENROUTER_MODEL` from the environment, so the
+stronger model is a second configured client (e.g. an
+`OPENROUTER_ESCALATION_MODEL` env var), not a new integration. The trigger
+sits where `classify()`'s outcome meets `shot_auto_actions._decide`: the
+ladder above decides auto-act / escalate / admin, and the escalated verdict
+re-enters the same gate (auto-act on a confident player/miss/bystander
+verdict, admin queue on the human rung). Cap the candidate list sent up by
+the GPS-ranked prior (top ~5): every candidate is potentially a reference
+photo in the request, and the bill scales with it.
+
+**(c) The prompt is a different question.** The cheap pass asks "what colours
+is this person wearing"; the escalation asks "which of these people is this —
+or did the shot miss, or hit a non-player, or can you genuinely not tell
+which player it is". Same observe-then-decide shape: the model reports its
+match and its certainty, Python applies the thresholds and owns the
+asymmetries (a wrong "player X" takes a life; a wrong "escalate" costs an
+admin thirty seconds).
+
+**Depends on:** #5 (shipped — the posterior is the input), R7 (shipped — the
+reference photos), R2 (fits the thresholds), and benefits from #13.
+**Open questions for the implementer:** where the escalated verdict is stored
+(a second review column on `Shot`, or folded into `ai_review`); whether an
+escalated shot blocks the auto-action queue behind it the way an ambiguous
+head does today (probably yes — same FIFO discipline); and what the admin
+queue shows for a shot the strong model punted (its reasoning and the ranked
+list, presumably — that is #3's surface).
 
 ---
 
@@ -1048,7 +1603,53 @@ this file for the same evenings. It supersedes #13 if it happens.
 
 ---
 
-### R5 — Capture GPS accuracy and compass heading *(proposed — and this one has a deadline)*
+### R5 — Capture GPS accuracy and compass heading *(shipped)*
+
+**Shipped**, both halves, plus an admin map view that was not in this entry.
+
+- **R5a, accuracy.** `position.coords.accuracy` now rides every location
+  upload: `sendLocationUpdate` in `react-ui/src/MapView.js` sends it,
+  `set_location` (endpoint in `backend/main.py`, method in
+  `backend/user_interface.py`) stores it in the new `User.location_accuracy`,
+  and `AdminInterface.get_locations` returns it as `accuracy` — so it is
+  inside every shot's `location_context`, which was the step this entry
+  warned was the easy one to miss.
+- **R5b, heading.** New nullable `Shot.heading` (degrees clockwise from
+  north). `react-ui/src/MyWebcam.js` keeps a compass watch running while the
+  camera is on screen and reads the latest heading at the moment of capture,
+  so firing never waits on a sensor. The platform mess lives in
+  `react-ui/src/utils.js` as `watchCompassHeading` /
+  `headingFromOrientationEvent` (iOS's `webkitCompassHeading` off the plain
+  event; everyone else's `deviceorientationabsolute`, whose `alpha` counts
+  the other way), alongside the permission pair
+  `isOrientationPermissionGranted` / `requestOrientationPermission` that
+  matches the camera and location helpers. iOS's grant cannot be queried
+  back, so it is remembered in `localStorage`.
+- **The compass rung does not gate the ladder.** `OnboardingView.js` gets its
+  third rung, but unlike camera and location it lets the items below it
+  through: a phone with no compass, or a player who declines, must still be
+  able to finish joining. Same instinct as "it must degrade silently" below —
+  a missing heading stores null and the shot proceeds exactly as before.
+- **New: the admin can see where a shot was fired from.**
+  `react-ui/src/ShotMap.js` draws a thumbnail beside the photo in the shot
+  queue: the venue's own map, the shooter's dot, their accuracy circle to
+  scale and a cone in the direction they were pointing, with a caption
+  (`±17 m · facing 043°`). It reads the shooter's fix straight out of
+  `location_context` — the admin shot payload already carried it — and shares
+  the georeferencing maths with the player's map through the new
+  `mapProjection` in `react-ui/src/venue.js`, which `MapView.js` was rewired
+  onto rather than having a second copy. A shot with no fix says so and shows
+  nothing, which is what every shot fired before tonight will do.
+
+**Nothing consumes either field yet, and that is deliberate.** The whole point
+was to record what could not be recovered afterwards. Identification
+(`backend/shot_identification.py`) and everything in `backend/identity/` are
+untouched: #5's envelope stays isotropic until there is data to fit the cone
+against. The admin map only *displays* the telemetry; no verdict depends on it.
+
+The columns need a `resetdb`, which is free before the game's own reset.
+
+---
 
 Two fields the app already has in its hand and throws away. Both are inputs to
 #5's probability model, and neither can be recovered after the fact.
@@ -1131,15 +1732,39 @@ held as a weapon, and it keeps going to sleep.
 
 ---
 
-### R7 — The reference photo as a kit check, run through the shot AI *(proposed)*
+### R7 — The reference photo as a kit check, run through the shot AI *(shipped)*
+
+**Shipped 2026-08-27** as `backend/reference_photos.py` (the review runner,
+mirroring `ai_shot_review.py` — same live vision contract, never a `Shot`
+row), three columns on `User` (`reference_photo_base64`,
+`reference_review_state`, `reference_review` — the photo follows
+`Shot.image_base64`'s base64-in-a-column pattern),
+`shot_identification.rank_reference_candidates` (the same scoring as
+`rank_candidates` but flat-priored — no shooter, no location term — over
+every placed player in the game), the single-writer accessors and the
+game-reset wipe in `backend/admin_interface.py`, the
+`admin_capture_reference_photo` / `admin_get_reference_photo` /
+`admin_get_reference_review` / `admin_review_reference_photo` /
+`admin_delete_reference_photo` / `admin_get_reference_photo_status`
+endpoints in `backend/main.py`, and the admin capture page at
+`/admin/reference` (`react-ui/src/ReferencePhotos.js`), which shows the
+per-channel reads with confidences (a marginal channel is a visible warning)
+and whether the photo resolves to the player it was taken of. Capture works
+with the vision client unconfigured — the photo stores and the review simply
+never runs, so the manual door check can never be blocked by the AI being
+off. The review payload carries an `identification` section recording the
+ranked candidates and whether the top match is the photographed player; a
+game reset deletes the photos, which must not outlive the game. The original
+brief follows.
 
 **Why the admin takes it, not the player.** The reference photo's first job is
-not to feed #11 — it is a **manual gate**. Three of the four channels are
-bring-your-own (#9), so the single largest risk to the night is somebody turning
-up in the wrong colours, or in something they called "green" that photographs
-khaki. Checking that is a job for the person standing at the door with the box of
-armbands, because they are the only one who can do anything about it: swap a
-garment, hand out a different armband, or record an override there and then. A
+not to feed #11 — it is a **manual gate**. Two of the four channels are
+bring-your-own (#9) — t-shirt and trousers — so the single largest risk to the
+night is somebody turning up in the wrong colours, or in something they called
+"green" that photographs khaki. Checking that is a job for the person standing
+at the door with the box of armbands and hats, because they are the only one
+who can do anything about it: swap a garment, hand out a different armband, or
+record an override there and then. A
 photo the player takes of themselves at pick time verifies nothing, since the
 person submitting it is the person with a reason to fudge it. Hence: **at the
 door, on the night, by the admin, one person at a time.**
@@ -1202,6 +1827,230 @@ deliberately.
 
 ---
 
+### R8 — Let the players adjudicate: appeal, don't review *(proposed — Gaby's idea)*
+
+**The idea.** Stop asking the admin to check every shot. CharlesBot resolves each
+shot the moment the photo lands, and the two people who were actually there — the
+shooter, and whoever CharlesBot says was hit — are both shown the photo and the
+verdict. Either can press **Appeal** — three times a game, with the appeal
+refunded whenever it succeeds. Only appealed shots reach the admin. The queue
+stops being *every shot* and becomes *the contested ones*.
+
+**Why this is worth more than another point of accuracy.** Everything else in
+track A tries to make CharlesBot wrong less often. This changes what happens when
+it is wrong, which is the more valuable half. The go/no-go on
+`ai_auto_actions_enabled` currently rests on a false-hit rate measured over
+thirteen fixtures, and switching it on is a bet, because an automatic error today
+is both silent and final — nobody ever looks at that shot again. With appeals an
+error is loud and recoverable, so the toggle stops being a bet on accuracy and
+becomes a bet on *the errors being noticed*, which is a much easier thing to be
+right about. It also removes the only structural limit on how big a game can get:
+one admin adjudicating every shot, all night, in real time.
+
+**The incentives do the work.** Line each way CharlesBot can be wrong up against
+who is told and who wants it changed:
+
+| CharlesBot's verdict          | Who sees it       | Who wants it looked at again                                        |
+| ----------------------------- | ----------------- | ------------------------------------------------------------------- |
+| Hit on Alice — correct        | shooter, Alice    | nobody. It stands, with no admin time spent.                        |
+| Hit on Alice — actually a miss | shooter, Alice   | **Alice**: she has lost HP she should still have.                   |
+| Hit on Alice — actually hit Bob | shooter, Alice  | **Alice**, who was never shot. (Bob is never told, and needn't be — Alice's appeal re-opens the shot either way.) |
+| Miss — actually hit Alice     | shooter only      | **the shooter**: he wants his kill.                                 |
+| Bystander — actually hit Alice | shooter only     | **the shooter**, likewise.                                          |
+| Miss — correct                | shooter only      | nobody with a case, but see abuse below.                            |
+
+The shooter and the target are on opposite teams, so for every error class there
+is somebody who both *knows* about it and *wants* it revisited. That adversarial
+pairing is what makes the scheme sound, and it also names its one hole:
+**friendly fire has no opposed party** — a shot between teammates, wrongly
+resolved, may suit both of them. Rare, low-stakes, and the admin can still open
+any shot they like; not worth engineering against.
+
+**The shooter's side is nearly built.** `ShotHistory.js` and
+`shotHistoryStore.js` already give a player every shot they have fired, its
+adjudicated outcome, and the photo (`/api/user_shot_image`, cached by
+`ShotCache.js`), including today's `AI thinks: …` line for a shot the admin has
+not reached. An Appeal button on that per-shot detail view is a small addition to
+a surface that exists.
+
+**The target's side does not exist, and is the real build.** A player who is hit
+gets one private ticker line (`USER_GOT_HIT` / `USER_GOT_KNOCKED_OUT`, sent from
+`admin_interface.hit_user`) and nothing else — no photo, no shot id, nothing to
+appeal against. Needed:
+
+- `Shot.target_user_id` is already recorded, so the query is there:
+  `user_interface.get_own_shots` wants a sibling for *shots against me*, and
+  `get_own_shot_image`'s `shot.user_id != self.user_id` check has to widen to
+  admit the target. No new exposure — it is a photograph of them, taken of them,
+  and the ticker has already named the shooter.
+- Somewhere to show it. The existing shot-history popup is the natural home:
+  either a second list, or one list with each entry marked fired/received.
+- The private ticker message should carry the shot id so the line itself can be
+  the way in, rather than making the player go looking.
+
+**An appeal re-opens the shot; it does not undo it.** This is the part that will
+bite if it is not decided up front. Resolving a shot mutates game state that
+later events depend on — a knockout calls `clear_unchecked_shots`, which refunds
+every shot the victim had queued, and the ticker has already announced it in
+public. There is no compensating action anywhere in the codebase for any of that,
+and writing a general unwind is far more than this item is worth. So:
+
+> **Appealing marks the shot contested and puts it in front of the admin. It
+> changes no HP, no ammo and no ticker by itself.** The admin then adjudicates
+> with the tools that already exist — `hit_user`, `refund_shot`, `set_user_HP`,
+> `hit_user_by_admin` — and a wrongly-taken life is handed back by hand.
+
+Pragmatic, honest about what it is, and it means an appeal can never itself
+corrupt the game state. It does need a ticker message for the correction, though:
+"Alice is back in the game" is a social event, not a database update.
+
+**Contested shots need their own queue, not the head of the existing one.**
+`shot_auto_actions.process_queue_head` acts only on the oldest unchecked shot,
+deliberately, because resolving a shot can invalidate the ones behind it. An
+appealed shot re-entering that queue with its original timestamp would become the
+head and jam the live drain behind a twenty-minute-old argument. Keep the two
+apart: a `contested` flag (or an `appeal_state` column) that lists the shot in a
+separate admin tab, leaving `get_unchecked_shots` and the drain untouched.
+
+**Note that the two auto-action gates are separable**, and only one of them
+relaxes here. The strict queue ordering exists because of *state dependency* and
+still holds. The confidence threshold exists because of *accuracy*, and appeals
+are exactly what justify loosening it: `_decide()` returning `None` would stop
+meaning "stop the drain" and start meaning "resolve it as best you can, the
+players will complain if it is wrong".
+
+**It does not empty the queue, and shouldn't be sold as if it does.** Some shots
+CharlesBot cannot resolve at all — a hit it is sure about but cannot pin to any
+candidate has no verdict to show anybody, because there is no target to notify.
+Those still go to the admin as they do now. The honest claim is that the admin
+sees **the unresolvable plus the contested**, which on the numbers so far is a
+small fraction of the night's shots rather than all of them.
+
+**Abuse is the obvious failure mode, and the budget is the fix.** Appealing is
+free and the upside is one-directional, so the dominant strategy would be to
+appeal everything, which puts the admin back exactly where they started. So:
+**three appeals per player per game, refunded whenever the appeal is upheld.**
+
+That mechanic is better than it first looks, because of where the cost lands.
+A player who is genuinely being misread — a bad photograph, an outfit that
+lights badly, whatever CharlesBot keeps getting wrong about them — appeals as
+often as they need to and never spends a thing, because every one of those
+appeals succeeds. The budget only ever depletes for someone appealing shots
+CharlesBot got *right*. **The price is on being wrong, not on appealing**, which
+is exactly the incentive to want: it puts no friction in front of the honest
+complaint the whole scheme depends on, and puts a hard stop in front of the
+speculative one. Running out means three failed appeals, which is itself
+something the admin should see.
+
+Keep the per-shot rule alongside it — **one appeal per shot per party, and it
+must state a reason** picked from a short list: *it missed* / *that wasn't me* /
+*that's not a player* / *I was already out*. Per-shot stops one shot being
+spammed, per-game caps the night. The reason is worth having for its own sake:
+it labels the error class, which is precisely the data R1/R2 have to reconstruct
+by hand today.
+
+**The budget is ammo, mechanically.** `User.num_bullets` with `award_ammo()` is
+the same shape and should be the model: an `appeals_remaining` column on `User`
+defaulting to three, decremented when the appeal is lodged, incremented when it
+is upheld, and reset alongside `num_bullets` and `hit_points` in
+`admin_interface.reset_game`. Show it next to the appeal button the way
+`BulletCount.js` shows ammo — a player deciding whether to spend one needs to
+know what they have left.
+
+**What the player actually sees.** An **Appeal** button on the shot, and a
+confirmation popup before it is spent — nobody should lose an appeal to a
+mis-tap, and the count is the thing they need in front of them at the moment
+they decide:
+
+> **Are you sure? You have 2 of 3 appeals left.**
+> *Successful appeals are refunded.*
+
+The second line in smaller white text under the question. It is there because the
+budget is only fair if the player knows the refund rule *before* they weigh
+spending one — a cap without the refund reads as "shut up and accept it", which
+is the opposite of what this is for. **At zero the button is greyed out, not
+hidden**, and says why: a control that vanishes is a bug report, and a player who
+can see they are out of appeals understands the rule better than one who never
+sees the button again.
+
+`Popup.js` is already the fullscreen popup component and the shot-history detail
+view is already inside one, so this is a confirmation step in an existing
+surface. The count itself should ride the `UserModel` payload next to
+`num_bullets`, so the existing SSE `user` event keeps it live without a new
+endpoint or a poll.
+
+**And the admin can hand appeals back.** A referee who has just talked something
+through with a player needs to be able to give them another go — a budget with no
+override turns a judgement call into a dead end. This is the same control the
+admin already has for ammo: `AdminMode.js`'s per-user row has **Ammo: +1 / −1**
+posting to `admin_give_ammo`, so **Appeals: +1 / −1** posting to
+`admin_give_appeals` is the same row, the same shape, and the same backend
+pattern. Reuse it rather than inventing a different one.
+
+**Upheld or rejected should be inferred, not a second verdict button.** The
+contested shot already carries CharlesBot's verdict in `ai_review`; if the
+admin's adjudication differs from it, the appeal was upheld. That is one
+comparison at the point the admin resolves the shot, and it keeps the admin's
+workflow identical to the one they already have. Two cases need a stated rule:
+a shot the admin ends up **refunding** (the knockout cascade, not a judgement
+either way) should give the appeal back — benefit of the doubt costs nothing;
+and an admin who agrees with CharlesBot's outcome but for different reasons is
+a rejection, which is the right answer anyway since the game state is unchanged.
+
+**What the budget costs, and it is not nothing.** A player unsure whether they
+were really hit may sit on an appeal rather than risk it, so some real errors go
+unreported — which is the one thing this whole item exists to prevent. Three is
+therefore a number to revisit after a game, and it should live as a single
+constant, not be scattered. It also weakens the note below: with a budget in
+play, silence is partly explained by hoarding, not only by agreement.
+
+**Silence is data too, with a caveat.** A shot neither party appealed is weak
+evidence CharlesBot got it right, and there will be hundreds of them per game —
+by far the largest labelled set the recognition work has ever had. Weak because
+nobody may have looked; worth recording as *unappealed* rather than *confirmed*,
+and never worth mixing with admin verdicts in the same column of R2's scorecard.
+
+**Timing, and why this pairs with R4.** An appeal is only useful inside the
+window where the shot still matters, so the target has to find out quickly. With
+the app open, the existing SSE `user` event and the shot-history bubble already
+do this. With the app closed — a phone in a pocket between fights, which is most
+of a game — nothing reaches them until they look. That makes **R4 (Web Push)** the
+natural partner: it is what turns "you were shot, appeal within a few minutes"
+into something a player actually receives. Shippable without it; better with it.
+
+**This partly answers open question 1.** If CharlesBot's word is final unless
+appealed, then its word has to be shown to both parties — a shooter cannot appeal
+a misattribution they were never told about. The reason for withholding the name
+was that it was an unconfirmed guess leaking a player's position; under appeals
+there is no "pre-confirmation" state to protect, because there is no admin pass
+coming. The privacy argument does not disappear, but it changes shape and should
+be re-answered here rather than assumed.
+
+**Lands in:** `backend/model.py` (appeal columns on `Shot`, `appeals_remaining`
+on `User` — remember there are no migrations, so `npm run resetdb`),
+`backend/user_interface.py` (shots-against-me, the widened image check,
+`appeal_shot` and the budget decrement), `backend/main.py` (the two new player
+endpoints plus `admin_give_appeals`), `backend/admin_interface.py` (the contested
+list, the upheld/rejected inference and its refund, granting appeals back, the
+reset in `reset_game`),
+`backend/shot_auto_actions.py` (resolve-everything mode, and never re-drain a
+contested shot), `backend/ticker_message_dispatcher.py` (the correction message,
+and the shot id on the private hit message),
+`react-ui/src/ShotHistory.js` + `shotHistoryStore.js` (the appeal button, its
+`Popup.js` confirmation, the remaining-appeals count and the received-shots
+list), `react-ui/src/ShotQueue.js` (the contested tab), `react-ui/src/AdminMode.js`
+(**Appeals: +1 / −1** on the per-user row). Tests in
+`tests/test_shots.py`, `tests/test_admin_mode.py`, `ShotHistory.test.js`,
+`ShotQueue.test.js`.
+
+**Depends on:** nothing hard, but it wants #5 shipped (an auto-resolved hit has to
+name somebody) and reads much better after #2 gives that name a display string.
+**Feeds:** R1/R2 — every appeal is a labelled error with its class attached.
+**Pairs with:** R4. **Not before the 19th**: it changes who adjudicates the game
+on the night, which is not a thing to try for the first time on the night.
+
+---
+
 ## Open questions
 
 Answers to these change the shape of the work, not just its order.
@@ -1210,23 +2059,37 @@ Answers to these change the shape of the work, not just its order.
    a name. Telling a shooter "CharlesBot thinks you hit Alice" before an admin has
    confirmed it leaks a player's position and identity to the other team, and it
    is wrong often enough to be a poor promise. Suggestion: name the target in the
-   admin queue, and keep the player's view to hit / miss / bystander.
+   admin queue, and keep the player's view to hit / miss / bystander. **R8 reopens
+   this**: if CharlesBot's verdict is final unless a player appeals it, there is
+   no unconfirmed-guess state to protect and both parties have to be shown enough
+   to appeal against.
 2. ~~**Do we ask players for a photo of themselves in their outfit at pick
    time?**~~ **Answered: no.** The photo moves to the door on the night, taken by
    the admin — see R7. Keeps the colour-picker a colour-picker, and makes the
    photo a check rather than a self-report.
 3. **How long do reference photos live?** Suggestion: deleted with the game.
-4. **Does the identification scheme survive three bring-your-own channels?** With
-   only armbands provided (#9), this is the biggest open risk to the whole
-   identification idea on the night. #10 is the mitigation; R1/R2 will tell us
-   afterwards how well it worked.
+4. **Does the identification scheme survive two bring-your-own channels?** With
+   the armbands and hat now provided (#9), only the t-shirt and trousers are
+   left to players — roughly halving the exposure this question originally
+   worried about, though it does not remove it: those two channels still depend
+   on players owning and wearing the colours they picked. #10's picking page and
+   R7's door check are the mitigations; R1/R2 will tell us afterwards how well
+   it worked.
 5. ~~**Is free choice of outfit worth the capacity it costs?**~~ **Answered:
    yes, and it costs nothing here.** §12.5 measured free choice across the *whole*
    space, where unlucky picks strand regions. Pinning the hat to the team
-   partitions the space into seven independent buckets of five and prevents that
+   partitions the space into seven independent buckets and prevents that
    stranding: inside a team, free choice and the code have identical capacity,
    because `d >= 3` under a shared hat already forces distinct t-shirts, trousers
-   and armbands, and the trousers palette caps a team at five either way. What
-   free choice adds is that the five outfits can be chosen to fit the team's
-   actual wardrobes — 82.8% of players in clothes they own against the code's
-   57.4%. See plan §12.6.
+   and armbands, and the trousers channel caps a team at its own colour count
+   either way. What free choice adds is that those outfits can be chosen to fit
+   the team's actual wardrobes — 82.8% of players in clothes they own against
+   the code's 57.4%. See plan §12.6.
+6. **When an appeal is upheld, how far back does the correction reach?** R8's
+   recommendation is that it doesn't: the appeal re-opens the shot and the admin
+   fixes HP and ammo by hand, because a knockout has already refunded the
+   victim's queued shots and announced itself in the ticker, and a general unwind
+   is more machinery than the game is worth. Worth confirming before building —
+   the alternative (hold each auto-verdict for an appeal window and only then
+   apply it) needs no unwind at all, but delays every knockout by the length of
+   the window, which in a game measured in seconds is its own problem.

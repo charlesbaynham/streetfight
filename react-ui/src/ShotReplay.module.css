@@ -1,0 +1,193 @@
+.promptBox {
+  width: 100%;
+  min-height: 20em;
+  font-family: monospace;
+  font-size: 0.85em;
+}
+
+.schemaPanel {
+  margin: 0.5em 0;
+}
+
+.schemaBox {
+  composes: promptBox;
+  min-height: 12em;
+}
+
+.controls {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 0.5em 0 1em 0;
+}
+
+.grid {
+  display: flex;
+  flex-direction: column;
+  gap: 1em;
+}
+
+.card {
+  display: flex;
+  gap: 1em;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  padding: 0.5em;
+  cursor: pointer;
+}
+
+.cardSelected {
+  border-color: #0072ce;
+  background: #f0f6fb;
+}
+
+.cardPicker {
+  align-self: flex-start;
+  padding-top: 0.5em;
+}
+
+.cardPicker input {
+  width: 1.5em;
+  height: 1.5em;
+}
+
+.thumbnail {
+  width: 10em;
+  object-fit: contain;
+  align-self: flex-start;
+}
+
+.cardBody {
+  flex: 1;
+  cursor: default;
+}
+
+.visionImages {
+  display: flex;
+  gap: 0.5em;
+  margin: 0.5em 0;
+  flex-wrap: wrap;
+}
+
+.visionImageWrapper {
+  flex: 1;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.visionImg {
+  width: 100%;
+  max-width: 100%;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: #fafafa;
+}
+
+.visionLabel {
+  font-size: 0.75em;
+  color: #555;
+  margin-top: 0.2em;
+  text-align: center;
+}
+
+.visionLoading {
+  font-style: italic;
+  color: #666;
+  font-size: 0.85em;
+}
+
+.replayError {
+  color: red;
+}
+
+.disagreement {
+  color: red;
+  font-weight: bold;
+}
+
+.transcript {
+  margin-top: 0.5em;
+  font-size: 0.85em;
+}
+
+.transcript summary {
+  cursor: pointer;
+  font-weight: bold;
+}
+
+.rawToggle {
+  display: block;
+  margin: 0.4em 0;
+  cursor: pointer;
+}
+
+.rawToggle input {
+  margin-right: 0.3em;
+}
+
+.exchange {
+  border-top: 1px solid #ddd;
+  padding: 0.4em 0;
+}
+
+.exchangeTitle {
+  font-weight: bold;
+  margin: 0 0 0.3em 0;
+}
+
+.turn {
+  margin: 0.3em 0;
+}
+
+.turnRole {
+  display: block;
+  font-weight: bold;
+  color: #555;
+  text-transform: capitalize;
+}
+
+.turnReasoning {
+  margin: 0.2em 0;
+}
+
+.turnReasoning summary {
+  cursor: pointer;
+  font-style: italic;
+  color: #555;
+}
+
+.turnReasoningText {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  background: #fbf6e9;
+  border: 1px solid #e9dfc0;
+  border-radius: 4px;
+  padding: 0.4em;
+  margin: 0.2em 0;
+  font-size: 0.9em;
+  font-style: italic;
+}
+
+.rawReplyNote {
+  color: #a05000;
+  font-size: 0.9em;
+  margin: 0.2em 0;
+}
+
+.turnText,
+.transcriptJson,
+.rawReply {
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow-x: auto;
+  background: #f7f7f7;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  padding: 0.4em;
+  margin: 0.2em 0;
+  font-size: 0.9em;
+}

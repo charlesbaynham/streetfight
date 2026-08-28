@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage, adminPost } from "./AdminCommon";
 import { getShotFromCache, evictShotFromCache } from "./ShotCache";
+import ShotMap from "./ShotMap";
 import UpdateListener from "./UpdateListener";
 import { Row, Col } from "react-bootstrap";
 
@@ -13,11 +14,19 @@ const OUTCOME_LABELS = {
   miss: ["Miss", styles.outcomeMiss],
 };
 
+const ESCALATION_VERDICT_LABELS = {
+  miss: ["Miss", styles.outcomeMiss],
+  bystander: ["Bystander - not a hit", styles.outcomeBystander],
+  unsure: ["Needs your call", styles.outcomeUnsure],
+};
+
 // The AI's reading of a shot, shown as tags under the photo. Advisory only -
 // the admin still decides every shot with the buttons alongside.
 function ShotAiTags({ shot_id }) {
   const [state, setState] = useState(null);
   const [review, setReview] = useState(null);
+  const [escalationState, setEscalationState] = useState(null);
+  const [escalation, setEscalation] = useState(null);
 
   const update = useCallback(() => {
     if (!shot_id) return;
@@ -30,6 +39,8 @@ function ShotAiTags({ shot_id }) {
         const body = await response.json();
         setState(body.state);
         setReview(body.review);
+        setEscalationState(body.escalation_state);
+        setEscalation(body.escalation);
       },
     );
   }, [shot_id]);
@@ -66,44 +77,179 @@ function ShotAiTags({ shot_id }) {
 
   if (!review) return listener;
 
-  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
-    review.outcome,
-    styles.outcomeMiss,
-  ];
-
   return (
     <>
       {listener}
       <div className={styles.tagRow}>
-        <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>
-        {review.zoom_used ? (
-          <span className={`${styles.tag} ${styles.tagZoom}`}>Zoomed in</span>
-        ) : null}
-        {Object.entries(review.channels || {}).map(([name, channel]) => (
-          <span
-            key={name}
-            className={`${styles.tag} ${channel.colour ? "" : styles.tagUnknown}`}
-          >
-            {channel.hex ? (
-              <span
-                className={styles.swatch}
-                style={{ background: channel.hex }}
-              />
-            ) : null}
-            {name}: {channel.colour || "unknown"}
-          </span>
-        ))}
+        {outcomeTag(review)}
+        {zoomTag(review)}
+        <ChannelTags channels={review.channels} />
       </div>
       <p className={styles.aiReason}>
         {review.outcome_reason}
         {review.reasoning ? ` - ${review.reasoning}` : null}
       </p>
+      <ShotEscalation state={escalationState} escalation={escalation} />
     </>
   );
 }
 
+// The strong model's verdict, when a shot was hard enough for the cheap
+// model's reading to get escalated. Distinct from the weak review above -
+// this is what the human is actually deciding against for an "unsure" shot.
+function ShotEscalation({ state, escalation }) {
+  if (!state) return null;
+
+  if (state === "pending") {
+    return (
+      <p className={styles.aiReason}>
+        Escalated to the stronger model - reviewing...
+      </p>
+    );
+  }
+
+  if (state === "error") {
+    return (
+      <div className={styles.tagRow}>
+        <span className={`${styles.tag} ${styles.outcomeError}`}>
+          Escalation failed: {escalation?.error || "unknown error"}
+        </span>
+      </div>
+    );
+  }
+
+  if (state !== "done" || !escalation) return null;
+
+  const candidates = Array.isArray(escalation.candidates)
+    ? escalation.candidates
+    : [];
+
+  return (
+    <div className={styles.escalationBlock}>
+      <p className={styles.escalationLabel}>Stronger model</p>
+      <div className={styles.tagRow}>{escalationVerdictTag(escalation)}</div>
+      {escalation.reasoning ? (
+        <p className={styles.aiReason}>{escalation.reasoning}</p>
+      ) : null}
+      {candidates.length ? (
+        <ol className={styles.escalationCandidates}>
+          {candidates.map((candidate, idx) => (
+            <li key={candidate.user_id || idx}>
+              {candidate.name} - {Math.round(100 * candidate.probability)}%
+              {candidate.reference_photo_shown
+                ? " (reference photo shown)"
+                : null}
+            </li>
+          ))}
+        </ol>
+      ) : null}
+    </div>
+  );
+}
+
+// The strong model's verdict, as one tag - shared so it can be reused
+// wherever an escalation result needs showing (e.g. the replay workbench).
+export function escalationVerdictTag(escalation) {
+  if (escalation.verdict === "player") {
+    const label = escalation.target_name
+      ? `HIT on ${escalation.target_name}`
+      : "HIT";
+    return (
+      <span className={`${styles.tag} ${styles.outcomeHit}`}>
+        {label}
+        {typeof escalation.confidence === "number"
+          ? ` (${Math.round(100 * escalation.confidence)}%)`
+          : null}
+      </span>
+    );
+  }
+
+  const [label, verdictStyle] = ESCALATION_VERDICT_LABELS[
+    escalation.verdict
+  ] || [escalation.verdict, styles.outcomeMiss];
+
+  return (
+    <span className={`${styles.tag} ${verdictStyle}`}>
+      {label}
+      {escalation.verdict !== "unsure" &&
+      typeof escalation.confidence === "number"
+        ? ` (${Math.round(100 * escalation.confidence)}%)`
+        : null}
+    </span>
+  );
+}
+
+// What the model made of the photograph overall, as one tag. Shared so a
+// reading looks the same in the queue, the replay workbench and the
+// reference-photo kit check.
+export function outcomeTag(review) {
+  const [label, outcomeStyle] = OUTCOME_LABELS[review.outcome] || [
+    review.outcome,
+    styles.outcomeMiss,
+  ];
+
+  return <span className={`${styles.tag} ${outcomeStyle}`}>{label}</span>;
+}
+
+// The model's per-channel colour reading, as tags. `warnBelow` (unset in the
+// queue, where the admin decides every shot anyway) marks any channel it read
+// less confidently than that and shows the number, so "the trousers read as
+// black at 0.4" is visible rather than hidden behind a confident-looking tag.
+export function ChannelTags({ channels, warnBelow = null }) {
+  return (
+    <>
+      {Object.entries(channels || {}).map(([name, channel]) => (
+        <span
+          key={name}
+          className={`${styles.tag} ${channel.colour ? "" : styles.tagUnknown} ${
+            isMarginal(channel, warnBelow) ? styles.tagMarginal : ""
+          }`}
+        >
+          {channel.hex ? (
+            <span
+              className={styles.swatch}
+              style={{ background: channel.hex }}
+            />
+          ) : null}
+          {name}: {channel.colour || "unknown"}
+          {isMarginal(channel, warnBelow)
+            ? ` (${Math.round(100 * channel.confidence)}%)`
+            : null}
+        </span>
+      ))}
+    </>
+  );
+}
+
+// A channel the model read, but not confidently enough to trust at the door.
+export function isMarginal(channel, warnBelow) {
+  return (
+    warnBelow !== null &&
+    !!channel.colour &&
+    typeof channel.confidence === "number" &&
+    channel.confidence < warnBelow
+  );
+}
+
+// The zoom tag: how many times the zoom was spent (0, 1 or 2). Older stored
+// reviews only ever recorded a zoom_used bool, so fall back to that rather
+// than showing a wrong count.
+export function zoomTag(review) {
+  if (review.zoom_count) {
+    return (
+      <span className={`${styles.tag} ${styles.tagZoom}`}>
+        Zoomed in ×{review.zoom_count}
+      </span>
+    );
+  }
+  if (review.zoom_used) {
+    return <span className={`${styles.tag} ${styles.tagZoom}`}>Zoomed in</span>;
+  }
+  return null;
+}
+
 // What an adjudicated shot was marked as, for the history view.
-function verdictText(shot) {
+export function verdictText(shot) {
   if (shot.result === "hit") {
     const target = shot.game.teams
       .flatMap((team) => team.users)
@@ -325,6 +471,19 @@ function ShotQueuePanel() {
       .then((_) => update());
   }, [shot, update]);
 
+  // The escalated second opinion, asked for by hand: it runs whatever the
+  // game's toggles say, so the reasons it can refuse are things the admin has
+  // to fix (no model configured, no review to escalate from) rather than
+  // background noise for the error log.
+  const escalateShot = useCallback(async () => {
+    const response = await adminPost("admin_escalate_shot", {
+      shot_id: shot.id,
+    });
+    if (response.ok) return;
+    const body = await response.json().catch(() => null);
+    window.alert(body?.detail || "Could not escalate this shot");
+  }, [shot]);
+
   const refundShot = useCallback(() => {
     adminPost("admin_refund_shot", { shot_id: shot.id })
       .then((_) => evictShotFromCache(shot.id))
@@ -406,8 +565,13 @@ function ShotQueuePanel() {
               >
                 Re-run AI review
               </button>
+              <button onClick={() => escalateShot()}>
+                Run escalated review
+              </button>
             </Col>
             <Col>
+              <h3>Where it was fired from:</h3>
+              <ShotMap shot={shot} />
               <NearestPlayers shot_data={shot} />
               {shot.checked ? null : (
                 <>

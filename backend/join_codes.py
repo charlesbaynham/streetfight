@@ -1,8 +1,10 @@
 """Signed "join by QR" codes: ``(game_id, team_id, slot)`` payloads.
 
 A join code is printed as a QR of ``{WEBSITE_URL}?j=<b64>``; scanning one
-joins you to that team and claims that identity slot (see
-:func:`backend.identity_admin.claim_join_slot`). Encoding and signing mirror
+joins you to that team. A code with a concrete ``slot`` claims that identity
+slot (see :func:`backend.identity_admin.claim_join_slot`); a code with
+``slot=None`` is a *team* code that lets the scanner pick their own outfit
+instead (see :func:`make_team_join_url`). Encoding and signing mirror
 :class:`backend.items.ItemModel`, sharing the one HMAC helper in
 ``backend/qr_signing.py``.
 """
@@ -34,7 +36,9 @@ load_env_vars()
 class JoinCodeModel(pydantic.BaseModel):
     game_id: UUID
     team_id: UUID
-    slot: int
+    slot: Optional[int] = None
+    """``None`` means a *team* code: whoever scans it picks their own outfit
+    rather than claiming a fixed slot (see ``make_team_join_url``)."""
 
     sig: Optional[str] = None
 
@@ -73,6 +77,10 @@ class JoinCodeModel(pydantic.BaseModel):
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
     def get_signature(self) -> str:
+        # sign_payload joins with str(p), so a None slot renders as the
+        # literal "None" - which no integer slot can ever equal. That
+        # domain-separates team codes from slot codes for free, with no
+        # special-casing needed here.
         return sign_payload("join", self.game_id, self.team_id, self.slot)
 
     def sign(self):
@@ -98,4 +106,15 @@ class JoinCodeModel(pydantic.BaseModel):
 def make_join_url(game_id: UUID, team_id: UUID, slot: int) -> str:
     """A signed ``{WEBSITE_URL}?j=<b64>`` join URL, ready for a QR code."""
     code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=slot).sign()
+    return add_params_to_url(os.environ["WEBSITE_URL"], {"j": code.to_base64()})
+
+
+def make_team_join_url(game_id: UUID, team_id: UUID) -> str:
+    """A signed team join URL: scanning it lets the player pick their own
+    outfit rather than claiming a fixed slot. Same ``?j=`` query param as
+    :func:`make_join_url` deliberately - there is one QR-scanning story, and
+    the signed payload (a ``None`` slot), not the URL shape, decides which
+    flow applies.
+    """
+    code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=None).sign()
     return add_params_to_url(os.environ["WEBSITE_URL"], {"j": code.to_base64()})

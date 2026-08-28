@@ -1,0 +1,296 @@
+/* Dark, mobile-first, matching OnboardingView.module.css's black-background
+   look. --swatch-border / --swatch-fg are the shared Swatch component's
+   theming hooks (see Swatch.module.css) - set here so swatches read on
+   black instead of the light-background defaults. */
+
+.outerContainer {
+  background-color: black;
+  color: white;
+  min-height: 100vh;
+  min-height: 100dvh;
+  --swatch-border: rgba(255, 255, 255, 0.6);
+  --swatch-fg: rgba(255, 255, 255, 0.85);
+}
+
+.innerContainer {
+  max-width: 150mm;
+  margin: 0 auto;
+  padding: 6mm 5mm 12mm;
+  box-sizing: border-box;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 6mm;
+}
+
+.header h1 {
+  margin: 0 0 3mm;
+}
+
+.header p {
+  margin-top: 3mm;
+  opacity: 0.85;
+}
+
+.nameEntry {
+  margin-bottom: 6mm;
+}
+
+.wardrobeIntro {
+  opacity: 0.85;
+  margin-bottom: 3mm;
+}
+
+.wardrobeChannel {
+  border: 1mm solid rgba(255, 255, 255, 0.3);
+  border-radius: 3mm;
+  padding: 3mm;
+  margin: 0 0 4mm;
+}
+
+.wardrobeChannel legend {
+  padding: 0 2mm;
+  text-transform: capitalize;
+}
+
+.swatchGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2mm;
+}
+
+.swatchButton {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1mm;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 2mm;
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 2mm;
+  color: white;
+  cursor: pointer;
+}
+
+.swatchSelected {
+  border-color: white;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.swatchLabel {
+  font-size: smaller;
+  text-transform: capitalize;
+}
+
+.swatchNote {
+  font-size: x-small;
+  opacity: 0.7;
+  max-width: 20mm;
+  text-align: center;
+}
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin: 4mm 0;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 3mm;
+  font-size: larger;
+  border-radius: 3mm;
+  border: none;
+  background: white;
+  color: black;
+  cursor: pointer;
+}
+
+.submitButton:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.linkButton {
+  display: block;
+  width: 100%;
+  margin-top: 3mm;
+  padding: 2mm;
+  background: none;
+  border: none;
+  color: white;
+  text-decoration: underline;
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.linkButton:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.wardrobeSummary {
+  margin-bottom: 4mm;
+  padding: 3mm;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3mm;
+}
+
+.wardrobeSummary p {
+  margin: 0;
+  opacity: 0.85;
+  text-transform: capitalize;
+}
+
+.wardrobeSummary .linkButton {
+  margin-top: 2mm;
+  text-align: left;
+  padding: 0;
+}
+
+.confirmScreen {
+  text-align: center;
+}
+
+.confirmScreen .optionGarments {
+  justify-content: center;
+  margin: 4mm 0;
+}
+
+.confirmScreen .confirmRow {
+  justify-content: center;
+}
+
+.nameRequired {
+  margin-bottom: 3mm;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.errorText {
+  color: #ff8080;
+}
+
+.emptyState {
+  margin: 4mm 0;
+  padding: 3mm;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 3mm;
+  text-align: center;
+}
+
+.exhaustedNote {
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.optionsList {
+  margin-top: 4mm;
+}
+
+.groupHeading {
+  margin: 4mm 0 2mm;
+  opacity: 0.8;
+  font-size: smaller;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.optionRow {
+  position: relative;
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 3mm;
+  padding: 3mm;
+  margin-bottom: 3mm;
+  color: white;
+  cursor: pointer;
+}
+
+.optionRow:hover,
+.optionRow:focus-visible {
+  border-color: white;
+}
+
+.recommendedBadge,
+.notIdealBadge {
+  position: absolute;
+  top: -2mm;
+  right: 3mm;
+  color: black;
+  font-size: x-small;
+  font-weight: bold;
+  text-transform: uppercase;
+  padding: 0.5mm 2mm;
+  border-radius: 2mm;
+}
+
+.recommendedBadge {
+  background: #00a651;
+}
+
+.notIdealBadge {
+  background: #e8850c;
+}
+
+.optionGarments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3mm;
+}
+
+.garment {
+  display: flex;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.garmentLabel {
+  font-size: smaller;
+  text-transform: capitalize;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2mm;
+  margin-top: 3mm;
+}
+
+.resultScreen {
+  text-align: center;
+}
+
+.resultGarments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 5mm;
+  margin: 6mm 0;
+}
+
+.resultGarment {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.resultChannelName {
+  text-transform: capitalize;
+  opacity: 0.7;
+  font-size: smaller;
+}
+
+.finalNote {
+  font-size: larger;
+  font-weight: bold;
+}

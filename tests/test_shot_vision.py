@@ -1,15 +1,19 @@
 """Tests for the vision adapter: the prompt contract, parsing, and the
-hit/bystander rule.
+hit/miss rule.
 
 No network and no database: every test either builds a reply by hand or feeds
 one through :class:`FakeVisionClient`.
 """
 
+import json
+import re
+
 import pytest
 
 from backend import shot_vision as sv
-from backend.identity.config import TROUSERS_PALETTE
+from backend.identity.config import buckets_for_channel
 from backend.identity.config import default_scheme
+from backend.identity.config import palette_for_channel
 from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 from backend.vision_client import parse_json_reply
@@ -74,21 +78,54 @@ def test_prompt_asks_about_visibility_before_colour():
 
 
 def test_prompt_offers_each_channel_only_its_own_colours():
+    """The options offered for a channel are exactly that channel's palette.
+    Trousers have an alphabet of their own, and it must not leak the main
+    palette's colours into the model's answer space: a reading naming one is
+    an outfit nobody can be wearing.
+    """
     prompt = sv.build_prompt()
 
-    trousers_options = prompt.split("trousers (")[1].split("hat (")[0]
-    for colour in TROUSERS_PALETTE:
-        assert f'"{colour}"' in trousers_options
-    # Nobody owns yellow trousers, so the model must never be able to say so
-    for absent in ("yellow", "orange", "purple"):
-        assert f'"{absent}"' not in trousers_options
+    for name in CHANNELS:
+        section = prompt.split(f"{name} (")[1].split("If it is none of these")[0]
+        offered = set(re.findall(r'"([a-z-]+)"', section)) - {"unknown"}
+        assert offered == set(palette_for_channel(name))
+
+    trousers = prompt.split("trousers (")[1].split("If it is none of these")[0]
+    for absent in ("purple", "green", "yellow", "orange", "white"):
+        assert f'"{absent}"' not in trousers
 
 
-def test_schema_restricts_the_trousers_enum():
+def test_each_channel_carries_its_own_colour_definitions():
+    """The buckets go inside each channel's question, not once for the prompt,
+    because the channels disagree about what a word means: charcoal is "black"
+    on the legs (grey is two stops away at L* 54) and explicitly not "black" on
+    a top (there is no grey to catch it). One shared list would have to state
+    both. The players read the same definitions, from the same
+    ``COLOUR_BUCKETS`` entries -- the scoring downstream assumes a player and
+    the model mean the same thing by a colour name.
+    """
+    prompt = sv.build_prompt()
+    sections = {
+        name: prompt.split(f"{name} (")[1].split("If it is none of these")[0]
+        for name in CHANNELS
+    }
+
+    for name, section in sections.items():
+        for colour, note in buckets_for_channel(name).items():
+            assert f"{colour}: {note}" in section
+
+    assert "black: black, not charcoal" in sections["tshirt"]
+    assert "black: black or charcoal" in sections["trousers"]
+
+
+def test_schema_restricts_each_channel_to_its_own_enum():
     schema = sv.build_schema()
-    trousers = schema["properties"]["channels"]["properties"]["trousers"]
 
-    assert trousers["properties"]["colour"]["enum"] == TROUSERS_PALETTE + ["unknown"]
+    for name in CHANNELS:
+        channel = schema["properties"]["channels"]["properties"][name]
+        assert channel["properties"]["colour"]["enum"] == palette_for_channel(name) + [
+            "unknown"
+        ]
 
 
 def test_prompt_names_the_wide_colour_buckets():
@@ -119,6 +156,8 @@ def test_unknown_becomes_an_erasure():
 
 def test_a_colour_outside_the_channel_palette_is_rejected():
     raw = reply_for(appearance_of(7))
+    # Trousers have no yellow -- pale legs are "white" (§9.1) -- so a model
+    # that answers "yellow" here must never be taken at its word.
     raw["channels"]["trousers"]["colour"] = "yellow"
 
     with pytest.raises(sv.ShotVisionError) as excinfo:
@@ -252,7 +291,7 @@ def test_a_low_confidence_channel_becomes_an_erasure():
     assert symbols[CHANNELS.index("armbands")] is None
 
 
-def test_low_confidence_armbands_fall_back_to_the_code_check():
+def test_low_confidence_armbands_are_reported_as_hidden():
     # A shaky armband read behaves exactly like a hidden one: the other three
     # channels still reconstruct the outfit.
     raw = reply_for(appearance_of(7))
@@ -262,20 +301,22 @@ def test_low_confidence_armbands_fall_back_to_the_code_check():
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.outcome_reason == (
-        "armbands hidden, but the other colours are a valid code"
+        "read 3 of 4 garments confidently (armbands hidden)"
     )
     assert result.slot == 7
 
 
-def test_two_low_confidence_channels_make_a_bystander():
+def test_two_low_confidence_channels_still_count_as_a_hit():
     raw = reply_for(appearance_of(7))
     raw["channels"]["armbands"]["confidence"] = 0.5
     raw["channels"]["hat"]["confidence"] = 0.55
 
     result = outcome_of(raw)
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert "too few other garments" in result.outcome_reason
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 2 of 4 garments confidently (hat, armbands hidden)"
+    )
 
 
 # -- rebuilding candidates from a stored review -----------------------------
@@ -337,7 +378,11 @@ def test_slot_candidates_of_a_garbled_payload_are_empty():
     )
 
 
-# -- the hit / bystander rule -----------------------------------------------
+# -- the hit / miss rule ----------------------------------------------------
+#
+# Roadmap #11 retired the bystander mapping: a shot that landed on somebody is
+# a hit on a player whatever was legible, and how little was legible is the
+# escalation ladder's business (backend/shot_auto_actions.py), not classify's.
 
 
 def test_no_person_at_the_aim_point_is_a_miss():
@@ -352,31 +397,34 @@ def test_visible_armbands_are_a_hit():
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.is_hit
+    assert result.outcome_reason == "read 4 of 4 garments confidently"
     assert result.slot == 7
 
 
 def test_visible_armbands_are_a_hit_even_with_everything_else_hidden():
-    # Armbands are the player marker; the rest is identification, not eligibility.
     result = outcome_of(
         reply_for(appearance_of(7), hidden=("tshirt", "trousers", "hat"))
     )
 
     assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 1 of 4 garments confidently (tshirt, trousers, hat hidden)"
+    )
 
 
-def test_hidden_armbands_still_count_when_the_code_checks_out():
-    # The point of the erasure tolerance: three good garments reconstruct the
-    # fourth, so a real player is not written off as a passer-by.
+def test_hidden_armbands_still_count_as_a_hit():
+    # The failure this retirement fixes: every one of roadmap #4's residual
+    # false misses was a genuine hit whose armbands were out of view.
     result = outcome_of(reply_for(appearance_of(7), hidden=("armbands",)))
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.outcome_reason == (
-        "armbands hidden, but the other colours are a valid code"
+        "read 3 of 4 garments confidently (armbands hidden)"
     )
     assert result.slot == 7
 
 
-def test_hidden_armbands_and_an_invalid_code_is_a_bystander():
+def test_hidden_armbands_and_an_invalid_code_is_still_a_hit():
     raw = reply_for(appearance_of(7), hidden=("armbands",))
     # Break the code: change the hat to a colour no codeword pairs with these
     appearance = appearance_of(7)
@@ -385,25 +433,30 @@ def test_hidden_armbands_and_an_invalid_code_is_a_bystander():
 
     result = outcome_of(raw)
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert not result.is_hit
+    # Not a codeword, so nobody is annotated -- but the shot still hit a person,
+    # and who that person is is for the ranking (and the ladder) to say.
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.is_hit
+    assert result.slot is None
 
 
-def test_hidden_armbands_and_a_second_erasure_is_a_bystander():
-    # Only two readable channels always complete to *some* codeword (k = 2), so
-    # the check would vouch for nothing. It must not be treated as evidence.
+def test_hidden_armbands_and_a_second_erasure_is_still_a_hit():
     result = outcome_of(reply_for(appearance_of(7), hidden=("armbands", "hat")))
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert "too few other garments" in result.outcome_reason
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 2 of 4 garments confidently (hat, armbands hidden)"
+    )
 
 
-def test_the_all_black_outfit_is_a_bystander():
-    # Slot 0 is deliberately never assigned: it is the most likely outfit for a
-    # passer-by to be wearing by accident, and where "black" misreads pile up.
+def test_the_all_black_outfit_is_still_a_hit():
+    # Slot 0 is deliberately never assigned, so nothing is annotated -- but a
+    # passer-by and a player in borrowed black look the same from here, and
+    # guessing which is what the escalation is for.
     result = outcome_of(reply_for(appearance_of(0), hidden=("armbands",)))
 
-    assert result.outcome == sv.HIT_BYSTANDER
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot is None
 
 
 def test_every_usable_slot_survives_hidden_armbands():
@@ -411,6 +464,33 @@ def test_every_usable_slot_survives_hidden_armbands():
         result = outcome_of(reply_for(appearance_of(slot), hidden=("armbands",)))
         assert result.outcome == sv.HIT_PLAYER, slot
         assert result.slot == slot
+
+
+# -- what a stored review was able to read ----------------------------------
+
+
+def test_armbands_confident_reads_the_stored_channel():
+    assert sv.armbands_confident(stored_review(reply_for(appearance_of(7))), SCHEME)
+
+
+def test_armbands_confident_is_false_when_they_are_hidden():
+    body = stored_review(reply_for(appearance_of(7), hidden=("armbands",)))
+
+    assert not sv.armbands_confident(body, SCHEME)
+    # The other three were still read: this is the rung that gets escalated.
+    assert sv.confident_channel_count(body, SCHEME) == 3
+
+
+def test_armbands_confident_is_false_for_a_shaky_read():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["armbands"]["confidence"] = sv.CONFIDENT_THRESHOLD - 0.01
+
+    assert not sv.armbands_confident(stored_review(raw), SCHEME)
+
+
+def test_armbands_confident_is_false_for_a_garbled_payload():
+    assert not sv.armbands_confident({"outcome": "hit_player"}, SCHEME)
+    assert not sv.armbands_confident({"channels": {"armbands": "green"}}, SCHEME)
 
 
 # -- handing the reading to the decoder -------------------------------------
@@ -439,9 +519,10 @@ def test_result_serialises_with_colour_swatches():
     assert body["outcome"] == sv.HIT_PLAYER
     assert body["is_hit"] is True
     assert body["channels"]["tshirt"]["hex"] == "#1A1A1A"
-    # The same colour name has a different hex in the trousers palette
-    assert body["channels"]["trousers"]["colour"] == "blue"
-    assert body["channels"]["trousers"]["hex"] == "#0072CE"
+    # The trousers channel has its own shades, so the same slot's hexes are
+    # resolved per channel, not from one global colour table.
+    assert body["channels"]["trousers"]["colour"] == "grey"
+    assert body["channels"]["trousers"]["hex"] == "#808080"
 
 
 def test_serialised_erasure_has_no_swatch():
@@ -456,25 +537,26 @@ def test_serialised_erasure_has_no_swatch():
 
 @pytest.mark.asyncio
 async def test_review_image_runs_the_whole_pipeline():
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
 
     result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
     # The image and the real prompt reached the client
-    assert client.images_sent == ["data:image/jpeg;base64,AAAA"]
+    assert client.images_sent == ["data:image/jpeg;base64,AAAA"] * 2
     assert "unknown" in client.calls[0]["turns"][0]["text"]
 
 
-# -- the one zoom the model may ask for --------------------------------------
+# -- the screening question, and the zoom it spends ---------------------------
 
-ZOOM_REQUEST = {"request_zoom": True}
+SMALL_PERSON = {sv.SCREENING_FIELD: True}
+BIG_PERSON = {sv.SCREENING_FIELD: False}
 
 
 @pytest.mark.asyncio
-async def test_a_zoom_request_gets_exactly_one_more_turn():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
+async def test_a_small_person_gets_the_zoom_on_the_second_turn():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
 
     result = await sv.review_image(
         client,
@@ -491,104 +573,425 @@ async def test_a_zoom_request_gets_exactly_one_more_turn():
     ]
     assert result.outcome == sv.HIT_PLAYER
     assert result.slot == 8
-
-
-@pytest.mark.asyncio
-async def test_zoom_used_is_recorded_on_the_result():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
-
-    result = await sv.review_image(
-        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
-    )
-
     assert result.zoom_used is True
+    assert result.zoom_count == 1
     assert result.to_dict()["zoom_used"] is True
+    assert result.to_dict()["zoom_count"] == 1
 
 
 @pytest.mark.asyncio
-async def test_zoom_used_is_false_when_no_zoom_was_requested():
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
-
-    result = await sv.review_image(client, "data:image/jpeg;base64,AAAA", SCHEME)
-
-    assert result.zoom_used is False
-    assert result.to_dict()["zoom_used"] is False
-
-
-@pytest.mark.asyncio
-async def test_the_second_turn_carries_the_first_exchange():
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, reply_for(appearance_of(8))])
-
-    await sv.review_image(client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom")
-
-    roles = [turn["role"] for turn in client.calls[1]["turns"]]
-    assert roles == ["user", "assistant", "user"]
-    assert "one zoom" in client.calls[1]["turns"][-1]["text"]
-
-
-@pytest.mark.asyncio
-async def test_the_zoom_is_not_produced_unless_it_is_asked_for():
-    calls = []
-
-    def zoom_provider():
-        calls.append(1)
-        return "data:zoom"
-
-    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
-
-    await sv.review_image(client, "data:...", SCHEME, zoom_provider=zoom_provider)
-
-    assert calls == []
-
-
-@pytest.mark.asyncio
-async def test_only_one_zoom_is_ever_granted():
-    # A model that keeps asking gets its second reply used as the answer.
-    second = reply_for(appearance_of(8))
-    second["request_zoom"] = True
-    client = FakeVisionClient(reply=[ZOOM_REQUEST, second])
+async def test_a_screening_reply_is_never_parsed_as_a_reading():
+    # Even if the model over-answers the first turn, a small target means the
+    # reply is discarded and replaced by the zoom.
+    eager = dict(reply_for(appearance_of(1)), **SMALL_PERSON)
+    client = FakeVisionClient(reply=[eager, reply_for(appearance_of(8))])
 
     result = await sv.review_image(
         client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
     )
 
     assert len(client.calls) == 2
-    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
 
 
 @pytest.mark.asyncio
-async def test_a_zoom_request_with_no_zoom_available_is_an_error_not_a_hang():
-    client = FakeVisionClient(reply=ZOOM_REQUEST)
+async def test_a_person_filling_the_screen_gets_no_zoom():
+    produced = []
 
-    with pytest.raises(sv.ShotVisionError):
-        await sv.review_image(client, "data:...", SCHEME)
+    def zoom_provider():
+        produced.append(1)
+        return "data:zoom"
+
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert produced == []
+    assert len(client.calls) == 2
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
+    assert result.zoom_count == 0
+    assert result.to_dict()["zoom_used"] is False
+    assert result.to_dict()["zoom_count"] == 0
+    # The second turn asks for the reading instead of offering another image
+    last_turn = client.calls[1]["turns"][-1]
+    assert last_turn.get("image_data_url") is None
+    assert "answer in full" in last_turn["text"]
+
+
+@pytest.mark.asyncio
+async def test_the_second_turn_carries_the_first_exchange():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
+
+    await sv.review_image(client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom")
+
+    roles = [turn["role"] for turn in client.calls[1]["turns"]]
+    assert roles == ["user", "assistant", "user"]
+    assert "Here is another image" in client.calls[1]["turns"][-1]["text"]
+
+
+@pytest.mark.asyncio
+async def test_a_full_reply_on_the_first_turn_is_accepted_as_is():
+    # A model that ignores the screening and answers in full is not forced
+    # through a second call.
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda: "data:zoom"
+    )
 
     assert len(client.calls) == 1
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
 
 
-def test_wants_zoom_only_fires_on_an_explicit_true():
-    assert sv.wants_zoom({"request_zoom": True})
-    assert not sv.wants_zoom({"request_zoom": False})
-    assert not sv.wants_zoom({})
-    assert not sv.wants_zoom("nope")
+@pytest.mark.asyncio
+async def test_a_small_person_with_no_zoom_available_still_gets_a_reading():
+    client = FakeVisionClient(reply=[SMALL_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(client, "data:...", SCHEME)
+
+    assert len(client.calls) == 2
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.zoom_used is False
 
 
-def test_the_schema_lets_the_model_ask():
-    assert sv.build_schema()["properties"]["request_zoom"] == {"type": "boolean"}
+@pytest.mark.asyncio
+async def test_a_still_small_person_gets_a_second_zoom():
+    levels = []
+
+    def zoom_provider(level):
+        levels.append(level)
+        return f"data:zoom{level}"
+
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert levels == [1, 2]
+    assert len(client.calls) == 3
+    # First zoom follow-up repeats the screening question
+    assert "same question again" in client.calls[1]["turns"][-1]["text"]
+    # Final follow-up asks for the full reading
+    assert "no more zooms" in client.calls[2]["turns"][-1]["text"].lower()
+    assert result.zoom_used is True
+    assert result.zoom_count == 2
+    assert result.slot == 8
 
 
-def test_the_prompt_explains_the_zoom_and_the_hit_rule():
+@pytest.mark.asyncio
+async def test_max_two_zooms_is_enforced():
+    levels = []
+
+    def zoom_provider(level):
+        levels.append(level)
+        return f"data:zoom{level}"
+
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=zoom_provider
+    )
+
+    assert levels == [1, 2]
+    assert len(client.calls) == 3
+    assert result.zoom_used is True
+    assert result.zoom_count == 2
+
+
+@pytest.mark.asyncio
+async def test_the_transcript_is_a_flat_append_only_conversation():
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))]
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    # One entry per turn actually exchanged -- nothing sent earlier is
+    # repeated when a later turn is added, unlike the cumulative turns list
+    # each API call is made with.
+    roles = [entry["role"] for entry in result.transcript]
+    assert roles == ["user", "assistant", "user", "assistant", "user", "assistant"]
+    assert result.transcript[0]["has_image"] is True
+    assert result.transcript[1]["reply"] == SMALL_PERSON
+    assert result.transcript[3]["reply"] == SMALL_PERSON
+    assert result.transcript[5]["reply"] == reply_for(appearance_of(8))
+    assert result.transcript[2]["has_image"] is True
+    assert result.transcript[4]["has_image"] is True
+    # No raw base64 image data leaks into the transcript
+    assert "data:zoom" not in json.dumps(result.transcript)
+
+
+@pytest.mark.asyncio
+async def test_the_transcript_carries_the_models_reasoning_trace_per_turn():
+    # A "thinking" model's extended reasoning (OpenRouter's unified reasoning
+    # tokens), distinct from the short "reasoning" field inside each JSON
+    # reply -- present on some turns and not others, exactly as a real model
+    # might answer the screening turn tersely and think out loud on the rest.
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, reply_for(appearance_of(8))],
+        reasoning=[None, "Weighing up what's visible before answering."],
+    )
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert result.transcript[1]["reasoning"] is None
+    assert (
+        result.transcript[3]["reasoning"]
+        == "Weighing up what's visible before answering."
+    )
+
+
+@pytest.mark.asyncio
+async def test_reasoning_details_are_fed_back_into_the_next_call_verbatim():
+    # OpenRouter's provider-independent form of a "thinking" model's
+    # reasoning: dropping it between turns makes the model re-reason from
+    # nothing but the bare JSON answer, so it must ride on the assistant
+    # turn of the *next* call unmodified -- not the display-only "reasoning"
+    # string, and not the turn where it was produced.
+    screening_details = [{"type": "reasoning.text", "text": "Is this a hit?"}]
+    zoomed_details = [{"type": "reasoning.encrypted", "data": "opaque-blob"}]
+    client = FakeVisionClient(
+        reply=[SMALL_PERSON, SMALL_PERSON, reply_for(appearance_of(8))],
+        reasoning_details=[screening_details, zoomed_details, None],
+    )
+
+    await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: f"data:zoom{level}"
+    )
+
+    assert len(client.calls) == 3
+    # Call 1 (screening) sent no prior assistant turn to carry reasoning on.
+    assert all("reasoning_details" not in turn for turn in client.calls[0]["turns"])
+    # Call 2's assistant turn carries call 1's reasoning_details...
+    call_2_assistant = client.calls[1]["turns"][-2]
+    assert call_2_assistant["role"] == "assistant"
+    assert call_2_assistant["reasoning_details"] == screening_details
+    # ...and call 3's carries call 2's, not call 1's stale one.
+    call_3_assistant = client.calls[2]["turns"][-2]
+    assert call_3_assistant["role"] == "assistant"
+    assert call_3_assistant["reasoning_details"] == zoomed_details
+    # Call 3's own reply had no reasoning_details, but nothing downstream of
+    # it needs to carry one -- it is the final answer.
+
+
+@pytest.mark.asyncio
+async def test_transcript_is_omitted_from_to_dict_by_default_but_available_on_request():
+    client = FakeVisionClient(reply=[BIG_PERSON, reply_for(appearance_of(8))])
+
+    result = await sv.review_image(
+        client, "data:...", SCHEME, zoom_provider=lambda level: "data:zoom"
+    )
+
+    assert "transcript" not in result.to_dict()
+    assert result.to_dict(include_transcript=True)["transcript"] == result.transcript
+
+
+def test_screening_requests_zoom_only_on_an_explicit_true():
+    assert sv.screening_requests_zoom({sv.SCREENING_FIELD: True})
+    assert not sv.screening_requests_zoom({sv.SCREENING_FIELD: False})
+    assert not sv.screening_requests_zoom({})
+    assert not sv.screening_requests_zoom("nope")
+
+
+def test_the_screening_schema_asks_the_one_question():
+    schema = sv.build_screening_schema()
+
+    assert schema["properties"] == {sv.SCREENING_FIELD: {"type": "boolean"}}
+    # ...and the full-reading schema does not: it is answered on a later turn
+    assert sv.SCREENING_FIELD not in sv.build_schema()["properties"]
+    assert "request_zoom" not in sv.build_schema()["properties"]
+
+
+def test_the_prompt_leads_with_the_screening_question():
     prompt = sv.build_prompt()
 
-    assert '{"request_zoom": true}' in prompt
-    assert "middle 25% of the image in higher resolution" in prompt
-    assert "You may do this once only" in prompt
+    assert "fill less than half of the screen" in prompt
+    assert prompt.index(sv.SCREENING_FIELD) < prompt.index("Reply with JSON only")
+    # The full-reading contract is still there for the second turn
+    assert "on their clothing, hands, or shoes" in prompt
+    assert "request_zoom" not in prompt
+
+
+def test_the_prompt_carries_the_wide_colour_buckets():
+    # One person's "burgundy" is another's "red", so the prompt has to define
+    # the buckets it is asking the model to sort into.
+    prompt = sv.build_prompt()
+
+    assert "olive and khaki" in prompt
+    assert "navy and denim" in prompt
+
+
+# -- the conversation shapes -------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_upfront_zoom_sends_both_views_in_one_call():
+    calls = []
+
+    def zoom_provider():
+        calls.append(1)
+        return "data:image/jpeg;base64,ZOOMED"
+
+    client = FakeVisionClient(reply=reply_for(appearance_of(8)))
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_provider=zoom_provider,
+        zoom_mode=sv.ZOOM_UPFRONT,
+    )
+
+    # The zoom is produced without being asked for, and costs one call, not two
+    assert calls == [1]
+    assert len(client.calls) == 1
+    assert client.images_sent == [
+        "data:image/jpeg;base64,WIDE",
+        "data:image/jpeg;base64,ZOOMED",
+    ]
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot == 8
+    assert result.zoom_used is True
+    assert result.zoom_count == 1
+    # Both turns, then the one reply -- there is no separate assistant echo
+    # in between, since they went in a single call
+    assert [entry["role"] for entry in result.transcript] == [
+        "user",
+        "user",
+        "assistant",
+    ]
+    assert result.transcript[0]["has_image"] is True
+    assert result.transcript[1]["has_image"] is True
+    assert result.transcript[2]["reply"] == reply_for(appearance_of(8))
+
+
+def test_the_upfront_zoom_prompt_skips_the_screening_question():
+    prompt = sv.build_prompt(zoom_mode=sv.ZOOM_UPFRONT)
+
+    # Both views are already in front of the model, so there is nothing to ask
+    assert sv.SCREENING_FIELD not in prompt
+    assert "request_zoom" not in prompt
+    # The hit rule itself is unchanged
+    assert "on their clothing, hands, or shoes" in prompt
     assert "You MUST ultimately make a decision" in prompt
-    assert "clothing or hands or shoes counts as a hit" in prompt
 
 
-def test_the_buckets_cover_chinos():
-    assert "beige" in sv.build_prompt()
+@pytest.mark.asyncio
+async def test_the_single_turn_shape_asks_only_what_the_prompt_asked():
+    # The workbench's point is trialling a prompt. A prompt asking for
+    # something other than the live contract was previously answered against
+    # the screening schema regardless -- the model could only reply with the
+    # screening boolean, whatever it had been asked.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+    schema = {
+        "type": "object",
+        "properties": {"aim_point": {"type": "string"}},
+        "required": ["aim_point"],
+    }
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_provider=lambda level: "data:image/jpeg;base64,ZOOMED",
+        prompt="Where are the garments? Answer in X-Y.",
+        zoom_mode=sv.ZOOM_SINGLE,
+        schema=schema,
+        tolerate_unparsed=True,
+    )
+
+    assert len(client.calls) == 1
+    assert (
+        client.calls[0]["turns"][0]["text"] == "Where are the garments? Answer in X-Y."
+    )
+    assert client.calls[0]["schema"] == schema
+    assert client.images_sent == ["data:image/jpeg;base64,WIDE"]
+    assert result.raw_reply == {"aim_point": "512x384"}
+    assert result.zoom_count == 0
+
+
+@pytest.mark.asyncio
+async def test_a_custom_schema_is_the_one_the_full_reading_is_asked_for():
+    # The screened shape still screens -- but the final turn must ask for the
+    # caller's schema, not the four-channel one baked into the pipeline.
+    schema = {
+        "type": "object",
+        "properties": {"aim_point": {"type": "string"}},
+        "required": ["aim_point"],
+    }
+    client = FakeVisionClient(
+        reply=[{sv.SCREENING_FIELD: False}, {"aim_point": "512x384"}]
+    )
+
+    await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        schema=schema,
+        tolerate_unparsed=True,
+    )
+
+    assert client.calls[0]["schema"] == sv.build_screening_schema()
+    assert client.calls[1]["schema"] == schema
+
+
+@pytest.mark.asyncio
+async def test_a_reply_in_another_shape_comes_back_raw_rather_than_raising():
+    # Not every prompt worth trialling produces a standard reading. The
+    # workbench must show what the model actually said instead of failing.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+
+    result = await sv.review_image(
+        client,
+        "data:image/jpeg;base64,WIDE",
+        SCHEME,
+        zoom_mode=sv.ZOOM_SINGLE,
+        tolerate_unparsed=True,
+    )
+
+    assert result.raw_reply == {"aim_point": "512x384"}
+    assert result.parse_error
+    assert result.to_dict()["parse_error"] == result.parse_error
+
+
+@pytest.mark.asyncio
+async def test_a_live_review_still_rejects_a_reply_in_another_shape():
+    # tolerate_unparsed is the workbench's alone: a live review storing a
+    # meaningless verdict would be far worse than one that errors.
+    client = FakeVisionClient(reply={"aim_point": "512x384"})
+
+    with pytest.raises(sv.ShotVisionError):
+        await sv.review_image(client, "data:image/jpeg;base64,WIDE", SCHEME)
+
+
+def test_a_parsed_reading_carries_no_raw_reply():
+    # The extra keys exist for the unparseable case only -- a stored live
+    # review's payload must not grow them.
+    result = outcome_of(reply_for(appearance_of(7)))
+
+    assert "parse_error" not in result.to_dict()
+    assert "raw_reply" not in result.to_dict()
+
+
+def test_the_single_turn_prompt_promises_neither_screening_nor_zoom():
+    prompt = sv.build_prompt(zoom_mode=sv.ZOOM_SINGLE)
+
+    assert sv.SCREENING_FIELD not in prompt
+    assert "zoomed" not in prompt.split("no zoomed view")[0]
+    # The hit rule itself is unchanged
+    assert "on their clothing, hands, or shoes" in prompt
 
 
 @pytest.mark.parametrize(

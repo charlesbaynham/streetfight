@@ -172,6 +172,8 @@ export function AdminNav() {
     <nav className={styles.nav}>
       <AdminNavLink to="/admin">Admin home</AdminNavLink>
       <ShotQueueLink />
+      <AdminNavLink to="/admin/replay">Shot replay</AdminNavLink>
+      <AdminNavLink to="/admin/reference">Reference photos</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">
         Identity overrides
