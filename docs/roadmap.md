@@ -2079,6 +2079,12 @@ entry's own "decide up front" list:
 - **`hit_user` now also fires the target's own `user` SSE event** — a real
   gap this entry surfaced rather than one it predicted: the victim's HUD
   never updated live before this.
+- **The popup says when it scrolls.** A phone-shaped shot photo pushes the
+  Appeal button just past the fold of the "My shots" detail view, and a dark,
+  bar-less scroll box gave no sign of it — the button read as absent. `Popup`
+  now floats a bobbing chevron at the bottom whenever there is content below,
+  which scrolls to the bottom when tapped; every popup gets it, not just this
+  one.
 - **Shipped before the 19th, off by default everywhere.** This entry's "not
   before the 19th" caution was about switching appeals on for a live game,
   not about having the mechanism built and ready to switch on later.
