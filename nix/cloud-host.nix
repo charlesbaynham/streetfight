@@ -33,6 +33,18 @@ in
     }
   ];
 
+  # The droplet's disk and NIC are virtio, and NixOS's default initrd module
+  # list carries no virtio drivers at all - without these, stage 1 never finds
+  # /dev/vda and the boot hangs before networking exists (the first two
+  # installs died exactly here, indistinguishable from a network failure
+  # from the outside).
+  boot.initrd.availableKernelModules = [
+    "virtio_pci"
+    "virtio_blk"
+    "virtio_scsi"
+    "virtio_net"
+  ];
+
   # GRUB for both firmware types; disko-cloud.nix carries the matching BIOS
   # boot partition and ESP, and disko points grub at the right device.
   boot.loader.grub = {
