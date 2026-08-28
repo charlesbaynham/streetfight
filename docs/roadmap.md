@@ -2056,7 +2056,9 @@ entry's own "decide up front" list:
   `get_unchecked_shots` and the drain untouched.
 - **Upheld is inferred at re-adjudication**, not a second verdict button: the
   ruling changed, or the hit moved to a different target, or the admin
-  refunded the shot outright (benefit of the doubt). Resolutions are
+  refunded the shot outright (benefit of the doubt). A miss and a bystander
+  call count as the *same* ruling here — both say the shot hit no player, so
+  re-ruling one as the other rejects the appeal. Resolutions are
   **terminal** — the admin's word ends the loop, which answers this entry's
   re-appeal question.
 - **HP is never auto-unwound** (open question 6, answered as this entry

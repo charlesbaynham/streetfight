@@ -317,7 +317,10 @@ Images are built from the Nix flake
   `target_appeal_reason`) — appealing marks the shot contested and re-opens it
   for the admin, but never re-enters the auto-action drain: contested shots
   have their own list (`admin_get_contested_shots_info`), ordered oldest
-  complaint first. A checked shot stays checked otherwise; resolutions are
+  complaint first. Upheld is *inferred* at re-adjudication rather than chosen
+  (`_settle_appeal`), and miss and bystander count as one ruling there: both
+  say the shot hit no player, so swapping one for the other rejects the appeal
+  rather than refunding it. A checked shot stays checked otherwise; resolutions are
   terminal.
 - The **replay workbench** (`/admin/replay`, `react-ui/src/ShotReplay.js` →
   `admin_replay_shot_review`) trials a vision contract against real shots
