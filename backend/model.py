@@ -62,6 +62,15 @@ class Game(Base):
     # they were produced.
     ai_auto_actions_enabled = Column(Boolean, nullable=False, default=False)
 
+    # When off, the ladder's escalate rungs go straight to the admin instead of
+    # to the stronger model (backend/shot_escalation.py) -- exactly what happens
+    # with no OPENROUTER_ESCALATION_MODEL configured. Defaults *on*, unlike the
+    # two above: those are the opt-in for the AI features, while escalation only
+    # ever runs when auto-actions are on and an escalation model is configured,
+    # so this is a kill switch inside a feature already opted into rather than a
+    # third opt-in.
+    ai_escalation_enabled = Column(Boolean, nullable=False, default=True)
+
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
@@ -152,6 +161,18 @@ class Shot(Base):
     # The ShotVisionResult as JSON text, or the error message when the state is
     # "error". Text JSON matches how location_context is already stored.
     ai_review = Column(String, nullable=True)
+
+    # The escalated second opinion (backend/shot_escalation.py): a stronger
+    # model, shown the candidate list and their reference photos, asked which
+    # player this is. Only reached when the cheap review above read too little
+    # of the outfit to act on; an escalation in flight blocks the queue behind
+    # it, exactly as an ambiguous head does.
+    # State is null (never escalated) / "pending" / "done" / "error".
+    ai_escalation_state = Column(String, nullable=True)
+    # The verdict, its candidate list and the transcript as JSON text, or the
+    # error message when the state is "error" -- same shape of storage as
+    # ai_review above.
+    ai_escalation = Column(String, nullable=True)
 
     # Free-text annotation from the admin explaining an adjudication. No game
     # logic reads this: it exists so the reasoning behind each verdict survives
@@ -388,6 +409,7 @@ class GameModel(pydantic.BaseModel):
     active: bool
     ai_shot_review_enabled: bool = False
     ai_auto_actions_enabled: bool = False
+    ai_escalation_enabled: bool = True
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None
@@ -467,6 +489,9 @@ class ShotModel(pydantic.BaseModel):
 
     ai_review_state: Optional[str] = None
     ai_review: Optional[str] = None
+
+    ai_escalation_state: Optional[str] = None
+    ai_escalation: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

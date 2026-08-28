@@ -186,6 +186,7 @@ describe("ShotQueuePanel", () => {
       admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
+      admin_escalate_shot: {},
       ...routeOverrides,
     });
     await actAndFlush(() =>
@@ -363,6 +364,20 @@ describe("ShotQueuePanel", () => {
     );
   });
 
+  test('"Run escalated review" posts admin_escalate_shot for the shown shot', async () => {
+    await renderQueue();
+
+    userEvent.click(
+      screen.getByRole("button", { name: "Run escalated review" }),
+    );
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_escalate_shot").query).toEqual({
+        shot_id: "shot-1",
+      }),
+    );
+  });
+
   test("the show-adjudicated toggle asks the backend for checked shots too, defaulting to off", async () => {
     await renderQueue();
 
@@ -457,6 +472,7 @@ describe("ShotAiTags", () => {
       admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
+      admin_escalate_shot: {},
     });
     await actAndFlush(() =>
       render(
@@ -630,6 +646,124 @@ describe("ShotAiTags", () => {
 
     await screen.findByText("Miss");
     expect(screen.queryByText("Zoomed in")).not.toBeInTheDocument();
+  });
+
+  test("shows the escalated-review message while the escalation is pending", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "too few readable channels",
+          reasoning: "",
+          channels: {},
+        },
+        escalation_state: "pending",
+        escalation: null,
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("Escalated to the stronger model - reviewing...");
+  });
+
+  test("shows the escalation failure reason", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "too few readable channels",
+          reasoning: "",
+          channels: {},
+        },
+        escalation_state: "error",
+        escalation: { error: "strong model timed out" },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("Escalation failed: strong model timed out");
+  });
+
+  test("an unsure escalation shows the punt, the reasoning, and the ranked candidates", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "too few readable channels",
+          reasoning: "",
+          channels: {},
+        },
+        escalation_state: "done",
+        escalation: {
+          verdict: "unsure",
+          candidate: null,
+          target_user_id: null,
+          target_name: null,
+          confidence: 0.4,
+          reasoning: "Two plausible players in near-identical outfits.",
+          candidates: [
+            {
+              number: 1,
+              user_id: "u-alice",
+              name: "Alice",
+              probability: 0.61,
+              reference_photo_shown: true,
+            },
+            {
+              number: 2,
+              user_id: "u-bob",
+              name: "Bob",
+              probability: 0.35,
+              reference_photo_shown: false,
+            },
+          ],
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("Needs your call");
+    expect(
+      screen.getByText("Two plausible players in near-identical outfits."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Alice - 61% (reference photo shown)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Bob - 35%")).toBeInTheDocument();
+  });
+
+  test("a player-verdict escalation shows the hit and who it names", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "too few readable channels",
+          reasoning: "",
+          channels: {},
+        },
+        escalation_state: "done",
+        escalation: {
+          verdict: "player",
+          candidate: 1,
+          target_user_id: "u-alice",
+          target_name: "Alice",
+          confidence: 0.82,
+          reasoning: "Reference photo confirms the hat and trousers.",
+          candidates: [],
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("HIT on Alice (82%)");
   });
 
   test('refetches when a "shots" SSE update arrives, even though the shot id has not changed', async () => {

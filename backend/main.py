@@ -91,6 +91,7 @@ from . import ai_shot_review
 from . import image_processing
 from . import reference_photos
 from . import shot_auto_actions
+from . import shot_escalation
 from . import shot_vision
 from . import sse_event_streams
 from .admin_auth import is_admin_authed
@@ -100,11 +101,13 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .asyncio_triggers import trigger_update_event
+from .model import AI_REVIEW_STATE_DONE
 from .model import GameModel
 from .model import ShotModel
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
+from .vision_client import get_escalation_client
 from .vision_client import get_vision_client
 
 app = FastAPI()
@@ -596,6 +599,22 @@ async def admin_set_ai_auto_actions(game_id: UUID, enabled: bool):
     return {"enabled": enabled}
 
 
+@admin_method(path="/admin_set_ai_escalation", method="POST")
+async def admin_set_ai_escalation(game_id: UUID, enabled: bool):
+    """Turn escalation of hard shots to the stronger model on or off for a game.
+
+    A kill switch inside auto-actions rather than a third opt-in: with it off,
+    a shot the ladder wants escalated waits for the admin instead, exactly as
+    it does with no escalation model configured. Switching it on also drains a
+    head that has been sitting on the escalate rung, so it gets its second
+    opinion now rather than whenever the queue next moves.
+    """
+    AdminInterface().set_ai_escalation_enabled(game_id, enabled)
+    if enabled:
+        shot_auto_actions.process_queue_head(game_id)
+    return {"enabled": enabled}
+
+
 @admin_method("/admin_get_shot_ai_review", method="GET")
 async def admin_get_shot_ai_review(shot_id: UUID):
     """The AI's reading of one shot.
@@ -614,6 +633,33 @@ async def admin_review_shot(shot_id: UUID):
     """
     if ai_shot_review.enqueue_review(shot_id) is None:
         raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    return {"queued": True}
+
+
+@admin_method(path="/admin_escalate_shot", method="POST")
+async def admin_escalate_shot(shot_id: UUID):
+    """Escalate one shot to the stronger model now, whatever the toggles say.
+
+    The admin asking for the second opinion by hand, so neither the
+    auto-actions toggle nor the escalation one gates it. Re-running over an
+    existing escalation is the point of the button as often as not: the old
+    verdict is replaced by a fresh one.
+    """
+    client = get_escalation_client()
+    if client is None:
+        raise HTTPException(
+            400, "No escalation model configured - set OPENROUTER_ESCALATION_MODEL"
+        )
+    review = AdminInterface().get_shot_ai_review(shot_id)
+    if review["state"] != AI_REVIEW_STATE_DONE or not review["review"]:
+        # The candidate ranking the stronger model is given is built from that
+        # reading, so there is nothing to escalate without one.
+        raise HTTPException(
+            400,
+            "This shot has no completed AI review to escalate from - run the AI "
+            "review first",
+        )
+    shot_escalation.enqueue_escalation(shot_id, client)
     return {"queued": True}
 
 

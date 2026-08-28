@@ -5,6 +5,7 @@ import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
+from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
 
 
@@ -123,6 +124,56 @@ def test_hit_does_not_tell_shooter_they_missed(
 
     messages = UserInterface(shooter).get_messages(10, private=True)
     assert not any("missed" in message.lower() for _, message in messages)
+
+
+# -- hitting somebody who is already knocked out -----------------------------
+
+
+def ticker_types(mocked):
+    return [call.args[0] for call in mocked.call_args_list]
+
+
+def test_the_death_blow_announces_the_knockout_once(
+    mocker, two_users_in_different_teams, test_image_string
+):
+    shooter, target = two_users_in_different_teams
+    shot_id = submit_a_shot(shooter, test_image_string)
+    mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
+
+    AdminInterface().hit_user(shot_id, target)
+
+    assert ticker_types(mocked) == [
+        TickerMessageType.HIT_AND_KNOCKOUT,
+        TickerMessageType.USER_GOT_KNOCKED_OUT,
+    ]
+
+
+def test_hitting_an_already_dead_player_is_a_plain_hit(
+    mocker, two_users_in_different_teams, test_image_string
+):
+    """A shot queued behind the one that killed its target did hit them; it
+    just changes nothing. Announcing a second knockout would credit the kill to
+    whoever happened to be next in the queue."""
+    shooter, target = two_users_in_different_teams
+    death_blow = submit_a_shot(shooter, test_image_string)
+    afterwards = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(death_blow, target)
+
+    mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
+    clearing = mocker.spy(UserInterface, "clear_unchecked_shots")
+
+    AdminInterface().hit_user(afterwards, target)
+
+    assert ticker_types(mocked) == [
+        TickerMessageType.HIT_AND_DAMAGE,
+        TickerMessageType.USER_GOT_HIT,
+    ]
+    clearing.assert_not_called()
+    assert UserInterface(target).get_user_model().hit_points == 0
+    results = {
+        shot["id"]: shot["result"] for shot in UserInterface(shooter).get_own_shots()
+    }
+    assert results[afterwards] == "hit"
 
 
 def test_adjudication_nudges_the_shooter(mocker, user_in_team, test_image_string):

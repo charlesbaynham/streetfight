@@ -382,3 +382,30 @@ def get_vision_client(reasoning_effort: Optional[str] = None) -> Optional[Vision
     if not api_key:
         return None
     return OpenRouterVisionClient(api_key=api_key, reasoning_effort=reasoning_effort)
+
+
+def get_escalation_client(
+    reasoning_effort: Optional[str] = None,
+) -> Optional[VisionClient]:
+    """The stronger model's client (roadmap #11), or None if it is not set up.
+
+    Two switches, both off by default: no ``OPENROUTER_API_KEY`` and there is
+    no vision at all; no ``OPENROUTER_ESCALATION_MODEL`` and escalation
+    specifically is off, which is the safety valve surviving intact -- with it
+    unset, a shot the ladder wants escalated simply waits for the admin, which
+    is where every shot went before any of this existed.
+
+    Nothing here is model-specific: it is the same OpenRouter client pointed at
+    a different model id, so trialling a new one is an environment change.
+    """
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    escalation_model = os.getenv("OPENROUTER_ESCALATION_MODEL")
+    if not api_key or not escalation_model:
+        return None
+    return OpenRouterVisionClient(
+        api_key=api_key,
+        model=escalation_model,
+        reasoning_effort=(
+            reasoning_effort or os.getenv("OPENROUTER_ESCALATION_REASONING_EFFORT")
+        ),
+    )

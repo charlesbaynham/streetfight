@@ -28,6 +28,9 @@ from .model import Team
 from .model import TeamModel
 from .model import User
 from .model import UserModel
+from .shot_escalation import VERDICT_BYSTANDER
+from .shot_escalation import VERDICT_MISS
+from .shot_escalation import VERDICT_PLAYER
 from .shot_vision import HIT_BYSTANDER
 from .ticker import Ticker
 
@@ -41,6 +44,47 @@ DEFAULT_SHOT_TIMEOUT = 6.0
 DEFAULT_SHOT_DAMAGE = 0
 
 make_user_lock = RLock()
+
+# The escalated verdicts that are a bottom line, in the shooter's vocabulary.
+# "unsure" is deliberately absent: it means an admin still has to look, so
+# there is nothing to tell the shooter that the weak review didn't already say.
+_ESCALATED_SUGGESTIONS = {
+    VERDICT_PLAYER: "hit",
+    VERDICT_MISS: "miss",
+    VERDICT_BYSTANDER: "bystander",
+}
+
+
+def _ai_suggestion(shot: Shot) -> Optional[str]:
+    """The AI's provisional verdict for the shooter's own shot history.
+
+    Only ever the bottom line -- the reasoning and the clothing readings stay
+    admin-only. A completed escalation wins over the cheap review, because the
+    whole reason the shot was escalated is that the cheap reading was not good
+    enough to act on; anything else falls back to it.
+    """
+    if shot.ai_escalation_state == "done" and shot.ai_escalation:
+        try:
+            escalation = json.loads(shot.ai_escalation)
+        except ValueError:
+            escalation = None
+        if isinstance(escalation, dict):
+            suggestion = _ESCALATED_SUGGESTIONS.get(escalation.get("verdict"))
+            if suggestion is not None:
+                return suggestion
+
+    if shot.ai_review_state != "done" or not shot.ai_review:
+        return None
+    try:
+        review = json.loads(shot.ai_review)
+    except ValueError:
+        return None
+    if review is None:
+        return None
+    if review.get("outcome") == HIT_BYSTANDER:
+        return "bystander"
+    # Reviews stored before outcomes existed only have is_hit
+    return "hit" if review.get("is_hit") else "miss"
 
 
 def touch_user(user_interface: "UserInterface"):
@@ -396,22 +440,6 @@ class UserInterface:
                 target = self._session.get(User, shot.target_user_id)
                 target_name = target.name if target else None
 
-            # Only the AI's bottom line is shared with the player - the full
-            # review (reasoning, clothing readings) stays admin-only
-            ai_suggestion = None
-            if shot.ai_review_state == "done" and shot.ai_review:
-                try:
-                    review = json.loads(shot.ai_review)
-                except ValueError:
-                    review = None
-                if review is not None:
-                    if review.get("outcome") == HIT_BYSTANDER:
-                        ai_suggestion = "bystander"
-                    else:
-                        # Reviews stored before outcomes existed only have
-                        # is_hit
-                        ai_suggestion = "hit" if review.get("is_hit") else "miss"
-
             out.append(
                 {
                     "id": shot.id,
@@ -420,7 +448,7 @@ class UserInterface:
                     "result": shot.result,
                     "target_name": target_name,
                     "ai_review_state": shot.ai_review_state,
-                    "ai_suggestion": ai_suggestion,
+                    "ai_suggestion": _ai_suggestion(shot),
                 }
             )
 
