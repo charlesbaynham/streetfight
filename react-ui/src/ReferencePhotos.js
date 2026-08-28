@@ -35,6 +35,11 @@ function formatProbability(probability) {
 // One roster row's verdict, as [text, className]: the states the admin acts on
 // at the door - nothing taken yet, still thinking, decoded to the right
 // person, decoded to somebody else, or nothing to decode against.
+//
+// Green and red are for answers. A photo nothing was readable in, and a
+// ranking the decoder itself would not call confident, are amber: both look
+// exactly like a result once a name and a probability are printed next to
+// them, and neither is one.
 function rosterStatus(row) {
   if (!row.has_photo) return ["No photo yet", styles.statusNone];
   if (row.review_state === "pending")
@@ -42,19 +47,23 @@ function rosterStatus(row) {
   if (row.review_state === "error") return ["Review failed", styles.statusBad];
   if (row.review_state !== "done")
     return ["Photo stored, not reviewed", styles.statusNone];
-  if (row.matches_expected === true)
+  if (row.readable_channels === 0)
+    return ["Nothing readable - retake", styles.statusWarn];
+  if (row.matches_expected === null || row.matches_expected === undefined)
+    return ["No outfit picked", styles.statusWarn];
+
+  const probability = formatProbability(row.top_probability);
+  if (row.confident !== true)
     return [
-      `✓ Recognised (p=${formatProbability(row.top_probability)})`,
-      styles.statusGood,
+      `? Unsure: ${row.top_name || "someone"} (p=${probability})`,
+      styles.statusWarn,
     ];
-  if (row.matches_expected === false)
-    return [
-      `✗ Reads as ${row.top_name || "someone else"} (p=${formatProbability(
-        row.top_probability,
-      )})`,
-      styles.statusBad,
-    ];
-  return ["No outfit picked", styles.statusWarn];
+  if (row.matches_expected)
+    return [`✓ Recognised (p=${probability})`, styles.statusGood];
+  return [
+    `✗ Reads as ${row.top_name || "someone else"} (p=${probability})`,
+    styles.statusBad,
+  ];
 }
 
 function Roster({ rows, onSelect }) {
@@ -88,6 +97,12 @@ function Roster({ rows, onSelect }) {
 
 // The answer the whole page exists for: did this outfit decode to this player?
 // Green go, red stop, amber "there is nothing to check against".
+//
+// Amber covers two ways of having no answer, and both used to print as green.
+// A photo with no readable garment carries no evidence at all, so the ranking
+// is the flat prior handed back - p=0.50 between two players, p=1.00 for a
+// lone one - and the backend now sends no ranking with it. A reading the
+// decoder would not call confident is a guess, and a guess is not a pass.
 function IdentificationVerdict({ identification, playerName }) {
   if (!identification)
     return (
@@ -99,22 +114,29 @@ function IdentificationVerdict({ identification, playerName }) {
 
   const ranked = identification.ranked || [];
   const top = ranked[0];
+  const topName = top ? top.name : playerName;
+  const probability = formatProbability(top && top.probability);
+  const confident = identification.confident !== false;
 
   let tone = styles.verdictWarn;
   let text = `${playerName} has not picked an outfit, so this photo cannot be checked against them.`;
 
-  if (identification.matches_expected === true) {
-    tone = styles.verdictGood;
-    text = `Recognised as ${top ? top.name : playerName} (p=${formatProbability(
-      top && top.probability,
-    )})`;
+  if (identification.readable_channels === 0) {
+    text = `No garment could be read in this photo, so it says nothing about who is in it. Retake it with ${playerName}'s outfit in frame.`;
+  } else if (identification.matches_expected === true) {
+    tone = confident ? styles.verdictGood : styles.verdictWarn;
+    text = confident
+      ? `Recognised as ${topName} (p=${probability})`
+      : `Probably ${topName} (p=${probability}), but not clearly enough to call it.`;
   } else if (identification.matches_expected === false) {
-    tone = styles.verdictBad;
-    text = top
-      ? `Reads as ${top.name} (p=${formatProbability(
-          top.probability,
-        )}), not ${playerName}`
-      : `Does not read as ${playerName}`;
+    tone = confident ? styles.verdictBad : styles.verdictWarn;
+    if (!top) {
+      text = `Does not read as ${playerName}`;
+    } else if (confident) {
+      text = `Reads as ${top.name} (p=${probability}), not ${playerName}`;
+    } else {
+      text = `Closest match is ${top.name} (p=${probability}), not ${playerName} - but not clearly enough to call it.`;
+    }
   }
 
   const flags = [];

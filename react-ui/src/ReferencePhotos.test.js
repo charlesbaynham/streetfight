@@ -48,6 +48,8 @@ function makeRow(overrides = {}) {
     matches_expected: null,
     top_name: null,
     top_probability: null,
+    confident: null,
+    readable_channels: null,
     ...overrides,
   };
 }
@@ -81,6 +83,7 @@ function makeReview(overrides = {}) {
       ],
       expected_user_id: "user-1",
       matches_expected: true,
+      readable_channels: 4,
       confident: true,
       ambiguous: false,
       inconsistent: false,
@@ -148,6 +151,8 @@ describe("the roster", () => {
           matches_expected: true,
           top_name: "Carol",
           top_probability: 0.93,
+          confident: true,
+          readable_channels: 4,
         }),
         makeRow({
           user_id: "user-4",
@@ -157,6 +162,8 @@ describe("the roster", () => {
           matches_expected: false,
           top_name: "Erin",
           top_probability: 0.71,
+          confident: true,
+          readable_channels: 4,
         }),
         makeRow({
           user_id: "user-5",
@@ -171,6 +178,28 @@ describe("the roster", () => {
           has_photo: true,
           review_state: "error",
         }),
+        // Nothing readable in the photo: the ranking is the prior handed back,
+        // so there is no verdict to show however tempting p=0.50 looks
+        makeRow({
+          user_id: "user-7",
+          name: "Gil",
+          has_photo: true,
+          review_state: "done",
+          matches_expected: null,
+          readable_channels: 0,
+        }),
+        // Read, but not clearly enough for the decoder to call it
+        makeRow({
+          user_id: "user-8",
+          name: "Hana",
+          has_photo: true,
+          review_state: "done",
+          matches_expected: true,
+          top_name: "Hana",
+          top_probability: 0.5,
+          confident: false,
+          readable_channels: 2,
+        }),
       ],
     });
 
@@ -182,6 +211,8 @@ describe("the roster", () => {
     expect(screen.getByText("✗ Reads as Erin (p=0.71)")).toBeInTheDocument();
     expect(screen.getByText("No outfit picked")).toBeInTheDocument();
     expect(screen.getByText("Review failed")).toBeInTheDocument();
+    expect(screen.getByText("Nothing readable - retake")).toBeInTheDocument();
+    expect(screen.getByText("? Unsure: Hana (p=0.50)")).toBeInTheDocument();
 
     expect(getLastAPICall("admin_get_reference_photo_status").query).toEqual({
       game_id: "game-1",
@@ -300,6 +331,7 @@ describe("the verdict", () => {
           ],
           expected_user_id: "user-1",
           matches_expected: false,
+          readable_channels: 4,
           confident: true,
           ambiguous: false,
           inconsistent: false,
@@ -324,6 +356,7 @@ describe("the verdict", () => {
           ranked: [{ user_id: "user-2", name: "Bob", probability: 0.6 }],
           expected_user_id: null,
           matches_expected: null,
+          readable_channels: 2,
           confident: false,
           ambiguous: false,
           inconsistent: false,
@@ -336,6 +369,65 @@ describe("the verdict", () => {
 
     expect(screen.getByText(/has not picked an outfit/)).toBeInTheDocument();
     expect(screen.getByText(/not a confident reading/)).toBeInTheDocument();
+  });
+
+  test("a photo with no readable garment is not a recognition", async () => {
+    // The bug this guards: a photograph of a bare leg came back "Recognised as
+    // Charles (p=0.50)". With nothing read, the ranking is only the prior.
+    installReferenceMock({
+      rows: [doneRow],
+      state: "done",
+      review: makeReview({
+        outcome: "hit_bystander",
+        outcome_reason: "armbands hidden and too few other garments readable",
+        channels: {},
+        identification: {
+          ranked: [],
+          readable_channels: 0,
+          expected_user_id: "user-1",
+          matches_expected: null,
+          confident: false,
+          ambiguous: false,
+          inconsistent: false,
+        },
+      }),
+    });
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    expect(screen.getByText(/No garment could be read/)).toBeInTheDocument();
+    expect(screen.queryByText(/Recognised as/)).not.toBeInTheDocument();
+  });
+
+  test("a match the decoder is not confident about is not a pass", async () => {
+    installReferenceMock({
+      rows: [doneRow],
+      state: "done",
+      review: makeReview({
+        identification: {
+          ranked: [
+            { user_id: "user-1", name: "Alice", probability: 0.5 },
+            { user_id: "user-2", name: "Bob", probability: 0.5 },
+          ],
+          readable_channels: 2,
+          expected_user_id: "user-1",
+          matches_expected: true,
+          confident: false,
+          ambiguous: true,
+          inconsistent: false,
+        },
+      }),
+    });
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    expect(screen.getByText(/Probably Alice \(p=0.50\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/Recognised as/)).not.toBeInTheDocument();
+    expect(
+      screen.getByText(/two candidates are too close/),
+    ).toBeInTheDocument();
   });
 
   test("a channel the model was only half sure of is flagged", async () => {

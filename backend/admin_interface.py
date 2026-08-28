@@ -60,8 +60,19 @@ def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
 
     Null throughout unless the review completed and carried an identification
     section: a pending, errored or pre-identification review has no verdict.
+
+    ``confident`` and ``readable_channels`` ride along with the name because a
+    roster row that says "recognised" without them says it just as loudly for a
+    coin toss between two players, or for a photograph nothing was readable in
+    (see :func:`backend.reference_photos._identification`).
     """
-    blank = {"matches_expected": None, "top_name": None, "top_probability": None}
+    blank = {
+        "matches_expected": None,
+        "top_name": None,
+        "top_probability": None,
+        "confident": None,
+        "readable_channels": None,
+    }
     if state != AI_REVIEW_STATE_DONE or not review:
         return blank
     try:
@@ -76,6 +87,8 @@ def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
         "matches_expected": identification.get("matches_expected"),
         "top_name": ranked[0].get("name"),
         "top_probability": ranked[0].get("probability"),
+        "confident": identification.get("confident"),
+        "readable_channels": identification.get("readable_channels"),
     }
 
 

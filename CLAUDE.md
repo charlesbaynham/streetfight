@@ -48,6 +48,26 @@ Keep the agent documentation up to date, such as this file and any other documen
 It's an unpolished personal project (see `README.md`), so favour pragmatic,
 minimal changes over large refactors.
 
+### The admin UI exemplar
+
+`react-ui/src/ReferencePhotos.js` and its `.module.css` are the house style for
+admin pages, and Charles has said so explicitly — match them rather than
+inventing a look. What makes it work:
+
+- **Functionality first.** No chrome, no decoration, no layout that exists to
+  look designed. Every element on the page is something the admin does or reads.
+- **Big, bulky, unmissable buttons.** `min-height: 3.5em` for the primary
+  action, `3em` in a button row, `3.2em` for a roster row — comfortably past the
+  44px touch minimum, because this is driven one-handed on a phone with a box of
+  armbands in the other hand.
+- **One column of large targets**, ordered as the job is done: pick a player,
+  act, read the verdict, go back.
+- **Status says the state in words**, in a pill with a shared colour tone
+  (`statusGood` / `statusWarn` / `statusBad`, matching
+  `AdminIdentity.module.css`), never a bare icon or colour alone.
+- **Colour means certainty**: green and red are for answers, amber for
+  everything the machine is not sure of. See `IdentificationVerdict`.
+
 ## Repository layout
 
 - `backend/` — FastAPI application.

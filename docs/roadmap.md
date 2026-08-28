@@ -1671,8 +1671,16 @@ with the vision client unconfigured — the photo stores and the review simply
 never runs, so the manual door check can never be blocked by the AI being
 off. The review payload carries an `identification` section recording the
 ranked candidates and whether the top match is the photographed player; a
-game reset deletes the photos, which must not outlive the game. The original
-brief follows.
+game reset deletes the photos, which must not outlive the game.
+
+Amended 2026-08-28 after the first live trial: the posterior is a product of
+the prior and the image evidence, so a photograph with every channel erased
+(the trial's was of a bare leg) returned the flat prior as a ranking, and the
+page printed it as "Recognised as … (p=0.50)" — p=1.00 had the photographed
+player been the only one placed. The section now carries
+`readable_channels`, and at zero there is no ranking and no
+`matches_expected` at all; the page reserves green for a match the decoder
+calls confident, and shows everything else amber. The original brief follows.
 
 **Why the admin takes it, not the player.** The reference photo's first job is
 not to feed #11 — it is a **manual gate**. Two of the four channels are

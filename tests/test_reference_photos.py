@@ -51,6 +51,20 @@ def outfit_reply(slot, confidence=0.9):
     }
 
 
+def unreadable_reply(person=True):
+    """The reply a model gives to a photograph with no garment in it: the
+    floor, a bare leg, the back of somebody's head."""
+    return {
+        "shot_hit_a_person": person,
+        "reasoning": "the crosshair lands on a bare leg; no clothing is visible",
+        "confidence": 0.9,
+        "channels": {
+            name: {"visible": False, "colour": "unknown", "confidence": 0.1}
+            for name in SCHEME.channels.names
+        },
+    }
+
+
 def set_slot(db_session, user_id, slot):
     db_session.query(User).filter_by(id=user_id).update({"identity_slot": slot})
     db_session.commit()
@@ -170,6 +184,7 @@ async def test_a_player_in_their_own_colours_is_recognised(
     assert identification["ranked"][0]["user_id"] == str(player)
     assert identification["ranked"][0]["name"] == name_of(player)
     assert identification["confident"] is True
+    assert identification["readable_channels"] == 4
     # Everyone with an outfit is ranked, the photographed player included
     assert len(identification["ranked"]) == 2
 
@@ -221,6 +236,66 @@ async def test_a_lone_player_with_no_outfits_in_the_game_has_no_identification(
     stored = AdminInterface().get_reference_review(user_in_team)
     assert stored["state"] == reference_photos.STATE_DONE
     assert stored["review"]["identification"] is None
+
+
+@pytest.mark.asyncio
+async def test_a_photo_with_no_readable_garment_identifies_nobody(
+    db_session, player, other_player
+):
+    """The bug this guards: a photograph of a bare leg came back "recognised".
+
+    With every channel erased the posterior is the flat prior handed straight
+    back - an even split here - so there is no ranking worth reporting and
+    certainly no match.
+    """
+    await reference_photos.review_reference_photo(
+        player, FakeVisionClient(reply=unreadable_reply())
+    )
+
+    identification = AdminInterface().get_reference_review(player)["review"][
+        "identification"
+    ]
+    assert identification["readable_channels"] == 0
+    assert identification["matches_expected"] is None
+    assert identification["confident"] is False
+    assert identification["ranked"] == []
+
+
+@pytest.mark.asyncio
+async def test_an_unreadable_photo_of_the_only_player_identifies_nobody(
+    db_session, player
+):
+    """The same, in its worst form: one candidate takes the whole prior, so an
+    unreadable photo used to come back at p=1.00."""
+    await reference_photos.review_reference_photo(
+        player, FakeVisionClient(reply=unreadable_reply())
+    )
+
+    identification = AdminInterface().get_reference_review(player)["review"][
+        "identification"
+    ]
+    assert identification["matches_expected"] is None
+    assert identification["ranked"] == []
+
+
+@pytest.mark.asyncio
+async def test_one_readable_garment_is_still_scored(db_session, player, other_player):
+    """The gate is "no evidence at all", not "less evidence than the code
+    needs": a single garment still moves the posterior and is still reported."""
+    reply = unreadable_reply()
+    reply["channels"]["tshirt"] = {
+        "visible": True,
+        "colour": SCHEME.appearance_of_slot(SLOT_A)["tshirt"],
+        "confidence": 0.9,
+    }
+
+    await reference_photos.review_reference_photo(player, FakeVisionClient(reply=reply))
+
+    identification = AdminInterface().get_reference_review(player)["review"][
+        "identification"
+    ]
+    assert identification["readable_channels"] == 1
+    assert identification["ranked"][0]["user_id"] == str(player)
 
 
 @pytest.mark.asyncio
@@ -385,6 +460,26 @@ async def test_the_roster_carries_the_verdict_of_a_completed_review(
     assert row["matches_expected"] is False
     assert row["top_name"] == name_of(other_player)
     assert row["top_probability"] > 0.5
+    assert row["confident"] is True
+    assert row["readable_channels"] == 4
+
+
+@pytest.mark.asyncio
+async def test_the_roster_names_nobody_for_an_unreadable_photo(
+    admin_api_client, player, other_player
+):
+    await reference_photos.review_reference_photo(
+        player, FakeVisionClient(reply=unreadable_reply())
+    )
+
+    rows = admin_api_client.get(
+        f"/api/admin_get_reference_photo_status?game_id={game_of(player)}"
+    ).json()
+    row = next(r for r in rows if r["user_id"] == str(player))
+
+    assert row["readable_channels"] == 0
+    assert row["matches_expected"] is None
+    assert row["top_name"] is None
 
 
 def test_the_roster_has_no_verdict_for_an_errored_review(admin_api_client, player):
