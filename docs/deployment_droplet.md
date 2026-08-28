@@ -21,6 +21,8 @@ replaces the home-lab LXC deployment (see the cutover section at the bottom).
 > container) in favour of a disk/firmware pre-check, which caught neither
 > hole - the vm-test *does* (it boots the installed disk), and it runs fine
 > under plain TCG emulation, just slowly. Don't skip it again.
+> Third install (virtio + static networking fixes) booted first time on
+> 28 Aug; the site is live.
 
 The droplet is a **NixOS host**: `nixosConfigurations.streetfight-cloud` in
 the flake, installed destructively onto the stock droplet with
