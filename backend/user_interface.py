@@ -20,6 +20,7 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
+from .model import APPEAL_REASONS
 from .model import Game
 from .model import GameModel
 from .model import Item
@@ -129,6 +130,59 @@ def _ai_target_name(shot: Shot, users: List[User], names: dict) -> Optional[str]
     if ranked.ambiguous or ranked.inconsistent:
         return None
     return names.get(ranked.best)
+
+
+# The two people who were actually there, and so the only two who may appeal a
+# shot: whoever fired it and whoever the verdict says it hit.
+APPEAL_PARTY_SHOOTER = "shooter"
+APPEAL_PARTY_TARGET = "target"
+
+# An appeal is live only while the state is "open". "upheld" and "rejected" are
+# terminal - the admin's word ends the loop.
+APPEAL_OPEN = "open"
+APPEAL_UPHELD = "upheld"
+APPEAL_REJECTED = "rejected"
+
+
+def appeal_party(shot: Shot, user_id: UUID) -> Optional[str]:
+    """Which side of a shot a user is on, or None if they were not there."""
+    if shot.user_id == user_id:
+        return APPEAL_PARTY_SHOOTER
+    if shot.target_user_id == user_id:
+        return APPEAL_PARTY_TARGET
+    return None
+
+
+def appeal_reason(shot: Shot, party: str) -> Optional[str]:
+    """The reason this party gave for appealing, or None if they haven't."""
+    if party == APPEAL_PARTY_SHOOTER:
+        return shot.shooter_appeal_reason
+    return shot.target_appeal_reason
+
+
+def appeal_refusal(shot: Shot, user: User, party: str) -> Optional[str]:
+    """Why ``party`` may not appeal this shot, in words, or None if they may.
+
+    The single source of truth for the whole feature: ``can_appeal`` in both
+    shot lists is this returning None, and :meth:`UserInterface.appeal_shot`
+    refuses with the very string it returns, so the button a player is shown
+    and the endpoint behind it can never disagree.
+    """
+    if not shot.checked:
+        return "This shot hasn't been adjudicated yet"
+    if shot.result is None or shot.result == "refunded":
+        return "There's no verdict on this shot to appeal"
+    if shot.appeal_state not in (None, APPEAL_OPEN):
+        return "The referee has already ruled on an appeal against this shot"
+    if appeal_reason(shot, party) is not None:
+        return "You've already appealed this shot"
+    if user.appeals_remaining <= 0:
+        return "You have no appeals left"
+    # A miss or a bystander call takes nothing off anybody, so only the shooter
+    # has a case to make about it.
+    if party == APPEAL_PARTY_TARGET and shot.result != "hit":
+        return "You can only appeal a shot that was ruled a hit on you"
+    return None
 
 
 def touch_user(user_interface: "UserInterface"):
@@ -256,6 +310,12 @@ class UserInterface:
     def award_ammo(self, num=1) -> User:
         "Give ammo to the user"
         self.get_user().num_bullets += num
+
+    @db_scoped
+    def award_appeals(self, num=1) -> User:
+        "Give appeals to the user, leaving them on at least zero"
+        u: User = self.get_user()
+        u.appeals_remaining = max(0, u.appeals_remaining + num)
 
     @db_scoped
     def get_user_model(self) -> UserModel:
@@ -483,6 +543,8 @@ class UserInterface:
         users: Optional[List[User]] = None
         names: dict = {}
 
+        me = self.get_user()
+
         out = []
         for shot in shots:
             target_name = None
@@ -508,10 +570,92 @@ class UserInterface:
                     "ai_review_state": shot.ai_review_state,
                     "ai_suggestion": suggestion,
                     "ai_target_name": ai_target_name,
+                    **self._appeal_fields(shot, me, APPEAL_PARTY_SHOOTER),
                 }
             )
 
         return out
+
+    @db_scoped
+    def get_shots_received(self) -> List[dict]:
+        """Every shot adjudicated as having hit this user, newest first.
+
+        The other half of the shot history (roadmap R8): before this, a player
+        who was hit got one private ticker line and nothing to appeal against.
+        No new exposure - it is a photograph of them, taken of them, and the
+        ticker has already named the shooter. Excludes the images for the same
+        reason :meth:`get_own_shots` does.
+        """
+        shots = (
+            self._session.query(Shot)
+            .filter_by(target_user_id=self.user_id)
+            .order_by(Shot.time_created.desc())
+            .all()
+        )
+
+        me = self.get_user()
+
+        return [
+            {
+                "id": shot.id,
+                "time_created": shot.time_created,
+                "result": shot.result,
+                "shooter_name": shot.user.name if shot.user else None,
+                **self._appeal_fields(shot, me, APPEAL_PARTY_TARGET),
+            }
+            for shot in shots
+        ]
+
+    def _appeal_fields(self, shot: Shot, user: User, party: str) -> dict:
+        """What one party needs to know about appealing one shot. Shared by
+        both shot lists so the two sides answer by the same rules."""
+        return {
+            "appeal_state": shot.appeal_state,
+            "my_appeal_reason": appeal_reason(shot, party),
+            "can_appeal": appeal_refusal(shot, user, party) is None,
+        }
+
+    @db_scoped
+    def appeal_shot(self, shot_id: UUID, reason: str) -> None:
+        """Contest the verdict on a shot this user was part of.
+
+        Marks the shot contested and puts it in front of the admin: it changes
+        no HP, no ammo and no ticker by itself, so an appeal can never corrupt
+        the game state (roadmap R8). 404s for anybody who was not there rather
+        than 403, the same posture :meth:`get_own_shot_image` takes - whether
+        the id exists at all is nobody else's business.
+        """
+        shot = self._session.get(Shot, shot_id)
+        party = appeal_party(shot, self.user_id) if shot else None
+        if party is None:
+            raise HTTPException(404, f"Shot {shot_id} not found")
+
+        if reason not in APPEAL_REASONS:
+            raise HTTPException(400, f"'{reason}' is not a reason to appeal")
+
+        user = self.get_user()
+        refusal = appeal_refusal(shot, user, party)
+        if refusal:
+            raise HTTPException(400, refusal)
+
+        if party == APPEAL_PARTY_SHOOTER:
+            shot.shooter_appeal_reason = reason
+            other_party_id = shot.target_user_id
+        else:
+            shot.target_appeal_reason = reason
+            other_party_id = shot.user_id
+
+        shot.appeal_state = APPEAL_OPEN
+        if shot.appealed_at is None:
+            shot.appealed_at = time.time()
+        user.appeals_remaining -= 1
+
+        # @db_scoped fires this user's own update event on commit. The other
+        # party's shot list has changed too, and every admin dashboard has a
+        # new entry in its contested queue.
+        if other_party_id is not None and other_party_id != self.user_id:
+            asyncio_triggers.trigger_update_event("user", other_party_id)
+        asyncio_triggers.trigger_update_event("shots", shot.game_id)
 
     def _game_users(self) -> List[User]:
         """Everybody in this user's game: the candidate set a photograph of
@@ -529,14 +673,19 @@ class UserInterface:
     @db_scoped
     def get_own_shot_image(self, shot_id: UUID) -> str:
         """
-        The full image for one of this user's own shots.
+        The full image for a shot this user was part of: one they fired, or
+        one the verdict says hit them.
 
-        Responds 404 rather than 403 for anyone else's shot: whether the id
+        The target sees it because they cannot appeal a photograph they were
+        never shown, and it costs them nothing - it is a photograph of them,
+        and the ticker has already named the shooter (roadmap R8).
+
+        Responds 404 rather than 403 for a third party's shot: whether the id
         exists at all is nobody else's business.
         """
         shot = self._session.get(Shot, shot_id)
 
-        if not shot or shot.user_id != self.user_id:
+        if not shot or appeal_party(shot, self.user_id) is None:
             raise HTTPException(404, f"Shot {shot_id} not found")
 
         return shot.image_base64
@@ -625,7 +774,7 @@ class UserInterface:
     @db_scoped
     def get_messages(
         self, num, private=False, newest_first=True
-    ) -> List[Tuple[str, str]]:
+    ) -> List[Tuple[str, str, Optional[UUID]]]:
         """
         Get ticker messages for this user
 
@@ -635,7 +784,8 @@ class UserInterface:
             newest_first (bool, optional): If True, get the newest messages first. Defaults to True.
 
         Returns:
-            List[Tuple[str,str]]: A list of messages, each as a tuple of (type, message)
+            List[Tuple[str,str,Optional[UUID]]]: A list of messages, each as a
+            tuple of (type, message, shot id) - see Ticker.get_messages
         """
         user = self.get_user()
 

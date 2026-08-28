@@ -5,6 +5,8 @@ import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
+from backend.model import Shot
+from backend.model import User
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
 
@@ -84,7 +86,7 @@ def test_bystander_tells_the_shooter(user_in_team, test_image_string):
     AdminInterface().mark_shot_bystander(shot_id)
 
     messages = UserInterface(user_in_team).get_messages(10, private=True)
-    assert any("bystander" in message.lower() for _, message in messages)
+    assert any("bystander" in message.lower() for _, message, _ in messages)
 
 
 def test_refund_recorded_in_shot_history(user_in_team, test_image_string):
@@ -123,7 +125,7 @@ def test_hit_does_not_tell_shooter_they_missed(
     AdminInterface().hit_user(shot_id, target)
 
     messages = UserInterface(shooter).get_messages(10, private=True)
-    assert not any("missed" in message.lower() for _, message in messages)
+    assert not any("missed" in message.lower() for _, message, _ in messages)
 
 
 # -- hitting somebody who is already knocked out -----------------------------
@@ -185,6 +187,22 @@ def test_adjudication_nudges_the_shooter(mocker, user_in_team, test_image_string
     assert ("user", user_in_team) in [c.args for c in mocked.call_args_list]
 
 
+def test_a_hit_nudges_the_target_too(
+    mocker, two_users_in_different_teams, test_image_string
+):
+    """The person who just lost a hit point has a HUD to update and, now, a
+    shot to appeal - they cannot be told only through the ticker."""
+    shooter, target = two_users_in_different_teams
+    shot_id = submit_a_shot(shooter, test_image_string)
+
+    mocked = mocker.patch("backend.admin_interface.trigger_update_event")
+    AdminInterface().hit_user(shot_id, target)
+
+    events = [c.args for c in mocked.call_args_list]
+    assert ("user", shooter) in events
+    assert ("user", target) in events
+
+
 def test_shot_history_only_shares_the_ai_bottom_line(
     user_in_team, shot_from_user_in_team
 ):
@@ -207,6 +225,9 @@ def test_shot_history_only_shares_the_ai_bottom_line(
         "ai_review_state",
         "ai_suggestion",
         "ai_target_name",
+        "appeal_state",
+        "my_appeal_reason",
+        "can_appeal",
     }
 
 
@@ -254,8 +275,259 @@ def test_user_shot_image_endpoint(api_client, api_user_id, one_team, test_image_
 
 
 def test_user_cannot_fetch_someone_elses_shot_image(api_client, shot_from_user_in_team):
-    # The api_client session is a different user from the one who fired
+    # The api_client session is a different user from the one who fired, and
+    # not the target either - a third party is told nothing, not even that the
+    # id exists
     response = api_client.get(f"/api/user_shot_image?shot_id={shot_from_user_in_team}")
+    assert response.status_code == 404
+
+
+def test_the_target_can_fetch_the_shot_that_hit_them(
+    api_client, api_user_id, team_factory, user_factory, test_image_string
+):
+    # They cannot appeal a photograph they were never shown, and it costs them
+    # nothing: it is a photograph of them, and the ticker has named the shooter
+    shooter = user_factory()
+    UserInterface(shooter).join_team(team_factory())
+    UserInterface(api_user_id).join_team(team_factory())
+    shot_id = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(shot_id, api_user_id)
+
+    response = api_client.get(f"/api/user_shot_image?shot_id={shot_id}")
+    assert response.is_success
+    assert response.json()["image_base64"] == test_image_string
+
+
+# -- appeals (docs/roadmap.md R8) --------------------------------------------
+
+
+@pytest.fixture
+def resolved_hit(two_users_in_different_teams, test_image_string):
+    """A shot the admin has already ruled a hit: shooter, target, shot id."""
+    shooter, target = two_users_in_different_teams
+    shot_id = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(shot_id, target)
+    return shooter, target, shot_id
+
+
+def only_shot(user_id):
+    (shot,) = UserInterface(user_id).get_own_shots()
+    return shot
+
+
+def test_a_fresh_player_has_three_appeals(user_in_team):
+    assert UserInterface(user_in_team).get_user_model().appeals_remaining == 3
+
+
+def test_the_shooter_can_appeal_a_miss(user_in_team, test_image_string):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+    AdminInterface().mark_shot_missed(shot_id)
+
+    assert only_shot(user_in_team)["can_appeal"] is True
+
+    UserInterface(user_in_team).appeal_shot(shot_id, "actually_hit")
+
+    shot = only_shot(user_in_team)
+    assert shot["appeal_state"] == "open"
+    assert shot["my_appeal_reason"] == "actually_hit"
+    # One appeal per shot per party
+    assert shot["can_appeal"] is False
+    assert UserInterface(user_in_team).get_user_model().appeals_remaining == 2
+
+
+def test_the_target_sees_the_shot_that_hit_them(resolved_hit):
+    shooter, target, shot_id = resolved_hit
+
+    (received,) = UserInterface(target).get_shots_received()
+    assert received["id"] == shot_id
+    assert received["result"] == "hit"
+    assert received["shooter_name"] == UserInterface(shooter).get_user_model().name
+    assert received["appeal_state"] is None
+    assert received["my_appeal_reason"] is None
+    assert received["can_appeal"] is True
+
+
+def test_the_target_can_appeal_being_hit(resolved_hit):
+    shooter, target, shot_id = resolved_hit
+
+    UserInterface(target).appeal_shot(shot_id, "wrong_target")
+
+    (received,) = UserInterface(target).get_shots_received()
+    assert received["appeal_state"] == "open"
+    assert received["my_appeal_reason"] == "wrong_target"
+    assert UserInterface(target).get_user_model().appeals_remaining == 2
+
+    # The shooter sees the shot is contested, but not by them
+    shot = only_shot(shooter)
+    assert shot["appeal_state"] == "open"
+    assert shot["my_appeal_reason"] is None
+    assert shot["can_appeal"] is True
+
+
+def test_both_parties_can_appeal_the_same_shot(resolved_hit):
+    shooter, target, shot_id = resolved_hit
+
+    UserInterface(target).appeal_shot(shot_id, "missed")
+    UserInterface(shooter).appeal_shot(shot_id, "actually_hit")
+
+    appeal = AdminInterface().get_shot_appeal(shot_id)
+    assert appeal["target_appeal_reason"] == "missed"
+    assert appeal["shooter_appeal_reason"] == "actually_hit"
+
+
+def test_an_unadjudicated_shot_cannot_be_appealed(user_in_team, shot_from_user_in_team):
+    assert only_shot(user_in_team)["can_appeal"] is False
+
+    with pytest.raises(HTTPException) as excinfo:
+        UserInterface(user_in_team).appeal_shot(shot_from_user_in_team, "actually_hit")
+
+    assert excinfo.value.status_code == 400
+
+
+def test_a_refunded_shot_cannot_be_appealed(user_in_team, test_image_string):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+    AdminInterface().refund_shot(shot_id)
+
+    assert only_shot(user_in_team)["can_appeal"] is False
+
+
+def test_the_target_cannot_appeal_a_shot_that_was_not_a_hit(
+    two_users_in_different_teams, test_image_string
+):
+    # Only reachable through a re-adjudication, but the rule is the rule: a
+    # miss takes nothing off the target, so they have no case to make
+    shooter, target = two_users_in_different_teams
+    shot_id = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(shot_id, target)
+    UserInterface(target).appeal_shot(shot_id, "missed")
+    AdminInterface().mark_shot_missed(shot_id)
+
+    with pytest.raises(HTTPException) as excinfo:
+        UserInterface(target).appeal_shot(shot_id, "missed")
+
+    assert excinfo.value.status_code == 404  # they are no longer the target
+
+
+def test_running_out_of_appeals_greys_the_button_out(
+    user_in_team, test_image_string, db_session
+):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+    AdminInterface().mark_shot_missed(shot_id)
+    db_session.query(User).filter_by(id=user_in_team).update({"appeals_remaining": 0})
+    db_session.commit()
+
+    assert only_shot(user_in_team)["can_appeal"] is False
+
+    with pytest.raises(HTTPException) as excinfo:
+        UserInterface(user_in_team).appeal_shot(shot_id, "actually_hit")
+
+    assert excinfo.value.status_code == 400
+    assert "no appeals left" in excinfo.value.detail
+
+
+def test_an_unknown_reason_is_rejected(user_in_team, test_image_string):
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+    AdminInterface().mark_shot_missed(shot_id)
+
+    with pytest.raises(HTTPException) as excinfo:
+        UserInterface(user_in_team).appeal_shot(shot_id, "i just dont like it")
+
+    assert excinfo.value.status_code == 400
+    assert UserInterface(user_in_team).get_user_model().appeals_remaining == 3
+
+
+def test_a_third_party_cannot_appeal_and_is_not_told_the_shot_exists(
+    resolved_hit, user_factory, team_factory
+):
+    shooter, target, shot_id = resolved_hit
+    bystander = user_factory()
+    UserInterface(bystander).join_team(team_factory())
+
+    with pytest.raises(HTTPException) as excinfo:
+        UserInterface(bystander).appeal_shot(shot_id, "missed")
+
+    assert excinfo.value.status_code == 404
+
+
+def test_appealing_nudges_the_other_party_and_the_admin(mocker, resolved_hit):
+    shooter, target, shot_id = resolved_hit
+    game_id = UserInterface(shooter).get_game_id()
+
+    mocked = mocker.patch("backend.asyncio_triggers.trigger_update_event")
+    UserInterface(target).appeal_shot(shot_id, "missed")
+
+    events = [c.args for c in mocked.call_args_list]
+    assert ("user", target) in events  # fired by @db_scoped
+    assert ("user", shooter) in events
+    assert ("shots", game_id) in events
+
+
+def test_a_contested_shot_never_re_enters_the_drain(
+    db_session, resolved_hit, test_image_string
+):
+    """It stays checked, so the head-of-queue drain cannot see it - which is
+    the whole reason contested shots get a list of their own."""
+    from backend import shot_auto_actions
+
+    shooter, target, shot_id = resolved_hit
+    game_id = UserInterface(shooter).get_game_id()
+    AdminInterface().set_ai_auto_actions_enabled(game_id, True)
+    AdminInterface().set_ai_resolve_everything_enabled(game_id, True)
+
+    UserInterface(target).appeal_shot(shot_id, "missed")
+
+    assert AdminInterface().get_queue_head(game_id) is None
+    shot_auto_actions.process_queue_head(game_id)
+
+    db_session.expire_all()
+    shot = db_session.get(Shot, shot_id)
+    assert shot.checked is True
+    assert shot.appeal_state == "open"
+    assert shot.result == "hit"
+
+
+# -- the appeal endpoints ----------------------------------------------------
+
+
+def test_user_shots_received_endpoint(
+    api_client, api_user_id, team_factory, user_factory, test_image_string
+):
+    shooter = user_factory()
+    UserInterface(shooter).join_team(team_factory())
+    UserInterface(api_user_id).join_team(team_factory())
+    shot_id = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(shot_id, api_user_id)
+
+    response = api_client.get("/api/user_shots_received")
+    assert response.is_success
+
+    (received,) = response.json()
+    assert received["id"] == str(shot_id)
+    assert received["can_appeal"] is True
+    assert "image_base64" not in received
+
+
+def test_appeal_shot_endpoint(api_client, api_user_id, one_team, test_image_string):
+    UserInterface(api_user_id).join_team(one_team)
+    shot_id = submit_a_shot(api_user_id, test_image_string)
+    AdminInterface().mark_shot_missed(shot_id)
+
+    response = api_client.post(
+        "/api/appeal_shot", params={"shot_id": str(shot_id), "reason": "actually_hit"}
+    )
+    assert response.is_success
+
+    assert UserInterface(api_user_id).get_user_model().appeals_remaining == 2
+    assert AdminInterface().get_contested_shot_ids() == [shot_id]
+
+
+def test_appeal_shot_endpoint_refuses_a_stranger(api_client, shot_from_user_in_team):
+    AdminInterface().mark_shot_missed(shot_from_user_in_team)
+
+    response = api_client.post(
+        "/api/appeal_shot",
+        params={"shot_id": str(shot_from_user_in_team), "reason": "actually_hit"},
+    )
     assert response.status_code == 404
 
 

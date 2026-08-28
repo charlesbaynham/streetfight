@@ -227,6 +227,31 @@ async def get_user_shots(
         return ui.get_own_shots()
 
 
+@router.get("/user_shots_received")
+async def get_user_shots_received(
+    user_id=Depends(get_user_id),
+):
+    """The shots ruled to have hit this user, newest first, without the images"""
+    with UserInterface(user_id) as ui:
+        return ui.get_shots_received()
+
+
+@router.post("/appeal_shot")
+async def appeal_shot(
+    shot_id: UUID,
+    reason: str,
+    user_id=Depends(get_user_id),
+):
+    """Contest the verdict on a shot this user was part of (roadmap R8).
+
+    Marks it contested and puts it in front of the admin; it changes nothing
+    about the game state by itself.
+    """
+    with UserInterface(user_id) as ui:
+        ui.appeal_shot(shot_id, reason)
+    return {"appealed": True}
+
+
 @router.get("/user_shot_image")
 async def get_user_shot_image(
     shot_id: UUID,
@@ -497,6 +522,23 @@ async def admin_get_shots_info(include_checked: bool = False) -> list[UUID]:
     return AdminInterface().get_shots_ids(include_checked=include_checked)
 
 
+@admin_method("/admin_get_contested_shots_info", method="GET")
+async def admin_get_contested_shots_info() -> list[UUID]:
+    """The contested queue: shots with an open appeal, oldest complaint first.
+
+    Separate from admin_get_shots_info because these are checked shots and so
+    are not in the live queue at all - they are an argument to settle, not a
+    backlog to drain.
+    """
+    return AdminInterface().get_contested_shot_ids()
+
+
+@admin_method("/admin_get_shot_appeal", method="GET")
+async def admin_get_shot_appeal(shot_id: UUID) -> dict:
+    """Who is contesting one shot, and on what grounds."""
+    return AdminInterface().get_shot_appeal(shot_id)
+
+
 @admin_method("/admin_get_shot_notes", method="GET")
 async def admin_get_shot_notes(shot_id: UUID) -> dict:
     # Separate from the shot model itself for the same reason as the AI
@@ -550,6 +592,11 @@ async def admin_hit_user(user_id, num: int = 1):
 @admin_method(path="/admin_give_ammo", method="POST")
 async def admin_give_ammo(user_id, num: int = 1):
     AdminInterface().award_user_ammo(user_id, num=num)
+
+
+@admin_method(path="/admin_give_appeals", method="POST")
+async def admin_give_appeals(user_id, num: int = 1):
+    AdminInterface().award_user_appeals(user_id, num=num)
 
 
 @admin_method(path="/admin_refund_shot", method="POST")
@@ -610,6 +657,22 @@ async def admin_set_ai_escalation(game_id: UUID, enabled: bool):
     opinion now rather than whenever the queue next moves.
     """
     AdminInterface().set_ai_escalation_enabled(game_id, enabled)
+    if enabled:
+        shot_auto_actions.process_queue_head(game_id)
+    return {"enabled": enabled}
+
+
+@admin_method(path="/admin_set_ai_resolve_everything", method="POST")
+async def admin_set_ai_resolve_everything(game_id: UUID, enabled: bool):
+    """Turn "resolve everything" on or off for a game.
+
+    With it on the drain resolves an unconfident or unidentifiable head as best
+    the reading allows rather than handing it to the admin - the bet appeals
+    (roadmap R8) make safe, because an automatic error is then loud and
+    recoverable. Switching it on also drains the heads that were waiting for
+    exactly this.
+    """
+    AdminInterface().set_ai_resolve_everything_enabled(game_id, enabled)
     if enabled:
         shot_auto_actions.process_queue_head(game_id)
     return {"enabled": enabled}

@@ -29,7 +29,7 @@ def test_ticker_starts_empty(ticker):
 
 def test_ticker_can_be_filled(ticker):
     ticker.post_message("hello world")
-    assert ticker.get_messages(3) == [("public", "hello world")]
+    assert ticker.get_messages(3) == [("public", "hello world", None)]
 
 
 def test_ticker_filters_correctly_len(ticker):
@@ -45,9 +45,9 @@ def test_ticker_filters_correctly_order(ticker):
         time.sleep(0.01)
 
     assert ticker.get_messages(3) == [
-        ("public", "9"),
-        ("public", "8"),
-        ("public", "7"),
+        ("public", "9", None),
+        ("public", "8", None),
+        ("public", "7", None),
     ]
 
 
@@ -165,21 +165,23 @@ def test_get_messages_empty(ticker):
 
 def test_get_messages_single_message(ticker):
     ticker.post_message("Test message")
-    assert ticker.get_messages(1) == [("public", "Test message")]
+    assert ticker.get_messages(1) == [("public", "Test message", None)]
 
 
 def test_get_messages_multiple_messages(ticker):
     messages = ["Message 1", "Message 2", "Message 3"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(3) == [("public", msg) for msg in messages[::-1]]
+    assert ticker.get_messages(3) == [("public", msg, None) for msg in messages[::-1]]
 
 
 def test_get_messages_limit(ticker):
     messages = ["Message 1", "Message 2", "Message 3", "Message 4"]
     for msg in messages:
         ticker.post_message(msg)
-    assert ticker.get_messages(2) == [("public", msg) for msg in messages[-1:-3:-1]]
+    assert ticker.get_messages(2) == [
+        ("public", msg, None) for msg in messages[-1:-3:-1]
+    ]
 
 
 def test_get_messages_order_newest_first(ticker):
@@ -187,7 +189,7 @@ def test_get_messages_order_newest_first(ticker):
     for msg in messages:
         ticker.post_message(msg)
     assert ticker.get_messages(3, newest_first=True) == [
-        ("public", msg) for msg in messages[::-1]
+        ("public", msg, None) for msg in messages[::-1]
     ]
 
 
@@ -196,7 +198,7 @@ def test_get_messages_order_oldest_first(ticker):
     for msg in messages:
         ticker.post_message(msg)
     assert ticker.get_messages(3, newest_first=False) == [
-        ("public", msg) for msg in messages
+        ("public", msg, None) for msg in messages
     ]
 
 
@@ -206,8 +208,8 @@ def test_get_messages_private_messages(ticker, user_factory):
     ticker.post_message("Private message", private_for_user_id=user_id)
     ticker.user_id = user_id
     assert ticker.get_messages(2) == [
-        ("user", "Private message"),
-        ("public", "Public message"),
+        ("user", "Private message", None),
+        ("public", "Public message", None),
     ]
 
 
@@ -215,4 +217,4 @@ def test_get_messages_excludes_others_private_messages(ticker, user_factory):
     user_id = user_factory()
     ticker.post_message("Public message")
     ticker.post_message("Private message", private_for_user_id=user_id)
-    assert ticker.get_messages(2) == [("public", "Public message")]
+    assert ticker.get_messages(2) == [("public", "Public message", None)]

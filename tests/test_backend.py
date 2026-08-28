@@ -5,6 +5,7 @@ import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
+from backend.model import APPEALS_PER_GAME
 from backend.model import Team
 from backend.model import UserModel
 from backend.user_interface import UserInterface
@@ -138,7 +139,8 @@ def test_admin_ticker_messages(admin_api_client):
     )
 
     assert response.status_code == 200
-    assert ["public", message] in response.json()
+    # (class, message, shot id) - a custom announcement is about no shot
+    assert ["public", message, None] in response.json()
 
 
 def test_admin_get_shots_info(admin_api_client):
@@ -240,6 +242,15 @@ def test_admin_set_hp(admin_api_client, user_in_team, num):
 def test_admin_give_ammo(admin_api_client, user_in_team, num):
     admin_api_client.post(f"/api/admin_give_ammo?user_id={user_in_team}&num={num}")
     assert UserInterface(user_in_team).get_user_model().num_bullets == num
+
+
+@pytest.mark.parametrize("num", range(-3, 3))
+def test_admin_give_appeals(admin_api_client, user_in_team, num):
+    admin_api_client.post(f"/api/admin_give_appeals?user_id={user_in_team}&num={num}")
+    # Unlike ammo these start at three, and can never go below zero
+    assert UserInterface(user_in_team).get_user_model().appeals_remaining == max(
+        0, APPEALS_PER_GAME + num
+    )
 
 
 def test_admin_make_item(admin_api_client, user_in_team):

@@ -32,6 +32,25 @@ AI_REVIEW_STATE_PENDING = "pending"
 AI_REVIEW_STATE_DONE = "done"
 AI_REVIEW_STATE_ERROR = "error"
 
+# How many appeals a player gets per game (roadmap R8). One constant rather
+# than a number scattered about: three is a guess to revisit after a night's
+# play. Refunded whenever an appeal is upheld, so the price is on being wrong
+# rather than on appealing.
+APPEALS_PER_GAME = 3
+
+# What an appellant must say is wrong with the verdict. The first four are the
+# target's ("I was not hit at all" through to "I was already out"); the last is
+# the shooter's, appealing a miss or a bystander call that should have been a
+# hit. Recorded because it labels the error class, which is exactly the data
+# the recognition work has to reconstruct by hand today.
+APPEAL_REASONS = {
+    "missed",
+    "wrong_target",
+    "not_a_player",
+    "already_out",
+    "actually_hit",
+}
+
 Base = declarative_base()
 
 logger = logging.getLogger(__name__)
@@ -70,6 +89,14 @@ class Game(Base):
     # so this is a kill switch inside a feature already opted into rather than a
     # third opt-in.
     ai_escalation_enabled = Column(Boolean, nullable=False, default=True)
+
+    # When on, the auto-action drain resolves the head of the queue as best it
+    # can rather than handing anything ambiguous to the admin: _decide() stops
+    # meaning "stop the drain" and starts meaning "the players will complain if
+    # it is wrong". Only safe alongside appeals (roadmap R8), which is what
+    # makes an automatic error loud and recoverable rather than silent and
+    # final, so it is off by default like its two opt-in siblings.
+    ai_resolve_everything_enabled = Column(Boolean, nullable=False, default=False)
 
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
@@ -179,6 +206,25 @@ class Shot(Base):
     # for the offline replay harness (scripts/replay_shot_reviews.py).
     admin_notes = Column(String, nullable=True)
 
+    # An appeal against the verdict, by either of the two people who were
+    # actually there (roadmap R8). A shot is contested while appeal_state is
+    # "open"; it stays checked=True throughout, so it can never re-enter the
+    # auto-action drain (backend/shot_auto_actions.py reads only unchecked
+    # shots) and jam the live queue behind a twenty-minute-old argument.
+    # "upheld" / "rejected" are terminal: the admin's word ends the loop.
+    #
+    # Deliberately absent from ShotModel below: the frontend caches a shot
+    # model permanently by id, and every one of these fields is mutable, so a
+    # cached shot would show an appeal state that had since moved on. The admin
+    # reads them through their own endpoint instead, as with the AI review.
+    appeal_state = Column(String, nullable=True)
+    # When the shot was first contested, whichever party got there first --
+    # what the contested queue is ordered by.
+    appealed_at = Column(Float, nullable=True)
+    # One appeal per party per shot, each stating a reason from APPEAL_REASONS.
+    shooter_appeal_reason = Column(String, nullable=True)
+    target_appeal_reason = Column(String, nullable=True)
+
 
 class Team(Base):
     """
@@ -245,6 +291,11 @@ class User(Base):
     hit_points = Column(Integer, nullable=False, default=1)
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
+
+    # The appeal budget (roadmap R8), mechanically ammo: spent when an appeal
+    # is lodged, handed back when it is upheld, reset with the rest of a
+    # player's stats in AdminInterface.reset_game.
+    appeals_remaining = Column(Integer, nullable=False, default=APPEALS_PER_GAME)
 
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
@@ -371,6 +422,12 @@ class TickerEntry(Base):
         foreign_keys=highlight_user_id,
     )
 
+    # The shot this message is about, when it is about one. The private
+    # "you were hit" line carries it so the line itself can be the way in to
+    # the shot - and to appealing it - rather than making the player go
+    # looking. Null for every message that is not about a shot.
+    shot_id = Column(UUIDType, ForeignKey("shots.id"), index=True, nullable=True)
+
     message = Column(String, nullable=False)
 
 
@@ -410,6 +467,7 @@ class GameModel(pydantic.BaseModel):
     ai_shot_review_enabled: bool = False
     ai_auto_actions_enabled: bool = False
     ai_escalation_enabled: bool = True
+    ai_resolve_everything_enabled: bool = False
 
     exclusion_circle_lat: Optional[float] = None
     exclusion_circle_long: Optional[float] = None
@@ -437,6 +495,10 @@ class UserModel(pydantic.BaseModel):
     shot_timeout: float
     shot_damage: int
     time_of_death: Optional[float] = None
+
+    # Rides the SSE "user" payload beside num_bullets, so a player weighing up
+    # an appeal always has the count in front of them without a poll
+    appeals_remaining: int = APPEALS_PER_GAME
 
     latitude: Optional[float] = None
     longitude: Optional[float] = None
