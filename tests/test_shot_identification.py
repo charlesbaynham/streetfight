@@ -24,11 +24,19 @@ SCHEME = default_scheme()
 # -- helpers ----------------------------------------------------------------
 
 
-def player(slot=None, overrides=None, team_id=None, hit_points=1, name="player"):
+def player(
+    slot=None,
+    overrides=None,
+    team_id=None,
+    hit_points=1,
+    name="player",
+    team_name="team",
+):
     return SimpleNamespace(
         id=get_uuid(),
         name=name,
         team_id=team_id or get_uuid(),
+        team_name=team_name,
         hit_points=hit_points,
         identity_slot=slot,
         identity_overrides=json.dumps(overrides) if overrides else None,
@@ -168,6 +176,93 @@ def test_ranking_an_empty_field_is_none_rather_than_an_error():
     shooter = player()
     review = review_of(SCHEME.appearance_of_slot(7))
     assert si.rank_candidates(shot_by(shooter), [shooter], review) is None
+
+
+# -- the payload the admin queue reads ---------------------------------------
+
+
+def test_the_payload_names_every_candidate_and_scores_their_distance():
+    shooter = player(name="shooter")
+    target = player(slot=7, name="target", team_name="reds")
+    other = player(slot=21, name="other", team_name="blues")
+
+    payload = si.identification_payload(
+        shot_by(shooter),
+        [shooter, target, other],
+        review_of(SCHEME.appearance_of_slot(7)),
+    )
+
+    assert payload["readable_channels"] == len(list(SCHEME.channels))
+    assert payload["confident"] and not payload["ambiguous"]
+    assert not payload["inconsistent"]
+
+    probabilities = [entry["probability"] for entry in payload["ranked"]]
+    assert probabilities == sorted(probabilities, reverse=True)
+
+    best, second = payload["ranked"]
+    assert (best["user_id"], best["name"], best["team_name"]) == (
+        str(target.id),
+        "target",
+        "reds",
+    )
+    assert second["name"] == "other"
+
+    # The reading is exactly what the target is wearing, so nothing about it
+    # contradicts them; the other candidate is contradicted once per garment
+    # the two outfits disagree on.
+    worn, theirs = SCHEME.appearance_of_slot(7), SCHEME.appearance_of_slot(21)
+    assert best["code_distance"] == 0
+    assert second["code_distance"] == sum(
+        1 for channel, colour in worn.items() if theirs[channel] != colour
+    )
+
+
+def test_an_unreadable_photograph_ranks_nobody():
+    """Four erasures leave the prior handed back untouched, which would put
+    somebody top on no evidence at all. That is a retake, not a recognition."""
+    shooter = player()
+    blank = {channel.name: None for channel in SCHEME.channels}
+
+    payload = si.identification_payload(
+        shot_by(shooter), [shooter, player(slot=7), player(slot=21)], review_of(blank)
+    )
+
+    assert payload == {
+        "ranked": [],
+        "readable_channels": 0,
+        "confident": False,
+        "ambiguous": False,
+        "inconsistent": False,
+    }
+
+
+def test_the_payload_is_none_when_there_is_nobody_to_rank():
+    shooter = player()
+    review = review_of(SCHEME.appearance_of_slot(7))
+
+    assert si.identification_payload(shot_by(shooter), [shooter], review) is None
+
+
+def test_an_unread_garment_contradicts_nobody():
+    """The distance is counted over what was actually read: erasing a garment
+    the candidates disagree on must drop their distance, not their ranking."""
+    shooter = player()
+    target = player(slot=7)
+    other = player(slot=21)
+
+    worn = dict(SCHEME.appearance_of_slot(7))
+    theirs = SCHEME.appearance_of_slot(21)
+    disagreed = next(name for name, colour in worn.items() if theirs[name] != colour)
+    partial = dict(worn, **{disagreed: None})
+
+    def distance_to_other(appearance):
+        payload = si.identification_payload(
+            shot_by(shooter), [shooter, target, other], review_of(appearance)
+        )
+        entry = next(e for e in payload["ranked"] if e["user_id"] == str(other.id))
+        return entry["code_distance"]
+
+    assert distance_to_other(partial) == distance_to_other(worn) - 1
 
 
 # -- the location term ------------------------------------------------------

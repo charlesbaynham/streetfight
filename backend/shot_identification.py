@@ -53,7 +53,13 @@ from uuid import UUID
 
 from .identity.config import DEFAULT_THRESHOLDS
 from .identity.config import default_scheme
+
+# _hamming_distance is private in the pure module because it is the decoder's
+# own scoring detail. Imported anyway so that the distance shown to the admin
+# is the one the decoder itself used, not a second implementation of it here
+# that would be free to drift.
 from .identity.decoder import DecodeResult
+from .identity.decoder import _hamming_distance
 from .identity.decoder import decode
 from .identity.observations import Prior
 from .identity.overrides import Word
@@ -61,6 +67,7 @@ from .identity.overrides import pairwise_distances
 from .identity.scheme import IdentityScheme
 from .model import ShotModel
 from .model import UserModel
+from .shot_vision import readable_channel_count
 from .shot_vision import reading_from_review
 
 logger = logging.getLogger(__name__)
@@ -354,6 +361,76 @@ def rank_candidates(
         scheme,
         lambda survivors: build_prior(survivors, shooter, fixes, at_time),
     )
+
+
+def identification_payload(
+    shot: ShotModel,
+    users: List[UserModel],
+    review: dict,
+    scheme: Optional[IdentityScheme] = None,
+) -> Optional[dict]:
+    """The ranking of :func:`rank_candidates` as a payload for the admin queue.
+
+    The shot-side counterpart of ``backend.reference_photos._identification``,
+    and shaped like it, minus the two fields that only mean something at the
+    door: a shot has no expected player to match against.
+
+    ``None`` when there is nobody to rank or nothing to rank with. The
+    zero-readable case is the one worth spelling out, exactly as it is there:
+    the posterior is a product of the prior and the image evidence, so a
+    reading of four erasures hands the prior straight back -- whoever happens
+    to be nearest the shooter ranks top, with no evidence behind it at all.
+    ``readable_channels`` is what separates that from an answer, and at zero
+    there is no ranking worth showing.
+
+    ``code_distance`` is per candidate rather than the decoder's single
+    minimum: it says which candidates the reading actually contradicts, which
+    is what the admin is looking at the list to decide.
+    """
+    if not isinstance(review, dict):
+        return None
+
+    scheme = scheme or default_scheme()
+    ranked = rank_candidates(shot, users, review, scheme)
+    if ranked is None:
+        return None
+
+    readable = readable_channel_count(review, scheme)
+    if readable == 0:
+        return {
+            "ranked": [],
+            "readable_channels": 0,
+            "confident": False,
+            "ambiguous": False,
+            "inconsistent": False,
+        }
+
+    reading = reading_from_review(review, scheme)
+    words = candidate_words(eligible_candidates(users, shot.user_id), scheme)
+    by_id = {user.id: user for user in users}
+
+    def entry(candidate_id, probability: float) -> dict:
+        user = by_id.get(candidate_id)
+        word = words.get(candidate_id)
+        return {
+            "user_id": str(candidate_id),
+            "name": user.name if user else None,
+            "team_name": user.team_name if user else None,
+            "probability": probability,
+            "code_distance": (
+                None
+                if word is None
+                else _hamming_distance(reading, word, scheme.channels)
+            ),
+        }
+
+    return {
+        "ranked": [entry(cid, probability) for cid, probability in ranked.ranked],
+        "readable_channels": readable,
+        "confident": ranked.confident,
+        "ambiguous": ranked.ambiguous,
+        "inconsistent": ranked.inconsistent,
+    }
 
 
 def rank_reference_candidates(

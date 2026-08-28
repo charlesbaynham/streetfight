@@ -31,6 +31,7 @@ from .model import UserModel
 from .shot_escalation import VERDICT_BYSTANDER
 from .shot_escalation import VERDICT_MISS
 from .shot_escalation import VERDICT_PLAYER
+from .shot_identification import rank_candidates
 from .shot_vision import HIT_BYSTANDER
 from .ticker import Ticker
 
@@ -55,6 +56,28 @@ _ESCALATED_SUGGESTIONS = {
 }
 
 
+def _completed_escalation(shot: Shot) -> Optional[dict]:
+    """A finished escalation's stored payload, or None if there isn't one."""
+    if shot.ai_escalation_state != "done" or not shot.ai_escalation:
+        return None
+    try:
+        escalation = json.loads(shot.ai_escalation)
+    except ValueError:
+        return None
+    return escalation if isinstance(escalation, dict) else None
+
+
+def _completed_review(shot: Shot) -> Optional[dict]:
+    """The cheap pass's stored reading, or None if there isn't one."""
+    if shot.ai_review_state != "done" or not shot.ai_review:
+        return None
+    try:
+        review = json.loads(shot.ai_review)
+    except ValueError:
+        return None
+    return review if isinstance(review, dict) else None
+
+
 def _ai_suggestion(shot: Shot) -> Optional[str]:
     """The AI's provisional verdict for the shooter's own shot history.
 
@@ -63,28 +86,49 @@ def _ai_suggestion(shot: Shot) -> Optional[str]:
     whole reason the shot was escalated is that the cheap reading was not good
     enough to act on; anything else falls back to it.
     """
-    if shot.ai_escalation_state == "done" and shot.ai_escalation:
-        try:
-            escalation = json.loads(shot.ai_escalation)
-        except ValueError:
-            escalation = None
-        if isinstance(escalation, dict):
-            suggestion = _ESCALATED_SUGGESTIONS.get(escalation.get("verdict"))
-            if suggestion is not None:
-                return suggestion
+    escalation = _completed_escalation(shot)
+    if escalation is not None:
+        suggestion = _ESCALATED_SUGGESTIONS.get(escalation.get("verdict"))
+        if suggestion is not None:
+            return suggestion
 
-    if shot.ai_review_state != "done" or not shot.ai_review:
-        return None
-    try:
-        review = json.loads(shot.ai_review)
-    except ValueError:
-        return None
+    review = _completed_review(shot)
     if review is None:
         return None
     if review.get("outcome") == HIT_BYSTANDER:
         return "bystander"
     # Reviews stored before outcomes existed only have is_hit
     return "hit" if review.get("is_hit") else "miss"
+
+
+def _ai_target_name(shot: Shot, users: List[User], names: dict) -> Optional[str]:
+    """Who the AI thinks this shot hit, for the shooter's own shot history.
+
+    Only ever offered beside a "hit" suggestion on an unchecked shot -- once an
+    admin has ruled, ``target_name`` is the answer and this guess is noise. The
+    precedence is :func:`_ai_suggestion`'s: an escalation that named somebody
+    named them, and nothing else gets a say.
+
+    Falling back to the cheap reading, the bar is the one
+    :mod:`backend.shot_auto_actions` applies before acting on a ranking
+    unattended -- confident, untied, and contradicted by nothing in the
+    reading. Anything short of that names nobody rather than naming a guess:
+    the shooter would read it as who they shot.
+    """
+    escalation = _completed_escalation(shot)
+    if escalation is not None and escalation.get("verdict") == VERDICT_PLAYER:
+        return escalation.get("target_name")
+
+    review = _completed_review(shot)
+    if review is None:
+        return None
+
+    ranked = rank_candidates(shot, users, review)
+    if ranked is None or not ranked.confident:
+        return None
+    if ranked.ambiguous or ranked.inconsistent:
+        return None
+    return names.get(ranked.best)
 
 
 def touch_user(user_interface: "UserInterface"):
@@ -433,12 +477,26 @@ class UserInterface:
             .all()
         )
 
+        # Naming a shot's target scores it against the whole game, so the
+        # roster is fetched once for the list -- and not at all when no shot in
+        # it is waiting on a suggested hit.
+        users: Optional[List[User]] = None
+        names: dict = {}
+
         out = []
         for shot in shots:
             target_name = None
             if shot.target_user_id:
                 target = self._session.get(User, shot.target_user_id)
                 target_name = target.name if target else None
+
+            suggestion = _ai_suggestion(shot)
+            ai_target_name = None
+            if suggestion == "hit" and not shot.checked:
+                if users is None:
+                    users = self._game_users()
+                    names = {user.id: user.name for user in users}
+                ai_target_name = _ai_target_name(shot, users, names)
 
             out.append(
                 {
@@ -448,11 +506,25 @@ class UserInterface:
                     "result": shot.result,
                     "target_name": target_name,
                     "ai_review_state": shot.ai_review_state,
-                    "ai_suggestion": _ai_suggestion(shot),
+                    "ai_suggestion": suggestion,
+                    "ai_target_name": ai_target_name,
                 }
             )
 
         return out
+
+    def _game_users(self) -> List[User]:
+        """Everybody in this user's game: the candidate set a photograph of
+        theirs is scored against."""
+        team = self.get_user().team
+        if team is None:
+            return []
+        return (
+            self._session.query(User)
+            .join(Team, User.team_id == Team.id)
+            .filter(Team.game_id == team.game_id)
+            .all()
+        )
 
     @db_scoped
     def get_own_shot_image(self, shot_id: UUID) -> str:

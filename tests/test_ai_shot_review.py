@@ -12,16 +12,33 @@ from backend import shot_vision
 from backend.admin_interface import AdminInterface
 from backend.identity.config import default_scheme
 from backend.model import Shot
+from backend.model import User
 from backend.user_interface import UserInterface
 from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 
 SCHEME = default_scheme()
 
+# The slot the shot photograph is read as, and the slot the one other player in
+# the game is wearing -- so a clear reading names them.
+TARGET_SLOT = 7
+
 
 @pytest.fixture(autouse=True)
 def mock_asyncio_tasks(mocker):
     mocker.patch("backend.asyncio_triggers.schedule_update_event")
+
+
+@pytest.fixture
+def target_player(db_session, team_factory, user_factory):
+    """Somebody for a reading to be identified as: a second player, on another
+    team in the same game, wearing TARGET_SLOT's colours."""
+    user_id = user_factory()
+    with UserInterface(user_id) as ui:
+        ui.join_team(team_factory())
+    db_session.query(User).filter_by(id=user_id).update({"identity_slot": TARGET_SLOT})
+    db_session.commit()
+    return user_id
 
 
 @pytest.fixture
@@ -607,6 +624,7 @@ def test_review_endpoint_reports_nothing_before_a_review(
     assert response.json() == {
         "state": None,
         "review": None,
+        "identification": None,
         "escalation_state": None,
         "escalation": None,
     }
@@ -623,12 +641,67 @@ def test_review_endpoint_returns_a_stored_review(
         f"/api/admin_get_shot_ai_review?shot_id={shot_from_user_in_team}"
     )
 
+    # Nobody but the shooter is in this game, so there is no candidate to rank.
     assert response.json() == {
         "state": "done",
         "review": {"outcome": "miss"},
+        "identification": None,
         "escalation_state": None,
         "escalation": None,
     }
+
+
+@pytest.mark.asyncio
+async def test_review_endpoint_identifies_the_player_it_read(
+    admin_api_client, shot_from_user_in_team, target_player
+):
+    """The ranking is scored when the endpoint is read, not stored with the
+    review -- so it always reflects what the candidates are wearing now."""
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(reply=hit_reply(TARGET_SLOT))
+    )
+
+    identification = admin_api_client.get(
+        f"/api/admin_get_shot_ai_review?shot_id={shot_from_user_in_team}"
+    ).json()["identification"]
+
+    assert identification["readable_channels"] == len(SCHEME.channels.names)
+    assert identification["confident"] and not identification["ambiguous"]
+
+    best = identification["ranked"][0]
+    assert best["user_id"] == str(target_player)
+    assert best["name"] == AdminInterface().get_user_model(target_player).name
+    assert best["code_distance"] == 0
+
+
+def test_no_identification_before_a_review_has_finished(
+    admin_api_client, shot_from_user_in_team, target_player
+):
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_PENDING
+    )
+
+    response = admin_api_client.get(
+        f"/api/admin_get_shot_ai_review?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.json()["identification"] is None
+
+
+def test_no_identification_for_an_errored_review(
+    admin_api_client, shot_from_user_in_team, target_player
+):
+    """An errored review stores a plain message, not a reading to score."""
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team, ai_shot_review.STATE_ERROR, "the model fell over"
+    )
+
+    response = admin_api_client.get(
+        f"/api/admin_get_shot_ai_review?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.json()["review"] == {"error": "the model fell over"}
+    assert response.json()["identification"] is None
 
 
 def test_review_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):

@@ -37,6 +37,7 @@ from .model import TeamModel
 from .model import TickerEntry
 from .model import User
 from .model import UserModel
+from .shot_identification import identification_payload
 from .ticker import Ticker
 from .user_interface import UserInterface
 from .utils import add_params_to_url
@@ -493,9 +494,21 @@ class AdminInterface:
         image cached and this small payload live avoids that.
         """
         shot = self._get_shot_orm(shot_id)
+        review = _stored_json(shot.ai_review)
+
+        # Scored here rather than stored with the review: an outfit correction
+        # made after the review must change who this reading looks like,
+        # without rewriting the reading itself.
+        identification = None
+        if shot.ai_review_state == AI_REVIEW_STATE_DONE and isinstance(review, dict):
+            identification = identification_payload(
+                shot, self.get_users_for_game(shot.game_id), review
+            )
+
         return {
             "state": shot.ai_review_state,
-            "review": _stored_json(shot.ai_review),
+            "review": review,
+            "identification": identification,
             "escalation_state": shot.ai_escalation_state,
             "escalation": _stored_json(shot.ai_escalation),
         }

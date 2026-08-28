@@ -206,6 +206,7 @@ def test_shot_history_only_shares_the_ai_bottom_line(
         "target_name",
         "ai_review_state",
         "ai_suggestion",
+        "ai_target_name",
     }
 
 
