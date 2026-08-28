@@ -181,13 +181,51 @@ KOYAO_RESORT = Venue(
 )
 
 
+WESTMINSTER = Venue(
+    name="Westminster",
+    map=VenueMap(
+        # Stitched from whole web mercator tiles at zoom 17 and cropped to a
+        # 3 x 3 km box centred on Monck Street, so these reference points are
+        # exact rather than measured by eye: ref 1 is the top left pixel of
+        # the image, ref 2 the bottom right. The crop covers everything within
+        # 1.5 km of the flat, which is a generous superset of any walkable
+        # game - re-crop tighter once the pub list is settled.
+        #
+        # The image is 1.17 m/px, coarser than the Kingston map's 0.51, which
+        # is the price of covering nine times the area in a comparable file.
+        image="westminster",
+        width_px=2560,
+        height_px=2560,
+        ref_1=MapReferencePoint(
+            x=0, y=0, lat=51.50934653766138, long=-0.15256698299731397
+        ),
+        ref_2=MapReferencePoint(
+            x=2560, y=2560, lat=51.48239707899232, long=-0.10927961700269861
+        ),
+        corner_width_km=0.115,
+    ),
+    # Seeded with the pubs already shortlisted in "the search for the New
+    # Norbiton", located against OpenStreetMap. This is a starting set, not a
+    # finished game: add from the wider survey of everything within 1.5 km.
+    landmarks={
+        "QUEENS_ARMS": (51.492593, -0.139175),
+        "BRASS_MONKEY": (51.494418, -0.140717),
+        "THE_WARWICK": (51.492414, -0.139704),
+        "PRIDE_OF_PIMLICO": (51.489894, -0.135364),
+        "MORPETH_ARMS": (51.489376, -0.128682),
+        "PRINCE_OF_WALES": (51.492592, -0.140636),
+    },
+)
+
+
 VENUES = {
     "kingston": KINGSTON,
     "koyao_resort": KOYAO_RESORT,
+    "westminster": WESTMINSTER,
 }
 
-# TODO: TEMPORARY - the resort is a test venue, so that the map can be
-# exercised against a real GPS fix somewhere I actually am. Swap back to
-# Kingston before this is played for real.
-ACTIVE_VENUE = VENUES["koyao_resort"]
+ACTIVE_VENUE = VENUES["westminster"]
 # ACTIVE_VENUE = VENUES["kingston"]
+# The resort was a test venue, so that the map could be exercised against a
+# real GPS fix while away; Westminster is where the game is actually headed.
+# ACTIVE_VENUE = VENUES["koyao_resort"]

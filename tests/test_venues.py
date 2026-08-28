@@ -1,8 +1,13 @@
+import re
+from pathlib import Path
+
 import pytest
 
 from backend.user_interface import UserInterface
 from backend.venues import ACTIVE_VENUE
 from backend.venues import VENUES
+
+MAP_IMAGES_JS = Path(__file__).parent.parent / "react-ui" / "src" / "mapImages.js"
 
 
 @pytest.mark.parametrize("venue_name", list(VENUES))
@@ -26,6 +31,20 @@ def test_map_is_north_up_and_the_right_way_round(venue_name):
     bounds = VENUES[venue_name].map.bounds
     assert bounds.north > bounds.south
     assert bounds.east > bounds.west
+
+
+@pytest.mark.parametrize("venue_name", list(VENUES))
+def test_map_image_is_bundled_by_the_frontend(venue_name):
+    """`VenueMap.image` names a key in react-ui/src/mapImages.js, which is the
+    one part of a venue Python can't check for itself. A venue pointing at a
+    key that isn't there gets no map at all, and only at game time."""
+    block = re.search(
+        r"const MAP_IMAGES = \{(.*?)\};", MAP_IMAGES_JS.read_text(), re.DOTALL
+    )
+    assert block, "could not find MAP_IMAGES in mapImages.js"
+    bundled = set(re.findall(r"^\s*(\w+)\s*[,:]", block.group(1), re.MULTILINE))
+
+    assert VENUES[venue_name].map.image in bundled
 
 
 def test_get_venue(api_client):
