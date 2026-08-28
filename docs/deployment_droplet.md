@@ -124,29 +124,25 @@ ever wanted.
 
 ## Cutover from the home LXC deployment
 
-The game currently runs as a Proxmox LXC on the home network: CI publishes an
-LXC rootfs template as a release asset (`build_lxc_template` in
-`.github/workflows/build_images.yml`, via `nix-proxmox-cattle`), the
-hypervisor **pulls** it itself on new releases - CI has no route in - and
-traefik on the home network terminates TLS for
-`streetfight.houseabsolute.co.uk`. Standing it down is therefore all
-home-side work; CI needs no change (it can keep publishing templates nobody
-fetches - remove the job later as cleanup, not as part of the cutover).
+The game currently runs on the home network as a Proxmox LXC behind traefik
+(which terminates TLS for `streetfight.houseabsolute.co.uk`), auto-redeployed
+on new releases. **The authoritative description of that setup - how the
+secrets are defined, how the auto-redeploy works, and how to stand it down -
+lives in the home-infrastructure repository, which is granted to the session
+doing the cutover.** Read it first; this section fixes the *order* of the
+cutover, not the mechanics of the home side, and where the two disagree the
+infrastructure repo wins.
 
 Order matters: escrow first, then point DNS at the droplet, then stop the
 home side - so there is never a moment with secrets in only one place or the
 domain pointing at nothing.
 
-1. **Escrow the secrets** (needs SSH to the home server). On the LXC, find
-   the environment the backend service actually runs with - `systemctl cat`
-   the streetfight service inside the container and follow its
-   `EnvironmentFile=`; per the nix-proxmox-cattle contract the env file
-   survives redeploys outside the rootfs, so it is wherever that unit points,
-   not in the nix store. Copy out at least: `SECRET_KEY`, `ADMIN_PASSWORD`,
-   `OPENROUTER_API_KEY` (and any other `OPENROUTER_*` values), and the
-   `CLOUDFLARE_*` values (the API token is also what step 3's DNS change can
-   use). Transfer them straight into the droplet's `.env` over SSH - never
-   into the repo, a PR, a pastebin or a chat log.
+1. **Escrow the secrets**, from wherever the infrastructure repo says they
+   are defined. Needed on the droplet: `SECRET_KEY`, `ADMIN_PASSWORD`,
+   `OPENROUTER_API_KEY` (and any other `OPENROUTER_*` values); the
+   Cloudflare API token is also worth having for step 3's DNS change.
+   Transfer them straight into the droplet's `.env` over SSH - never into a
+   repo, a PR, a pastebin or a chat log.
 2. **Archive the lab's game data** before touching anything: the database
    and the processed-shots directory, tar'd off the LXC. Nothing migrates to
    the droplet (the dry run starts from a clean database); this is purely so
@@ -157,9 +153,12 @@ domain pointing at nothing.
    the first request after propagation.
 4. **Verify the droplet** end to end (section above) *while the LXC is still
    up* - if something's wrong, DNS can go straight back.
-5. **Stop the home side**: disable the hypervisor's pull-based
-   re-provisioning for the streetfight template (the nix-proxmox-cattle
-   puller on the Proxmox host), stop the LXC, and remove the traefik route.
-   The order within this step doesn't matter once DNS has moved - traffic
-   is already gone - but disabling the puller must not be skipped, or the
-   next release quietly resurrects the container.
+5. **Stop the home side**, per the infrastructure repo's procedure: disable
+   whatever performs the automatic redeployment, stop the LXC, and remove
+   the traefik route. Disabling the auto-redeploy must not be skipped, or a
+   later release quietly resurrects the container.
+
+This game repo's CI needs no change: it publishes artefacts (images, the LXC
+template) and has no route into the home network, so once the home side stops
+consuming them the deployment is stood down. Removing the
+`build_lxc_template` job is later cleanup, not part of the cutover.
