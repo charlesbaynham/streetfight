@@ -62,7 +62,7 @@ software with a real deadline, which is not where it started on the list.
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
 | 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
-| 10b   | **R7** Reference photo as a kit check       | Before the 19th *if it fits* | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
+| 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | —                            | Twenty minutes, independent of everything. Ship whenever.                                                      |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -71,7 +71,7 @@ software with a real deadline, which is not where it started on the list.
 | 15b   | **R8** Players appeal, admin sees only the contested | —                    | The structural fix rather than another accuracy point: it makes auto-actions recoverable instead of a bet, and lifts the one-admin ceiling. Wants #5/#2 first, pairs with R4. |
 | 16    | **#13** Higher-resolution capture           | —                            | Promoted: with #14 parked this is the *only* route to better photos, and #4, #5 and #11 all want them.         |
 | 17    | **R4** Service worker and Web Push          | —                            | The notification half of what the native app was for, at no cost. Largest single win available to the web app. |
-| 18    | **#11** Escalation to a stronger model      | —                            | Needs #5's posterior and a new photo-capture flow.                                                             |
+| 18    | **#11** Escalation to a stronger model      | —                            | Design decided and prerequisites shipped (#5's posterior, R7's reference photos); see the rewritten entry.     |
 | —     | **#14** Native app                          | **Parked**                   | Decided against: the Apple fee is unavoidable for iOS in any form. Analysis kept for whenever it is revisited. |
 
 ---
@@ -1161,40 +1161,107 @@ is a one-line change that R1 can score.
 
 ### #11 — Escalate the hard cases to a stronger model
 
-**The idea.** When the posterior from #5 — GPS prior included — leaves the top
-candidate below a threshold, or leaves two candidates tied, hand the case to a
-stronger model (Opus, or Gemini) together with everything the cheap pass could
-not use: the full-resolution photo, the zoom, the ranked candidate list *with
-their prior probabilities and their outfits*, and **reference photographs of each
-candidate taken at the start of the game**.
+**Design decided 2026-08-27; reference photos (the prerequisite, R7) are
+shipped.** This section is the handoff for the remaining work. The one-line
+version: stop treating "no armbands visible" as "bystander", identify with
+whatever channels *are* readable at honestly reduced confidence, and route the
+cases that reduced confidence cannot carry to a stronger model that sees the
+reference photos — with a human admin as the final rung.
 
-This is the largest item in track A/C. It has three separable pieces:
+**What is wrong today.** `classify()` in `backend/shot_vision.py` uses the
+armbands as the player gate: armbands read ⇒ player; armbands hidden ⇒ demand
+all three other channels complete to a codeword, else **bystander**. Quite
+often no armbands are visible on a genuine hit (all four of #4's residual
+false misses are exactly this), and two or three readable channels are enough
+information to *guess who it is* — the candidate set is a handful of nearby
+living players, not the whole code space (#5's argument). The guess just
+deserves much less confidence, and the confidence is what should decide
+whether a machine acts on it, not whether the reading is discarded.
 
-**(a) Reference photos of players — a prerequisite, and useful on its own.**
-There is no capture flow today. Needs: where the photo is taken, a place to store
-it (following `Shot.image_base64`'s pattern is the pragmatic choice, at the cost
-of database size), and a deletion story — these are photographs of identifiable
-people and they should not outlive the game; a game reset should take them with
-it. **See #10:** the colour-picking page is the natural place to capture these,
-since it is the one moment every player is already in the app and thinking about
-what they will be wearing.
+**The escalation ladder, by what was readable.** Confidence-gated throughout
+(`confident_channel_count` is the existing readable-channel counter):
 
-**(b) The escalation trigger and the second client.** `backend/vision_client.py`
-is already model-agnostic and reads `OPENROUTER_MODEL` from the environment, so a
-second model is a second configured client rather than a new integration. The
-trigger belongs next to the decode from #5 — escalate on
-`not confident or ambiguous`, with its own threshold, and cap the candidate set
-by the GPS prior (top ~5), because each candidate adds a reference photo to the
-request and the bill scales with it.
+- **4 channels readable** — as today: identify via #5's posterior;
+  auto-actionable when confident.
+- **3 channels, armbands among them** — a good candidate for **no** review:
+  the armbands are the one garment we supply, so player-ness is solid and one
+  erasure is well within the code. Auto-actionable when the posterior is
+  confident.
+- **3 channels, armbands hidden** — probably **does** need review: identify
+  anyway, but the missing channel is the player marker, so send it to the
+  stronger model rather than auto-acting.
+- **2 channels** (armbands or not) — **always** goes to the stronger model.
+  Identification still runs and still produces the ranking (two correct reads
+  discriminate sharply within a small candidate set), but at `k = 2` readable
+  positions the code itself vouches for nothing, so no auto-action.
 
-**(c) The prompt for the escalated call is a different question.** The cheap pass
-asks "what colours is this person wearing"; the escalation asks "which of these
-five people is this, or none of them", with the priors stated. Keep it in the
-same observe-then-decide shape: the model reports which candidate it matches and
-how sure it is, Python applies the threshold.
+Bystander/miss remain possible *conclusions*, but "too few channels" stops
+being the *route* to bystander — that mapping in `classify()` is retired.
 
-**Depends on:** #5 (the posterior is its trigger), R2 (its threshold), and
-benefits from #13 or #14.
+**The ranking handed up.** The escalation input is #5's ranked posterior over
+the game's living candidates, built from whichever channels were readable plus
+the GPS location term (`shot_identification.rank_candidates` already computes
+exactly this). When R5b's compass heading lands and the engagement envelope
+becomes a cone, that folds into the same prior and the escalation inherits it
+for free — the contract is simply "players ranked by probability".
+
+**What the stronger model gets.** The full-resolution photo and zoom, the
+ranked candidate list with priors and outfits, and the **reference photos of
+the top three candidates** attached up front. It does *not* get the weak
+model's conclusions — it draws its own from the pixels; the ranking is the
+only thing it inherits. It must also be able to **request the reference photo
+of any other listed candidate**: keep this model-agnostic by doing it as
+another turn in the existing multi-turn shape (the reply schema carries a
+`request_reference_photos: [candidate ids]` field and the follow-up turn
+supplies the images — the same pattern as the screening/zoom loop), not as
+provider tool-calling.
+
+**It must decide, and the fence has a name.** The escalated call returns
+exactly one of:
+
+- **a specific player** (with confidence — Python still applies thresholds);
+- **miss** — only when the shot genuinely missed;
+- **bystander** — only when it genuinely hit a non-player;
+- **escalate to the human admin** — the *only* valid answer for "this is a
+  player but I cannot tell which". Miss and bystander must never be used as
+  a dodge for that case; an undecidable player hit goes to a human, which
+  lands the shot back where every shot went before any of this existed: the
+  admin queue.
+
+**The pieces, updated:**
+
+**(a) Reference photos — shipped (R7).** Stored per player
+(`User.reference_photo_base64`), captured by the admin at the door, already
+run through the live vision pipeline as a kit check. The escalation reads
+them from there; a game reset deletes them.
+
+**(b) The trigger and the second client.** `backend/vision_client.py` is
+model-agnostic and reads `OPENROUTER_MODEL` from the environment, so the
+stronger model is a second configured client (e.g. an
+`OPENROUTER_ESCALATION_MODEL` env var), not a new integration. The trigger
+sits where `classify()`'s outcome meets `shot_auto_actions._decide`: the
+ladder above decides auto-act / escalate / admin, and the escalated verdict
+re-enters the same gate (auto-act on a confident player/miss/bystander
+verdict, admin queue on the human rung). Cap the candidate list sent up by
+the GPS-ranked prior (top ~5): every candidate is potentially a reference
+photo in the request, and the bill scales with it.
+
+**(c) The prompt is a different question.** The cheap pass asks "what colours
+is this person wearing"; the escalation asks "which of these people is this —
+or did the shot miss, or hit a non-player, or can you genuinely not tell
+which player it is". Same observe-then-decide shape: the model reports its
+match and its certainty, Python applies the thresholds and owns the
+asymmetries (a wrong "player X" takes a life; a wrong "escalate" costs an
+admin thirty seconds).
+
+**Depends on:** #5 (shipped — the posterior is the input), R7 (shipped — the
+reference photos), R2 (fits the thresholds), and benefits from #13.
+**Open questions for the implementer:** where the escalated verdict is stored
+(a second review column on `Shot`, or folded into `ai_review`); whether an
+escalated shot blocks the auto-action queue behind it the way an ambiguous
+head does today (probably yes — same FIFO discipline); and what the admin
+queue shows for a shot the strong model punted (its reasoning and the ranked
+list, presumably — that is #3's surface).
 
 ---
 
@@ -1582,7 +1649,30 @@ held as a weapon, and it keeps going to sleep.
 
 ---
 
-### R7 — The reference photo as a kit check, run through the shot AI *(proposed)*
+### R7 — The reference photo as a kit check, run through the shot AI *(shipped)*
+
+**Shipped 2026-08-27** as `backend/reference_photos.py` (the review runner,
+mirroring `ai_shot_review.py` — same live vision contract, never a `Shot`
+row), three columns on `User` (`reference_photo_base64`,
+`reference_review_state`, `reference_review` — the photo follows
+`Shot.image_base64`'s base64-in-a-column pattern),
+`shot_identification.rank_reference_candidates` (the same scoring as
+`rank_candidates` but flat-priored — no shooter, no location term — over
+every placed player in the game), the single-writer accessors and the
+game-reset wipe in `backend/admin_interface.py`, the
+`admin_capture_reference_photo` / `admin_get_reference_photo` /
+`admin_get_reference_review` / `admin_review_reference_photo` /
+`admin_delete_reference_photo` / `admin_get_reference_photo_status`
+endpoints in `backend/main.py`, and the admin capture page at
+`/admin/reference` (`react-ui/src/ReferencePhotos.js`), which shows the
+per-channel reads with confidences (a marginal channel is a visible warning)
+and whether the photo resolves to the player it was taken of. Capture works
+with the vision client unconfigured — the photo stores and the review simply
+never runs, so the manual door check can never be blocked by the AI being
+off. The review payload carries an `identification` section recording the
+ranked candidates and whether the top match is the photographed player; a
+game reset deletes the photos, which must not outlive the game. The original
+brief follows.
 
 **Why the admin takes it, not the player.** The reference photo's first job is
 not to feed #11 — it is a **manual gate**. Two of the four channels are

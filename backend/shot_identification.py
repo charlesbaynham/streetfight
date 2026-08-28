@@ -286,6 +286,39 @@ def candidate_words(
     return effective_words(candidates, scheme)
 
 
+def _rank(
+    candidates: List[UserModel],
+    review: dict,
+    scheme: IdentityScheme,
+    make_prior,
+) -> Optional[DecodeResult]:
+    """Score a reading against a candidate set: the shared tail of the ranking
+    functions, which differ only in who is eligible and what the prior is.
+
+    ``make_prior`` is handed the candidates that survived having an effective
+    word, since a prior over anybody else would never be looked up.
+    """
+    words = candidate_words(candidates, scheme)
+    if not words:
+        return None
+    candidates = [user for user in candidates if user.id in words]
+
+    # The candidates' own separation, not the code's nominal d: an overridden
+    # or freely-chosen outfit is not a codeword, so d no longer bounds how far
+    # apart these particular players actually are.
+    distances = pairwise_distances(words)
+    effective_min_distance = distances[0][2] if distances else None
+
+    return decode(
+        reading=reading_from_review(review, scheme),
+        candidates=words,
+        channels=scheme.channels,
+        prior=make_prior(candidates),
+        thresholds=DEFAULT_THRESHOLDS,
+        code_min_distance=effective_min_distance,
+    )
+
+
 def rank_candidates(
     shot: ShotModel,
     users: List[UserModel],
@@ -304,26 +337,41 @@ def rank_candidates(
     if not candidates:
         return None
 
-    words = candidate_words(candidates, scheme)
-    if not words:
-        return None
-    candidates = [user for user in candidates if user.id in words]
-
     at_time = at_time if at_time is not None else time.time()
     fixes = parse_location_context(shot.location_context)
     shooter = next((u for u in users if u.id == shot.user_id), None)
 
-    # The candidates' own separation, not the code's nominal d: an overridden
-    # or freely-chosen outfit is not a codeword, so d no longer bounds how far
-    # apart these particular players actually are.
-    distances = pairwise_distances(words)
-    effective_min_distance = distances[0][2] if distances else None
+    return _rank(
+        candidates,
+        review,
+        scheme,
+        lambda survivors: build_prior(survivors, shooter, fixes, at_time),
+    )
 
-    return decode(
-        reading=reading_from_review(review, scheme),
-        candidates=words,
-        channels=scheme.channels,
-        prior=build_prior(candidates, shooter, fixes, at_time),
-        thresholds=DEFAULT_THRESHOLDS,
-        code_min_distance=effective_min_distance,
+
+def rank_reference_candidates(
+    users: List[UserModel],
+    review: dict,
+    scheme: Optional[IdentityScheme] = None,
+) -> Optional[DecodeResult]:
+    """Rank the whole game against a reference photo taken at the door.
+
+    The same scoring as :func:`rank_candidates` with the shot-specific terms
+    dropped, because at the door none of them apply: there is no shooter to
+    exclude or to treat as a teammate, nobody is dead yet (so ``hit_points``
+    must not filter), and a reference photo carries no ``location_context`` to
+    build a location term from. What is left is every player who has picked an
+    outfit, under a flat prior -- ``build_prior`` with no shooter and no fixes
+    is exactly that, floor and all.
+    """
+    scheme = scheme or default_scheme()
+    candidates = [user for user in users if user.identity_slot is not None]
+    if not candidates:
+        return None
+
+    return _rank(
+        candidates,
+        review,
+        scheme,
+        lambda survivors: build_prior(survivors, None, {}, time.time()),
     )

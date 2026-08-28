@@ -21,7 +21,7 @@ const constraints = {
 };
 
 export const MyWebcam = forwardRef(
-  ({ trigger, className = "" }, refFromParent) => {
+  ({ trigger, className = "", onCapture = null }, refFromParent) => {
     const canvasRef = useRef(null);
     const videoRef = useRef(null);
 
@@ -37,6 +37,14 @@ export const MyWebcam = forwardRef(
       () => watchCompassHeading((heading) => (headingRef.current = heading)),
       [],
     );
+
+    // Held in a ref rather than read straight from props: the trigger effect
+    // below depends on captureAndUpload, so a parent passing an inline
+    // onCapture would rebuild it every render and fire a capture each time.
+    const onCaptureRef = useRef(onCapture);
+    useEffect(() => {
+      onCaptureRef.current = onCapture;
+    }, [onCapture]);
 
     // Return the current frame as a base64-encoded image
     const capture = useCallback(() => {
@@ -60,9 +68,17 @@ export const MyWebcam = forwardRef(
       return imageSrc;
     }, [videoRef, canvasRef]);
 
-    // Take a shot and upload it when trigger changes
+    // Take a shot and upload it when trigger changes. With an onCapture prop
+    // the frame is handed to the parent instead of being submitted as a shot:
+    // same camera, a different sink (the admin's reference photos).
     const captureAndUpload = useCallback(() => {
       const imageSrc = capture();
+
+      if (onCaptureRef.current) {
+        onCaptureRef.current(imageSrc);
+        return;
+      }
+
       const query = JSON.stringify({
         photo: imageSrc,
         heading: headingRef.current,

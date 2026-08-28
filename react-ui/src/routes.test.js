@@ -17,6 +17,7 @@ import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
+import ReferencePhotos from "./ReferencePhotos";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -193,6 +194,39 @@ describe("/admin/replay (ShotReplay)", () => {
     expect(
       screen.getByRole("heading", { name: "Shot replay workbench" }),
     ).toBeInTheDocument();
+  });
+});
+
+describe("/admin/reference (ReferencePhotos)", () => {
+  test("mounts and shows the roster once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_list_games: [{ id: "game-1", teams: [{ name: "Reds" }] }],
+      admin_get_reference_photo_status: [
+        {
+          user_id: "user-1",
+          name: "Alice",
+          team_name: "Reds",
+          has_photo: false,
+          review_state: null,
+          matches_expected: null,
+          top_name: null,
+          top_probability: null,
+        },
+      ],
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <ReferencePhotos />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", { name: "Reference photos" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("No photo yet")).toBeInTheDocument();
   });
 });
 

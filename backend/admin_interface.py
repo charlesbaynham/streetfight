@@ -23,6 +23,7 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
+from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
@@ -52,6 +53,30 @@ QueueHead = namedtuple(
     "QueueHead",
     ["id", "user_id", "ai_review_state", "ai_review", "location_context"],
 )
+
+
+def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
+    """The kit check's headline, pulled out of a stored reference review.
+
+    Null throughout unless the review completed and carried an identification
+    section: a pending, errored or pre-identification review has no verdict.
+    """
+    blank = {"matches_expected": None, "top_name": None, "top_probability": None}
+    if state != AI_REVIEW_STATE_DONE or not review:
+        return blank
+    try:
+        identification = (json.loads(review) or {}).get("identification")
+    except ValueError:
+        return blank
+    if not isinstance(identification, dict):
+        return blank
+
+    ranked = identification.get("ranked") or [{}]
+    return {
+        "matches_expected": identification.get("matches_expected"),
+        "top_name": ranked[0].get("name"),
+        "top_probability": ranked[0].get("probability"),
+    }
 
 
 class CircleTypes(str, Enum):
@@ -431,6 +456,128 @@ class AdminInterface:
             shot.ai_review = json.dumps(payload, default=str)
         self._session.commit()
         return shot.game_id, shot.user_id
+
+    @db_scoped
+    def set_reference_photo(self, user_id: UUID, image_base64: str) -> Optional[UUID]:
+        """Store the kit-check photo taken at the door for one player.
+
+        Any previous review goes with it: the old reading describes the old
+        photo, and leaving it behind would show a verdict for a picture that is
+        no longer there. Returns the player's game id (None if they are in no
+        team) so the caller can fire update events.
+        """
+        user = self._get_user_orm(user_id)
+        user.reference_photo_base64 = image_base64
+        user.reference_review_state = None
+        user.reference_review = None
+        user.touch()
+        self._session.commit()
+
+        game_id = user.game_id
+        trigger_update_event("user", user_id)
+        if game_id is not None:
+            trigger_update_event("shots", game_id)
+        return game_id
+
+    @db_scoped
+    def clear_reference_photo(self, user_id: UUID) -> Optional[UUID]:
+        """Delete a player's reference photo and its review."""
+        user = self._get_user_orm(user_id)
+        user.reference_photo_base64 = None
+        user.reference_review_state = None
+        user.reference_review = None
+        user.touch()
+        self._session.commit()
+
+        game_id = user.game_id
+        trigger_update_event("user", user_id)
+        if game_id is not None:
+            trigger_update_event("shots", game_id)
+        return game_id
+
+    @db_scoped
+    def get_reference_photo(self, user_id: UUID) -> Optional[str]:
+        """Just the reference photo, without loading the whole user."""
+        row = (
+            self._session.query(User.reference_photo_base64)
+            .filter_by(id=user_id)
+            .first()
+        )
+        if not row:
+            raise HTTPException(404, f"User {user_id} not found")
+        return row[0]
+
+    @db_scoped
+    def get_reference_review(self, user_id: UUID) -> dict:
+        """The stored kit-check review for one player, shaped like
+        :meth:`get_shot_ai_review`."""
+        user = self._get_user_orm(user_id)
+        review = None
+        if user.reference_review:
+            try:
+                review = json.loads(user.reference_review)
+            except ValueError:
+                # An "error" state stores a plain message, not JSON
+                review = {"error": user.reference_review}
+        return {"state": user.reference_review_state, "review": review}
+
+    @db_scoped
+    def store_reference_review(
+        self, user_id: UUID, state: str, payload=None
+    ) -> Optional[UUID]:
+        """Record the outcome of a kit-check review. The single writer of these
+        columns.
+
+        Returns the player's game id so the caller can fire update events
+        without needing a second session.
+        """
+        user = self._get_user_orm(user_id)
+        user.reference_review_state = state
+        if payload is None:
+            user.reference_review = None
+        elif isinstance(payload, str):
+            user.reference_review = payload
+        else:
+            user.reference_review = json.dumps(payload, default=str)
+        self._session.commit()
+        return user.game_id
+
+    @db_scoped
+    def get_reference_photo_status(self, game_id: UUID) -> List[dict]:
+        """One row per player in a game: have they been photographed, and did
+        the photo resolve to them?
+
+        Selects columns only -- never reference_photo_base64, which the roster
+        has no use for and which would make this response enormous.
+        """
+        self._get_game_orm(game_id)  # 404 if the game doesn't exist
+
+        rows = (
+            self._session.query(
+                User.id,
+                User.name,
+                Team.name,
+                User.reference_photo_base64.isnot(None),
+                User.reference_review_state,
+                User.reference_review,
+            )
+            .join(Team, User.team_id == Team.id)
+            .filter(Team.game_id == game_id)
+            .order_by(Team.name, User.name)
+            .all()
+        )
+
+        return [
+            {
+                "user_id": user_id,
+                "name": name,
+                "team_name": team_name,
+                "has_photo": bool(has_photo),
+                "review_state": state,
+                **_reference_verdict(state, review),
+            }
+            for user_id, name, team_name, has_photo, state, review in rows
+        ]
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
         logger.info("AdminInterface - add_user_to_team")
@@ -991,6 +1138,12 @@ class AdminInterface:
             user.num_bullets = 0
             user.hit_points = 1
             user.time_of_death = None
+
+            # The kit-check photos are photographs of identifiable people and
+            # have no meaning once the night they were taken for is over.
+            user.reference_photo_base64 = None
+            user.reference_review_state = None
+            user.reference_review = None
 
             if not keep_weapons:
                 user.shot_damage = 1

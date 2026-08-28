@@ -8,6 +8,7 @@ import PickOutfit from "./PickOutfit";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
+import ReferencePhotos from "./ReferencePhotos";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -40,6 +41,10 @@ const router = createBrowserRouter([
   {
     path: "admin/replay",
     element: <ShotReplay />,
+  },
+  {
+    path: "admin/reference",
+    element: <ReferencePhotos />,
   },
   {
     path: "admin/identity",

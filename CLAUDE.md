@@ -62,6 +62,10 @@ minimal changes over large refactors.
   - `shot_identification.py` — which player a shot photograph shows: builds the
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
+  - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
+    photo of a player, put through the *same* vision path a shot takes
+    (`ai_shot_review._review_image_data`) and then scored against everyone who
+    has picked an outfit. Stored on the `User`, never as a `Shot`.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
@@ -86,6 +90,9 @@ minimal changes over large refactors.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
+    (roadmap R7): capture a reference photo per player and see whether it
+    decodes to them, reusing `ShotQueue.js`'s exported tag renderers.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).
