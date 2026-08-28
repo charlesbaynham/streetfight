@@ -1,4 +1,9 @@
-http://, https://localhost {
+# SITE_ADDRESS is the public hostname. Left unset it stays "localhost"
+# (dev / LAN behaviour, self-signed cert); set to a real domain and Caddy
+# obtains a Let's Encrypt certificate for it automatically. Phones require a
+# trusted HTTPS origin for the camera and geolocation APIs, so a real domain
+# is mandatory for any deployment players will actually use.
+http://, https://{$SITE_ADDRESS:localhost} {
 	handle /api/* {
 		reverse_proxy {$API_URL:http://localhost:8000}
 	}

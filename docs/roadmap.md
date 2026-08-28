@@ -47,6 +47,126 @@ appearance card until they have chosen an appearance, and nobody can choose one
 until the page exists. That makes the colour-picking page the single piece of
 software with a real deadline, which is not where it started on the list.
 
+### The dry run: Sunday 30 August
+
+A casual test game with ~10 people, two days before the ~31 Aug row above -
+the first time real players touch any of this, and so the first pass at R9's
+checklist with someone other than an agent driving. Decisions taken for it:
+
+- **Played in Westminster**, on the live venue - no venue work needed.
+- **Deployed on a cloud VM (DigitalOcean droplet), not the home server** -
+  capacity is guaranteed and nothing on the home network needs exposing.
+  The droplet is a **NixOS host** (`nixosConfigurations.streetfight-cloud`,
+  shipped 28 Aug): installed with `nixos-anywhere`, updated with
+  `nixos-rebuild --target-host`, reusing the same service module as the LXC
+  with Caddy doing ACME itself (`services.streetfight.hostname`). Runbook:
+  `docs/deployment_droplet.md`. It **replaces** the home LXC deployment
+  behind traefik: its secrets are escrowed across, DNS for
+  `streetfight.houseabsolute.co.uk` moves to the droplet, and the
+  hypervisor's pull-based auto-redeploy is disabled - the cutover section
+  of the runbook is the procedure. Updates are an explicit `nixos-rebuild`
+  push, not a master-push auto-deploy. (The docker-compose path with
+  `SITE_ADDRESS`/`compose.ghcr.yml`/watchtower, also fixed up 28 Aug,
+  remains as the fallback.)
+- **QR codes go out on WhatsApp**, not paper - #8's print run is not pulled
+  forward, players follow links.
+- **Pubs stay placeholders**: ammo is handed out directly, so #6's landlord
+  conversations are not on this critical path. The pub landmarks already on
+  the venue are enough.
+- **The whole CharlesBot stack runs live** - review, auto-actions,
+  escalation, resolve-everything. The admin flow is already proven from
+  previous games; the AI adjudication path is the thing this test exists to
+  exercise, so it does not hide behind the safety valve on the day.
+- **Kit**: the armbands should have arrived by then; if they haven't, the
+  identification test is badly weakened (one of four channels gone, and the
+  bystander/player signal with it). R6's check-on-arrival still applies.
+- **Pre-Sunday QA, in two passes**: first an agent click-through of the
+  player and admin flows at a mobile viewport (the `run-mobile-app` skill),
+  run against the merged deployment code; then Charles's own end-to-end pass
+  on his phone - planned, not yet done. Bugs found are the *point*, and
+  anything broken is fixed or written down rather than worked around
+  silently. Findings land on the R9 checklist.
+
+### R10 — Auto-deploy for the droplet *(specced, not built)*
+
+**The decision.** Auto-deploy on master pushes is a property every
+deployment of this game has had (watchtower on compose, the pull-based
+cattle redeploy on the LXC) and the droplet keeps it. The NixOS path
+shipped with explicit `nixos-rebuild` pushes only; this item closes that
+gap. Nice-to-have by the dry run, not a blocker for it - the manual deploy
+loop works meanwhile.
+
+**The shape: pull, not push.** A systemd **timer + oneshot service** pair
+on the droplet (`nix/auto-deploy.nix`, imported only by
+`streetfight-cloud` - the LXC is unaffected), keeping the trust model the
+LXC established: the host reaches out; nothing on the internet holds
+credentials into it. Each tick:
+
+1. `git ls-remote https://github.com/charlesbaynham/streetfight
+   refs/heads/master` → target rev. This is the cheap gate that makes a
+   short interval (~2 min, randomized) affordable - nothing else runs when
+   nothing changed.
+2. Compare against a state file under `/var/lib/streetfight-autodeploy/`
+   recording the last **success** and last **failure** rev. Target equal to
+   either → exit 0. The failure memo is what stops a broken commit
+   crash-looping the deployer; the next commit retries naturally.
+3. `nixos-rebuild switch --flake
+   github:charlesbaynham/streetfight/<rev>#streetfight-cloud` - pinned to
+   the rev just observed, so there is no gap between deciding and
+   fetching.
+4. Health check `curl -fsS http://127.0.0.1/api/get_version`, confirm it
+   reports the new rev, record the outcome in the state file and the
+   journal.
+
+**Make the rebuild cheap: CI builds the system closure.** A job in
+`build_images.yml` building
+`.#nixosConfigurations.streetfight-cloud.config.system.build.toplevel` on
+master, pushed to `streetfight.cachix.org` by the existing cachix action.
+The droplet then *substitutes* the new system rather than building it;
+only evaluation happens on-box (the reason `nix/cloud-host.nix` carries a
+swapfile - and a 2 GB droplet is the comfortable size). Note this job can
+only pass once the real deploy key has replaced the placeholder in
+`nix/cloud-host.nix`: the assertion fails evaluation until then, which is
+correct.
+
+**Prerequisite that is easy to miss:** the droplet must trust the cachix
+substituter *non-interactively*. The flake's `nixConfig` only takes effect
+when accepted at a prompt, which a systemd service never sees - so bake
+`nix.settings.substituters` / `trusted-public-keys` for
+`streetfight.cachix.org` into the system configuration itself.
+
+**Guardrails.**
+
+- An `enable` option on the module as the kill switch.
+- `Nice`/`IOSchedulingClass=idle` and a `MemoryHigh` on the service, so a
+  deploy landing mid-game degrades the deploy, not the backend.
+- No auto-rollback in v1: `nixos-rebuild` keeps the previous generation,
+  `nixos-rebuild switch --rollback` is the manual recovery, documented in
+  the runbook. A failed health check logs loudly and stops retrying; it
+  does not thrash.
+- `switch` only restarts units whose definition changed, so a
+  frontend-only change never touches the backend; when the backend does
+  restart, SSE clients reconnect on their own.
+
+**Not chosen, and why.** `system.autoUpgrade`: re-evaluates the whole
+flake every tick whether or not anything changed - the ls-remote gate is
+the entire point on a small box. CI-push over SSH (`nixos-rebuild
+--target-host` from Actions): puts a root-capable private key in GitHub
+secrets and gives CI a route into the host; pull inverts that, and the
+LXC already proved the pattern.
+
+**Lands in:** `nix/auto-deploy.nix` (new), `flake.nix` (import it in
+`streetfight-cloud`), `nix/cloud-host.nix` (`nix.settings` trust),
+`.github/workflows/build_images.yml` (cloud-system job),
+`docs/deployment_droplet.md` + `CLAUDE.md` (update the "explicit push"
+wording).
+
+**Done when** a push to master is serving at
+`streetfight.houseabsolute.co.uk` within ~5 minutes with
+`/api/get_version` reporting the new rev, and a deliberately broken
+commit deploys once, fails its health check, and does not retry until the
+next commit lands.
+
 ## Priority order
 
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |

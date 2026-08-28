@@ -16,6 +16,26 @@
         "url": "https://github.com/charlesbaynham/nix-proxmox-cattle"
       }
     },
+    "disko": {
+      "inputs": {
+        "nixpkgs": [
+          "nixpkgs"
+        ]
+      },
+      "locked": {
+        "lastModified": 1781152676,
+        "narHash": "sha256-RxWs5ND31KzTG7wvMM+PMfUjyNpmIEr999lqNARaM5o=",
+        "ref": "refs/heads/master",
+        "rev": "ff8702b4de27f72b4c78573dfb89ec74e36abdf1",
+        "revCount": 1392,
+        "type": "git",
+        "url": "https://github.com/nix-community/disko"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://github.com/nix-community/disko"
+      }
+    },
     "flake-utils": {
       "inputs": {
         "systems": "systems"
@@ -99,6 +119,7 @@
     "root": {
       "inputs": {
         "cattle": "cattle",
+        "disko": "disko",
         "flake-utils": "flake-utils",
         "nixpkgs": "nixpkgs",
         "pyproject-build-systems": "pyproject-build-systems",

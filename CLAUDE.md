@@ -253,13 +253,33 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 
 ## Deployment (brief)
 
-`docker compose up` runs three services (`compose.yml`): a **Caddy** frontend
-(serves the React build, reverse-proxies `/api`), the **FastAPI** backend, and a
-**Cloudflare DDNS** sidecar. Optional overlays add Traefik
-(`compose.traefik.yml`) or auto-update via Watchtower (`compose.watchtower.yml`).
-Images are built from the Nix flake
-(`nix build .#dockerFrontend .#dockerBackend`) and published to ghcr.io by CI
-(`.github/workflows/build_images.yml`).
+Three deployment targets share one service definition:
+
+- **The cloud droplet (the live deployment)** is a NixOS host:
+  `nixosConfigurations.streetfight-cloud` in the flake, wiring the
+  deployment-agnostic `nix/streetfight.nix` module to `nix/disko-cloud.nix`
+  (disk layout) and `nix/cloud-host.nix` (machine config). Installed once,
+  destructively, with `nixos-anywhere`; updated with
+  `nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
+  — an explicit push for now (pull-based auto-deploy on master pushes is
+  specced as roadmap R10, not yet built). Caddy terminates TLS
+  itself there (`services.streetfight.hostname`); secrets live in
+  `/data/secrets/streetfight.env` (`nix/streetfight.env.example` documents
+  the format). See `docs/deployment_droplet.md` for the full runbook,
+  including the cutover that stands down the old home-network LXC
+  deployment.
+- **The Proxmox LXC** (`.#proxmoxLxcTemplate`, via `nix-proxmox-cattle`) is
+  that old home-network deployment: TLS terminated upstream by traefik,
+  pull-based auto-redeploy. Being stood down; do not change its behaviour.
+- **Docker Compose** (`compose.yml`) runs a **Caddy** frontend, the
+  **FastAPI** backend and a **Cloudflare DDNS** sidecar on any Docker host.
+  Overlays: Traefik (`compose.traefik.yml`), auto-update via Watchtower
+  (`compose.watchtower.yml`), prebuilt ghcr.io images without auto-update
+  (`compose.ghcr.yml`). `SITE_ADDRESS` sets the hostname Caddy serves and
+  gets a certificate for (unset = `localhost`); it must agree with
+  `WEBSITE_URL`, which is what join links and item QRs encode. Images are
+  built from the Nix flake (`nix build .#dockerFrontend .#dockerBackend`)
+  and published to ghcr.io by CI (`.github/workflows/build_images.yml`).
 
 ## Conventions & gotchas for agents
 
