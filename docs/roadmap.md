@@ -53,16 +53,35 @@ A casual test game with ~10 people, two days before the ~31 Aug row above -
 the first time real players touch any of this, and so the first pass at R9's
 checklist with someone other than an agent driving. Decisions taken for it:
 
+- **Played in Westminster**, on the live venue - no venue work needed.
 - **Deployed on a cloud VM (DigitalOcean droplet), not the home server** -
   capacity is guaranteed and nothing on the home network needs exposing.
   Runbook: `docs/deployment_droplet.md`; the code half (configurable
   `SITE_ADDRESS` in the Caddyfile, `compose.ghcr.yml`, the escalation env
-  vars passed through compose) shipped 28 Aug.
+  vars passed through compose) shipped 28 Aug. The droplet **replaces** the
+  home LXC deployment behind traefik: its secrets are escrowed across, DNS
+  for `streetfight.houseabsolute.co.uk` moves to the droplet, and the
+  hypervisor's pull-based auto-redeploy is disabled - the cutover section of
+  the runbook is the procedure. Auto-deploy on master pushes is kept, via
+  watchtower on the droplet.
 - **QR codes go out on WhatsApp**, not paper - #8's print run is not pulled
   forward, players follow links.
-- It is not the 19th: bugs found are the *point*, and anything broken is
-  fixed or written down rather than worked around silently. Findings land on
-  the R9 checklist.
+- **Pubs stay placeholders**: ammo is handed out directly, so #6's landlord
+  conversations are not on this critical path. The pub landmarks already on
+  the venue are enough.
+- **The whole CharlesBot stack runs live** - review, auto-actions,
+  escalation, resolve-everything. The admin flow is already proven from
+  previous games; the AI adjudication path is the thing this test exists to
+  exercise, so it does not hide behind the safety valve on the day.
+- **Kit**: the armbands should have arrived by then; if they haven't, the
+  identification test is badly weakened (one of four channels gone, and the
+  bystander/player signal with it). R6's check-on-arrival still applies.
+- **Pre-Sunday QA, in two passes**: first an agent click-through of the
+  player and admin flows at a mobile viewport (the `run-mobile-app` skill),
+  run against the merged deployment code; then Charles's own end-to-end pass
+  on his phone - planned, not yet done. Bugs found are the *point*, and
+  anything broken is fixed or written down rather than worked around
+  silently. Findings land on the R9 checklist.
 
 ## Priority order
 

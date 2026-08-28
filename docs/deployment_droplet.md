@@ -1,21 +1,29 @@
 # Deploying to a cloud VM (DigitalOcean droplet)
 
-The runbook for putting the game on the public internet from a plain cloud VM
-with Docker installed - written for the dry run of 30 Aug 2026, but nothing in
-it is specific to that day. It uses the images CI publishes to ghcr.io (public,
-no registry login needed) via `compose.ghcr.yml`, so the droplet needs Docker
-only - no Nix, no Node, no Python.
+The runbook for running the game from a plain cloud VM with Docker installed -
+written for the dry run of 30 Aug 2026, but nothing in it is specific to that
+day. The droplet replaces the home-lab LXC deployment (see the cutover section
+at the bottom); it runs the images CI publishes to ghcr.io (public, no
+registry login needed) and auto-updates them on every master push via
+watchtower, matching the pull-on-push behaviour the LXC had. The droplet
+needs Docker only - no Nix, no Node, no Python.
+
+The public origin is **`https://streetfight.houseabsolute.co.uk`** - the same
+address the home deployment served, so nothing already shared changes. On the
+droplet, Caddy terminates TLS itself (at home that was traefik's job), which
+is what the `SITE_ADDRESS` knob in the Caddyfile exists for.
 
 ## What you need before starting
 
 - A droplet (the smallest tier is plenty for ~10 players; 1 GB RAM is fine -
   the heavy lifting, vision review, happens on OpenRouter's servers, not ours).
-- **A domain name pointing at it.** This is not optional: phones refuse the
-  camera and geolocation APIs on an untrusted origin, and the whole game is
-  camera and geolocation. Create an `A` record for e.g.
-  `streetfight.example.com` → the droplet's IP before first boot, so Caddy can
-  pass the Let's Encrypt challenge immediately.
-- An OpenRouter API key, if CharlesBot is playing.
+- **DNS pointing at it**: the `streetfight.houseabsolute.co.uk` A record moved
+  to the droplet's IP, **DNS-only (grey cloud) in Cloudflare, not proxied** -
+  Caddy answers Let's Encrypt's HTTP challenge itself and can't do that from
+  behind Cloudflare's proxy. Phones refuse the camera and geolocation APIs on
+  an untrusted origin, and the whole game is camera and geolocation, so a
+  working certificate is a hard requirement, not a nicety.
+- The secrets escrowed from the home deployment (see cutover, below).
 
 ## Steps
 
@@ -33,18 +41,19 @@ matter; set every one of these:
 # The public origin. SITE_ADDRESS is what Caddy serves (and gets a
 # certificate for); WEBSITE_URL is what every join link and item QR encodes,
 # so they must agree.
-SITE_ADDRESS=streetfight.example.com
-WEBSITE_URL=https://streetfight.example.com
+SITE_ADDRESS=streetfight.houseabsolute.co.uk
+WEBSITE_URL=https://streetfight.houseabsolute.co.uk
 
 # Inside the compose network the frontend proxies to the backend container,
 # not localhost. Delete the .env.dev line or set it explicitly:
 API_URL=http://backend:8000
 
-# Secrets. SECRET_KEY signs every join link that gets sent out - if it
-# changes, every link already shared on WhatsApp dies. Generate it once
-# (openssl rand -hex 32) and keep it for the life of the game.
-SECRET_KEY=<openssl rand -hex 32>
-ADMIN_PASSWORD=<something real>
+# Secrets - the values escrowed from the home deployment, not fresh ones.
+# SECRET_KEY signs every join link that gets sent out: keeping the old key
+# keeps every link already shared alive across the cutover. (Starting truly
+# fresh instead? openssl rand -hex 32 - and accept that old links die.)
+SECRET_KEY=<escrowed>
+ADMIN_PASSWORD=<escrowed>
 
 # Production behaviour
 LOG_LEVEL=INFO
@@ -53,25 +62,24 @@ DEBUG_DATABASE=         # blank
 # RESET_DATABASE stays unset - the schema is created automatically on first
 # boot (create_all); setting this wipes the database on every restart.
 
-# CharlesBot (optional - leave the key blank and the admin adjudicates
-# every shot by hand, which also works)
-OPENROUTER_API_KEY=sk-or-...
+# CharlesBot - the dry run's whole point is exercising this, so all keys set
+OPENROUTER_API_KEY=<escrowed>
 OPENROUTER_MODEL=google/gemini-3.7-flash-20260813
 OPENROUTER_ESCALATION_MODEL=google/gemini-3.7-pro-20260813
 
-# Use the ghcr images
-COMPOSE_FILE=compose.yml:compose.ghcr.yml
+# ghcr images + auto-update on master pushes (watchtower polls every 30 s)
+COMPOSE_FILE=compose.yml:compose.watchtower.yml
 ```
 
 Then:
 
 ```bash
 docker compose pull
-docker compose up -d frontend backend
+docker compose up -d frontend backend watchtower
 ```
 
-Naming the two services skips `cloudflare-ddns`, which a droplet with a
-static IP and a manually created A record doesn't need (unconfigured it just
+Naming the services skips `cloudflare-ddns`, which a droplet with a static IP
+and a manually created A record doesn't need (unconfigured it just
 crash-loops noisily).
 
 If the droplet runs a firewall (`ufw` is enabled by default on DigitalOcean's
@@ -79,30 +87,79 @@ Docker image), open 80 and 443: `ufw allow 80,443/tcp`. Port 80 must be open
 even though the game runs on 443 - it's how Let's Encrypt's HTTP challenge
 arrives.
 
+`compose.ghcr.yml` is the same image source *without* watchtower, for when a
+deployment should stay pinned until an explicit `docker compose pull` -
+swap it into `COMPOSE_FILE` in place of `compose.watchtower.yml` if that's
+ever wanted.
+
 ## Verifying it
 
-1. `https://streetfight.example.com` loads with a padlock (no certificate
-   warning - a warning means SITE_ADDRESS/DNS is wrong, and phones will
-   refuse the camera).
-2. `https://streetfight.example.com/api/get_version` returns the deployed
-   git revision, and it matches the master commit you expect.
-3. On a real phone: log in as admin (`/admin`), create a game and a team,
+1. `https://streetfight.houseabsolute.co.uk` loads with a padlock (no
+   certificate warning - a warning means SITE_ADDRESS/DNS is wrong, or the
+   record is still proxied, and phones will refuse the camera).
+2. `https://streetfight.houseabsolute.co.uk/api/get_version` returns the
+   deployed git revision, and it matches the master commit you expect.
+3. Push a trivial commit to master and watch `docker compose logs -f
+   watchtower` pick it up - confirms auto-deploy works before it matters.
+4. On a real phone: log in as admin (`/admin`), create a game and a team,
    and open the identity page - the team join links it mints should start
-   with `https://streetfight.example.com`. Follow one and check the browser
-   asks for camera and location permissions.
+   with `https://streetfight.houseabsolute.co.uk`. Follow one and check the
+   browser asks for camera and location permissions.
 
 ## Day-of notes
 
-- **Pin the code by pinning the moment you pull.** `latest` tracks master, so
-  run `docker compose pull && docker compose up -d frontend backend` when the
-  code is where you want it, and don't pull again mid-game. (This is also why
-  this runbook uses `compose.ghcr.yml` and not `compose.watchtower.yml` -
-  watchtower would redeploy under the players' feet 30 s after a master push.)
+- **Auto-update is on by design** (watchtower tracks `latest`, which tracks
+  master), so a push to master redeploys the live game within ~30 s. On a
+  game day that cuts both ways: it's the fastest possible path for shipping a
+  fix mid-game, and it means *don't merge to master during play unless you
+  mean it*.
 - **State lives in named volumes** (`database`, `caddy_data`) plus the
-  `./logs` and `./processed_shots` bind mounts. `docker compose down` keeps
-  all of it; `docker compose down -v` destroys the database and the
-  certificates. To wipe between the dry run and the real game, prefer
-  admin reset from the UI, or `down -v` and re-`up`.
+  `./logs` and `./processed_shots` bind mounts, so a watchtower redeploy or
+  `docker compose down` keeps all of it; `docker compose down -v` destroys
+  the database and the certificates. To wipe between the dry run and the
+  real game, prefer admin reset from the UI, or `down -v` and re-`up`.
 - Shot photos land in `./processed_shots` and the database volume - worth
-  `tar`-ing off the droplet after the game before destroying it: they are the
-  labelled training data R1/R2 feed on.
+  `tar`-ing off the droplet after the game: they are the labelled training
+  data R1/R2 feed on.
+
+## Cutover from the home LXC deployment
+
+The game currently runs as a Proxmox LXC on the home network: CI publishes an
+LXC rootfs template as a release asset (`build_lxc_template` in
+`.github/workflows/build_images.yml`, via `nix-proxmox-cattle`), the
+hypervisor **pulls** it itself on new releases - CI has no route in - and
+traefik on the home network terminates TLS for
+`streetfight.houseabsolute.co.uk`. Standing it down is therefore all
+home-side work; CI needs no change (it can keep publishing templates nobody
+fetches - remove the job later as cleanup, not as part of the cutover).
+
+Order matters: escrow first, then point DNS at the droplet, then stop the
+home side - so there is never a moment with secrets in only one place or the
+domain pointing at nothing.
+
+1. **Escrow the secrets** (needs SSH to the home server). On the LXC, find
+   the environment the backend service actually runs with - `systemctl cat`
+   the streetfight service inside the container and follow its
+   `EnvironmentFile=`; per the nix-proxmox-cattle contract the env file
+   survives redeploys outside the rootfs, so it is wherever that unit points,
+   not in the nix store. Copy out at least: `SECRET_KEY`, `ADMIN_PASSWORD`,
+   `OPENROUTER_API_KEY` (and any other `OPENROUTER_*` values), and the
+   `CLOUDFLARE_*` values (the API token is also what step 3's DNS change can
+   use). Transfer them straight into the droplet's `.env` over SSH - never
+   into the repo, a PR, a pastebin or a chat log.
+2. **Archive the lab's game data** before touching anything: the database
+   and the processed-shots directory, tar'd off the LXC. Nothing migrates to
+   the droplet (the dry run starts from a clean database); this is purely so
+   the resort-era shots and telemetry aren't lost with the container.
+3. **Move DNS**: repoint the `streetfight.houseabsolute.co.uk` record from
+   the home IP to the droplet's static IP, DNS-only (grey cloud). Drop the
+   TTL first if it's long. The droplet's Caddy obtains its certificate on
+   the first request after propagation.
+4. **Verify the droplet** end to end (section above) *while the LXC is still
+   up* - if something's wrong, DNS can go straight back.
+5. **Stop the home side**: disable the hypervisor's pull-based
+   re-provisioning for the streetfight template (the nix-proxmox-cattle
+   puller on the Proxmox host), stop the LXC, and remove the traefik route.
+   The order within this step doesn't matter once DNS has moved - traffic
+   is already gone - but disabling the puller must not be skipped, or the
+   next release quietly resurrects the container.
