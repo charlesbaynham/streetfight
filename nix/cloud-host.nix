@@ -78,6 +78,13 @@ in
   };
   users.users.root.openssh.authorizedKeys.keys = deployKeys;
 
+  # Console rescue: lets root log in at the DigitalOcean web console when the
+  # network is down - the failure mode that is otherwise unrecoverable with
+  # password auth off (SSH stays key-only via PermitRootLogin above). Hash of
+  # a random 28-char password; the plaintext lives on homeserver at
+  # /root/streetfight-droplet-console-password.txt, never in this repo.
+  users.users.root.hashedPassword = "$6$mmItCcro0e5KelJZ$XbdqNlqjmGT4rBGHAg7ldav.6yURAAkZLc0Kg9/cvaR42WCUc.ogo19adoKhVDeIpvaMtBUvWftrtXceoiCrT.";
+
   # nixos-rebuild evaluates on the target; a 1 GB droplet needs the headroom.
   swapDevices = [
     {
