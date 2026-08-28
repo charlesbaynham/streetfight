@@ -448,6 +448,29 @@ class AdminInterface:
         return bool(self._get_game_orm(game_id).ai_auto_actions_enabled)
 
     @db_scoped
+    def set_ai_escalation_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn escalation of hard shots to the stronger model on or off.
+
+        A kill switch inside the auto-actions feature rather than an opt-in of
+        its own, which is why it defaults on: with it off, a shot the ladder
+        wants escalated (backend.shot_escalation) simply waits for the admin,
+        exactly as it does when no escalation model is configured.
+        """
+        logger.info(
+            "AdminInterface - set_ai_escalation_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_escalation_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_escalation_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_escalation_enabled)
+
+    @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:
         """The stored AI review for one shot, and any escalation of it.
 

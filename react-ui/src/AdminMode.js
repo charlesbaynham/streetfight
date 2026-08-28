@@ -186,6 +186,21 @@ function GamePanel({ game }) {
           AI verdicts resolve shots automatically (confident calls ≥ 0.6 on the
           oldest queued shot; ambiguous ones wait for you)
         </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={game.ai_escalation_enabled}
+            onChange={(e) =>
+              adminPost("admin_set_ai_escalation", {
+                game_id: game.id,
+                enabled: e.target.checked,
+              })
+            }
+          />{" "}
+          Hard shots escalate to a stronger AI model (too few readable garments;
+          its unsure cases still wait for you)
+        </label>
       </p>
 
       <p>

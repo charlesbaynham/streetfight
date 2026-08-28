@@ -470,6 +470,19 @@ function ShotQueuePanel() {
       .then((_) => update());
   }, [shot, update]);
 
+  // The escalated second opinion, asked for by hand: it runs whatever the
+  // game's toggles say, so the reasons it can refuse are things the admin has
+  // to fix (no model configured, no review to escalate from) rather than
+  // background noise for the error log.
+  const escalateShot = useCallback(async () => {
+    const response = await adminPost("admin_escalate_shot", {
+      shot_id: shot.id,
+    });
+    if (response.ok) return;
+    const body = await response.json().catch(() => null);
+    window.alert(body?.detail || "Could not escalate this shot");
+  }, [shot]);
+
   const refundShot = useCallback(() => {
     adminPost("admin_refund_shot", { shot_id: shot.id })
       .then((_) => evictShotFromCache(shot.id))
@@ -550,6 +563,9 @@ function ShotQueuePanel() {
                 }
               >
                 Re-run AI review
+              </button>
+              <button onClick={() => escalateShot()}>
+                Run escalated review
               </button>
             </Col>
             <Col>

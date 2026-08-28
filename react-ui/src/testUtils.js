@@ -329,6 +329,7 @@ export function makeGame(overrides = {}) {
     active: true,
     ai_shot_review_enabled: false,
     ai_auto_actions_enabled: false,
+    ai_escalation_enabled: true,
     ...overrides,
   };
 }

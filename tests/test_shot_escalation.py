@@ -474,6 +474,58 @@ def test_without_an_escalation_model_nothing_is_queued(
     assert stored_escalation(shot_from_user_in_team)["escalation_state"] is None
 
 
+# -- the admin's "Run escalated review" button -------------------------------
+
+
+@pytest.fixture
+def escalation_model(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("OPENROUTER_ESCALATION_MODEL", "test/strong-model")
+
+
+def test_the_manual_escalation_needs_an_escalation_model(
+    monkeypatch, db_session, admin_api_client, shot_from_user_in_team
+):
+    monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
+    store_weak_review(shot_from_user_in_team)
+
+    response = admin_api_client.post(
+        f"/api/admin_escalate_shot?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.status_code == 400
+    assert "OPENROUTER_ESCALATION_MODEL" in response.json()["detail"]
+
+
+def test_the_manual_escalation_needs_a_review_to_escalate_from(
+    escalation_model, db_session, admin_api_client, shot_from_user_in_team
+):
+    # The candidate ranking is built from the cheap pass's reading, so without
+    # one there is nothing to hand the stronger model.
+    response = admin_api_client.post(
+        f"/api/admin_escalate_shot?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.status_code == 400
+    assert "run the AI review first" in response.json()["detail"]
+
+
+def test_the_manual_escalation_runs_whatever_the_toggles_say(
+    mocker, escalation_model, db_session, admin_api_client, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = AdminInterface().get_shot_game_id(shot_from_user_in_team)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    store_weak_review(shot_from_user_in_team)
+
+    response = admin_api_client.post(
+        f"/api/admin_escalate_shot?shot_id={shot_from_user_in_team}"
+    )
+
+    assert response.is_success
+    assert enqueue.call_args.args[0] == shot_from_user_in_team
+
+
 # -- the columns and the shooter's shot history ------------------------------
 
 

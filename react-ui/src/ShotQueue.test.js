@@ -186,6 +186,7 @@ describe("ShotQueuePanel", () => {
       admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
+      admin_escalate_shot: {},
       ...routeOverrides,
     });
     await actAndFlush(() =>
@@ -363,6 +364,20 @@ describe("ShotQueuePanel", () => {
     );
   });
 
+  test('"Run escalated review" posts admin_escalate_shot for the shown shot', async () => {
+    await renderQueue();
+
+    userEvent.click(
+      screen.getByRole("button", { name: "Run escalated review" }),
+    );
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_escalate_shot").query).toEqual({
+        shot_id: "shot-1",
+      }),
+    );
+  });
+
   test("the show-adjudicated toggle asks the backend for checked shots too, defaulting to off", async () => {
     await renderQueue();
 
@@ -457,6 +472,7 @@ describe("ShotAiTags", () => {
       admin_mark_shot_bystander: {},
       admin_refund_shot: {},
       admin_review_shot: {},
+      admin_escalate_shot: {},
     });
     await actAndFlush(() =>
       render(

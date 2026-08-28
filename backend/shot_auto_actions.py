@@ -22,8 +22,9 @@ and ``armbands_confident``, both in backend.shot_vision):
   model being unsure is exactly what escalation is for.
 
 An escalated verdict of "unsure" -- and an escalation that errored, and one
-never made because no escalation model is configured -- all land in the same
-place: the admin queue, where every shot went before any of this existed.
+never made because no escalation model is configured or the game's escalation
+toggle is off -- all land in the same place: the admin queue, where every shot
+went before any of this existed.
 
 **Strict queue order.** Only the oldest unchecked shot of a game is ever acted
 on. Resolving a shot can invalidate the shots behind it (a knockout refunds the
@@ -94,12 +95,14 @@ def process_queue_head(game_id: UUID) -> None:
         if action == _ESCALATE:
             from . import shot_escalation
 
-            logger.info("Escalating shot %s to the stronger model", head.id)
-            shot_escalation.enqueue_escalation(head.id)
+            if AdminInterface().is_ai_escalation_enabled(game_id):
+                logger.info("Escalating shot %s to the stronger model", head.id)
+                shot_escalation.enqueue_escalation(head.id)
             # Return either way. With an escalation in flight the head blocks
-            # the queue behind it; with no escalation client configured nothing
-            # started at all and the head simply waits for the admin -- the
-            # pre-existing safety valve, unchanged.
+            # the queue behind it; with the escalation toggle off, or with no
+            # escalation client configured, nothing started at all and the head
+            # simply waits for the admin -- the same safety valve, reachable
+            # from the admin panel as well as from the environment.
             return
 
         try:

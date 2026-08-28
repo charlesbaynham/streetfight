@@ -356,6 +356,28 @@ def test_two_readable_channels_are_escalated(
     enqueue.assert_called_once_with(shot_from_user_in_team)
 
 
+def test_escalation_defaults_to_on(db_session, one_game):
+    # Unlike its two siblings: it is a kill switch inside auto-actions, not a
+    # third opt-in, so a game nobody has touched escalates as it always did.
+    assert AdminInterface().is_ai_escalation_enabled(one_game) is True
+
+
+def test_the_escalate_rung_waits_for_the_admin_when_escalation_is_off(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    # Toggling it off is the same safety valve as configuring no escalation
+    # model: nothing is asked of the stronger model and the head simply waits.
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    AdminInterface().set_ai_escalation_enabled(game_of(shot_from_user_in_team), False)
+
+    shot = drain_with(
+        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+    )
+
+    assert shot.checked is False
+    enqueue.assert_not_called()
+
+
 def test_a_legacy_bystander_review_is_left_to_the_admin(
     mocker, db_session, shot_from_user_in_team
 ):
@@ -819,3 +841,38 @@ def test_auto_actions_endpoint_needs_admin_auth(api_client, one_game):
     )
 
     assert response.status_code == 403
+
+
+def test_escalation_endpoint_flips_the_game_flag(admin_api_client, one_game):
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_escalation?game_id={one_game}&enabled=false"
+    )
+
+    assert response.status_code == 200
+    assert AdminInterface().is_ai_escalation_enabled(one_game) is False
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_escalation?game_id={one_game}&enabled=true"
+    )
+
+    assert response.is_success
+    assert AdminInterface().is_ai_escalation_enabled(one_game) is True
+
+
+def test_enabling_escalation_escalates_a_head_that_was_waiting(
+    mocker, db_session, admin_api_client, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    shot_auto_actions.process_queue_head(game_id)
+    enqueue.assert_not_called()
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_escalation?game_id={game_id}&enabled=true"
+    )
+
+    assert response.is_success
+    enqueue.assert_called_once_with(shot_from_user_in_team)
