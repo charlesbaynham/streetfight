@@ -133,10 +133,6 @@ inventing a look. What makes it work:
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and
   `shared_fixtures.py`).
-- `.claude/skills/` — agent skills for jobs with a workflow worth remembering.
-  `run-mobile-app` boots the stack headless and screenshots the UI at a phone
-  viewport; `draw-venue-map` builds a new venue's map end to end, from the play
-  area to the `Venue` entry.
 - Root: `package.json` (orchestration scripts), `pyproject.toml` + `uv.lock`
   (the Python dependencies), `flake.nix` / `.envrc` (Nix dev env),
   `compose*.yml` + `Caddyfile` (deployment).
