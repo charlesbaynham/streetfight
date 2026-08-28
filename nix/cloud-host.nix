@@ -42,7 +42,26 @@ in
   };
 
   networking.hostName = "streetfight-cloud";
-  networking.useDHCP = lib.mkDefault true;
+
+  # DigitalOcean offers NO DHCP: the stock image reads a static config from
+  # cloud-init metadata, so a system relying on DHCP boots unreachable (it
+  # did, on 2026-08-28 - the installer survives only because nixos-anywhere's
+  # kexec replays the running system's config). Values captured from the
+  # droplet's own netplan; re-capture them if the droplet is ever rebuilt.
+  # The VPC NIC and DO's anchor IP are unused here and left unconfigured.
+  networking.useDHCP = false;
+  networking.usePredictableInterfaceNames = false;
+  networking.interfaces.eth0.ipv4.addresses = [
+    {
+      address = "167.172.62.186";
+      prefixLength = 20;
+    }
+  ];
+  networking.defaultGateway = {
+    address = "167.172.48.1";
+    interface = "eth0";
+  };
+  networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
 
   # 22 for deploys; 80/443 are what Caddy answers on once
   # services.streetfight.hostname is set (80 also carries the ACME HTTP
