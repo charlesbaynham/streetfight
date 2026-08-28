@@ -38,6 +38,7 @@ allowed to become a blocker for the night — it is all upside.
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
 | **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded. **Shipped.**  | R5           |
+| **~7–17 Sept** | Manual human pass through every feature shipped this year, on a real phone. Bugs found either fixed or written down as accepted.           | R9           |
 | **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
 | **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
 
@@ -63,6 +64,7 @@ software with a real deadline, which is not where it started on the list.
 | 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
 | 10    | **R3** Screen Wake Lock                     | Shipped 28 Aug               | Mounted unconditionally in user mode, no toggle — the phone's own button is the off switch.                    |
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
+| 10c   | **R9** Manual pass through every feature    | **~7–17 Sept**                | Everything above this line has agent tests, not a human's thumbs. Last gate before the print run and the night. |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -522,6 +524,113 @@ and the Millbank government blocks are most of the eastern half.
 **If the schedule slips**, the drop codes are the ones with a hard dependency on
 physical placement; the appearance cards can be sent digitally as a fallback,
 since by then #10 has already told each player what they are wearing.
+
+---
+
+### R9 — Manual human pass through every feature shipped this year *(proposed)*
+
+**Why this is its own item.** Everything above this line has been built,
+reviewed and (mostly) covered by automated tests by agents working from a
+diff, never by a person clicking through the app end to end. `pytest` and
+`npm test` catch regressions in logic; they do not catch a button that is
+unreachable on a real phone, a flow that makes sense to the person who wrote
+it and nobody else, or a feature two people built against slightly different
+assumptions about how it fits with a third. Agents can (and should) run
+through this list first — see below — but a **manual pass by a human**,
+ideally Charles on his own phone, is the pre-game gate this item tracks. It
+is the last line of defence between "it works in CI" and "it works at
+House Absolute."
+
+**What "done" means.** Every feature below has been used, on a real mobile
+viewport, by a human, at least once — not read, not diffed, used — and any
+bug found either fixed or written down as a known issue with a decision
+about whether it blocks the 19th.
+
+**The list below is not final.** It is every player- or admin-facing feature
+that shipped between **1 January 2026** and the day this item was written
+(28 Aug 2026), grouped by area rather than by roadmap item number since
+several roadmap items landed as a run of small commits rather than one
+feature. **More will ship before the 19th** — most pressingly #7/#8 (drop
+locations and the print run) and whatever #4/#5 follow-up work turns up —
+so treat this as a checklist to extend, not a closed list to work through
+once. Add a line here whenever something new lands, the same way the rest of
+this file is kept current.
+
+**Player-facing:**
+
+- [ ] Join a team via QR/link and pick an outfit at `/pick` (#10): ranked
+  outfit list, canonical-first ordering, colour swatches, pagination.
+- [ ] The "recommended" vs "not ideal" outfit badges and the "show
+  non-recommended outfits" reveal link.
+- [ ] The name-then-confirm flow — entering a name, seeing the committed
+  outfit, and the outfit becoming locked in.
+- [ ] An admin clearing a player's outfit so they can pick again.
+- [ ] Scanning a loot QR code to pick up an item, and using it (weapons,
+  armour, ammo, medpacks).
+- [ ] Taking a shot photo of another player, including the on-screen
+  crosshair overlay.
+- [ ] The shot status bubble after taking a shot — every visual state it can
+  be in, and that it stays on screen rather than disappearing.
+- [ ] The screen staying awake during play (R3 — Screen Wake Lock), and that
+  the phone's own lock button still turns the screen off on request.
+- [ ] Appealing a resolved shot as either shooter or target (R8), including
+  seeing the appeal budget run out.
+- [ ] The map view, including drop/circle locations on the live Westminster
+  venue map (#12).
+- [ ] The ticker feed for game announcements.
+- [ ] User-facing copy says "CharlesBot", never "AI", anywhere a verdict or
+  explanation is shown (#1, #2 — "CharlesBot thinks: hit on *name*").
+
+**Admin-facing:**
+
+- [ ] The reference-photo kit check at `/admin/reference` (R7): capturing a
+  player's photo at the door and reading the resulting verdict, including
+  the "unreadable photo identifies nobody" case.
+- [ ] The shot review queue: ranked candidate list per shot (#3), CharlesBot's
+  verdict and confidence, the AI vision zoom usage indicator, and manually
+  approving/rejecting a shot.
+- [ ] Toggling `ai_shot_review_enabled`, `ai_auto_actions_enabled`,
+  `ai_escalation_enabled` and `ai_resolve_everything_enabled`, and confirming
+  each one actually changes queue behaviour (not just the toggle state).
+- [ ] Not re-reviewing an already-reviewed shot when the AI toggle is
+  switched on and off again.
+- [ ] Running an escalated review by hand on a shot (#11 — "Run escalated
+  review").
+- [ ] The contested-shots list an appeal reopens (R8), separate from the main
+  queue.
+- [ ] Recording a "hit a bystander" outcome on a shot.
+- [ ] The per-shot map (R5) showing GPS accuracy and the shooter's compass
+  heading.
+- [ ] Admin shot history and notes on a player.
+- [ ] The identity workbench / `AdminIdentity.js`: viewing a player's
+  effective appearance and any overrides, and recording an override for a
+  misdressed player so they stay distinguishable from their teammates.
+- [ ] Renaming a team from the admin dashboard.
+- [ ] Downloading all shot images as a zip.
+- [ ] The admin nav (finger-sized button row) on a real phone screen, not
+  just a desktop browser.
+- [ ] The running app version shown on admin pages, and that it matches what
+  is actually deployed.
+- [ ] The replay workbench at `/admin/replay` (R1) — trialling a prompt/zoom/
+  schema change against real shots without it touching stored data.
+
+**Cuts across both:** confirm the game can be reset (`resetdb`) and replayed
+from a clean state without any of the above breaking, since that is exactly
+what happens between the dry run and the night itself.
+
+**Who does what.** Agents can and should run through the player- and
+admin-facing flows first, in a browser at a mobile viewport (see the
+`run-mobile-app` skill), to catch anything broken before a human's time is
+spent on it. That is preparation, not a substitute: the actual gate is
+Charles doing the same pass by hand on his own phone, because an agent
+cannot judge "does this make sense to someone who has never seen it before"
+or "is this button reachable one-handed with a box of armbands in the other."
+
+**Lands in:** no code — this is a QA pass, tracked here so it does not get
+silently skipped under the logistics deadlines above it.
+**Depends on:** effectively everything shipped above; best done once #10 is
+live to real players (~7 Sept) and again closer to the 19th if anything
+changes.
 
 ---
 
