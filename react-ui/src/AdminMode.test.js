@@ -382,10 +382,10 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     expect(
-      screen.getByLabelText(/AI reviews shot photos automatically/),
+      screen.getByLabelText(/CharlesBot reviews shot photos automatically/),
     ).toBeInTheDocument();
     expect(
-      screen.getByLabelText(/AI verdicts resolve shots automatically/),
+      screen.getByLabelText(/CharlesBot verdicts resolve shots automatically/),
     ).toBeInTheDocument();
   });
 
@@ -393,7 +393,7 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     const checkbox = screen.getByLabelText(
-      /AI reviews shot photos automatically/,
+      /CharlesBot reviews shot photos automatically/,
     );
     expect(checkbox).not.toBeChecked();
 
@@ -412,7 +412,7 @@ describe("GamePanel", () => {
     await renderAdmin();
 
     const checkbox = screen.getByLabelText(
-      /AI verdicts resolve shots automatically/,
+      /CharlesBot verdicts resolve shots automatically/,
     );
     expect(checkbox).not.toBeChecked();
 

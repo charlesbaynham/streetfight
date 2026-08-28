@@ -67,8 +67,9 @@ function ShotAiTags({ shot_id }) {
       <>
         {listener}
         <div className={styles.tagRow}>
+          {/* "CharlesBot" is the display name for what the API calls ai_review (#1). */}
           <span className={`${styles.tag} ${styles.outcomeError}`}>
-            AI review failed: {review ? review.error : "unknown error"}
+            CharlesBot review failed: {review ? review.error : "unknown error"}
           </span>
         </div>
       </>
@@ -563,7 +564,7 @@ function ShotQueuePanel() {
                   adminPost("admin_review_shot", { shot_id: shot.id })
                 }
               >
-                Re-run AI review
+                Re-run CharlesBot review
               </button>
               <button onClick={() => escalateShot()}>
                 Run escalated review

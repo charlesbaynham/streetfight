@@ -157,6 +157,7 @@ function GamePanel({ game }) {
         </button>
       </p>
 
+      {/* "CharlesBot" is the display name for what the API calls ai_review (#1). */}
       <p>
         <label>
           <input
@@ -169,7 +170,7 @@ function GamePanel({ game }) {
               })
             }
           />{" "}
-          AI reviews shot photos automatically (annotates the queue)
+          CharlesBot reviews shot photos automatically (annotates the queue)
         </label>
         <br />
         <label>
@@ -183,8 +184,8 @@ function GamePanel({ game }) {
               })
             }
           />{" "}
-          AI verdicts resolve shots automatically (confident calls ≥ 0.6 on the
-          oldest queued shot; ambiguous ones wait for you)
+          CharlesBot verdicts resolve shots automatically (confident calls ≥ 0.6
+          on the oldest queued shot; ambiguous ones wait for you)
         </label>
         <br />
         <label>
@@ -198,8 +199,8 @@ function GamePanel({ game }) {
               })
             }
           />{" "}
-          Hard shots escalate to a stronger AI model (too few readable garments;
-          its unsure cases still wait for you)
+          Hard shots escalate to a stronger CharlesBot model (too few readable
+          garments; its unsure cases still wait for you)
         </label>
       </p>
 

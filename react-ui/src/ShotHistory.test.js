@@ -112,7 +112,7 @@ describe("shotStatus", () => {
     ).toEqual({
       state: "escalated",
       emoji: "🤖",
-      label: "AI thinks: hit",
+      label: "CharlesBot thinks: hit",
       sublabel: "Escalated to referee",
     });
   });

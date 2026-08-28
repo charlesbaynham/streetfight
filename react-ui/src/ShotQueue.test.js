@@ -352,10 +352,12 @@ describe("ShotQueuePanel", () => {
     );
   });
 
-  test('"Re-run AI review" posts admin_review_shot for the shown shot', async () => {
+  test('"Re-run CharlesBot review" posts admin_review_shot for the shown shot', async () => {
     await renderQueue();
 
-    userEvent.click(screen.getByRole("button", { name: "Re-run AI review" }));
+    userEvent.click(
+      screen.getByRole("button", { name: "Re-run CharlesBot review" }),
+    );
 
     await waitFor(() =>
       expect(getLastAPICall("admin_review_shot").query).toEqual({
@@ -489,7 +491,9 @@ describe("ShotAiTags", () => {
     await renderQueue();
 
     expect(screen.queryByText(/Reviewing/)).not.toBeInTheDocument();
-    expect(screen.queryByText(/AI review failed/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(/CharlesBot review failed/),
+    ).not.toBeInTheDocument();
     expect(screen.queryByText("HIT")).not.toBeInTheDocument();
   });
 
@@ -510,14 +514,14 @@ describe("ShotAiTags", () => {
     };
     await renderQueue();
 
-    await screen.findByText("AI review failed: vision model timed out");
+    await screen.findByText("CharlesBot review failed: vision model timed out");
   });
 
   test("falls back to a generic message when the error carries no reason", async () => {
     aiReviewResponse = { status: 200, body: { state: "error", review: null } };
     await renderQueue();
 
-    await screen.findByText("AI review failed: unknown error");
+    await screen.findByText("CharlesBot review failed: unknown error");
   });
 
   test.each([

@@ -67,13 +67,14 @@ export function shotStatus(shot) {
     return { state: "miss", icon: crossImg, label: "Missed" };
   }
 
-  // The AI has looked but the call is still the referee's: distinct icon and
+  // "CharlesBot" is the display name for what the API calls ai_review (#1).
+  // It has looked but the call is still the referee's: distinct icon and
   // colour from a shot nobody has looked at yet
   if (shot.ai_review_state === "done" && shot.ai_suggestion)
     return {
       state: "escalated",
       emoji: "🤖",
-      label: `AI thinks: ${shot.ai_suggestion}`,
+      label: `CharlesBot thinks: ${shot.ai_suggestion}`,
       sublabel: "Escalated to referee",
     };
 
