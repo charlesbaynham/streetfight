@@ -181,13 +181,59 @@ KOYAO_RESORT = Venue(
 )
 
 
+WESTMINSTER = Venue(
+    name="Westminster",
+    map=VenueMap(
+        # Drawn in the Kingston style from an OpenStreetMap tracing, so the
+        # streets are where they actually are rather than where they looked
+        # good. A placeholder for a hand-drawn map (roadmap #12), but an
+        # accurate one: every pub below sits on its correct street.
+        #
+        # The play area is defined by three things - House Absolute at the
+        # exact centre, the crop symmetric about it, and Big Ben inside the
+        # frame. Big Ben is 537 m north of the house, so symmetry forces a
+        # half-span of at least that; 650 m leaves room to draw the tower.
+        # The reference points are that crop's corners, so they are exact by
+        # construction rather than measured off the drawing.
+        image="westminster",
+        width_px=1024,
+        height_px=1024,
+        ref_1=MapReferencePoint(x=0, y=0, lat=51.501752, long=-0.140302),
+        ref_2=MapReferencePoint(x=1024, y=1024, lat=51.489995, long=-0.121544),
+        # Wider than Kingston's 0.115. The drawing is 1.27 m/px against
+        # Kingston's 0.51, so a window that tight would be showing the player
+        # ninety pixels of blur; this trades some zoom for something legible.
+        corner_width_km=0.2,
+    ),
+    # Everything drawn on the map, so an admin can only place a circle
+    # somewhere the players can actually see. The ten pubs are those from the
+    # "New Norbiton" survey that fall inside the crop.
+    landmarks={
+        "WHITE_HORSE": (51.495027, -0.130857),
+        "BARLEY_MOW": (51.495077, -0.131687),
+        "SPEAKER": (51.496905, -0.132260),
+        "ROYAL_OAK": (51.494215, -0.132538),
+        "MARQUIS_OF_GRANBY": (51.495177, -0.127175),
+        "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
+        "GRAFTON_ARMS": (51.497468, -0.134108),
+        "GREENCOAT_BOY": (51.496300, -0.135863),
+        "QUEENS_ARMS": (51.492593, -0.139175),
+        "WARWICK": (51.492414, -0.139704),
+        "HOUSE_ABSOLUTE": (51.4958738, -0.1309233),
+        "BIG_BEN": (51.50073, -0.12462),
+        "WESTMINSTER_ABBEY": (51.49940, -0.12764),
+        "PARLIAMENT": (51.49900, -0.12460),
+    },
+)
+
 VENUES = {
     "kingston": KINGSTON,
     "koyao_resort": KOYAO_RESORT,
+    "westminster": WESTMINSTER,
 }
 
-# TODO: TEMPORARY - the resort is a test venue, so that the map can be
-# exercised against a real GPS fix somewhere I actually am. Swap back to
-# Kingston before this is played for real.
-ACTIVE_VENUE = VENUES["koyao_resort"]
+ACTIVE_VENUE = VENUES["westminster"]
 # ACTIVE_VENUE = VENUES["kingston"]
+# The resort was a test venue, so that the map could be exercised against a
+# real GPS fix while away; Westminster is where the game is actually headed.
+# ACTIVE_VENUE = VENUES["koyao_resort"]

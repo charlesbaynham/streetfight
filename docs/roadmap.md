@@ -34,7 +34,7 @@ allowed to become a blocker for the night — it is all upside.
 | By             | What must be true                                                                                                                          | Items        |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
 | **Now**        | Armbands and hats bought. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
-| **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
+| **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted. **Map and picking page both in; drops now unblocked.**         | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
 | **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded. **Shipped.**  | R5           |
@@ -53,7 +53,7 @@ software with a real deadline, which is not where it started on the list.
 | 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
-| 3     | **#12** Redraw the Westminster map          | ~31 Aug                      | Blocks #7, and retires the temporary resort test venue.                                                        |
+| 3     | **#12** Redraw the Westminster map          | Shipped 28 Aug               | Play area fixed, drawn map active, resort venue retired. #7 unblocked. A hand-drawn replacement is still wanted but no longer blocks anything. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
@@ -254,36 +254,72 @@ output is name + lat/long per pub, which is exactly the shape of
 **Per pub, record:** coordinates, opening hours on a Saturday night, and whether
 they have agreed.
 
+**The data half is done (28 Aug).** The Takeout export turned out not to
+contain the list — custom Maps lists come under the separate "Saved" product,
+and even then the Norbiton list was not among them; seven Westminster pubs sat
+at the top of the default list instead. Rather than rely on that, everything
+licensed within 1.5 km of House Absolute was pulled from OpenStreetMap and
+ranked by distance: 98 pubs and 48 bars. The ten inside the #12 crop are now
+landmarks on the Westminster venue.
+
+**What is still open is the part that was always the gate:** no landlord has
+been asked yet, and no opening hours are recorded. Getting a yes from four
+pubs is still worth more than a longer list.
+
 **Lands in:** `backend/venues.py` as landmarks on the Westminster venue.
 **Feeds:** #8, #12.
 
 ---
 
-### #12 — Redraw the map for Westminster
+### #12 — Redraw the map for Westminster *(shipped)*
 
-**Current state.** `ACTIVE_VENUE` in `backend/venues.py` is
-`VENUES["koyao_resort"]`, a temporary test venue, with a `TODO` saying to swap
-back before it is played for real. Kingston is the other entry. This item retires
-that `TODO`.
+**Shipped 28 Aug.** `ACTIVE_VENUE` is `VENUES["westminster"]`; the resort test
+venue is retired to a commented-out line beside Kingston, and its `TODO` is
+gone. **The game could be played on this.**
 
-**What a venue needs** (`Venue` / `VenueMap`):
+**The play area is now defined**, which was the part that mattered more than
+the drawing. Three constraints fix it: House Absolute at the exact centre, the
+crop symmetric about it, and Big Ben inside the frame. Big Ben is 537 m north
+of the house, so symmetry forces a half-span of at least that; 650 m leaves
+room to draw the tower. That gives **1300 × 1300 m**, close to the Kingston
+map's 1153 × 1116 m, with corners at 51.501752, −0.140302 and 51.489995,
+−0.121544. House Absolute lands on pixel (512, 512) of 1024.
 
-- the map image, dropped into `react-ui/src/images/` with one line added to
-  `react-ui/src/mapImages.js` (the `image` key resolves against it);
-- `width_px` / `height_px`;
-- two `MapReferencePoint`s (pixel *and* lat/long). Deriving them from a known
-  tile crop — as the resort venue does, using the top-left and bottom-right
-  pixels — is far more accurate than eyeballing two landmarks;
-- `corner_width_km` for the mini-map window. Westminster is a much bigger area
-  than the resort, so this wants choosing deliberately rather than copying;
-- the landmarks circles can be placed at (#6, #7).
+**How the map was made.** OpenStreetMap tiles were stitched and cropped to that
+box, then reduced to a road-and-river skeleton with the pubs marked, and an
+image model was asked to redraw *that* in the Kingston style. The framing was
+preserved, so the reference points are the crop's own corners — exact by
+construction rather than measured off the drawing.
 
-Nothing in `MapView.js` should need touching. `VenueMap.bounds` exists so the
-tests can check that every landmark actually lands on the image — keep that
-passing, and expect it to catch at least one coordinate typo.
+The thing that made it work was framing the request as **tracing rather than
+illustration**. A first attempt that was asked to draw Westminster from the
+same references composed a plausible-looking map instead: six of ten pubs were
+wrong, three by 500–840 m, and the whole central street grid was shuffled. The
+attempt that traced the skeleton put every pub within about 20 m. Worth
+remembering if this is regenerated: *and* that asking the good result to fix
+four small errors caused a full redraw that lost the accuracy again, so
+corrections are not free.
 
-**Do this before #7**, since a drop that is not on the map cannot be used, and it
-is the natural place to sanity-check the game area's extent.
+**Known limitations**, none of which stop a game:
+
+- 1.27 m/px against Kingston's 0.51, so `corner_width_km` is 0.2 rather than
+  0.115 — a tighter window would just show blur.
+- Westminster Abbey is drawn ~100 m south-west of where it belongs.
+- One street label reads "Great Peter Street" where it should say "Great Smith
+  Street"; The Speaker's own street is unlabelled.
+
+**Still wanted: a hand-drawn map**, in Charles's own hand rather than a
+model's. Now a nice-to-have rather than a blocker — it can drop straight into
+the same venue if it keeps the framing, since the reference points are the
+crop corners. **Lower priority than anything with a date on it.**
+
+**Landmarks** are the ten surveyed pubs inside the crop, plus House Absolute,
+Big Ben, Westminster Abbey and Parliament — everything actually drawn on the
+map, so an admin cannot place a circle somewhere invisible.
+
+A test now checks the other half of a venue that Python could not see for
+itself: that `VenueMap.image` names a key `react-ui/src/mapImages.js` actually
+bundles. Getting that wrong means no map at all, discovered at game time.
 
 ---
 
@@ -455,7 +491,13 @@ what it is and a contact number, so anyone who finds one gets an answer rather
 than a fright. Cheap, and it converts the failure mode from "incident" to
 "curiosity".
 
-**Lands in:** `backend/venues.py` as landmarks. **Depends on:** #12.
+**Unblocked (28 Aug):** #12 has shipped, so the game area is now a definite
+1300 x 1300 m square centred on House Absolute, and `VenueMap.bounds` will tell
+you whether a candidate drop is inside it. Note how much of Westminster the
+security-sensitive exclusion removes from that square: Parliament, the Abbey
+and the Millbank government blocks are most of the eastern half.
+
+**Lands in:** `backend/venues.py` as landmarks. **Depends on:** #12 *(done)*.
 **Feeds:** #8.
 
 ---
