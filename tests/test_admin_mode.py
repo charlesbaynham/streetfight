@@ -351,6 +351,72 @@ def test_a_refund_gives_the_benefit_of_the_doubt(db_session, contested_hit):
     assert UserInterface(target).get_user_model().appeals_remaining == 3
 
 
+@pytest.fixture
+def contested_no_hit(two_users_in_different_teams, test_image_string):
+    """A shot ruled a miss or a bystander, then appealed by the shooter.
+
+    Only the shooter can contest either ruling: neither takes anything off
+    anybody else.
+    """
+
+    def _make(ruling):
+        shooter, target = two_users_in_different_teams
+        UserInterface(shooter).award_ammo(1)
+        UserInterface(shooter).set_weapon_data(1, 6)
+        shot_id = UserInterface(shooter).submit_shot(test_image_string)
+        if ruling == "miss":
+            AdminInterface().mark_shot_missed(shot_id)
+        else:
+            AdminInterface().mark_shot_bystander(shot_id)
+        UserInterface(shooter).appeal_shot(shot_id, "actually_hit")
+        return shooter, target, shot_id
+
+    return _make
+
+
+@pytest.mark.parametrize(
+    "ruled, re_ruled", [("miss", "bystander"), ("bystander", "miss")]
+)
+def test_swapping_miss_and_bystander_rejects_the_appeal(
+    db_session, contested_no_hit, ruled, re_ruled
+):
+    # Both rulings say the same thing to the appellant - the shot hit no player
+    # - so trading one for the other overturns nothing
+    shooter, target, shot_id = contested_no_hit(ruled)
+    assert UserInterface(shooter).get_user_model().appeals_remaining == 2
+
+    if re_ruled == "miss":
+        AdminInterface().mark_shot_missed(shot_id)
+    else:
+        AdminInterface().mark_shot_bystander(shot_id)
+
+    assert appeal_state(db_session, shot_id) == "rejected"
+    assert UserInterface(shooter).get_user_model().appeals_remaining == 2
+
+    public = UserInterface(shooter).get_messages(20, private=False)
+    assert not any("referee overturned" in message for _, message, _ in public)
+
+
+def test_re_ruling_a_miss_as_a_hit_still_upholds_it(db_session, contested_no_hit):
+    shooter, target, shot_id = contested_no_hit("miss")
+
+    AdminInterface().hit_user(shot_id, target)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(shooter).get_user_model().appeals_remaining == 3
+
+
+def test_refunding_a_contested_miss_gives_the_benefit_of_the_doubt(
+    db_session, contested_no_hit
+):
+    shooter, target, shot_id = contested_no_hit("miss")
+
+    AdminInterface().refund_shot(shot_id)
+
+    assert appeal_state(db_session, shot_id) == "upheld"
+    assert UserInterface(shooter).get_user_model().appeals_remaining == 3
+
+
 def test_both_appellants_are_refunded_when_both_appealed(db_session, contested_hit):
     shooter, target, shot_id = contested_hit
     UserInterface(shooter).appeal_shot(shot_id, "actually_hit")

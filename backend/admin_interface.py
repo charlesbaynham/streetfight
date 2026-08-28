@@ -121,6 +121,17 @@ def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
     }
 
 
+# Verdicts that come to the same thing for an appellant: the shot hit no player
+# either way, so re-ruling one as the other overturns nothing.
+_NO_HIT_VERDICTS = frozenset({"miss", "bystander"})
+
+
+def _same_appeal_outcome(old_result, new_result) -> bool:
+    return old_result == new_result or (
+        old_result in _NO_HIT_VERDICTS and new_result in _NO_HIT_VERDICTS
+    )
+
+
 # How each verdict reads in the public line announcing an overturned one.
 _APPEAL_RESULT_WORDS = {
     "hit": "a hit",
@@ -1183,8 +1194,11 @@ class AdminInterface:
 
         Upheld or rejected is *inferred* rather than asked for: if the admin's
         ruling differs from the one that was appealed, the appeal was right.
-        A shot the admin ends up refunding differs from whatever it said
-        before, so the benefit of the doubt falls out of that rule rather than
+        A miss and a bystander call are not different rulings for this purpose
+        - both say the shot hit no player, which is the only thing an appellant
+        against either was arguing about - so swapping one for the other is a
+        rejection. A shot the admin ends up refunding differs from whatever
+        it said before, so the benefit of the doubt falls out of that rule rather than
         needing a case of its own. An admin who agrees with the outcome but for
         different reasons is a rejection, which is the right answer anyway
         since the game state is unchanged.
@@ -1195,7 +1209,7 @@ class AdminInterface:
         is worth. A wrongly-taken life is handed back by the admin with
         set_user_HP, by hand (roadmap R8).
         """
-        upheld = shot.result != old_result or (
+        upheld = not _same_appeal_outcome(old_result, shot.result) or (
             shot.result == "hit" and shot.target_user_id != old_target_id
         )
 
