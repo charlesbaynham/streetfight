@@ -307,6 +307,7 @@ export function makeShot(overrides = {}) {
     time_created: new Date().toISOString(),
     ai_review_state: null,
     ai_suggestion: null,
+    ai_target_name: null,
     ...overrides,
   };
 }

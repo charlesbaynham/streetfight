@@ -2,7 +2,7 @@ import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
-import ShotQueue, { rankShotCandidates } from "./ShotQueue";
+import ShotQueue, { charlesBotVerdict, rankShotCandidates } from "./ShotQueue";
 import {
   installFetchMock,
   getAPICalls,
@@ -116,6 +116,100 @@ describe("rankShotCandidates", () => {
     expect(ranked.map((u) => u.user_id)).toEqual(["u-near", "u-mid", "u-far"]);
     expect(ranked[0].distance).toBeLessThan(ranked[1].distance);
     expect(ranked[1].distance).toBeLessThan(ranked[2].distance);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// charlesBotVerdict - the one-sentence verdict, pure function.
+// ---------------------------------------------------------------------------
+
+describe("charlesBotVerdict", () => {
+  const hitPlayer = { outcome: "hit_player" };
+  const identified = (overrides = {}) => ({
+    ranked: [
+      { user_id: "u-alice", name: "Alice", probability: 0.82 },
+      { user_id: "u-bob", name: "Bob", probability: 0.11 },
+    ],
+    readable_channels: 4,
+    confident: true,
+    ambiguous: false,
+    inconsistent: false,
+    ...overrides,
+  });
+
+  test("an escalated player verdict names its target, over anything below it", () => {
+    expect(
+      charlesBotVerdict({
+        review: { outcome: "miss" },
+        identification: identified(),
+        escalationState: "done",
+        escalation: { verdict: "player", target_name: "Carol" },
+      }),
+    ).toBe("CharlesBot thinks: hit on Carol");
+  });
+
+  test("a confident, unambiguous identification names the top candidate", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: identified(),
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit on Alice");
+  });
+
+  test("an unconfident ranking offers the top two rather than picking one", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: identified({
+          confident: false,
+          ranked: [
+            { user_id: "u-alice", name: "Alice", probability: 0.52 },
+            { user_id: "u-bob", name: "Bob", probability: 0.44 },
+          ],
+        }),
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit - probably Alice (0.5) or Bob (0.4)");
+  });
+
+  test("a hit with nothing to identify against names nobody", () => {
+    expect(
+      charlesBotVerdict({
+        review: hitPlayer,
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe("CharlesBot thinks: hit on a player, but can't tell who");
+  });
+
+  test.each([
+    ["hit_bystander", "CharlesBot thinks: that's a bystander, not a hit"],
+    ["miss", "CharlesBot thinks: miss"],
+  ])("says what %s means in words", (outcome, sentence) => {
+    expect(
+      charlesBotVerdict({
+        review: { outcome },
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBe(sentence);
+  });
+
+  test("says nothing without a review", () => {
+    expect(
+      charlesBotVerdict({
+        review: null,
+        identification: null,
+        escalationState: null,
+        escalation: null,
+      }),
+    ).toBeNull();
   });
 });
 
@@ -770,6 +864,31 @@ describe("ShotAiTags", () => {
     await screen.findByText("HIT on Alice (82%)");
   });
 
+  test("shows the one-sentence verdict above the tags", async () => {
+    aiReviewResponse = {
+      status: 200,
+      body: {
+        state: "done",
+        review: {
+          outcome: "hit_player",
+          outcome_reason: "armbands visible",
+          reasoning: "",
+          channels: {},
+        },
+        identification: {
+          ranked: [{ user_id: "u-alice", name: "Alice", probability: 0.9 }],
+          readable_channels: 4,
+          confident: true,
+          ambiguous: false,
+          inconsistent: false,
+        },
+      },
+    };
+    await renderQueue();
+
+    await screen.findByText("CharlesBot thinks: hit on Alice");
+  });
+
   test('refetches when a "shots" SSE update arrives, even though the shot id has not changed', async () => {
     aiReviewResponse = {
       status: 200,
@@ -794,5 +913,135 @@ describe("ShotAiTags", () => {
     await actAndFlush(() => emitUpdate("shots"));
 
     await screen.findByText("Miss");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// RankedCandidates - the decoder's ranking, with the GPS distances alongside
+// ---------------------------------------------------------------------------
+
+describe("RankedCandidates", () => {
+  let identification;
+
+  // Alice has a fix 120m from the shooter; Bob was never located.
+  const shotWithFixes = () =>
+    makeShotDetail("shot-1", {
+      location_context: JSON.stringify([
+        locationEntry({ user_id: "shot-1-shooter", user: "Shooter" }),
+        locationEntry({
+          user_id: "u-alice",
+          user: "Alice",
+          latitude: 51.5 + degreesNorthFor(120),
+        }),
+      ]),
+    });
+
+  beforeEach(() => {
+    identification = {
+      ranked: [
+        {
+          user_id: "u-alice",
+          name: "Alice",
+          team_name: "Reds",
+          probability: 0.82,
+          code_distance: 0,
+        },
+        {
+          user_id: "u-bob",
+          name: "Bob",
+          team_name: "Blues",
+          probability: 0.12,
+          code_distance: 2,
+        },
+      ],
+      readable_channels: 3,
+      confident: true,
+      ambiguous: false,
+      inconsistent: false,
+    };
+  });
+
+  async function renderQueue() {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: () => ["shot-1"],
+      admin_get_shot: () => shotWithFixes(),
+      admin_get_shot_ai_review: () => ({
+        status: 200,
+        body: {
+          state: "done",
+          review: {
+            outcome: "hit_player",
+            outcome_reason: "armbands visible",
+            reasoning: "",
+            channels: {},
+          },
+          identification,
+        },
+      }),
+      admin_shot_hit_user: {},
+      admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
+      admin_refund_shot: {},
+      admin_review_shot: {},
+      admin_escalate_shot: {},
+    });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
+    );
+    await screen.findByText("By Shooter of shot-1");
+    await flushEffects();
+  }
+
+  test("ranks the candidates with their probability, code distance and distance from the shooter", async () => {
+    await renderQueue();
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    expect(within(alice).getByText("Reds")).toBeInTheDocument();
+    expect(
+      within(alice).getByText("p=0.82 - code distance 0 - 120 m"),
+    ).toBeInTheDocument();
+
+    // Nobody located Bob, so there is no distance to show - and an em dash
+    // rather than a zero, which would read as "on top of the shooter".
+    const bob = screen.getByText("Bob").closest("li");
+    expect(
+      within(bob).getByText("p=0.12 - code distance 2 - —"),
+    ).toBeInTheDocument();
+  });
+
+  test("warns when two candidates are too close to call", async () => {
+    identification.ambiguous = true;
+    await renderQueue();
+
+    await screen.findByText("Two candidates are too close to call");
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+  });
+
+  test("warns when the reading fits nobody cleanly", async () => {
+    identification.inconsistent = true;
+    await renderQueue();
+
+    await screen.findByText("The reading fits nobody cleanly");
+  });
+
+  test("shows no ranking at all when nothing in the photo was readable", async () => {
+    identification = {
+      ranked: [],
+      readable_channels: 0,
+      confident: false,
+      ambiguous: false,
+      inconsistent: false,
+    };
+    await renderQueue();
+
+    await screen.findByText(
+      "Nothing readable in this photo - a ranking would be a guess",
+    );
+    expect(screen.queryByText("Alice")).not.toBeInTheDocument();
   });
 });

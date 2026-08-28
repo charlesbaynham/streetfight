@@ -106,15 +106,41 @@ describe("shotStatus", () => {
         makeShot({
           checked: false,
           ai_review_state: "done",
-          ai_suggestion: "hit",
+          ai_suggestion: "miss",
         }),
       ),
     ).toEqual({
       state: "escalated",
       emoji: "🤖",
-      label: "CharlesBot thinks: hit",
+      label: "CharlesBot thinks: miss",
       sublabel: "Escalated to referee",
     });
+  });
+
+  test("a suggested hit names the target when the AI identified one", () => {
+    expect(
+      shotStatus(
+        makeShot({
+          checked: false,
+          ai_review_state: "done",
+          ai_suggestion: "hit",
+          ai_target_name: "Ann",
+        }),
+      ).label,
+    ).toBe("CharlesBot thinks: hit on Ann");
+  });
+
+  test("a suggested hit with nobody identified says so rather than naming a guess", () => {
+    expect(
+      shotStatus(
+        makeShot({
+          checked: false,
+          ai_review_state: "done",
+          ai_suggestion: "hit",
+          ai_target_name: null,
+        }),
+      ).label,
+    ).toBe("CharlesBot thinks: hit - can't tell who");
   });
 
   test.each([

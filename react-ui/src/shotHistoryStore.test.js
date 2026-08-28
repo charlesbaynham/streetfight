@@ -55,6 +55,22 @@ describe("markShotsSeen / countUnseenShots", () => {
     expect(store.countUnseenShots([aiDone])).toBe(1);
   });
 
+  test("a newly-named AI target counts a previously-seen shot as unseen again", () => {
+    const shot = makeShot({
+      id: "s1",
+      checked: false,
+      ai_review_state: "done",
+      ai_suggestion: "hit",
+      ai_target_name: null,
+    });
+
+    store.markShotsSeen([shot]);
+    expect(store.countUnseenShots([shot])).toBe(0);
+
+    const named = { ...shot, ai_target_name: "Ann" };
+    expect(store.countUnseenShots([named])).toBe(1);
+  });
+
   test("ignores ai_suggestion while ai_review_state is not 'done'", () => {
     const shot = makeShot({
       id: "s1",

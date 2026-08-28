@@ -43,6 +43,7 @@ function shotStatusFingerprint(shot) {
     shot.checked,
     shot.result,
     shot.ai_review_state === "done" ? shot.ai_suggestion : null,
+    shot.ai_target_name,
   ].join("|");
 }
 

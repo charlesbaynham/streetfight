@@ -25,6 +25,7 @@ const ESCALATION_VERDICT_LABELS = {
 function ShotAiTags({ shot_id }) {
   const [state, setState] = useState(null);
   const [review, setReview] = useState(null);
+  const [identification, setIdentification] = useState(null);
   const [escalationState, setEscalationState] = useState(null);
   const [escalation, setEscalation] = useState(null);
 
@@ -39,6 +40,7 @@ function ShotAiTags({ shot_id }) {
         const body = await response.json();
         setState(body.state);
         setReview(body.review);
+        setIdentification(body.identification);
         setEscalationState(body.escalation_state);
         setEscalation(body.escalation);
       },
@@ -78,9 +80,17 @@ function ShotAiTags({ shot_id }) {
 
   if (!review) return listener;
 
+  const verdict = charlesBotVerdict({
+    review,
+    identification,
+    escalation,
+    escalationState,
+  });
+
   return (
     <>
       {listener}
+      {verdict ? <p className={styles.botVerdict}>{verdict}</p> : null}
       <div className={styles.tagRow}>
         {outcomeTag(review)}
         {zoomTag(review)}
@@ -93,6 +103,58 @@ function ShotAiTags({ shot_id }) {
       <ShotEscalation state={escalationState} escalation={escalation} />
     </>
   );
+}
+
+// One sentence saying what the machine makes of this shot, in the words the
+// admin would use themselves - the tags below it are the working, this is the
+// answer. Null when there is nothing to say.
+//
+// The ladder is ordered by what actually knows most: an escalation was asked
+// for precisely because the cheap reading was not good enough, so it wins;
+// then a confident identification, which can name somebody; then the two-way
+// call the admin has to break; then a hit with no name attached.
+export function charlesBotVerdict({
+  review,
+  identification,
+  escalation,
+  escalationState,
+}) {
+  const NO_NAME = "CharlesBot thinks: hit on a player, but can't tell who";
+
+  if (
+    escalationState === "done" &&
+    escalation &&
+    escalation.verdict === "player"
+  )
+    return escalation.target_name
+      ? `CharlesBot thinks: hit on ${escalation.target_name}`
+      : NO_NAME;
+
+  if (!review) return null;
+
+  if (review.outcome === "hit_player") {
+    const ranked = (identification && identification.ranked) || [];
+    const clean =
+      identification &&
+      identification.confident &&
+      !identification.ambiguous &&
+      !identification.inconsistent;
+
+    if (clean && ranked.length)
+      return `CharlesBot thinks: hit on ${ranked[0].name}`;
+    if (ranked.length >= 2)
+      return (
+        `CharlesBot thinks: hit - probably ${ranked[0].name} ` +
+        `(${ranked[0].probability.toFixed(1)}) or ${ranked[1].name} ` +
+        `(${ranked[1].probability.toFixed(1)})`
+      );
+    return NO_NAME;
+  }
+
+  if (review.outcome === "hit_bystander")
+    return "CharlesBot thinks: that's a bystander, not a hit";
+  if (review.outcome === "miss") return "CharlesBot thinks: miss";
+  return null;
 }
 
 // The strong model's verdict, when a shot was hard enough for the cheap
@@ -323,7 +385,6 @@ export function rankShotCandidates(shot_data) {
   const userIndex = context.findIndex(
     (location) => location.user_id === shooting_user_id,
   );
-  console.log("User index in context array:", userIndex);
 
   const shooting_user_data = context[userIndex];
   const shooting_user_latitude = shooting_user_data.latitude;
@@ -333,7 +394,6 @@ export function rankShotCandidates(shot_data) {
   const otherUsersContext = context.filter(
     (location) => location.user_id !== shooting_user_id,
   );
-  console.log("Updated context array:", otherUsersContext);
 
   // For each remaining player, calculate the distance from them to the shooting player
   const shooting_users = otherUsersContext.map(
@@ -381,23 +441,102 @@ export function rankShotCandidates(shot_data) {
   return shooting_users;
 }
 
-function NearestPlayers({ shot_data }) {
-  if (shot_data === null) return;
+// How far each player was from the shooter, by user id. A shot whose location
+// context is missing or malformed still has an identification worth showing,
+// so a bad fix costs the metres column and nothing else.
+function metresByUser(shot) {
+  const metres = {};
+  try {
+    rankShotCandidates(shot).forEach((candidate) => {
+      metres[candidate.user_id] = candidate.distance;
+    });
+  } catch (e) {
+    // no usable location context
+  }
+  return metres;
+}
 
-  const shooting_users = rankShotCandidates(shot_data);
+// Who this shot's reading actually looks like: the decoder's ranking over the
+// living players (backend/shot_identification.py), with the GPS distance that
+// went into it alongside. Replaces the old nearest-first list, which ranked on
+// proximity alone and so put the shooter's own teammate at the top.
+//
+// Fetched here rather than passed down from ShotAiTags: the ranking is scored
+// against the current outfits every time it is asked for, so it arrives (and
+// changes) with the review rather than with the shot.
+function RankedCandidates({ shot }) {
+  const [state, setState] = useState(null);
+  const [identification, setIdentification] = useState(null);
+
+  const shot_id = shot ? shot.id : null;
+
+  const update = useCallback(() => {
+    if (!shot_id) return;
+    sendAPIRequest("admin_get_shot_ai_review", { shot_id: shot_id }).then(
+      async (response) => {
+        if (!response.ok) return;
+        const body = await response.json();
+        setState(body.state);
+        setIdentification(body.identification);
+      },
+    );
+  }, [shot_id]);
+
+  useEffect(update, [update]);
+
+  const listener = <UpdateListener update_type="shots" callback={update} />;
+
+  if (state !== "done" || !identification) return listener;
+
+  const metres = metresByUser(shot);
+  const unreadable = identification.readable_channels === 0;
+  const ranked = unreadable ? [] : (identification.ranked || []).slice(0, 6);
 
   return (
     <>
+      {listener}
       <h3>Candidates:</h3>
-      <ul>
-        {shooting_users.map((user, idx) => (
-          <li key={idx}>
-            {user.user} - {user.team} - ({user.distance.toFixed(2)}m)
+      {unreadable ? (
+        <p className={styles.candidateFlag}>
+          Nothing readable in this photo - a ranking would be a guess
+        </p>
+      ) : null}
+      {identification.ambiguous ? (
+        <p className={styles.candidateFlag}>
+          Two candidates are too close to call
+        </p>
+      ) : null}
+      {identification.inconsistent ? (
+        <p className={styles.candidateFlag}>The reading fits nobody cleanly</p>
+      ) : null}
+      <ul className={styles.candidateList}>
+        {ranked.map((candidate) => (
+          <li key={candidate.user_id} className={styles.candidateRow}>
+            <span className={styles.candidateName}>
+              {candidate.name || candidate.user_id}
+            </span>
+            <span className={styles.candidateTeam}>
+              {candidate.team_name || "no team"}
+            </span>
+            <span className={styles.candidateFacts}>
+              {candidateFacts(candidate, metres[candidate.user_id])}
+            </span>
           </li>
         ))}
       </ul>
     </>
   );
+}
+
+// The numbers behind one candidate's place in the ranking. An em dash for the
+// distance rather than a zero: no fix at all is not the same as standing on
+// top of the shooter.
+function candidateFacts(candidate, distance) {
+  const facts = [`p=${candidate.probability.toFixed(2)}`];
+  if (candidate.code_distance !== null && candidate.code_distance !== undefined)
+    facts.push(`code distance ${candidate.code_distance}`);
+  facts.push(typeof distance === "number" ? `${Math.round(distance)} m` : "—");
+  return facts.join(" - ");
 }
 
 function ShotQueuePanel() {
@@ -573,7 +712,7 @@ function ShotQueuePanel() {
             <Col>
               <h3>Where it was fired from:</h3>
               <ShotMap shot={shot} />
-              <NearestPlayers shot_data={shot} />
+              <RankedCandidates shot={shot} />
               {shot.checked ? null : (
                 <>
                   {shot.game.teams.map((team, idx_team) => (

@@ -70,13 +70,21 @@ export function shotStatus(shot) {
   // "CharlesBot" is the display name for what the API calls ai_review (#1).
   // It has looked but the call is still the referee's: distinct icon and
   // colour from a shot nobody has looked at yet
-  if (shot.ai_review_state === "done" && shot.ai_suggestion)
+  if (shot.ai_review_state === "done" && shot.ai_suggestion) {
+    // Naming the target only when the backend was sure enough to name one:
+    // the shooter reads a name as who they shot.
+    let label = `CharlesBot thinks: ${shot.ai_suggestion}`;
+    if (shot.ai_suggestion === "hit")
+      label = shot.ai_target_name
+        ? `CharlesBot thinks: hit on ${shot.ai_target_name}`
+        : "CharlesBot thinks: hit - can't tell who";
     return {
       state: "escalated",
       emoji: "🤖",
-      label: `CharlesBot thinks: ${shot.ai_suggestion}`,
+      label,
       sublabel: "Escalated to referee",
     };
+  }
 
   return { state: "unreviewed", emoji: "⏳", label: "Not reviewed yet" };
 }
