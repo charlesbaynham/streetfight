@@ -25,6 +25,7 @@ from .image_processing import draw_cross_on_image
 from .items import ItemModel
 from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
+from .model import AI_REVIEW_STATE_PENDING
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
@@ -51,8 +52,31 @@ db_scoped = AdminScopeWrapper.db_scoped
 # queue -- deliberately not a ShotModel, so image_base64 is never loaded.
 QueueHead = namedtuple(
     "QueueHead",
-    ["id", "user_id", "ai_review_state", "ai_review", "location_context"],
+    [
+        "id",
+        "user_id",
+        "ai_review_state",
+        "ai_review",
+        "ai_escalation_state",
+        "ai_escalation",
+        "location_context",
+    ],
 )
+
+
+def _stored_json(raw: Optional[str]) -> Optional[dict]:
+    """One of the review columns, decoded for the admin API.
+
+    ``None`` stays None; an "error" state stores a plain message rather than
+    JSON, which comes back wrapped as ``{"error": ...}`` so the frontend has
+    one shape to render.
+    """
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except ValueError:
+        return {"error": raw}
 
 
 def _reference_verdict(state: Optional[str], review: Optional[str]) -> dict:
@@ -154,7 +178,10 @@ class AdminInterface:
         breaks ties deterministically. Selects columns only -- never
         image_base64, which the auto-action drain has no use for.
         ``location_context`` is here because the drain's identification step
-        builds its location term from it (backend.shot_identification).
+        builds its location term from it (backend.shot_identification), and the
+        escalation columns because the drain's ladder reads them to decide
+        whether this head is still waiting on a stronger model
+        (backend.shot_escalation).
         """
         row = (
             self._session.query(
@@ -162,6 +189,8 @@ class AdminInterface:
                 Shot.user_id,
                 Shot.ai_review_state,
                 Shot.ai_review,
+                Shot.ai_escalation_state,
+                Shot.ai_escalation,
                 Shot.location_context,
             )
             .filter_by(game_id=game_id, checked=False)
@@ -419,8 +448,31 @@ class AdminInterface:
         return bool(self._get_game_orm(game_id).ai_auto_actions_enabled)
 
     @db_scoped
+    def set_ai_escalation_enabled(self, game_id: UUID, enabled: bool) -> None:
+        """Turn escalation of hard shots to the stronger model on or off.
+
+        A kill switch inside the auto-actions feature rather than an opt-in of
+        its own, which is why it defaults on: with it off, a shot the ladder
+        wants escalated (backend.shot_escalation) simply waits for the admin,
+        exactly as it does when no escalation model is configured.
+        """
+        logger.info(
+            "AdminInterface - set_ai_escalation_enabled %s/%s", game_id, enabled
+        )
+
+        game = self._get_game_orm(game_id)
+        game.ai_escalation_enabled = enabled
+
+        self._session.commit()
+        trigger_update_event("shots", game_id)
+
+    @db_scoped
+    def is_ai_escalation_enabled(self, game_id: UUID) -> bool:
+        return bool(self._get_game_orm(game_id).ai_escalation_enabled)
+
+    @db_scoped
     def get_shot_ai_review(self, shot_id: UUID) -> dict:
-        """The stored AI review for one shot.
+        """The stored AI review for one shot, and any escalation of it.
 
         Deliberately its own endpoint rather than a field on the shot: the
         frontend caches shot responses permanently by id, so a review that
@@ -428,20 +480,24 @@ class AdminInterface:
         image cached and this small payload live avoids that.
         """
         shot = self._get_shot_orm(shot_id)
-        review = None
-        if shot.ai_review:
-            try:
-                review = json.loads(shot.ai_review)
-            except ValueError:
-                # An "error" state stores a plain message, not JSON
-                review = {"error": shot.ai_review}
-        return {"state": shot.ai_review_state, "review": review}
+        return {
+            "state": shot.ai_review_state,
+            "review": _stored_json(shot.ai_review),
+            "escalation_state": shot.ai_escalation_state,
+            "escalation": _stored_json(shot.ai_escalation),
+        }
 
     @db_scoped
     def store_shot_ai_review(
         self, shot_id: UUID, state: str, payload=None
     ) -> Tuple[UUID, UUID]:
         """Record the outcome of a review. The single writer of these columns.
+
+        Starting a fresh review (state "pending") also clears any escalation:
+        the escalated verdict was drawn from the old reading, and a re-run
+        replaces that reading. It is also how an admin unsticks an errored
+        escalation -- "Re-run AI review" puts the shot back on the ladder from
+        the bottom.
 
         Returns the shot's game id and shooter id so the caller can fire
         update events without needing a second session.
@@ -454,6 +510,28 @@ class AdminInterface:
             shot.ai_review = payload
         else:
             shot.ai_review = json.dumps(payload, default=str)
+        if state == AI_REVIEW_STATE_PENDING:
+            shot.ai_escalation_state = None
+            shot.ai_escalation = None
+        self._session.commit()
+        return shot.game_id, shot.user_id
+
+    @db_scoped
+    def store_shot_escalation(
+        self, shot_id: UUID, state: str, payload=None
+    ) -> Tuple[UUID, UUID]:
+        """Record the outcome of an escalation (backend/shot_escalation.py).
+        The single writer of these columns, and the counterpart of
+        :meth:`store_shot_ai_review`, down to what it returns.
+        """
+        shot = self._get_shot_orm(shot_id)
+        shot.ai_escalation_state = state
+        if payload is None:
+            shot.ai_escalation = None
+        elif isinstance(payload, str):
+            shot.ai_escalation = payload
+        else:
+            shot.ai_escalation = json.dumps(payload, default=str)
         self._session.commit()
         return shot.game_id, shot.user_id
 
@@ -512,14 +590,10 @@ class AdminInterface:
         """The stored kit-check review for one player, shaped like
         :meth:`get_shot_ai_review`."""
         user = self._get_user_orm(user_id)
-        review = None
-        if user.reference_review:
-            try:
-                review = json.loads(user.reference_review)
-            except ValueError:
-                # An "error" state stores a plain message, not JSON
-                review = {"error": user.reference_review}
-        return {"state": user.reference_review_state, "review": review}
+        return {
+            "state": user.reference_review_state,
+            "review": _stored_json(user.reference_review),
+        }
 
     @db_scoped
     def store_reference_review(
@@ -770,11 +844,17 @@ class AdminInterface:
         u_from = shot.user
         ui_target = UserInterface(target_user_id, session=self._session)
 
+        # A shot that hits somebody already knocked out is just a hit that does
+        # nothing: it is announced as a plain hit, and only the blow that
+        # actually kills announces a knockout and refunds the victim's queue.
+        # Reading the HP afterwards alone would credit a second killer.
+        already_dead = self._get_user_orm(target_user_id).hit_points <= 0
+
         ui_target.hit(shot.shot_damage)
 
         u_to = self._get_user_orm(target_user_id)
 
-        if u_to.hit_points > 0:
+        if already_dead or u_to.hit_points > 0:
             message_type_public = tk.TickerMessageType.HIT_AND_DAMAGE
             message_type_private = tk.TickerMessageType.USER_GOT_HIT
 

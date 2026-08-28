@@ -1,4 +1,4 @@
-"""Tests for backend.shot_identification: ranking living candidates against a
+"""Tests for backend.shot_identification: ranking a game's candidates against a
 stored vision reading.
 
 The point of this module (roadmap #5) is that it identifies people who are
@@ -139,12 +139,21 @@ def test_no_candidate_is_ever_given_a_zero_posterior():
 # -- who is a candidate at all ----------------------------------------------
 
 
-def test_the_shooter_and_the_dead_are_not_candidates():
+def test_the_shooter_is_not_a_candidate():
     shooter = player(slot=7)
-    dead = player(slot=13, hit_points=0)
     alive = player(slot=21)
 
-    assert si.eligible_candidates([shooter, dead, alive], shooter.id) == [alive]
+    assert si.eligible_candidates([shooter, alive], shooter.id) == [alive]
+
+
+def test_a_knocked_out_player_is_still_a_candidate():
+    """They are still standing there to be photographed -- most obviously in
+    the seconds after the shot that killed them. A shot that hits them is a hit
+    that does nothing, which beats matching nobody at all."""
+    shooter = player(slot=7)
+    dead = player(slot=13, hit_points=0)
+
+    assert si.eligible_candidates([shooter, dead], shooter.id) == [dead]
 
 
 def test_a_player_with_no_slot_is_not_a_candidate():

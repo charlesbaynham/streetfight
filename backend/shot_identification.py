@@ -228,17 +228,24 @@ def structural_prior(candidates: List[UserModel], shooter_team_id) -> Dict[UUID,
 def eligible_candidates(
     users: List[UserModel], shooter_id: Optional[UUID]
 ) -> List[UserModel]:
-    """Who could have been photographed: living players other than the shooter.
+    """Who could have been photographed: anybody in the game but the shooter.
 
     A player with no identity slot is excluded -- they have no effective word,
     so there is nothing to score them against.
+
+    **Being knocked out does not remove a candidate.** A dead player is still
+    standing there to be photographed, most obviously in the seconds after the
+    shot that killed them: the next shot in the queue is often of exactly that
+    person, and dropping them makes it match nobody, climb the escalation
+    ladder for nothing and land back with the admin. Resolving it as a hit that
+    does no damage is both cheaper and true. The prior stays flat for the dead
+    -- a down-weight by how long ago they died is plausible, but it is a
+    constant to fit from R2's data rather than to invent here.
     """
     return [
         user
         for user in users
-        if user.id != shooter_id
-        and user.hit_points > 0
-        and user.identity_slot is not None
+        if user.id != shooter_id and user.identity_slot is not None
     ]
 
 
@@ -326,7 +333,7 @@ def rank_candidates(
     scheme: Optional[IdentityScheme] = None,
     at_time: Optional[float] = None,
 ) -> Optional[DecodeResult]:
-    """Rank the living players by how well they explain this shot's photograph.
+    """Rank the game's players by how well they explain this shot's photograph.
 
     Returns ``None`` when there is nobody to rank. Every candidate keeps a
     non-zero posterior, so the caller decides what is good enough to act on --
@@ -358,11 +365,10 @@ def rank_reference_candidates(
 
     The same scoring as :func:`rank_candidates` with the shot-specific terms
     dropped, because at the door none of them apply: there is no shooter to
-    exclude or to treat as a teammate, nobody is dead yet (so ``hit_points``
-    must not filter), and a reference photo carries no ``location_context`` to
-    build a location term from. What is left is every player who has picked an
-    outfit, under a flat prior -- ``build_prior`` with no shooter and no fixes
-    is exactly that, floor and all.
+    exclude or to treat as a teammate, and a reference photo carries no
+    ``location_context`` to build a location term from. What is left is every
+    player who has picked an outfit, under a flat prior -- ``build_prior`` with
+    no shooter and no fixes is exactly that, floor and all.
     """
     scheme = scheme or default_scheme()
     candidates = [user for user in users if user.identity_slot is not None]

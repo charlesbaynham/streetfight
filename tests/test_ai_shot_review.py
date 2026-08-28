@@ -604,7 +604,12 @@ def test_review_endpoint_reports_nothing_before_a_review(
     )
 
     assert response.status_code == 200
-    assert response.json() == {"state": None, "review": None}
+    assert response.json() == {
+        "state": None,
+        "review": None,
+        "escalation_state": None,
+        "escalation": None,
+    }
 
 
 def test_review_endpoint_returns_a_stored_review(
@@ -618,7 +623,12 @@ def test_review_endpoint_returns_a_stored_review(
         f"/api/admin_get_shot_ai_review?shot_id={shot_from_user_in_team}"
     )
 
-    assert response.json() == {"state": "done", "review": {"outcome": "miss"}}
+    assert response.json() == {
+        "state": "done",
+        "review": {"outcome": "miss"},
+        "escalation_state": None,
+        "escalation": None,
+    }
 
 
 def test_review_endpoint_needs_admin_auth(api_client, shot_from_user_in_team):

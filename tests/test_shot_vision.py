@@ -1,5 +1,5 @@
 """Tests for the vision adapter: the prompt contract, parsing, and the
-hit/bystander rule.
+hit/miss rule.
 
 No network and no database: every test either builds a reply by hand or feeds
 one through :class:`FakeVisionClient`.
@@ -291,7 +291,7 @@ def test_a_low_confidence_channel_becomes_an_erasure():
     assert symbols[CHANNELS.index("armbands")] is None
 
 
-def test_low_confidence_armbands_fall_back_to_the_code_check():
+def test_low_confidence_armbands_are_reported_as_hidden():
     # A shaky armband read behaves exactly like a hidden one: the other three
     # channels still reconstruct the outfit.
     raw = reply_for(appearance_of(7))
@@ -301,20 +301,22 @@ def test_low_confidence_armbands_fall_back_to_the_code_check():
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.outcome_reason == (
-        "armbands hidden, but the other colours are a valid code"
+        "read 3 of 4 garments confidently (armbands hidden)"
     )
     assert result.slot == 7
 
 
-def test_two_low_confidence_channels_make_a_bystander():
+def test_two_low_confidence_channels_still_count_as_a_hit():
     raw = reply_for(appearance_of(7))
     raw["channels"]["armbands"]["confidence"] = 0.5
     raw["channels"]["hat"]["confidence"] = 0.55
 
     result = outcome_of(raw)
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert "too few other garments" in result.outcome_reason
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 2 of 4 garments confidently (hat, armbands hidden)"
+    )
 
 
 # -- rebuilding candidates from a stored review -----------------------------
@@ -376,7 +378,11 @@ def test_slot_candidates_of_a_garbled_payload_are_empty():
     )
 
 
-# -- the hit / bystander rule -----------------------------------------------
+# -- the hit / miss rule ----------------------------------------------------
+#
+# Roadmap #11 retired the bystander mapping: a shot that landed on somebody is
+# a hit on a player whatever was legible, and how little was legible is the
+# escalation ladder's business (backend/shot_auto_actions.py), not classify's.
 
 
 def test_no_person_at_the_aim_point_is_a_miss():
@@ -391,31 +397,34 @@ def test_visible_armbands_are_a_hit():
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.is_hit
+    assert result.outcome_reason == "read 4 of 4 garments confidently"
     assert result.slot == 7
 
 
 def test_visible_armbands_are_a_hit_even_with_everything_else_hidden():
-    # Armbands are the player marker; the rest is identification, not eligibility.
     result = outcome_of(
         reply_for(appearance_of(7), hidden=("tshirt", "trousers", "hat"))
     )
 
     assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 1 of 4 garments confidently (tshirt, trousers, hat hidden)"
+    )
 
 
-def test_hidden_armbands_still_count_when_the_code_checks_out():
-    # The point of the erasure tolerance: three good garments reconstruct the
-    # fourth, so a real player is not written off as a passer-by.
+def test_hidden_armbands_still_count_as_a_hit():
+    # The failure this retirement fixes: every one of roadmap #4's residual
+    # false misses was a genuine hit whose armbands were out of view.
     result = outcome_of(reply_for(appearance_of(7), hidden=("armbands",)))
 
     assert result.outcome == sv.HIT_PLAYER
     assert result.outcome_reason == (
-        "armbands hidden, but the other colours are a valid code"
+        "read 3 of 4 garments confidently (armbands hidden)"
     )
     assert result.slot == 7
 
 
-def test_hidden_armbands_and_an_invalid_code_is_a_bystander():
+def test_hidden_armbands_and_an_invalid_code_is_still_a_hit():
     raw = reply_for(appearance_of(7), hidden=("armbands",))
     # Break the code: change the hat to a colour no codeword pairs with these
     appearance = appearance_of(7)
@@ -424,25 +433,30 @@ def test_hidden_armbands_and_an_invalid_code_is_a_bystander():
 
     result = outcome_of(raw)
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert not result.is_hit
+    # Not a codeword, so nobody is annotated -- but the shot still hit a person,
+    # and who that person is is for the ranking (and the ladder) to say.
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.is_hit
+    assert result.slot is None
 
 
-def test_hidden_armbands_and_a_second_erasure_is_a_bystander():
-    # Only two readable channels always complete to *some* codeword (k = 2), so
-    # the check would vouch for nothing. It must not be treated as evidence.
+def test_hidden_armbands_and_a_second_erasure_is_still_a_hit():
     result = outcome_of(reply_for(appearance_of(7), hidden=("armbands", "hat")))
 
-    assert result.outcome == sv.HIT_BYSTANDER
-    assert "too few other garments" in result.outcome_reason
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.outcome_reason == (
+        "read 2 of 4 garments confidently (hat, armbands hidden)"
+    )
 
 
-def test_the_all_black_outfit_is_a_bystander():
-    # Slot 0 is deliberately never assigned: it is the most likely outfit for a
-    # passer-by to be wearing by accident, and where "black" misreads pile up.
+def test_the_all_black_outfit_is_still_a_hit():
+    # Slot 0 is deliberately never assigned, so nothing is annotated -- but a
+    # passer-by and a player in borrowed black look the same from here, and
+    # guessing which is what the escalation is for.
     result = outcome_of(reply_for(appearance_of(0), hidden=("armbands",)))
 
-    assert result.outcome == sv.HIT_BYSTANDER
+    assert result.outcome == sv.HIT_PLAYER
+    assert result.slot is None
 
 
 def test_every_usable_slot_survives_hidden_armbands():
@@ -450,6 +464,33 @@ def test_every_usable_slot_survives_hidden_armbands():
         result = outcome_of(reply_for(appearance_of(slot), hidden=("armbands",)))
         assert result.outcome == sv.HIT_PLAYER, slot
         assert result.slot == slot
+
+
+# -- what a stored review was able to read ----------------------------------
+
+
+def test_armbands_confident_reads_the_stored_channel():
+    assert sv.armbands_confident(stored_review(reply_for(appearance_of(7))), SCHEME)
+
+
+def test_armbands_confident_is_false_when_they_are_hidden():
+    body = stored_review(reply_for(appearance_of(7), hidden=("armbands",)))
+
+    assert not sv.armbands_confident(body, SCHEME)
+    # The other three were still read: this is the rung that gets escalated.
+    assert sv.confident_channel_count(body, SCHEME) == 3
+
+
+def test_armbands_confident_is_false_for_a_shaky_read():
+    raw = reply_for(appearance_of(7))
+    raw["channels"]["armbands"]["confidence"] = sv.CONFIDENT_THRESHOLD - 0.01
+
+    assert not sv.armbands_confident(stored_review(raw), SCHEME)
+
+
+def test_armbands_confident_is_false_for_a_garbled_payload():
+    assert not sv.armbands_confident({"outcome": "hit_player"}, SCHEME)
+    assert not sv.armbands_confident({"channels": {"armbands": "green"}}, SCHEME)
 
 
 # -- handing the reading to the decoder -------------------------------------

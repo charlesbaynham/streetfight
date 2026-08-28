@@ -173,6 +173,7 @@ function defaultRoutes(fixtures) {
     admin_set_game_active: {},
     admin_set_ai_shot_review: {},
     admin_set_ai_auto_actions: {},
+    admin_set_ai_escalation: {},
     admin_reset_game: {},
     admin_create_team: {},
     admin_set_team_name: {},

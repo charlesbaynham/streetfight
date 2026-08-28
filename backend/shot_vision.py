@@ -13,6 +13,16 @@ colour is each garment. It is never asked whether that person is a *player* --
 tests can pin it down and does not drift when the model behind
 ``OPENROUTER_MODEL`` changes.
 
+**Too little read is not a verdict.** :func:`classify` used to route "armbands
+hidden and the other garments do not complete to a codeword" to
+``HIT_BYSTANDER``; that mapping is retired (roadmap #11), because it produced
+every one of #4's residual false misses. A hit on a person is now always
+``HIT_PLAYER`` and the reading is handed on for what it is worth: with fewer
+readable channels, identification is simply less confident, and
+:mod:`backend.shot_escalation` -- or the admin -- is where an unconfident case
+goes. Bystander survives as a *conclusion* the stronger model or a human can
+reach, never as the route taken because too little was legible.
+
 **An erasure is cheaper than a misread.** The code corrects two erasures but
 only one misread (``d >= 2t + e + 1``), so "unknown" is offered for every
 channel and the prompt asks about visibility before colour. Measured (plan
@@ -38,6 +48,11 @@ from .identity.observations import Reading
 logger = logging.getLogger(__name__)
 
 UNKNOWN = "unknown"
+
+# The one garment the game itself hands out, so the one whose colour says the
+# person is playing at all. Nothing here gates on it any more (see
+# :func:`classify`), but the escalation ladder still asks whether it was read.
+ARMBANDS_CHANNEL = "armbands"
 
 # A channel read below this confidence is treated as an erasure, exactly like
 # not-visible/unknown: the code corrects two erasures but only one misread, so
@@ -84,6 +99,11 @@ ZOOM_MODES = (ZOOM_SCREENED, ZOOM_UPFRONT, ZOOM_SINGLE)
 # Outcomes. Only HIT_PLAYER counts against a player's hit points. Shown to the
 # admin as advice -- and, when a game's AI-review toggle is on, acted on for the
 # head of the queue by backend.shot_auto_actions when confident enough.
+#
+# classify() no longer emits HIT_BYSTANDER (see the module docstring): the
+# constant stays because reviews stored before roadmap #11 carry the string,
+# the queue renders a label for it, the replay harness scores against it, and
+# the escalated verdict maps onto it.
 HIT_PLAYER = "hit_player"
 HIT_BYSTANDER = "hit_bystander"
 MISS = "miss"
@@ -608,23 +628,30 @@ def to_reading(result: ShotVisionResult, scheme=None) -> Reading:
 def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
     """Decide the outcome from the observations, and set it on ``result``.
 
-    Bystanders are common in these photos and bystanders do not wear armbands,
-    so the armbands are the player marker. But armbands are also one of the four
-    erasable channels, and plan §12.3 puts them out of view roughly a fifth of
-    the time -- so "no armbands visible" cannot simply mean "not a player".
-    The code covers that case instead:
+    There are only two outcomes left here:
 
     1. the shot did not land on anybody -> miss;
-    2. armbands read -> a player, and a hit;
-    3. armbands hidden, but the other three channels are all read and complete
-       to exactly one assignable codeword -> a player, and a hit. With one
-       erasure the [4,2,3] code has a check symbol left over, so a real outfit
-       reconstructs and a passer-by's clothes generally do not;
-    4. anything else -> a bystander, and not a hit.
+    2. it landed on somebody -> a hit on a player, whatever was readable.
 
-    Step 3 must require *all three* others. With only two readable channels any
-    reading completes to some codeword (``k = 2``), so the check would vouch for
-    nothing -- see :meth:`IdentityScheme.codewords_matching`.
+    The old rule used the armbands as the player gate -- armbands read means a
+    player, armbands hidden means demand that the other three complete to a
+    codeword, else bystander -- and it was wrong in the direction that costs a
+    player a life they earned: plan §12.3 puts the armbands out of view roughly
+    a fifth of the time, and all four of roadmap #4's residual false misses were
+    exactly that case. Nothing about what we could *read* tells us whether the
+    person is playing.
+
+    So a reading with two or three legible garments is no longer discarded; it
+    is passed on as what it is, an honestly weaker identification
+    (:mod:`backend.shot_identification` scores it against a handful of living
+    candidates rather than the whole code space), and
+    :mod:`backend.shot_escalation` runs the ladder that decides whether it is
+    good enough to act on. ``outcome_reason`` records what was legible so the
+    admin queue can say why a shot went up the ladder.
+
+    ``slot`` is still set when the symbols pick out exactly one assignable slot
+    -- a harmless annotation for a canonically-dressed player, and often None
+    now that fewer channels are demanded.
     """
     scheme = scheme or default_scheme()
 
@@ -634,38 +661,25 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
         return result
 
     symbols = to_hard_symbols(result, scheme)
-    armbands_index = scheme.channels.names.index("armbands")
-
-    if symbols[armbands_index] is not None:
-        result.outcome = HIT_PLAYER
-        result.outcome_reason = "armbands visible"
-        result.slot = _slot_of(scheme, symbols)
-        return result
-
-    others_readable = [
-        symbol for i, symbol in enumerate(symbols) if i != armbands_index
-    ]
-    if any(symbol is None for symbol in others_readable):
-        result.outcome = HIT_BYSTANDER
-        result.outcome_reason = (
-            "armbands hidden and too few other garments readable to check the code"
-        )
-        return result
-
-    slot = _slot_of(scheme, symbols)
-    if slot is not None:
-        result.outcome = HIT_PLAYER
-        result.outcome_reason = (
-            "armbands hidden, but the other colours are a valid code"
-        )
-        result.slot = slot
-        return result
-
-    result.outcome = HIT_BYSTANDER
-    result.outcome_reason = (
-        "armbands hidden and the other colours are not a valid player code"
-    )
+    result.outcome = HIT_PLAYER
+    result.outcome_reason = _readability_reason(scheme, symbols)
+    result.slot = _slot_of(scheme, symbols)
     return result
+
+
+def _readability_reason(scheme, symbols: List[Optional[int]]) -> str:
+    """ "read 3 of 4 garments confidently (armbands hidden)" -- what the reading
+    is worth, in the words the admin queue shows."""
+    hidden = [
+        channel.name
+        for channel, symbol in zip(scheme.channels, symbols)
+        if symbol is None
+    ]
+    read = len(symbols) - len(hidden)
+    reason = f"read {read} of {len(symbols)} garments confidently"
+    if hidden:
+        reason += f" ({', '.join(hidden)} hidden)"
+    return reason
 
 
 def _candidate_slots(scheme, symbols: List[Optional[int]]) -> List[int]:
@@ -729,6 +743,23 @@ def confident_channel_count(review_dict: dict, scheme=None) -> int:
         if colour is not None and confidence >= CONFIDENT_THRESHOLD:
             count += 1
     return count
+
+
+def armbands_confident(review_dict: dict, scheme=None) -> bool:
+    """Whether a *stored* review read the armbands at or above the threshold.
+
+    The armbands are the one garment the game hands out, so reading them is
+    what makes player-ness solid rather than inferred -- which is why the
+    escalation ladder (backend.shot_auto_actions) treats three channels with
+    the armbands among them differently from three without.
+    """
+    scheme = scheme or default_scheme()
+    for channel in scheme.channels:
+        if channel.name != ARMBANDS_CHANNEL:
+            continue
+        colour, confidence = _stored_channel(review_dict, channel)
+        return colour is not None and confidence >= CONFIDENT_THRESHOLD
+    return False
 
 
 def reading_from_review(review_dict: dict, scheme=None) -> Reading:
