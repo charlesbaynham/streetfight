@@ -43,6 +43,10 @@ Attempt to match existing code styles where possible. Prefer self-documenting co
 
 For a feature that affects the backend or the frontend functionality, ensure to add unit tests. One caveat to this is: don't add unit tests that test very simple behaviour. For example, if you add a button that says "hello", do not add a unit test that says, "Does the button say 'hello'?" We can trust code that far.
 
+When fixing a bug, use a TDD workflow: first write a test that reproduces the
+bug (it should fail against the current code), then make the fix and confirm
+the test passes.
+
 Keep the agent documentation up to date, such as this file and any other documentation for agents in the repository.
 
 It's an unpolished personal project (see `README.md`), so favour pragmatic,
@@ -87,8 +91,10 @@ minimal changes over large refactors.
   - `src/setupProxy.js` — dev proxy: forwards `/api`, `/docs`, `/openapi.json` to
     the backend at `http://127.0.0.1:8000`.
   - `src/venue.js` + `src/mapImages.js` — fetches the venue from the backend and
-    turns its reference points into map geometry; `mapImages.js` is the bundled
-    map images the server's `map.image` key resolves against.
+    turns its reference points into map geometry (`mapGeometry`) and pixel
+    positions inside a box (`mapProjection`, shared by `MapView.js` and the
+    admin's per-shot `ShotMap.js`); `mapImages.js` is the bundled map images
+    the server's `map.image` key resolves against.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
@@ -283,6 +289,14 @@ Images are built from the Nix flake
   answer the old schema through the old follow-ups, so the new prompt has no
   effect — that was a real bug (roadmap R1). `build_prompt(zoom_mode=…)` writes
   the zoom wording that matches the shape being run; keep them in step.
+- **`User.location_accuracy` and `Shot.heading` are captured, not consumed.**
+  The fix accuracy that rides each `set_location` (and so lands in every shot's
+  `location_context`) and the compass heading captured in `MyWebcam.js` at the
+  moment of a shot exist because they cannot be recovered after a game night.
+  Nothing in `backend/shot_identification.py` or `backend/identity/` reads
+  them, and that is deliberate until there is real data to fit a model against
+  — the admin's per-shot map (`react-ui/src/ShotMap.js`) only displays them.
+  See `docs/roadmap.md` R5 and #5.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

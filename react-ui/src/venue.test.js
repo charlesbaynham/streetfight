@@ -1,4 +1,4 @@
-import { mapGeometry } from "./venue";
+import { mapGeometry, mapProjection } from "./venue";
 
 // The georeferencing maths, checked against a map whose corners are known
 // exactly: a 100 x 200 px image whose top left and bottom right pixels are the
@@ -60,5 +60,43 @@ describe("mapGeometry", () => {
     expect(bottomLeft.long).toBeCloseTo(98.62, 10);
     expect(topRight.lat).toBeCloseTo(8.12, 10);
     expect(topRight.long).toBeCloseTo(98.63, 10);
+  });
+});
+
+describe("mapProjection", () => {
+  // A box 1 km across and 200 px across, so a metre is a fifth of a pixel and
+  // the arithmetic is checkable by eye.
+  const projection = () =>
+    mapProjection({
+      degreesLatitudePerKm: 1 / 110.574,
+      degreesLongitudePerKm: 1 / 100,
+      centreLat: 51.5,
+      centreLong: -0.1,
+      boxWidthKm: 1,
+      boxHeightKm: 1,
+      boxWidthPx: 200,
+      boxHeightPx: 200,
+    });
+
+  it("puts whatever it is centred on in the middle of the box", () => {
+    const [x, y] = projection().coordsToPixels(51.5, -0.1);
+    expect(x).toBeCloseTo(100, 6);
+    expect(y).toBeCloseTo(100, 6);
+  });
+
+  it("measures pixels up from the bottom left, like the dots do", () => {
+    // 100 m north and 100 m east of the centre: 20 px each way, and north is
+    // up, so y increases.
+    const [x, y] = projection().coordsToPixels(
+      51.5 + 0.1 / 110.574,
+      -0.1 + 0.001,
+    );
+    expect(x).toBeCloseTo(120, 6);
+    expect(y).toBeCloseTo(120, 6);
+  });
+
+  it("scales a distance in km to pixels", () => {
+    const [radiusPx] = projection().kmToPixels(0.05, 0);
+    expect(radiusPx).toBeCloseTo(10, 6);
   });
 });

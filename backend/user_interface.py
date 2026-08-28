@@ -366,7 +366,10 @@ class UserInterface:
         user.identity_wardrobe = wardrobe_json
 
     @db_scoped
-    def submit_shot(self, image_base64: str):
+    def submit_shot(self, image_base64: str, heading: Optional[float] = None):
+        """Record a shot. ``heading`` is where the phone was pointing in
+        degrees clockwise from north, and is None whenever the device could
+        not say - telemetry must never stop somebody firing."""
         from .admin_interface import AdminInterface
 
         user: User = self.get_user()
@@ -403,6 +406,7 @@ class UserInterface:
             image_base64=image_base64,
             shot_damage=user.shot_damage,
             location_context=json.dumps(all_user_locations, default=str),
+            heading=heading,
         )
         self._session.add(shot_entry)
 
@@ -638,9 +642,14 @@ class UserInterface:
 
         self.award_ammo(bullet_refunds)
 
-    def set_location(self, latitute: float, longitude: float):
+    def set_location(
+        self, latitute: float, longitude: float, accuracy: Optional[float] = None
+    ):
         """
         Record the location of the user
+
+        ``accuracy`` is the browser's own radius-in-metres estimate for the
+        fix, and is None when the client didn't send one.
 
         This method should be quick and _does not_ prompt a user update event
         """
@@ -652,6 +661,7 @@ class UserInterface:
             user.latitude = latitute
             user.longitude = longitude
             user.location_timestamp = timestamp
+            user.location_accuracy = accuracy
 
     async def generate_user_updates(self, timeout=None):
         """

@@ -37,7 +37,7 @@ allowed to become a blocker for the night — it is all upside.
 | **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted.                                                                | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
-| **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded.               | R5           |
+| **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded. **Shipped.**  | R5           |
 | **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
 | **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
 
@@ -60,7 +60,7 @@ software with a real deadline, which is not where it started on the list.
 | 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
-| 9     | **R5** Capture GPS accuracy and heading      | **Before the 19th**          | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline.             |
+| 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
 | 10    | **R3** Screen Wake Lock                     | Before the 19th *if it fits* | Thirty lines, and it stops the phone sleeping while it is being held as a weapon.                              |
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
@@ -1009,8 +1009,10 @@ to suit the caller.
 
 `position.coords.accuracy` (which is `sigma_fix`) and the shooter's compass
 heading (which turns the envelope from a disc into a cone) are both discarded
-today and both unrecoverable after the fact. Written up as **R5**, which has to
-happen before the 19th for that reason.
+today and both unrecoverable after the fact. Written up as **R5**, which had to
+happen before the 19th for that reason — and has now shipped, so both are
+being recorded (`User.location_accuracy`, `Shot.heading`) and are waiting here
+for whoever builds this model.
 
 **Two things already in place.** `User.location_timestamp` is returned by
 `get_locations`, so the age of every fix is already inside every shot's
@@ -1601,7 +1603,53 @@ this file for the same evenings. It supersedes #13 if it happens.
 
 ---
 
-### R5 — Capture GPS accuracy and compass heading *(proposed — and this one has a deadline)*
+### R5 — Capture GPS accuracy and compass heading *(shipped)*
+
+**Shipped**, both halves, plus an admin map view that was not in this entry.
+
+- **R5a, accuracy.** `position.coords.accuracy` now rides every location
+  upload: `sendLocationUpdate` in `react-ui/src/MapView.js` sends it,
+  `set_location` (endpoint in `backend/main.py`, method in
+  `backend/user_interface.py`) stores it in the new `User.location_accuracy`,
+  and `AdminInterface.get_locations` returns it as `accuracy` — so it is
+  inside every shot's `location_context`, which was the step this entry
+  warned was the easy one to miss.
+- **R5b, heading.** New nullable `Shot.heading` (degrees clockwise from
+  north). `react-ui/src/MyWebcam.js` keeps a compass watch running while the
+  camera is on screen and reads the latest heading at the moment of capture,
+  so firing never waits on a sensor. The platform mess lives in
+  `react-ui/src/utils.js` as `watchCompassHeading` /
+  `headingFromOrientationEvent` (iOS's `webkitCompassHeading` off the plain
+  event; everyone else's `deviceorientationabsolute`, whose `alpha` counts
+  the other way), alongside the permission pair
+  `isOrientationPermissionGranted` / `requestOrientationPermission` that
+  matches the camera and location helpers. iOS's grant cannot be queried
+  back, so it is remembered in `localStorage`.
+- **The compass rung does not gate the ladder.** `OnboardingView.js` gets its
+  third rung, but unlike camera and location it lets the items below it
+  through: a phone with no compass, or a player who declines, must still be
+  able to finish joining. Same instinct as "it must degrade silently" below —
+  a missing heading stores null and the shot proceeds exactly as before.
+- **New: the admin can see where a shot was fired from.**
+  `react-ui/src/ShotMap.js` draws a thumbnail beside the photo in the shot
+  queue: the venue's own map, the shooter's dot, their accuracy circle to
+  scale and a cone in the direction they were pointing, with a caption
+  (`±17 m · facing 043°`). It reads the shooter's fix straight out of
+  `location_context` — the admin shot payload already carried it — and shares
+  the georeferencing maths with the player's map through the new
+  `mapProjection` in `react-ui/src/venue.js`, which `MapView.js` was rewired
+  onto rather than having a second copy. A shot with no fix says so and shows
+  nothing, which is what every shot fired before tonight will do.
+
+**Nothing consumes either field yet, and that is deliberate.** The whole point
+was to record what could not be recovered afterwards. Identification
+(`backend/shot_identification.py`) and everything in `backend/identity/` are
+untouched: #5's envelope stays isotropic until there is data to fit the cone
+against. The admin map only *displays* the telemetry; no verdict depends on it.
+
+The columns need a `resetdb`, which is free before the game's own reset.
+
+---
 
 Two fields the app already has in its hand and throws away. Both are inputs to
 #5's probability model, and neither can be recovered after the fact.

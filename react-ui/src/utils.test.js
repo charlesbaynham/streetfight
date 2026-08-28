@@ -1,8 +1,12 @@
 import {
   getGunImgFromUser,
+  headingFromOrientationEvent,
+  isOrientationPermissionGranted,
   makeAPIURL,
+  requestOrientationPermission,
   sendAPIRequest,
   setAPIErrorHandler,
+  watchCompassHeading,
 } from "./utils";
 import { installFetchMock, getLastAPICall } from "./testUtils";
 
@@ -149,5 +153,132 @@ describe("sendAPIRequest", () => {
     installFetchMock({ user_shots: { status: 500, body: {} } });
 
     await expect(sendAPIRequest("user_shots")).resolves.toBeDefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// The compass, recorded with every shot (docs/roadmap.md R5b). Everything here
+// has to degrade to "no heading" rather than to an error: a phone that cannot
+// answer must still be able to fire.
+// ---------------------------------------------------------------------------
+
+function orientationEvent(name, fields) {
+  const event = new Event(name);
+  Object.assign(event, fields);
+  return event;
+}
+
+describe("headingFromOrientationEvent", () => {
+  test("takes iOS's compass heading as-is", () => {
+    expect(
+      headingFromOrientationEvent({ webkitCompassHeading: 137.5, alpha: 12 }),
+    ).toBeCloseTo(137.5, 6);
+  });
+
+  test("turns an absolute alpha (anticlockwise) into a clockwise heading", () => {
+    // Alpha counts anticlockwise from north, so 90 degrees of alpha is west.
+    expect(
+      headingFromOrientationEvent({ absolute: true, alpha: 90 }),
+    ).toBeCloseTo(270, 6);
+    expect(
+      headingFromOrientationEvent({ absolute: true, alpha: 0 }),
+    ).toBeCloseTo(0, 6);
+    expect(
+      headingFromOrientationEvent({ absolute: true, alpha: 359 }),
+    ).toBeCloseTo(1, 6);
+  });
+
+  test("ignores a non-absolute alpha, which is measured from nowhere in particular", () => {
+    expect(headingFromOrientationEvent({ alpha: 90 })).toBeNull();
+    expect(
+      headingFromOrientationEvent({ absolute: false, alpha: 90 }),
+    ).toBeNull();
+  });
+
+  test.each([
+    ["no event at all", null],
+    ["an event with nothing on it", {}],
+    ["a null alpha", { absolute: true, alpha: null }],
+    ["a NaN alpha", { absolute: true, alpha: NaN }],
+  ])("reports no heading for %s", (_label, event) => {
+    expect(headingFromOrientationEvent(event)).toBeNull();
+  });
+});
+
+describe("watchCompassHeading", () => {
+  test("reports headings while watching, and stops when told to", () => {
+    const onHeading = jest.fn();
+    const stop = watchCompassHeading(onHeading);
+
+    window.dispatchEvent(
+      orientationEvent("deviceorientation", { webkitCompassHeading: 90 }),
+    );
+    expect(onHeading).toHaveBeenCalledWith(90);
+
+    stop();
+    window.dispatchEvent(
+      orientationEvent("deviceorientation", { webkitCompassHeading: 180 }),
+    );
+    expect(onHeading).toHaveBeenCalledTimes(1);
+  });
+
+  test("stays quiet for events that carry no usable heading", () => {
+    const onHeading = jest.fn();
+    const stop = watchCompassHeading(onHeading);
+
+    window.dispatchEvent(orientationEvent("deviceorientation", { alpha: 90 }));
+
+    expect(onHeading).not.toHaveBeenCalled();
+    stop();
+  });
+});
+
+describe("isOrientationPermissionGranted", () => {
+  // jsdom has no DeviceOrientationEvent; every real browser does, and only
+  // iOS puts a requestPermission() on it.
+  beforeEach(() => {
+    window.DeviceOrientationEvent = function DeviceOrientationEvent() {};
+  });
+
+  afterEach(() => {
+    delete window.DeviceOrientationEvent;
+    window.localStorage.clear();
+  });
+
+  test("is granted where nobody asks (everything except iOS)", async () => {
+    await expect(isOrientationPermissionGranted()).resolves.toBe(true);
+  });
+
+  test("is not granted on a device with no orientation events at all", async () => {
+    delete window.DeviceOrientationEvent;
+    await expect(isOrientationPermissionGranted()).resolves.toBe(false);
+    await expect(requestOrientationPermission()).resolves.toBe(false);
+  });
+
+  test("remembers an iOS grant, since there is no way to query it back", async () => {
+    window.DeviceOrientationEvent.requestPermission = jest
+      .fn()
+      .mockResolvedValue("granted");
+
+    await expect(isOrientationPermissionGranted()).resolves.toBe(false);
+    await expect(requestOrientationPermission()).resolves.toBe(true);
+    await expect(isOrientationPermissionGranted()).resolves.toBe(true);
+  });
+
+  test("a refusal is remembered as a refusal", async () => {
+    window.DeviceOrientationEvent.requestPermission = jest
+      .fn()
+      .mockResolvedValue("denied");
+
+    await expect(requestOrientationPermission()).resolves.toBe(false);
+    await expect(isOrientationPermissionGranted()).resolves.toBe(false);
+  });
+
+  test("a request that throws is a refusal, not an explosion", async () => {
+    window.DeviceOrientationEvent.requestPermission = jest
+      .fn()
+      .mockRejectedValue(new Error("must be called from a user gesture"));
+
+    await expect(requestOrientationPermission()).resolves.toBe(false);
   });
 });
