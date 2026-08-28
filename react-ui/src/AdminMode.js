@@ -35,7 +35,7 @@ function UserControls({ user }) {
     <li>
       <b>{user.name || user.id}</b>
       {user.hit_points <= 0 ? " \u{1F480}" : ""} &mdash; {user.hit_points} HP,{" "}
-      {user.num_bullets} ammo,{" "}
+      {user.num_bullets} ammo, {user.appeals_remaining} appeals,{" "}
       {weaponName(user) || `${user.shot_damage} dmg / ${user.shot_timeout}s`}
       <br />
       HP:{" "}
@@ -72,6 +72,25 @@ function UserControls({ user }) {
       <button
         onClick={() =>
           adminPost("admin_give_ammo", { user_id: user.id, num: -1 })
+        }
+      >
+        -1
+      </button>{" "}
+      {/* A referee who has just talked something through with a player needs
+          to be able to give them another go (roadmap R8) */}
+      Appeals:{" "}
+      <button
+        aria-label="Appeals +1"
+        onClick={() =>
+          adminPost("admin_give_appeals", { user_id: user.id, num: 1 })
+        }
+      >
+        +1
+      </button>
+      <button
+        aria-label="Appeals -1"
+        onClick={() =>
+          adminPost("admin_give_appeals", { user_id: user.id, num: -1 })
         }
       >
         -1
@@ -201,6 +220,21 @@ function GamePanel({ game }) {
           />{" "}
           Hard shots escalate to a stronger CharlesBot model (too few readable
           garments; its unsure cases still wait for you)
+        </label>
+        <br />
+        <label>
+          <input
+            type="checkbox"
+            checked={game.ai_resolve_everything_enabled}
+            onChange={(e) =>
+              adminPost("admin_set_ai_resolve_everything", {
+                game_id: game.id,
+                enabled: e.target.checked,
+              })
+            }
+          />{" "}
+          CharlesBot resolves every shot it can (unconfident calls too - players
+          appeal the wrong ones)
         </label>
       </p>
 

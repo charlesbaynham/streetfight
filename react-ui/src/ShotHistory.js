@@ -7,6 +7,7 @@ import React, { useCallback, useEffect, useState } from "react";
 
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
+import { sendAPIRequest } from "./utils";
 import {
   countUnseenShots,
   getShotImage,
@@ -42,11 +43,65 @@ const STATE_CLASSES = {
   miss: styles.stateMiss,
   bystander: styles.stateBystander,
   refunded: styles.stateRefunded,
+  hitYou: styles.stateHitYou,
+  appealOpen: styles.stateAppealOpen,
+  appealUpheld: styles.stateAppealUpheld,
+  appealRejected: styles.stateAppealRejected,
 };
+
+// The reasons each side of a shot may give for appealing it (roadmap R8).
+// A subset of the backend's APPEAL_REASONS: the shooter has no case to make
+// about having been hit, and the target none about their own shot landing.
+export const APPEAL_REASONS = {
+  fired: [
+    ["actually_hit", "It actually hit"],
+    ["wrong_target", "It hit someone else"],
+  ],
+  received: [
+    ["missed", "It missed me"],
+    ["wrong_target", "That wasn't me"],
+    ["not_a_player", "That's not a player"],
+    ["already_out", "I was already out"],
+  ],
+};
+
+export const APPEALS_PER_GAME = 3;
+
+// An appeal's own status, which supersedes the verdict it contests: while it
+// is open there is no settled answer, so it is amber; once the referee has
+// ruled, green and red say which way (colour means certainty).
+const APPEAL_STATUS = {
+  open: { state: "appealOpen", emoji: "⚖️", label: "Under appeal" },
+  upheld: { state: "appealUpheld", emoji: "⚖️", label: "Appeal upheld" },
+  rejected: { state: "appealRejected", emoji: "⚖️", label: "Appeal rejected" },
+};
+
+// A shot somebody else fired at this player: what it did to them, and who did
+// it. The ticker has already named the shooter, so this names them too.
+function receivedStatus(shot) {
+  const by = shot.shooter_name ? ` - shot by ${shot.shooter_name}` : "";
+  if (shot.result === "hit")
+    return { state: "hitYou", emoji: "💥", label: `Hit you!${by}` };
+  return {
+    state: "unreviewed",
+    emoji: "⏳",
+    label: `Shot at you${by}`,
+  };
+}
 
 // What to show for a shot's current status. Shots checked before the result
 // column existed have result=null: infer from whether a target was recorded.
 export function shotStatus(shot) {
+  const appeal = APPEAL_STATUS[shot.appeal_state];
+  // The appeal's own state supersedes the verdict, which stays as the
+  // sublabel: "Under appeal" over "Hit you!" is the whole story in two lines.
+  if (appeal) return { ...appeal, sublabel: baseStatus(shot).label };
+  return baseStatus(shot);
+}
+
+function baseStatus(shot) {
+  if (shot.direction === "received") return receivedStatus(shot);
+
   if (shot.checked) {
     const result = shot.result || (shot.target_name ? "hit" : "miss");
     if (result === "hit")
@@ -182,7 +237,13 @@ function ShotRow({ shot, onClick }) {
   const status = shotStatus(shot);
 
   return (
-    <button className={styles.shotRow} onClick={onClick}>
+    <button
+      className={
+        styles.shotRow +
+        (shot.direction === "received" ? " " + styles.receivedRow : "")
+      }
+      onClick={onClick}
+    >
       <ShotThumbnail
         shotId={shot.id}
         className={styles.thumbnail}
@@ -204,8 +265,104 @@ function ShotRow({ shot, onClick }) {
   );
 }
 
-function ShotDetail({ shot, onBack }) {
+// Whether to put an Appeal button in front of the player at all. `can_appeal`
+// is the backend's own answer (backend/user_interface.appeal_refusal), but it
+// goes false when the budget runs out - and a control that vanishes reads as a
+// bug, so a player with no appeals left still sees the button, greyed out and
+// saying why (roadmap R8).
+export function appealButtonState(shot, appealsRemaining) {
+  if (shot.can_appeal) return { show: true, disabled: false, label: "Appeal" };
+
+  const outOfAppeals =
+    appealsRemaining === 0 &&
+    !shot.my_appeal_reason &&
+    !shot.appeal_state &&
+    (shot.direction === "received"
+      ? shot.result === "hit"
+      : shot.checked && shot.result && shot.result !== "refunded");
+
+  if (outOfAppeals)
+    return { show: true, disabled: true, label: "No appeals left" };
+
+  return { show: false };
+}
+
+function reasonLabel(shot, reason) {
+  const options = APPEAL_REASONS[shot.direction] || [];
+  const match = options.find(([value]) => value === reason);
+  return match ? match[1] : reason;
+}
+
+// The confirmation step, in the popup the detail view already lives in: pick a
+// reason, then answer for the spend with the count and the refund rule both in
+// front of you - the budget is only fair if the player knows the refund rule
+// before they weigh using one.
+function AppealConfirmation({ shot, appealsRemaining, onDone, onCancel }) {
+  const [reason, setReason] = useState(null);
+  const [error, setError] = useState(null);
+
+  const confirm = useCallback(() => {
+    if (!reason) return;
+    sendAPIRequest(
+      "appeal_shot",
+      { shot_id: shot.id, reason: reason },
+      "POST",
+    ).then(async (response) => {
+      if (response.ok) {
+        onDone();
+        return;
+      }
+      const body = await response.json().catch(() => null);
+      setError((body && body.detail) || "That appeal could not be lodged");
+    });
+  }, [shot, reason, onDone]);
+
+  return (
+    <div className={styles.appeal}>
+      <h3 className={styles.appealTitle}>What was wrong with it?</h3>
+      {(APPEAL_REASONS[shot.direction] || []).map(([value, label]) => (
+        <label key={value} className={styles.reasonRow}>
+          <input
+            type="radio"
+            name="appeal-reason"
+            value={value}
+            checked={reason === value}
+            onChange={() => setReason(value)}
+          />
+          {label}
+        </label>
+      ))}
+      <p className={styles.appealQuestion}>
+        Are you sure? You have{" "}
+        {appealsRemaining === null ? "..." : appealsRemaining} of{" "}
+        {APPEALS_PER_GAME} appeals left.
+        <br />
+        <span className={styles.appealRefund}>
+          Successful appeals are refunded.
+        </span>
+      </p>
+      {error ? <p className={styles.appealError}>{error}</p> : null}
+      <button
+        className={styles.appealButton}
+        disabled={!reason}
+        onClick={confirm}
+      >
+        Appeal this shot
+      </button>
+      <button className={styles.appealCancelButton} onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  );
+}
+
+function ShotDetail({ shot, onBack, appealsRemaining, onAppealed }) {
+  const [confirming, setConfirming] = useState(false);
   const status = shotStatus(shot);
+  const appealButton = appealButtonState(shot, appealsRemaining);
+
+  // A different shot in the same popup starts from its own detail view
+  useEffect(() => setConfirming(false), [shot.id]);
 
   return (
     <div className={styles.detail}>
@@ -227,6 +384,30 @@ function ShotDetail({ shot, onBack }) {
         wrapperClassName={styles.detailImageWrapper}
       />
       <p className={styles.rowTime}>{formatShotTime(shot.time_created)}</p>
+      {shot.my_appeal_reason ? (
+        <p className={styles.rowSublabel}>
+          You appealed: {reasonLabel(shot, shot.my_appeal_reason)}
+        </p>
+      ) : null}
+      {confirming ? (
+        <AppealConfirmation
+          shot={shot}
+          appealsRemaining={appealsRemaining}
+          onDone={() => {
+            setConfirming(false);
+            onAppealed();
+          }}
+          onCancel={() => setConfirming(false)}
+        />
+      ) : appealButton.show ? (
+        <button
+          className={styles.appealButton}
+          disabled={appealButton.disabled}
+          onClick={() => setConfirming(true)}
+        >
+          {appealButton.label}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -264,11 +445,23 @@ export function ShotHistoryController() {
   const [shotList, setShotList] = useState(getShots());
   const [visible, setVisible] = useState(false);
   const [selectedShotId, setSelectedShotId] = useState(null);
+  // The appeal budget rides the user payload, so it costs one fetch here
+  // rather than an endpoint of its own. Null until it has arrived.
+  const [appealsRemaining, setAppealsRemaining] = useState(null);
+
+  const refreshAppeals = useCallback(() => {
+    sendAPIRequest("user_info", null, "GET", (data) =>
+      setAppealsRemaining(data.appeals_remaining),
+    );
+  }, []);
+
+  const refreshEverything = useCallback(() => {
+    refreshShots();
+    refreshAppeals();
+  }, [refreshAppeals]);
 
   useEffect(() => subscribeShots(setShotList), []);
-  useEffect(() => {
-    refreshShots();
-  }, []);
+  useEffect(refreshEverything, [refreshEverything]);
 
   useEffect(() => {
     const handler = (event) => {
@@ -296,15 +489,18 @@ export function ShotHistoryController() {
 
   return (
     <>
-      {/* Refresh whenever the server nudges this user: new shots, admin
-          adjudications and AI reviews all arrive as "user" updates */}
-      <UpdateListener update_type="user" callback={refreshShots} />
+      {/* Refresh whenever the server nudges this user: new shots, shots fired
+          at them, admin adjudications, appeal rulings and AI reviews all
+          arrive as "user" updates */}
+      <UpdateListener update_type="user" callback={refreshEverything} />
       <ShotNotifierBubble shotList={shotList} />
       <Popup visible={visible} setVisible={setVisibleAndReset}>
         {selectedShot ? (
           <ShotDetail
             shot={selectedShot}
             onBack={() => setSelectedShotId(null)}
+            appealsRemaining={appealsRemaining}
+            onAppealed={refreshEverything}
           />
         ) : (
           <div className={styles.list}>

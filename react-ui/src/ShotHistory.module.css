@@ -114,6 +114,30 @@
   --status-colour: #2f80d0;
 }
 
+/* A shot somebody else landed on this player: red, because it cost them */
+.stateHitYou {
+  --status-colour: #d32020;
+}
+
+/* Amber while the referee has not answered; green and red once they have */
+.stateAppealOpen {
+  --status-colour: #f0a020;
+}
+
+.stateAppealUpheld {
+  --status-colour: #23a94a;
+}
+
+.stateAppealRejected {
+  --status-colour: #d32020;
+}
+
+/* Shots fired at this player read as somebody else's doing, not theirs */
+.receivedRow {
+  border-left: 4px solid #d32020;
+  padding-left: 0.5em;
+}
+
 /* A coloured disc behind the status glyph */
 .statusIcon {
   box-sizing: border-box;
@@ -175,6 +199,86 @@
   border-radius: 0.5em;
   background-color: #333333;
   min-height: 8em;
+}
+
+/* The appeal button and its confirmation step. Big and bulky: this is driven
+   one-handed, mid-game, and nobody should lose an appeal to a mis-tap. */
+.appealButton {
+  display: block;
+  width: 100%;
+  min-height: 3em;
+  margin-top: 1em;
+  border: none;
+  border-radius: 0.5em;
+  background-color: #f0a020;
+  color: black;
+  font: inherit;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.appealButton:disabled {
+  background-color: #555555;
+  color: #bbbbbb;
+  cursor: not-allowed;
+}
+
+.appealCancelButton {
+  display: block;
+  width: 100%;
+  min-height: 3em;
+  margin-top: 0.5em;
+  border: 1px solid #888888;
+  border-radius: 0.5em;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.appeal {
+  text-align: left;
+  margin-top: 1em;
+}
+
+.appealTitle {
+  font-size: 1.1em;
+  text-align: center;
+}
+
+.reasonRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75em;
+  width: 100%;
+  min-height: 3em;
+  padding: 0 0.5em;
+  border-bottom: 1px solid #444444;
+  cursor: pointer;
+}
+
+.reasonRow input {
+  width: 1.5em;
+  height: 1.5em;
+  flex-shrink: 0;
+}
+
+.appealQuestion {
+  margin-top: 1em;
+  text-align: center;
+  font-weight: bold;
+}
+
+/* Smaller, under the question: the refund rule has to be visible before the
+   spend, or the cap reads as "shut up and accept it" */
+.appealRefund {
+  font-weight: normal;
+  font-size: 0.8em;
+}
+
+.appealError {
+  color: #ff8080;
+  text-align: center;
 }
 
 /* The notification bubble sits just above the fullscreen button

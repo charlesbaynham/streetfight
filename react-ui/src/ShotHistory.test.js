@@ -17,8 +17,10 @@ import {
 import { UpdateSSEConnection } from "./UpdateListener";
 import * as shotHistoryStore from "./shotHistoryStore";
 import {
+  actAndFlush,
   emitUpdate,
   getAPICalls,
+  getLastAPICall,
   installFetchMock,
   makeShot,
 } from "./testUtils";
@@ -27,6 +29,10 @@ import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
 import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
+
+// The store tags every entry with the side of the shot the player was on, so
+// a fired shot comes back out of it with direction: "fired" attached.
+const fired = (shots) => shots.map((shot) => ({ ...shot, direction: "fired" }));
 
 afterEach(() => {
   // Belt-and-braces: any test that switches to fake timers restores real
@@ -268,7 +274,7 @@ describe("ShotNotifierBubble (via ShotHistoryController)", () => {
     // it can't spill into whatever runs next.
     await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 
-    expect(shotHistoryStore.getShots()).toEqual(shots);
+    expect(shotHistoryStore.getShots()).toEqual(fired(shots));
     expect(container.querySelector(".bubble")).toBeInTheDocument();
   });
 
@@ -308,13 +314,17 @@ describe("ShotHistoryController", () => {
       </>,
     );
 
-    await waitFor(() => expect(shotHistoryStore.getShots()).toEqual([shotA]));
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shotA])),
+    );
     expect(getAPICalls("user_shots")).toHaveLength(1);
 
     served = [shotB];
     act(() => emitUpdate("user"));
 
-    await waitFor(() => expect(shotHistoryStore.getShots()).toEqual([shotB]));
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shotB])),
+    );
     expect(getAPICalls("user_shots")).toHaveLength(2);
   });
 
@@ -328,7 +338,9 @@ describe("ShotHistoryController", () => {
     expect(shotHistoryStore.countUnseenShots(shots)).toBe(2);
 
     render(<ShotHistoryController />);
-    await waitFor(() => expect(shotHistoryStore.getShots()).toEqual(shots));
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired(shots)),
+    );
 
     act(() => openShotHistory());
     await screen.findByRole("heading", { name: "My shots" });
@@ -384,7 +396,9 @@ describe("ShotHistoryController", () => {
     installFetchMock({ user_shots: [shot] });
 
     render(<ShotHistoryController />);
-    await waitFor(() => expect(shotHistoryStore.getShots()).toEqual([shot]));
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
 
     act(() => openShotHistory(shot.id));
 
@@ -405,7 +419,9 @@ describe("ShotHistoryController", () => {
     installFetchMock({ user_shots: [shot] });
 
     const { container } = render(<ShotHistoryController />);
-    await waitFor(() => expect(shotHistoryStore.getShots()).toEqual([shot]));
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
 
     act(() => openShotHistory(shot.id));
     expect(await screen.findByText(/All shots/)).toBeInTheDocument();
@@ -504,5 +520,220 @@ describe("ShotHistoryController", () => {
 
     await screen.findByRole("heading", { name: "My shots" });
     expect(container.querySelector("img.crosshair")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Appeals (roadmap R8): the shots fired at this player, and contesting either
+// side's verdict from the detail view.
+// ---------------------------------------------------------------------------
+
+describe("appeals", () => {
+  // Opens the popup straight onto one shot's detail view.
+  async function renderDetail({
+    fired: firedShots = [],
+    received = [],
+    appealsRemaining = 2,
+    shotId,
+    routes = {},
+  }) {
+    installFetchMock({
+      user_shots: firedShots,
+      user_shots_received: received,
+      user_info: { appeals_remaining: appealsRemaining },
+      appeal_shot: { appealed: true },
+      ...routes,
+    });
+
+    await actAndFlush(() => render(<ShotHistoryController />));
+    await actAndFlush(() => openShotHistory(shotId));
+  }
+
+  test("a shot that hit this player says so, and names who fired it", async () => {
+    const received = makeShot({
+      id: "s-received",
+      checked: true,
+      result: "hit",
+      shooter_name: "Bob",
+    });
+    await renderDetail({ received: [received], shotId: received.id });
+
+    expect(screen.getByText("Hit you! - shot by Bob")).toBeInTheDocument();
+  });
+
+  test.each([
+    ["open", "Under appeal"],
+    ["upheld", "Appeal upheld"],
+    ["rejected", "Appeal rejected"],
+  ])("an appeal in state %s reads as '%s'", (appeal_state, label) => {
+    expect(
+      shotStatus(
+        makeShot({
+          checked: true,
+          result: "hit",
+          target_name: "Ann",
+          appeal_state,
+        }),
+      ),
+    ).toMatchObject({ label, sublabel: "Hit Ann!" });
+  });
+
+  test("the Appeal button is offered on a shot the backend says can be appealed", async () => {
+    const shot = makeShot({
+      id: "s-appealable",
+      checked: true,
+      result: "miss",
+      can_appeal: true,
+    });
+    await renderDetail({ fired: [shot], shotId: shot.id });
+
+    expect(screen.getByRole("button", { name: "Appeal" })).toBeEnabled();
+  });
+
+  test("with no appeals left the button is disabled and says so, never hidden", async () => {
+    // can_appeal is false precisely *because* the budget is spent - the
+    // backend refuses on the same grounds - so the button has to explain
+    // itself rather than disappear.
+    const shot = makeShot({
+      id: "s-broke",
+      checked: true,
+      result: "miss",
+      can_appeal: false,
+    });
+    await renderDetail({
+      fired: [shot],
+      shotId: shot.id,
+      appealsRemaining: 0,
+    });
+
+    expect(
+      screen.getByRole("button", { name: "No appeals left" }),
+    ).toBeDisabled();
+  });
+
+  test("a shot with nothing to appeal offers no button at all", async () => {
+    const shot = makeShot({ id: "s-unchecked", checked: false });
+    await renderDetail({
+      fired: [shot],
+      shotId: shot.id,
+      appealsRemaining: 0,
+    });
+
+    expect(screen.queryByRole("button", { name: /appeal/i })).toBeNull();
+  });
+
+  test("confirming an appeal posts the chosen reason, after showing the count and the refund rule", async () => {
+    const shot = makeShot({
+      id: "s-appealable",
+      checked: true,
+      result: "miss",
+      can_appeal: true,
+    });
+    await renderDetail({ fired: [shot], shotId: shot.id });
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+    );
+
+    expect(
+      screen.getByText("Are you sure? You have 2 of 3 appeals left.", {
+        exact: false,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Successful appeals are refunded."),
+    ).toBeInTheDocument();
+
+    // Nothing is spent until a reason is given.
+    expect(
+      screen.getByRole("button", { name: "Appeal this shot" }),
+    ).toBeDisabled();
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByLabelText("It actually hit")),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Appeal this shot" })),
+    );
+
+    expect(getLastAPICall("appeal_shot").query).toEqual({
+      shot_id: "s-appealable",
+      reason: "actually_hit",
+    });
+    expect(getLastAPICall("appeal_shot").method).toBe("POST");
+    // Back to the detail view once it has been lodged.
+    expect(
+      screen.queryByRole("button", { name: "Appeal this shot" }),
+    ).toBeNull();
+  });
+
+  test("the target's reasons are the target's, not the shooter's", async () => {
+    const received = makeShot({
+      id: "s-received",
+      checked: true,
+      result: "hit",
+      shooter_name: "Bob",
+      can_appeal: true,
+    });
+    await renderDetail({ received: [received], shotId: received.id });
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+    );
+
+    expect(screen.getByLabelText("It missed me")).toBeInTheDocument();
+    expect(screen.getByLabelText("That wasn't me")).toBeInTheDocument();
+    expect(screen.queryByLabelText("It actually hit")).toBeNull();
+  });
+
+  test("a refused appeal shows the server's reason instead of failing silently", async () => {
+    const shot = makeShot({
+      id: "s-appealable",
+      checked: true,
+      result: "miss",
+      can_appeal: true,
+    });
+    await renderDetail({
+      fired: [shot],
+      shotId: shot.id,
+      routes: {
+        appeal_shot: {
+          status: 400,
+          body: { detail: "You've already appealed this shot" },
+        },
+      },
+    });
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByLabelText("It actually hit")),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: "Appeal this shot" })),
+    );
+
+    expect(
+      screen.getByText("You've already appealed this shot"),
+    ).toBeInTheDocument();
+  });
+
+  test("an appeal already lodged says what was claimed, and offers no second one", async () => {
+    const shot = makeShot({
+      id: "s-appealed",
+      checked: true,
+      result: "hit",
+      target_name: "Ann",
+      appeal_state: "open",
+      my_appeal_reason: "wrong_target",
+      can_appeal: false,
+    });
+    await renderDetail({ fired: [shot], shotId: shot.id });
+
+    expect(
+      screen.getByText("You appealed: It hit someone else"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /appeal/i })).toBeNull();
   });
 });

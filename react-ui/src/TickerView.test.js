@@ -1,13 +1,16 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { fireEvent, render, screen, act } from "@testing-library/react";
 
 import TickerView from "./TickerView";
+import { ShotHistoryController } from "./ShotHistory";
 import { UpdateSSEConnection } from "./UpdateListener";
 import {
+  actAndFlush,
   installFetchMock,
   getAPICalls,
   getLastAPICall,
   emitUpdate,
+  makeShot,
 } from "./testUtils";
 import styles from "./TickerView.module.css";
 
@@ -74,6 +77,51 @@ describe("player mode (no game_id)", () => {
       await new Promise((resolve) => setTimeout(resolve, 0));
     });
     expect(getAPICalls("ticker_messages")).toHaveLength(2);
+  });
+
+  // The private "you were hit" line carries the shot id so the line itself is
+  // the way in to the shot - and to appealing it (roadmap R8).
+  test("a private line about one of this player's shots opens it in the history", async () => {
+    installFetchMock({
+      ticker_messages: [["user", "You were hit by Bob!", "shot-7"]],
+      user_shots: [makeShot({ id: "shot-7", checked: true, result: "hit" })],
+      user_shots_received: [],
+      user_info: { appeals_remaining: 3 },
+      user_shot_image: { image_base64: null },
+    });
+
+    await actAndFlush(() =>
+      render(
+        <>
+          <TickerView />
+          <ShotHistoryController />
+        </>,
+      ),
+    );
+
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "You were hit by Bob!" }),
+      ),
+    );
+
+    expect(screen.getByText(/All shots/)).toBeInTheDocument();
+  });
+
+  test("a line with no shot attached stays plain text", async () => {
+    installFetchMock({
+      ticker_messages: [
+        ["user", "You were given 1x ammo!", null],
+        ["public", "The next circle has been announced!", "shot-7"],
+      ],
+    });
+
+    render(<TickerView />);
+
+    const line = await screen.findByText("You were given 1x ammo!");
+    expect(line.tagName).toBe("LI");
+    // A public line about somebody else's shot is not this player's to open.
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 
   test("uses the user-mode style class", async () => {

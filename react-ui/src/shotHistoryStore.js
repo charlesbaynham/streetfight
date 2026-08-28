@@ -1,4 +1,6 @@
-// Shared client-side store for the user's own shot history.
+// Shared client-side store for the user's own shot history: both the shots
+// they fired and the shots ruled to have hit them (roadmap R8), merged into
+// one newest-first list and tagged with which side of the shot they were on.
 //
 // One fetch feeds every component that cares (the HUD entry's badge, the
 // history popup, the status bubble), and localStorage remembers which shot
@@ -27,10 +29,35 @@ export function getShots() {
   return shots;
 }
 
+// One list of shots, each entry tagged with the direction it points in, or
+// null if that half could not be fetched
+function fetchShotList(endpoint, direction) {
+  return sendAPIRequest(endpoint).then(async (response) => {
+    if (!response.ok) return null;
+    const list = await response.json();
+    return list.map((shot) => ({ ...shot, direction }));
+  });
+}
+
+// Both halves in parallel, merged newest-first. Ids are unique across the two
+// (they are the same Shot table), so seen-tracking and lookups by id work on
+// the merged list exactly as they did on the fired one. A half that fails
+// contributes nothing rather than blanking the other one; only a total
+// failure leaves the stored list alone.
 export function refreshShots() {
-  return sendAPIRequest("user_shots").then(async (response) => {
-    if (!response.ok) return;
-    shots = await response.json();
+  return Promise.all([
+    fetchShotList("user_shots", "fired"),
+    fetchShotList("user_shots_received", "received"),
+  ]).then((lists) => {
+    const fetched = lists.filter((list) => list !== null);
+    if (fetched.length === 0) return;
+    shots = fetched
+      .flat()
+      .sort(
+        (a, b) =>
+          new Date(b.time_created).getTime() -
+          new Date(a.time_created).getTime(),
+      );
     notify();
   });
 }
@@ -44,6 +71,8 @@ function shotStatusFingerprint(shot) {
     shot.result,
     shot.ai_review_state === "done" ? shot.ai_suggestion : null,
     shot.ai_target_name,
+    // An appeal being lodged or ruled on is news to both parties
+    shot.appeal_state,
   ].join("|");
 }
 

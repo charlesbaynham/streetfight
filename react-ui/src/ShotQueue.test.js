@@ -1045,3 +1045,118 @@ describe("RankedCandidates", () => {
     expect(screen.queryByText("Alice")).not.toBeInTheDocument();
   });
 });
+
+// ---------------------------------------------------------------------------
+// The contested queue (roadmap R8): appealed shots, and the one re-ruling the
+// admin is allowed to make on them.
+// ---------------------------------------------------------------------------
+
+describe("contested shots", () => {
+  let appeal;
+
+  beforeEach(() => {
+    appeal = {
+      appeal_state: "open",
+      shooter_appeal_reason: null,
+      target_appeal_reason: "missed",
+      appealed_at: 1755250000,
+      result: "hit",
+      shooter_name: "Shooter of shot-1",
+      target_name: "Target Red",
+    };
+  });
+
+  async function renderQueue(routeOverrides = {}) {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: () => ["shot-9"],
+      admin_get_contested_shots_info: () => ["shot-1"],
+      admin_get_shot: ({ query }) =>
+        makeShotDetail(query.shot_id, {
+          checked: true,
+          result: "hit",
+          target_user_id: "shot-1-target-red",
+        }),
+      admin_get_shot_ai_review: () => NO_REVIEW_YET,
+      admin_get_shot_appeal: () => appeal,
+      admin_shot_hit_user: {},
+      admin_mark_shot_missed: {},
+      admin_mark_shot_bystander: {},
+      admin_refund_shot: {},
+      admin_review_shot: {},
+      admin_escalate_shot: {},
+      ...routeOverrides,
+    });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotQueue />
+        </MemoryRouter>,
+      ),
+    );
+    await screen.findByText("Shot 1 of 1:");
+    await flushEffects();
+  }
+
+  test("switching to Contested sources the list from the contested endpoint", async () => {
+    await renderQueue();
+    expect(getAPICalls("admin_get_contested_shots_info")).toHaveLength(0);
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await waitFor(() =>
+      expect(
+        getAPICalls("admin_get_contested_shots_info").length,
+      ).toBeGreaterThan(0),
+    );
+    await screen.findByText("By Shooter of shot-1");
+  });
+
+  test("an appealed shot says who is contesting it and why", async () => {
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Contested - awaiting your ruling");
+    expect(
+      screen.getByText('Target Red (target): "it missed me"'),
+    ).toBeInTheDocument();
+  });
+
+  test("an adjudicated shot with an open appeal gets its verdict buttons back", async () => {
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Contested - awaiting your ruling");
+    expect(screen.getByRole("button", { name: "Missed" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Hit" }).length,
+    ).toBeGreaterThan(0);
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Missed" })),
+    );
+
+    expect(getLastAPICall("admin_mark_shot_missed").query).toEqual({
+      shot_id: "shot-1",
+    });
+  });
+
+  test("an adjudicated shot whose appeal has been settled stays final", async () => {
+    appeal = { ...appeal, appeal_state: "rejected" };
+    await renderQueue();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByLabelText("Contested")),
+    );
+
+    await screen.findByText("Appeal rejected");
+    expect(
+      screen.queryByRole("button", { name: "Missed" }),
+    ).not.toBeInTheDocument();
+  });
+});

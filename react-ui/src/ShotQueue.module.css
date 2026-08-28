@@ -166,6 +166,39 @@
   font-size: 0.9em;
 }
 
+/* An open appeal is amber for the same reason the candidate flags are: the
+   verdict on this shot is not an answer until the admin gives one. A settled
+   one is just a record, so it says so quietly. */
+.appealOpen {
+  background: #fdf0d5;
+  border-left: 4px solid #d9a441;
+  color: #7a5410;
+  padding: 0.5em 0.7em;
+  margin: 0.4em 0;
+}
+
+.appealSettled {
+  background: #f4f4f4;
+  border-left: 4px solid #aaaaaa;
+  padding: 0.5em 0.7em;
+  margin: 0.4em 0;
+}
+
+.appealLabel {
+  font-weight: bold;
+  margin: 0 0 0.3em 0;
+}
+
+.appealReasons {
+  margin: 0 0 0.3em 1.2em;
+  padding: 0;
+}
+
+.appealFacts {
+  font-size: 0.85em;
+  margin: 0;
+}
+
 .showCheckedToggle {
   margin-left: 1em;
   font-size: 0.9em;

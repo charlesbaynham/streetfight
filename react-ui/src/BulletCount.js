@@ -81,6 +81,9 @@ export default function BulletCount({ user }) {
           make_n_images(1, cross)
         )}
       </p>
+      {/* A player weighing up an appeal needs to know what they have left
+          (roadmap R8), so it sits with the ammo rather than behind a tap */}
+      <p>Appeals: {user.appeals_remaining}</p>
       <p>
         Armour:{" "}
         {user.hit_points > 1
