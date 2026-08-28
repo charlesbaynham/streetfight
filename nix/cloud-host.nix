@@ -33,6 +33,18 @@ in
     }
   ];
 
+  # The droplet's disk and NIC are virtio, and NixOS's default initrd module
+  # list carries no virtio drivers at all - without these, stage 1 never finds
+  # /dev/vda and the boot hangs before networking exists (the first two
+  # installs died exactly here, indistinguishable from a network failure
+  # from the outside).
+  boot.initrd.availableKernelModules = [
+    "virtio_pci"
+    "virtio_blk"
+    "virtio_scsi"
+    "virtio_net"
+  ];
+
   # GRUB for both firmware types; disko-cloud.nix carries the matching BIOS
   # boot partition and ESP, and disko points grub at the right device.
   boot.loader.grub = {
@@ -42,7 +54,26 @@ in
   };
 
   networking.hostName = "streetfight-cloud";
-  networking.useDHCP = lib.mkDefault true;
+
+  # DigitalOcean offers NO DHCP: the stock image reads a static config from
+  # cloud-init metadata, so a system relying on DHCP boots unreachable (it
+  # did, on 2026-08-28 - the installer survives only because nixos-anywhere's
+  # kexec replays the running system's config). Values captured from the
+  # droplet's own netplan; re-capture them if the droplet is ever rebuilt.
+  # The VPC NIC and DO's anchor IP are unused here and left unconfigured.
+  networking.useDHCP = false;
+  networking.usePredictableInterfaceNames = false;
+  networking.interfaces.eth0.ipv4.addresses = [
+    {
+      address = "167.172.62.186";
+      prefixLength = 20;
+    }
+  ];
+  networking.defaultGateway = {
+    address = "167.172.48.1";
+    interface = "eth0";
+  };
+  networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
 
   # 22 for deploys; 80/443 are what Caddy answers on once
   # services.streetfight.hostname is set (80 also carries the ACME HTTP
@@ -58,6 +89,13 @@ in
     };
   };
   users.users.root.openssh.authorizedKeys.keys = deployKeys;
+
+  # Console rescue: lets root log in at the DigitalOcean web console when the
+  # network is down - the failure mode that is otherwise unrecoverable with
+  # password auth off (SSH stays key-only via PermitRootLogin above). Hash of
+  # a random 28-char password; the plaintext lives on homeserver at
+  # /root/streetfight-droplet-console-password.txt, never in this repo.
+  users.users.root.hashedPassword = "$6$mmItCcro0e5KelJZ$XbdqNlqjmGT4rBGHAg7ldav.6yURAAkZLc0Kg9/cvaR42WCUc.ogo19adoKhVDeIpvaMtBUvWftrtXceoiCrT.";
 
   # nixos-rebuild evaluates on the target; a 1 GB droplet needs the headroom.
   swapDevices = [
