@@ -28,7 +28,9 @@ let
       # Remembering the last failure as well as the last success is what stops
       # a broken commit redeploying itself every tick; the next commit retries.
       for memo in ${successFile} ${failureFile}; do
-        [ "$(cat "$memo" 2>/dev/null)" = "$target" ] && exit 0
+        if [ "$(cat "$memo" 2>/dev/null)" = "$target" ]; then
+          exit 0
+        fi
       done
 
       echo "deploying $target"
@@ -103,19 +105,13 @@ in
 
   config = lib.mkIf cfg.enable {
     # nixos-rebuild --flake needs both features, and neither is on by default.
-    # The substituters are spelled out in full because assigning these options
-    # replaces their defaults rather than adding to them - drop cache.nixos.org
-    # and every deploy builds nixpkgs from source. The flake's own nixConfig
-    # cannot serve here: it only applies once accepted at a prompt, which a
+    # The cache has to be trusted here rather than left to the flake's own
+    # nixConfig, which only applies once accepted at a prompt - something a
     # systemd service never sees.
     nix.settings = {
       experimental-features = [ "nix-command" "flakes" ];
-      substituters = [
-        "https://cache.nixos.org/"
-        "https://streetfight.cachix.org"
-      ];
-      trusted-public-keys = [
-        "cache.nixos.org-1:6NCHdD59X431o0gWypbMrAURkbJ16ZPMQFGspcDShjY="
+      extra-substituters = [ "https://streetfight.cachix.org" ];
+      extra-trusted-public-keys = [
         "streetfight.cachix.org-1:KzTe/3Xxx4mgAPgJzfScKkIoinUwN/VZFPo34B5vtsc="
       ];
     };
