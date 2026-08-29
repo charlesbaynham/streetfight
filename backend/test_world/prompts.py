@@ -52,6 +52,33 @@ CAMERA = {
     "distant": ("25-35 metres", "chest height, phone held up and slightly zoomed"),
 }
 
+# A shot is conditioned on its target's reference photo so that it is the same
+# person -- but left at that, the model reproduces the reference *exactly*:
+# same stance, same expression, same camera angle, transplanted onto a street.
+# That would hand the escalation model a pixel match instead of the
+# recognition problem this fixture exists to pose, so the pose is drawn here
+# and stated, and the prompt says outright which parts of the reference to
+# take and which to throw away.
+POSES = {
+    "toward": [
+        "walking towards the camera mid-stride, weight on one leg, one arm swinging",
+        "stopped mid-step and looking up, as if they have just noticed the phone",
+        "standing side-on to the camera with their head turned towards it, "
+        "caught mid-sentence",
+        "half-turned towards the camera with one hand raised, about to wave "
+        "somebody off",
+        "leaning against a wall looking straight down the lens, one hand in a pocket",
+    ],
+    "away": [
+        "walking away from the camera and glancing back over one shoulder",
+        "three-quarters turned away, looking off down the street at something "
+        "out of frame",
+        "crouched with their back mostly to the camera, retying a shoelace",
+        "half-turned away with a phone held up to one ear",
+        "striding across the frame in profile, not looking at the camera at all",
+    ],
+}
+
 
 def person_sentence(person: dict) -> str:
     """One person, described the way a witness would describe them."""
@@ -133,6 +160,7 @@ def scene_description(world, chosen, scenario, extra_kitted) -> dict:
         if scenario.facing == "toward"
         else "turned three-quarters away from the camera, looking off to one side"
     )
+    pose = rng.choice(POSES[scenario.facing])
 
     return {
         "scenario": scenario.id,
@@ -153,6 +181,7 @@ def scene_description(world, chosen, scenario, extra_kitted) -> dict:
             "team": target["team"],
             "persona": person_sentence(target),
             "facing": facing,
+            "pose": pose,
             "appearance": players[target["slug"]]["appearance"],
             "garments_visible": list(scenario.garments_visible),
             "garments": garment_sentence(
@@ -194,11 +223,22 @@ def shot_prompt(scene: dict) -> str:
         f"TIME AND LIGHT: {scene['time_local']}, {LIGHT_WORDS[scene['light']]}. "
         f"Weather: {scene['weather']}.",
         f"CAMERA: {scene['camera']['distance']} from the subject, "
-        f"{scene['camera']['height']}. Frame it wide, with room around the "
-        f"subject on all sides - the picture will be cropped afterwards.",
+        f"{scene['camera']['height']}. Frame it wide: the subject stands well "
+        f"inside the frame with clear space above their head and below their "
+        f"feet, small enough that the street around them is most of the "
+        f"picture - it will be cropped afterwards.",
+        "",
+        "THE SAME PERSON: the attached indoor photograph is a posed reference "
+        "shot of this person, taken standing still against a wall before the "
+        "game started. Take from it only who they are - face, hair, build - "
+        "and the exact colours of their kit. Everything else must be "
+        "different: this is a candid photograph of them out in the street "
+        "later that evening. Do not reproduce the reference's pose, "
+        "expression, camera angle, framing or lighting.",
         "",
         f"SUBJECT: {scene['target']['persona']}. "
-        f"{scene['target']['facing'][0].upper()}{scene['target']['facing'][1:]}.",
+        f"{scene['target']['facing'][0].upper()}{scene['target']['facing'][1:]}, "
+        f"{scene['target']['pose']}.",
         f"WEARING: {scene['target']['garments']}.",
     ]
 

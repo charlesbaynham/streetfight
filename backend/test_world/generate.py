@@ -24,12 +24,15 @@ FALLBACK_MODEL = "openai/gpt-5-image"
 CHEAP_MODEL = "openai/gpt-5-image-mini"
 
 # Dollars per generated image, for the gate arithmetic *before* anything is
-# sent; what a run actually cost is read back from OpenRouter. Measured at
-# Gate C rather than taken off the rate card: a capped primary image billed
-# $0.051, four times what the per-token arithmetic suggested, because the
-# model bills its own reasoning tokens too. The other two are scaled from
-# that by their published image-output rates.
-PRICE = {PRIMARY_MODEL: 0.06, FALLBACK_MODEL: 0.08, CHEAP_MODEL: 0.02}
+# sent; what a run actually cost is read back from OpenRouter per call. Not
+# the rate card, which is out by an order of magnitude here: five 1024x1024
+# primary images billed $0.240-$0.252 each, against $0.03 of per-token
+# arithmetic. The other two models are scaled from that by their published
+# image-output rates and are not themselves measured.
+#
+# At this price the full set is over HARD_CEILING_USD, which is the ceiling
+# doing its job rather than a number to raise quietly.
+PRICE = {PRIMARY_MODEL: 0.25, FALLBACK_MODEL: 0.33, CHEAP_MODEL: 0.07}
 
 HARD_CEILING_USD = 8.00
 
