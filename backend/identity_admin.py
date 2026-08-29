@@ -641,6 +641,12 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
     must not burn an outfit. The caller is found by scanning the game's
     existing roster rather than calling ``UserInterface.get_user()``, which
     would lazily create the row.
+
+    A caller who has *already* picked an outfit in another team (someone else's
+    join link, tapped in the group chat) is described by the team they are in,
+    not the one they scanned, flagged with ``joined_other_team``: the page has
+    nothing left to offer them but the outfit they already own, and naming the
+    scanned team beside it would read as having joined it.
     """
     scheme = default_scheme()
     admin = AdminInterface()
@@ -649,10 +655,20 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
     game_users = admin.get_users_for_game(code.game_id)
     caller = next((u for u in game_users if u.id == user_id), None)
 
+    joined_other_team = (
+        caller is not None
+        and caller.identity_slot is not None
+        and caller.team_id is not None
+        and caller.team_id != team.id
+    )
+    if joined_other_team:
+        team = admin.get_team_model(caller.team_id)
+
     return {
         "team_id": team.id,
         "team_name": team.name,
         "team_colour": team.identity_colour,
+        "joined_other_team": joined_other_team,
         "team_channel": TEAM_CHANNEL,
         "provided_channel": PROVIDED_CHANNEL,
         "wardrobe_channels": _wardrobe_channels(scheme),

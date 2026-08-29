@@ -85,12 +85,16 @@ function Header({ joinData, showWardrobePrompt }) {
   );
   return (
     <div className={styles.header}>
+      {/* The backend has already swapped this whole block to the team the
+          player is actually in, so the link they tapped is never named. */}
+      {joinData.joined_other_team ? (
+        <p className={styles.alreadyJoinedNote}>You already joined a team:</p>
+      ) : null}
       <h1>Team {joinData.team_name}</h1>
       <Swatch hex={hex} label={joinData.team_colour} size="large" />
       <p>
         We'll bring your {joinData.team_colour}{" "}
-        {channelLabel(joinData.team_channel).toLowerCase()} and your{" "}
-        {channelLabel(joinData.provided_channel).toLowerCase()} on the night.
+        {channelLabel(joinData.team_channel).toLowerCase()} on the night.
         {showWardrobePrompt ? " Tell us what else you'll be wearing." : null}
       </p>
     </div>
@@ -200,7 +204,7 @@ function OptionRow({
       onClick={() => onPick(option)}
     >
       {recommended ? (
-        <span className={styles.recommendedBadge}>recommended</span>
+        <span className={styles.recommendedBadge}>preferred</span>
       ) : null}
       {option.is_canonical ? null : (
         <span className={styles.notIdealBadge}>not ideal</span>
@@ -300,9 +304,7 @@ function ConfirmScreen({
         I will wear this on the night.
       </label>
       {hasName ? null : (
-        <p className={styles.nameRequired}>
-          Enter your name above first - an outfit has to belong to somebody.
-        </p>
+        <p className={styles.nameRequired}>Enter your name above first.</p>
       )}
       <button
         type="button"
@@ -345,8 +347,25 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
           );
         })}
       </div>
-      <p className={styles.finalNote}>This is final. Screenshot it.</p>
+      <p className={styles.finalNote}>
+        Locked in - please screenshot this page!
+      </p>
+      <p>Ask the admin if you need to change your outfit</p>
     </div>
+  );
+}
+
+// Shown under every screen of the flow. A plain anchor with target=_blank
+// rather than a router Link on purpose: the wardrobe ticks and the fetched
+// option list are React state on this page, so navigating away mid-pick
+// would silently throw them away.
+function CuriosityFooter() {
+  return (
+    <p className={styles.curiosityFooter}>
+      <a href="/how-it-works" target="_blank" rel="noopener noreferrer">
+        Interested in what's happening here?
+      </a>
+    </p>
   );
 }
 
@@ -680,6 +699,7 @@ function PickOutfit() {
             )}
           </>
         )}
+        <CuriosityFooter />
       </div>
     </div>
   );

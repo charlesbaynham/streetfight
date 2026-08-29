@@ -14,6 +14,7 @@ import { installFetchMock } from "./testUtils";
 
 import UserMode from "./UserMode";
 import PickOutfit from "./PickOutfit";
+import HowItWorks from "./HowItWorks";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
@@ -115,6 +116,22 @@ describe("/pick (PickOutfit)", () => {
 
     expect(
       screen.getByRole("heading", { name: "Team Reds" }),
+    ).toBeInTheDocument();
+  });
+});
+
+describe("/how-it-works (HowItWorks)", () => {
+  test("mounts and shows its heading", () => {
+    render(
+      <MemoryRouter>
+        <HowItWorks />
+      </MemoryRouter>,
+    );
+
+    expect(
+      screen.getByRole("heading", {
+        name: "Clothes, colours, and error correction",
+      }),
     ).toBeInTheDocument();
   });
 });

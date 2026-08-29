@@ -224,6 +224,15 @@ function playerRowFor(userId) {
   return screen.getByText(userId).closest("li");
 }
 
+// Unnamed players are hidden by default (this is the behaviour under test in
+// the "unnamed players" describe block below) - tests that need to interact
+// with one reveal it via this checkbox first.
+function showUnnamedPlayers() {
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /Show unnamed players/ }),
+  );
+}
+
 // ---------------------------------------------------------------------------
 // UserControls
 // ---------------------------------------------------------------------------
@@ -621,6 +630,7 @@ describe("PlayerRow", () => {
 
   test('shows "unnamed" and "(no team)" for a player with neither', async () => {
     await renderAdmin();
+    showUnnamedPlayers();
     const row = playerRowFor("user-noteam");
     expect(row).toHaveTextContent("unnamed");
     expect(row).toHaveTextContent("(no team)");
@@ -646,6 +656,7 @@ describe("PlayerRow", () => {
 
   test('"Put in team" posts admin_add_user_to_team with the selected team, omitting slot when none is chosen', async () => {
     await renderAdmin();
+    showUnnamedPlayers();
     const row = playerRowFor("user-noteam");
 
     userEvent.selectOptions(
@@ -665,6 +676,7 @@ describe("PlayerRow", () => {
 
   test("the slot select offers (no slot) plus the game's free slots", async () => {
     await renderAdmin();
+    showUnnamedPlayers();
     const row = playerRowFor("user-noteam");
 
     const slotSelect = within(row).getByRole("combobox", { name: "slot" });
@@ -701,6 +713,7 @@ describe("PlayerRow", () => {
 
   test('"Put in team" includes the slot when one is chosen', async () => {
     await renderAdmin();
+    showUnnamedPlayers();
     const row = playerRowFor("user-noteam");
 
     userEvent.selectOptions(
@@ -837,11 +850,23 @@ describe("AdminPanel", () => {
     });
   });
 
-  test("the Players section lists every user, including those with no team", async () => {
+  test("the Players section lists every named user, including those with no team", async () => {
     await renderAdmin();
 
     expect(playerRowFor("user-pewster")).toBeInTheDocument();
     expect(playerRowFor("user-custom")).toBeInTheDocument();
+  });
+
+  test("unnamed players are hidden by default but revealed by the checkbox", async () => {
+    await renderAdmin();
+
+    expect(screen.queryByText("user-noteam")).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("checkbox", { name: "Show unnamed players (1)" }),
+    ).not.toBeChecked();
+
+    showUnnamedPlayers();
+
     expect(playerRowFor("user-noteam")).toBeInTheDocument();
   });
 

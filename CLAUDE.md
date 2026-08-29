@@ -14,20 +14,39 @@ the photos and validate hits. It is a full-stack app:
 - **Frontend** — Create React App (`react-ui/`), a mobile-first PWA-style client.
 - Glued together by a root `package.json`, a Nix flake, and Docker Compose.
 
-## Not deployed yet — breaking changes are free
+## The game is live — the production database is real (2026-08-29)
 
-The game has **not been run or deployed**, and **nobody has picked their
-clothes yet**: there are no live players, no assigned identity slots, no
-production database to migrate. So a change that would normally be off the
-table — renumbering the identity scheme's symbols, swapping a palette, or
-reshaping a model — costs nothing here. Don't contort a design to preserve
-data that does not exist, and don't warn about re-clothing players who have
-not chosen anything.
+**Join links are out.** Players are joining
+`streetfight.houseabsolute.co.uk` and picking their clothes, so the droplet's
+database at `/data` holds state that cannot be regenerated: assigned identity
+slots (`User.identity_slot`), pinned team colours (`Team.identity_colour`),
+the join links already in people's WhatsApp, shots and their photographs.
+This supersedes the old "not deployed yet — breaking changes are free" note;
+its licence is withdrawn.
 
-Charles will say explicitly when that changes. Until he does, treat this as
-still true; after he does, the compatibility of already-assigned identity
-slots (`User.identity_slot`, `Team.identity_colour`) becomes real and the
-usual care applies.
+What that changes, in practice:
+
+- **Wiping the database now costs something real.** `resetdb`,
+  `RESET_DATABASE`, and anything else that runs `create_all()` over a fresh
+  file are dev-only. Never suggest one as a way past a problem on the live
+  box, and say so plainly if a change would need one — every join QR already
+  sent dies with the game it was minted for
+  (`docs/r9_agent_walkthrough_2026-08-29.md` B2).
+- **There are still no migrations**, so a change to `backend/model.py` and a
+  live database are now in genuine tension. A column addition is not free:
+  it needs a hand-written `ALTER TABLE` against `/data`, or a considered
+  decision to lose the state. Raise the cost to Charles before writing the
+  model change, not after.
+- **The identity scheme is frozen.** Renumbering symbols, reordering or
+  re-hexing a palette (`backend/identity/config.py`), or changing what a slot
+  decodes to would re-clothe players who have already chosen. Treat those
+  files as append-only unless Charles asks for the break knowingly.
+- **Deploys are a deliberate act**, not a consequence of merging — see the
+  deployment section below. Merging to master is safe at any hour; nothing
+  reaches the players until someone runs the deploy workflow.
+
+Everything else — code, styling, tests, admin pages — is as free to change as
+it ever was. This is about state, not about caution generally.
 
 ## Planned work
 
@@ -122,7 +141,11 @@ inventing a look. What makes it work:
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
-    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`). Its
+    footer links to `HowItWorks.js` (route `/how-it-works`), a static essay on
+    the error-correcting code behind the outfits — currently a placeholder
+    skeleton awaiting Charles's prose, marked `PLACEHOLDER START/END`. It opens
+    in a new tab because the picker's wardrobe ticks are unsaved React state.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the
@@ -168,7 +191,10 @@ npm run resetdb          # python -m backend.reset_db
 
 There are **no database migrations** (no Alembic). The schema is created from the
 ORM models in `backend/model.py` via `create_all()`. After changing a model,
-reset the dev DB with `npm run resetdb`.
+reset the dev DB with `npm run resetdb` — **in dev only**: the live droplet's
+database holds a running game, so a model change now needs a hand-written
+`ALTER TABLE` there, or Charles's agreement to lose the state. See "The game
+is live", above.
 
 Nix alternative: `nix develop` to enter the dev shell, then `nix run .#backend`
 and `nix run .#frontend` in separate terminals.
@@ -273,9 +299,12 @@ Three deployment targets share one service definition:
   offers no DHCP, so a config carrying another droplet's address installs a
   machine that boots dark); updated with
   `nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
-  — though a master push now deploys itself within a few minutes, pulled by
-  a timer on the droplet (`nix/auto-deploy.nix`, roadmap R10), so that line
-  is the manual override rather than the routine path. Caddy terminates TLS
+  — though the routine path is the **Deploy to droplet** workflow
+  (`.github/workflows/deploy.yml`), a `workflow_dispatch` button that moves
+  the `live` branch to a chosen revision; a timer on the droplet
+  (`nix/auto-deploy.nix`, roadmap R10) polls that branch and switches to it
+  within a few minutes. **Merging to master deploys nothing** — that gate
+  exists because there is now a game running on the box. Caddy terminates TLS
   itself there (`services.streetfight.hostname`); secrets live in
   `/data/secrets/streetfight.env` (`nix/streetfight.env.example` documents
   the format). See `docs/deployment_droplet.md` for the full runbook,
@@ -302,7 +331,8 @@ Three deployment targets share one service definition:
 - Realtime updates flow through `asyncio_triggers` → SSE streams in
   `sse_event_streams.py`. When you change state that clients observe, make sure
   the corresponding update event is triggered.
-- No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev.
+- No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev — and
+  never on the live droplet, which is now carrying a real game.
 - **Venues** (`backend/venues.py`) are the single place where a location is
   defined: map image key, the two reference points that georeference it, the
   corner mini-map width, and the landmarks. One is active at a time

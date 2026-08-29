@@ -106,20 +106,53 @@ nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>
 `streetfight.cachix.org` substituter from the flake's `nixConfig`) and pushes
 the closure, so the droplet itself never has to build or trust anything.
 
-You will rarely need it - auto-deploy, below, is the routine path. It is the
-tool for deploying something that is not on master, and for the **one deploy
-that has to be manual**: the first one after an install, which is what
-installs the auto-deployer itself.
+You will rarely need it - the deploy workflow, below, is the routine path. It
+is the tool for the **one deploy that cannot go through the workflow**: the
+first one after an install, which is what installs the deployer itself. It is
+also the fallback if GitHub Actions is down.
 
-### Auto-deploy
+### Deploying: the manual gate
 
-**A master push deploys itself, within a few minutes.** `nix/auto-deploy.nix`
-puts a timer and a oneshot on the droplet: each tick asks GitHub for the head
-of master with `git ls-remote`, and does nothing at all unless it has moved.
-When it has, the droplet runs `nixos-rebuild switch` against
+**Merging to master deploys nothing.** Deploys are a deliberate act, because
+there is a game running on this box.
+
+To deploy, run the **Deploy to droplet** workflow: Actions -> Deploy to
+droplet -> Run workflow, or
+
+```bash
+gh workflow run deploy.yml -f ref=master        # or a tag, a branch, a SHA
+```
+
+`.github/workflows/deploy.yml` is a `workflow_dispatch` job - GitHub's
+equivalent of a GitLab manual pipeline step. It has no route into the droplet
+and needs none: all it does is force `refs/heads/live` to the revision you
+chose, then watch `/api/get_version` until the droplet reports it. Deploying
+an *earlier* commit is how you roll back, and works the same way (which is why
+the push is a force).
+
+Before moving the ref it checks that `build_cloud_system` succeeded for that
+revision, i.e. that the droplet can substitute the system closure from Cachix
+rather than building it on one vCPU. `skip_build_check` overrides that when
+you are willing to wait.
+
+If you want a second pair of eyes on a deploy, add an `environment:` to the
+job and give that environment required reviewers in the repository settings -
+GitHub will then hold the run at an approval prompt. Not configured today: the
+button *is* the approval.
+
+### How the droplet picks it up
+
+`nix/auto-deploy.nix` puts a timer and a oneshot on the droplet: each tick
+asks GitHub for the head of the **`live`** branch with `git ls-remote`, and
+does nothing at all unless it has moved. When it has, the droplet runs
+`nixos-rebuild switch` against
 `github:charlesbaynham/streetfight/<rev>#streetfight-cloud`, then checks
 `/api/get_version` reports that revision. The host reaches out; nothing on
 the internet holds credentials into it.
+
+Until the first workflow run there is no `live` branch at all; the deployer
+logs `nothing to deploy` each tick and exits cleanly. `git push origin
+master:live` creates it by hand if you would rather not wait for Actions.
 
 `/var/lib/streetfight-autodeploy/` records the last revision that succeeded
 and the last that failed, and neither is retried — so a commit that breaks
@@ -133,7 +166,8 @@ nixos-rebuild switch --rollback              # recovery; there is no auto-rollba
 ```
 
 The manual `nixos-rebuild --target-host` line above still works and is the
-right tool for deploying something that is not on master.
+right tool for deploying something that is not in the repository at all - an
+uncommitted fix at 11pm on a game night.
 
 Three things this needs on the droplet, all of them set by the module and
 each of which silently breaks the deploy if it goes missing (all three were

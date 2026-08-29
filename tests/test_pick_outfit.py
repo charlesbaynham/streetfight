@@ -277,6 +277,39 @@ def test_join_options_reports_the_caller_once_they_have_picked(
 
     response = join_options_call(player, url)
     assert response.json()["you"]["slot"] == picked.json()["slot"]
+    assert response.json()["joined_other_team"] is False
+
+
+def test_join_options_reports_the_team_already_joined_not_the_one_scanned(
+    api_client_factory, admin_api_client, one_game, team_factory
+):
+    """A second team's link, scanned by someone who has already picked, must
+    describe the team they are *in* - the page it lands on shows the outfit
+    they already own, and a header naming the team they merely tapped would
+    tell them they had joined it."""
+    team_a = team_factory()
+    team_b = team_factory()
+    codes = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={one_game}").json()
+    entry_a = next(t for t in codes["teams"] if UUID(t["team_id"]) == team_a)
+    entry_b = next(t for t in codes["teams"] if UUID(t["team_id"]) == team_b)
+
+    player = fresh_player(api_client_factory)
+    options = outfit_options_call(player, entry_a["encoded_url"], wardrobe={}).json()
+    picked = pick_outfit_call(
+        player,
+        entry_a["encoded_url"],
+        wardrobe={},
+        appearance=options["options"][0]["appearance"],
+    )
+    assert picked.is_success
+
+    body = join_options_call(player, entry_b["encoded_url"]).json()
+
+    assert body["joined_other_team"] is True
+    assert body["team_id"] == str(team_a)
+    assert body["team_name"] == entry_a["team_name"]
+    assert body["team_colour"] == entry_a["team_colour"]
+    assert body["you"]["slot"] == picked.json()["slot"]
 
 
 # ---------------------------------------------------------------------------
