@@ -119,9 +119,10 @@ fi
 
 step "Checking the disk"
 want_disk=$(nix eval --raw ".#nixosConfigurations.$FLAKE_ATTR.config.disko.devices.disk.main.device")
-if ! ssh "$target" "test -b $want_disk"; then
-  echo "$want_disk does not exist on the droplet. Its disks:" >&2
-  ssh "$target" "lsblk -dno NAME,SIZE,TYPE" >&2
+disks=$(ssh "$target" 'lsblk -dno PATH,SIZE,TYPE')
+if ! printf '%s\n' "$disks" | grep -q "^$want_disk "; then
+  echo "disko formats $want_disk, which the droplet does not have. It has:" >&2
+  printf '%s\n' "$disks" >&2
   echo "Fix nix/disko-cloud.nix before installing." >&2
   exit 1
 fi
