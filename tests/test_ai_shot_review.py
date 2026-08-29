@@ -413,7 +413,7 @@ async def test_a_replay_returns_the_full_transcript(
     )
     client = FakeVisionClient(
         reply=[small_person_reply(), hit_reply()],
-        reasoning=[None, "The armbands are clearly green in this crop."],
+        reasoning=[None, "The wristbands are clearly green in this crop."],
     )
 
     review = await ai_shot_review.replay_shot_review(
@@ -437,7 +437,7 @@ async def test_a_replay_returns_the_full_transcript(
     assert review["transcript"][1]["reasoning"] is None
     assert (
         review["transcript"][3]["reasoning"]
-        == "The armbands are clearly green in this crop."
+        == "The wristbands are clearly green in this crop."
     )
 
 

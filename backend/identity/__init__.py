@@ -2,7 +2,7 @@
 
 This package is **deliberately dependency-free and decoupled** from the
 database, the web layer, and the vision/LLM call. It maps the colours a
-player wears (across "channels" such as shirt / head / armband) onto a
+player wears (across "channels" such as shirt / head / wristband) onto a
 unique player identity, robustly against a hidden item (erasure) or a
 misread colour.
 

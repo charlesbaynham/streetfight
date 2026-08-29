@@ -31,7 +31,7 @@ def test_channel_rejects_duplicate_labels():
 def test_channelset_accepts_a_restricted_channel():
     # Plan §2.6: guests supply their own clothing, so a channel may carry fewer
     # than q labels. The codewords it cannot express are simply unwearable.
-    short = Channel("armband", ["red", "yellow"])
+    short = Channel("wristband", ["red", "yellow"])
     cs = ChannelSet([Channel("shirt", PALETTE), short], q=5)
 
     assert cs.max_addressable_symbol(0) == 5
@@ -39,17 +39,17 @@ def test_channelset_accepts_a_restricted_channel():
 
 
 def test_is_representable_tracks_each_channels_own_alphabet():
-    short = Channel("armband", ["red", "yellow"])
+    short = Channel("wristband", ["red", "yellow"])
     cs = ChannelSet([Channel("shirt", PALETTE), short], q=5)
 
     assert cs.is_representable([4, 1])
-    assert not cs.is_representable([4, 2])  # no third armband colour exists
+    assert not cs.is_representable([4, 2])  # no third wristband colour exists
     assert not cs.is_representable([0])  # wrong length
 
 
 def test_channel_larger_than_q_only_exposes_the_first_q_symbols():
     big = Channel("shirt", PALETTE + ["cyan", "magenta"])
-    cs = ChannelSet([big, Channel("armband", PALETTE)], q=5)
+    cs = ChannelSet([big, Channel("wristband", PALETTE)], q=5)
 
     assert cs.max_addressable_symbol(0) == 5
     assert not cs.is_representable([5, 0])
@@ -70,11 +70,11 @@ def test_heterogeneous_alphabets():
 
 def test_codeword_appearance_roundtrip():
     cs = ChannelSet(
-        [Channel(name, PALETTE) for name in ["shirt", "head", "armband"]], q=5
+        [Channel(name, PALETTE) for name in ["shirt", "head", "wristband"]], q=5
     )
     codeword = (3, 1, 4)
     appearance = cs.codeword_to_appearance(codeword)
-    assert appearance == {"shirt": "blue", "head": "yellow", "armband": "purple"}
+    assert appearance == {"shirt": "blue", "head": "yellow", "wristband": "purple"}
     assert cs.appearance_to_codeword(appearance) == codeword
 
 

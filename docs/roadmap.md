@@ -33,7 +33,7 @@ allowed to become a blocker for the night — it is all upside.
 
 | By             | What must be true                                                                                                                          | Items        |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | ------------ |
-| **Now**        | Armbands and hats bought. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
+| **Now**        | Wristbands and hats bought. Pub conversations started — a landlord agreeing to hold a code is a conversation with human latency, not a data problem. | #9, #6       |
 | **~31 Aug**    | Westminster map drawn and active. Colour-picking page built. Drops scouted. **Map and picking page both in; drops now unblocked.**         | #12, #10, #7 |
 | **~7 Sept**    | Picking page live; players choosing outfits and finding the clothes.                                                                       | #10          |
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
@@ -80,7 +80,7 @@ checklist with someone other than an agent driving. Decisions taken for it:
   escalation, resolve-everything. The admin flow is already proven from
   previous games; the AI adjudication path is the thing this test exists to
   exercise, so it does not hide behind the safety valve on the day.
-- **Kit**: the armbands should have arrived by then; if they haven't, the
+- **Kit**: the wristbands should have arrived by then; if they haven't, the
   identification test is badly weakened (one of four channels gone, and the
   bystander/player signal with it). R6's check-on-arrival still applies.
 - **Pre-Sunday QA, in two passes**: first an agent click-through of the
@@ -198,8 +198,8 @@ next commit lands.
 
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
-| 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
-| 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
+| 1     | **#9** Buy wristbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
+| 1b    | **R6** Check the wristband hexes on arrival   | On delivery, before the 19th | The wristbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | Shipped 28 Aug               | Play area fixed, drawn map active, resort venue retired. #7 unblocked. A hand-drawn replacement is still wanted but no longer blocks anything. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
@@ -231,13 +231,13 @@ Recorded here so they are not re-litigated:
 
 - **The game is on 19 September 2026, in Westminster.** House Absolute is in
   Westminster, so #6, #7 and #12 are all the same venue.
-- **We provide the armbands and the hats** (#9); both have been bought. Only
+- **We provide the wristbands and the hats** (#9); both have been bought. Only
   the t-shirt and trousers are the player's own. See #9 for what that costs
   and what to do about it.
 - **Players pick their own colours from a pre-game web page** (#10), not on the
   night and not assigned by an admin.
-- **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
-  rests on the one garment we supply. Follows from armbands-only; see #9.
+- **`TEAM_CHANNEL` moves from the hat to the wristbands** (#9), so team identity
+  rests on the one garment we supply. Follows from wristbands-only; see #9.
 - **No native app and no app stores** (#14), for this run and by default. The
   Apple Developer Program fee is unavoidable for iOS in *any* distribution form,
   TestFlight included, and it is not worth paying for a party game. #14 stays on
@@ -248,8 +248,8 @@ Recorded here so they are not re-litigated:
   wore what they said they would, so it has to be done by the person who can
   send them home to change. Answers open question 2.
 - **`TEAM_CHANNEL` stays on the hat**, reversing the earlier decision to move it
-  to the armbands. We now buy and supply each team's hats outright (#9), rather
-  than leaving that to the team, so the armband stays the free per-player
+  to the wristbands. We now buy and supply each team's hats outright (#9), rather
+  than leaving that to the team, so the wristband stays the free per-player
   channel we set on the night — for a stronger reason than originally argued,
   since we control the hat colour directly instead of trusting a team's bulk
   order to get it right. See #9 and plan §12.6 — no code change, `TEAM_CHANNEL`
@@ -294,7 +294,7 @@ Recorded here so they are not re-litigated:
 
 ## Track B — the critical path
 
-### #9 — Buy armbands and hats *(bought)*
+### #9 — Buy wristbands and hats *(bought)*
 
 **The constraint.** The palettes in `backend/identity/config.py` were chosen by
 optimising worst-case CIEDE2000 separation across three illuminants (daylight,
@@ -304,8 +304,8 @@ whole scheme rests on. Buy against the hex values, and where a real product
 misses, **record what was actually bought** so the palette can be re-checked
 rather than silently drifting.
 
-**Bought: 7 armband colours (the main palette), plus one hat per team in that
-team's colour.** The original plan here was to supply the armbands only and
+**Bought: 7 wristband colours (the main palette), plus one hat per team in that
+team's colour.** The original plan here was to supply the wristbands only and
 leave hats to each team to bulk-buy; that changed before ordering, and we
 bought the hats ourselves too. Only the t-shirt and trousers remain the
 player's own.
@@ -318,7 +318,7 @@ which is exactly why we now hand the hats out ourselves rather than leave it
 to each team to buy correctly.
 
 **`TEAM_CHANNEL` stays on the hat.** An earlier draft of this section had
-argued for moving it to the armbands, on the grounds that the armbands are the
+argued for moving it to the wristbands, on the grounds that the wristbands are the
 one garment we control; a later draft reversed that back onto the hat, with
 each team bulk-buying its own hat colour to get there. Buying the hats
 ourselves removes the weak link in that second plan — a team's bulk order can
@@ -329,21 +329,21 @@ support it:
 - **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
   garments determine the other two. Pinning *any* channel to the team leaves
   exactly one bucket of seven slots (six for black) — identical for hat, t-shirt
-  and armbands. The team-channel choice does not change capacity at all.
+  and wristbands. The team-channel choice does not change capacity at all.
 - **It decides which garments a player has to source.** With the team on the
-  armbands, the slots in a team each need a *different* hat colour, and
+  wristbands, the slots in a team each need a *different* hat colour, and
   almost nobody owns a coloured hat. With the team on the hat, the hat is ours
   to hand out — one colour per team — and the player sources only a t-shirt and
   trousers, which are things people own.
 - **It is the difference between having a free channel and not having one.**
-  Teammates share the team colour, so if that colour is the armbands, then within
+  Teammates share the team colour, so if that colour is the wristbands, then within
   a team we have *no* channel left that we control — nothing to turn at handout
   time to separate two players whose wardrobes collide. Putting the team on the
-  hat keeps the armband as a per-player variable we set on the night. That is the
-  real value of controlling the armbands: not more slots, but a knob that still
+  hat keeps the wristband as a per-player variable we set on the night. That is the
+  real value of controlling the wristbands: not more slots, but a knob that still
   turns after everyone has chosen.
 
-Measured (§12.6): with the team on the armbands, a player can fully wear ~0.06 of
+Measured (§12.6): with the team on the wristbands, a player can fully wear ~0.06 of
 their team's free slots and 46% wear at most one of their three garments as
 recorded. With the team on the hat, that becomes ~0.56 and 10%. Those figures
 were modelled against a team *bulk-buying* its own hat colour; buying the hats
@@ -351,26 +351,45 @@ ourselves removes even the residual risk that model priced in — there is no
 "wrong hat colour" outcome left to have.
 
 **No code change is needed** — `TEAM_CHANNEL` is already `"hat"`. What changed
-was the shopping list: seven armband colours and one hat colour per team, all
+was the shopping list: seven wristband colours and one hat colour per team, all
 bought by us rather than left to the teams.
 
+**Worn at the wrist, not the upper arm.** The band moved down the limb after
+the kit was bought: it is now put on the wrist or the forearm. Everything in
+the code follows the channel name, which is `wristbands` throughout, and the
+scheme is unchanged — one symbol worn on both limbs, the fourth channel of the
+`[4,2,3]` code. What it does change is physical: a forearm shows less colour
+than an upper arm at the same distance, and a hand is easier to hide, so the
+per-limb visibility estimate the simulation used (plan §12.3) is now the
+shakiest number in the model. R6 is where that gets checked against the real
+bands.
+
 **Risk to name out loud:** two of the four channels remain bring-your-own —
-t-shirt and trousers — and the hat and armbands are both ours now. The
+t-shirt and trousers — and the hat and wristbands are both ours now. The
 scheme's accuracy on the night still depends on players owning and wearing the
 t-shirt and trousers they picked. #10 is the mitigation, and R7 is the check
 that it worked.
 
 ---
 
-### R6 — Check the armband colours against the palette when they arrive *(proposed)*
+### R6 — Check the wristband colours against the palette when they arrive *(proposed)*
 
-**Status: ordered, not yet delivered.** The armbands were bought against the hex
+**Status: ordered, not yet delivered.** The wristbands were bought against the hex
 values in `PALETTE_HEX["main"]` (`backend/identity/config.py`), but nobody has
 seen them yet, so nobody knows how close the dye actually is.
 
-**On delivery:** photograph the seven armbands together under the lighting they
+**On delivery:** photograph the seven wristbands together under the lighting they
 will be used in, compare against the hex values, and **update `PALETTE_HEX` to
 what was actually bought** rather than leaving the aspirational values in place.
+
+**Photograph one on a wrist, too.** Now that the band is worn on the wrist or
+forearm rather than the upper arm (#9), the second thing to check is size, not
+just colour: shoot a worn band at the ranges a shot is actually taken from and
+put it through `/admin/replay`, because plan §12.1 measured the models failing
+outright on a watch-sized target. If a worn band does not read at those ranges,
+that is worth knowing before the night — the escalation ladder already assumes
+this is the channel most often missing, but it assumes it is *sometimes*
+readable.
 The palette was chosen by optimising worst-case CIEDE2000 separation across three
 illuminants (plan §9.1, §12.4); a silent substitution erodes exactly the property
 the scheme rests on, and a recorded one can at least be re-checked.
@@ -502,14 +521,14 @@ once the player confirms "I'm sure I don't have any more clothes". Survivors
 are then ranked **overrides needed from a canonical Reed–Solomon codeword
 first (ascending), rarity second** (descending, summed `1 - commonness` over
 the player's own t-shirt/trousers channels only — the hat is fixed and the
-armband is ours). Distance from a canonical codeword beats rarity absolutely,
+wristband is ours). Distance from a canonical codeword beats rarity absolutely,
 so most players land on an unclaimed codeword carrying no overrides at all,
 and free choice is graceful degradation rather than the norm. See
 `backend.identity_admin.outfit_options` for the implementation and plan
 §12.6's "as implemented" note for the reasoning.
 
 **The page only asks about what the player actually sources.** The hat and
-armbands are ours (#9), not the player's choice, so the picking page shows and
+wristbands are ours (#9), not the player's choice, so the picking page shows and
 ticks colours for the t-shirt and trousers only — the two garments a player
 needs to go and find.
 
@@ -535,7 +554,7 @@ So a player was handed an outfit; they did not choose one.
 - the team's *unclaimed* outfits rendered with colour swatches — reusing
   `hex_for()` and the swatch rendering already proven in `AdminIdentity.js` /
   `IdentityDemo.js` (now the shared `Swatch.js`);
-- an explanation that the hat and armbands are ours (see #9) and the choice is
+- an explanation that the hat and wristbands are ours (see #9) and the choice is
   across the t-shirt and trousers;
 - an **atomic** claim, guarded by `identity_admin.pick_outfit_lock` plus
   re-validation against freshly read state: several people pick at once on
@@ -544,7 +563,7 @@ So a player was handed an outfit; they did not choose one.
   §8.2 is explicit about this, and `join_options` deliberately creates no
   `User` row so a link-preview bot prefetching the URL can't burn an outfit.
 
-**Self-selection is load-bearing, not a nicety.** With the hat and armbands
+**Self-selection is load-bearing, not a nicety.** With the hat and wristbands
 provided (#9), two channels still depend on players owning the right colours.
 Letting someone choose the outfit whose t-shirt and trousers they *already
 have* is the single best lever on how accurate the identification is on the
@@ -569,12 +588,12 @@ person with a reason to fudge it.
 **Post-ship UX revision (mobile walkthrough).** Four further fixes beyond
 the confirm-step move above, all in `react-ui/src/PickOutfit.js` /
 `backend/identity_admin.py`: (1) `outfit_options` now collapses to one
-option per distinct tshirt+trousers combination - the armband varying
+option per distinct tshirt+trousers combination - the wristband varying
 underneath was a choice the player has no stake in, since it's ours to
 assign - keeping `outfit_options_page`'s `total`/pagination honest against
 the smaller, deduplicated list; (2) option rows, the confirm screen and the
 result screen now show only the wardrobe channels (`join_options`'
-`wardrobe_channels`), dropping the hat/armband and the "yours"/"ours" tags
+`wardrobe_channels`), dropping the hat/wristband and the "yours"/"ours" tags
 they needed; (3) the wardrobe form collapses to a one-line summary once
 options are showing, so a phone screen reaches the options without first
 scrolling past every colour swatch, with a "Change what I own" link back;
@@ -731,7 +750,7 @@ this file is kept current.
 **Admin-facing:**
 
 - [ ] The reference-photo kit check at `/admin/reference` (R7): reading off the
-  hat and armband colours to hand out, capturing a player's photo at the door
+  hat and wristband colours to hand out, capturing a player's photo at the door
   and reading the resulting verdict — including the "unreadable photo
   identifies nobody" case and the expected-against-read comparison naming the
   garment that is wrong.
@@ -773,7 +792,7 @@ admin-facing flows first, in a browser at a mobile viewport (see the
 spent on it. That is preparation, not a substitute: the actual gate is
 Charles doing the same pass by hand on his own phone, because an agent
 cannot judge "does this make sense to someone who has never seen it before"
-or "is this button reachable one-handed with a box of armbands in the other."
+or "is this button reachable one-handed with a box of wristbands in the other."
 
 **Lands in:** no code — this is a QA pass, tracked here so it does not get
 silently skipped under the logistics deadlines above it.
@@ -951,7 +970,7 @@ comparisons; the harness's `baseline` variant tracks the screening flow and
 rate 0/8 (0%), false-miss rate 4/5 (80%)**, matching the always-zoom numbers
 this variant replaces. d91548d3, the flagship false hit, is `miss` at 0.99
 confidence. The four false misses are the same `hit_bystander` mapping noted
-above (armbands hidden, other channels incomplete), not a regression from the
+above (wristbands hidden, other channels incomplete), not a regression from the
 screening gate. Single run, not the 5x done for the earlier variants — worth
 repeating before fully trusting the rate, but it confirms the screening gate
 did not reintroduce the false-hit problem it was built to avoid.
@@ -1122,7 +1141,7 @@ a close-up the admin calls a **miss** (crosshair just top-left of the head)
 was reviewed as `hit_player` at 0.95 confidence — a confident false hit that
 would have auto-fired, i.e. #4 in the wild — and all four distant (~50 m)
 shots came back `hit_bystander` on exactly two readable channels (t-shirt +
-trousers; the armbands and hat are unresolvable at that range even through
+trousers; the wristbands and hat are unresolvable at that range even through
 the zoom), so auto-actions would have auto-bystandered four real hits. To
 produce proper verdicts, the admin queue grew a **"Show adjudicated shots"**
 toggle and a per-shot **admin notes** field (`Shot.admin_notes`,
@@ -1170,19 +1189,19 @@ the runners-up, not just the old tags.
 
 **Symptom.** A distant shot read two of the four channels correctly. Two erasures
 is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot said it
-could not tell — because neither of the two was the armbands.
+could not tell — because neither of the two was the wristbands.
 
 **Why it does that.** `classify()` in `backend/shot_vision.py` treats the
-armbands as the *player marker*: bystanders do not wear armbands, so armbands
-read ⇒ player. When the armbands are erased, it falls back to demanding **all
+wristbands as the *player marker*: bystanders do not wear wristbands, so wristbands
+read ⇒ player. When the wristbands are erased, it falls back to demanding **all
 three** other channels, and anything less is declared a bystander. Hence "two
-channels, no armbands" → nothing. The reasoning behind that is sound as far as it
+channels, no wristbands" → nothing. The reasoning behind that is sound as far as it
 goes (with only `k = 2` readable positions, any reading completes to *some*
 codeword, so the code vouches for nothing) — but it answers the wrong question.
 
 **The fix is to split one question into two.**
 
-- **"Is this person a player at all?"** genuinely needs redundancy, and armbands
+- **"Is this person a player at all?"** genuinely needs redundancy, and wristbands
   genuinely are strong evidence — more so now that they are the one garment we
   supply (#9). Keep that, but as *evidence*, not as a gate.
 - **"Which player is it?"** does **not** need the full codeword space. The
@@ -1502,12 +1521,12 @@ is a one-line change that R1 can score.
 
 **Shipped 2026-08-27** as `backend/shot_escalation.py` (the escalation
 contract and the async runner, mirroring `ai_shot_review.py`), the rewritten
-`classify()` in `backend/shot_vision.py` (the "no armbands ⇒ bystander"
+`classify()` in `backend/shot_vision.py` (the "no wristbands ⇒ bystander"
 mapping is retired: a shot that hit a person is always `hit_player` now, with
 the readable-channel count in the reason — bystander is a conclusion only the
 stronger model or the admin can reach), the ladder in
 `backend/shot_auto_actions._decide` (gated on `confident_channel_count` and
-the new `shot_vision.armbands_confident`), `vision_client.
+the new `shot_vision.wristbands_confident`), `vision_client.
 get_escalation_client()` (`OPENROUTER_ESCALATION_MODEL` — unset means
 escalation is off and everything behaves as before), two columns on `Shot`
 (`ai_escalation_state`, `ai_escalation`), and the escalation block in the
@@ -1552,7 +1571,7 @@ reasoning and the ranked candidate list it was given.
   bystander (one bullet at stake, same as the weak auto-actions). Both are
   guesses awaiting R2's data.
 - **One consequence worth naming:** three readable channels *without*
-  armbands used to be able to auto-fire (the old `k + 1` readability gate
+  wristbands used to be able to auto-fire (the old `k + 1` readability gate
   passed); it now escalates instead, so with no escalation model configured
   those shots go to the admin rather than auto-firing. Deliberate — that rung
   is the one where the missing channel is the player marker.
@@ -1584,15 +1603,15 @@ The original design brief follows.
 
 **Design decided 2026-08-27; reference photos (the prerequisite, R7) are
 shipped.** This section is the handoff for the remaining work. The one-line
-version: stop treating "no armbands visible" as "bystander", identify with
+version: stop treating "no wristbands visible" as "bystander", identify with
 whatever channels *are* readable at honestly reduced confidence, and route the
 cases that reduced confidence cannot carry to a stronger model that sees the
 reference photos — with a human admin as the final rung.
 
 **What is wrong today.** `classify()` in `backend/shot_vision.py` uses the
-armbands as the player gate: armbands read ⇒ player; armbands hidden ⇒ demand
+wristbands as the player gate: wristbands read ⇒ player; wristbands hidden ⇒ demand
 all three other channels complete to a codeword, else **bystander**. Quite
-often no armbands are visible on a genuine hit (all four of #4's residual
+often no wristbands are visible on a genuine hit (all four of #4's residual
 false misses are exactly this), and two or three readable channels are enough
 information to *guess who it is* — the candidate set is a handful of nearby
 living players, not the whole code space (#5's argument). The guess just
@@ -1604,14 +1623,14 @@ whether a machine acts on it, not whether the reading is discarded.
 
 - **4 channels readable** — as today: identify via #5's posterior;
   auto-actionable when confident.
-- **3 channels, armbands among them** — a good candidate for **no** review:
-  the armbands are the one garment we supply, so player-ness is solid and one
+- **3 channels, wristbands among them** — a good candidate for **no** review:
+  the wristbands are the one garment we supply, so player-ness is solid and one
   erasure is well within the code. Auto-actionable when the posterior is
   confident.
-- **3 channels, armbands hidden** — probably **does** need review: identify
+- **3 channels, wristbands hidden** — probably **does** need review: identify
   anyway, but the missing channel is the player marker, so send it to the
   stronger model rather than auto-acting.
-- **2 channels** (armbands or not) — **always** goes to the stronger model.
+- **2 channels** (wristbands or not) — **always** goes to the stronger model.
   Identification still runs and still produces the ranking (two correct reads
   discriminate sharply within a small candidate set), but at `k = 2` readable
   positions the code itself vouches for nothing, so no auto-action.
@@ -1872,7 +1891,7 @@ exists today. **A + 30–50%**, for a downgrade. Don't.
 **Distribution friction.** Today a guest scans a QR code and is playing in
 seconds. With a native app, every guest needs TestFlight (accept invite, install
 TestFlight, install the app) or an Android sideload — *before* the night, on the
-same critical path as the armbands and the printing, and it is a fresh way for
+same critical path as the wristbands and the printing, and it is a fresh way for
 somebody to turn up unable to play. For a fixed guest list this is survivable,
 but it should be weighed honestly against "background GPS is nicer", because it
 is a certain cost against a speculative benefit.
@@ -2117,7 +2136,7 @@ wearing, not only what the model made of them. Each
 (`identity_admin.expected_outfit` — the effective word, so an override is what
 is expected, shaped like a review's `channels` so one component renders both),
 and the roster shows it as a swatch strip. In a player's own view it is shown
-**before** the camera, split into "hand them" (the hat and the armband, which
+**before** the camera, split into "hand them" (the hat and the wristband, which
 `identity_admin.provided_channels` names — the complement of the wardrobe
 channels, so the two cannot disagree) and what they should have arrived in:
 this is the moment the kit is handed over, so the colours have to be readable
@@ -2125,15 +2144,15 @@ while reaching into the box rather than only afterwards. Once the review lands,
 the same list gains a second column — expected → read, with a per-garment
 tick, cross or amber "not read" — so a failure names the garment rather than
 only the player, which is the difference between sending somebody home and
-swapping their armband. The original brief follows.
+swapping their wristband. The original brief follows.
 
 **Why the admin takes it, not the player.** The reference photo's first job is
 not to feed #11 — it is a **manual gate**. Two of the four channels are
 bring-your-own (#9) — t-shirt and trousers — so the single largest risk to the
 night is somebody turning up in the wrong colours, or in something they called
 "green" that photographs khaki. Checking that is a job for the person standing
-at the door with the box of armbands and hats, because they are the only one
-who can do anything about it: swap a garment, hand out a different armband, or
+at the door with the box of wristbands and hats, because they are the only one
+who can do anything about it: swap a garment, hand out a different wristband, or
 record an override there and then. A
 photo the player takes of themselves at pick time verifies nothing, since the
 person submitting it is the person with a reason to fudge it. Hence: **at the
@@ -2169,7 +2188,7 @@ channel ("the trousers read as black at 0.4") is visible as a warning, not just 
 pass/fail.
 
 **Note the ordering trap:** this wants the identity to already be recorded, so it
-runs *after* #10's picks are in and the armbands are handed out — it is the last
+runs *after* #10's picks are in and the wristbands are handed out — it is the last
 step at the door, not the first.
 
 **Lands in:** a new admin capture view, `backend/shot_vision.py` (reused as-is),
@@ -2497,7 +2516,7 @@ Answers to these change the shape of the work, not just its order.
    photo a check rather than a self-report.
 3. **How long do reference photos live?** Suggestion: deleted with the game.
 4. **Does the identification scheme survive two bring-your-own channels?** With
-   the armbands and hat now provided (#9), only the t-shirt and trousers are
+   the wristbands and hat now provided (#9), only the t-shirt and trousers are
    left to players — roughly halving the exposure this question originally
    worried about, though it does not remove it: those two channels still depend
    on players owning and wearing the colours they picked. #10's picking page and
@@ -2509,7 +2528,7 @@ Answers to these change the shape of the work, not just its order.
    partitions the space into seven independent buckets and prevents that
    stranding: inside a team, free choice and the code have identical capacity,
    because `d >= 3` under a shared hat already forces distinct t-shirts, trousers
-   and armbands, and the trousers channel caps a team at its own colour count
+   and wristbands, and the trousers channel caps a team at its own colour count
    either way. What free choice adds is that those outfits can be chosen to fit
    the team's actual wardrobes — 82.8% of players in clothes they own against
    the code's 57.4%. See plan §12.6.

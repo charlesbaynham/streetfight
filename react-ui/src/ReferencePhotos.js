@@ -7,14 +7,14 @@
 // same vision pipeline a real shot uses, and see whether their outfit actually
 // decodes to *them*. Nothing here is a shot - no HP, no ammo, no queue.
 //
-// The armband and the hat are handed over at this exact moment, so the page
+// The wristband and the hat are handed over at this exact moment, so the page
 // says what they should be *before* there is a photograph to check: which
 // colours to take out of the box, and what the player's own two garments are
 // supposed to be. Afterwards the same list gains a second column - what the
 // model actually read - so a failure names the garment that is wrong rather
 // than only the player.
 //
-// Driven one-handed on a phone with a box of armbands in the other, so it is a
+// Driven one-handed on a phone with a box of wristbands in the other, so it is a
 // single column of big targets: pick a player, hand out their kit, take the
 // photo, read the verdict, move on.
 
@@ -74,7 +74,7 @@ function rosterStatus(row) {
   ];
 }
 
-// The outfit at a glance, so the admin can see whose armband to fetch without
+// The outfit at a glance, so the admin can see whose wristband to fetch without
 // opening the row. Ordered with the garments we supply first, matching the
 // order they are handed over in.
 function RosterOutfit({ appearance }) {
@@ -211,7 +211,7 @@ function Garment({ entry, missing = "not read", size = "normal" }) {
 }
 
 // What this player should be wearing, split by who supplies it. The hat and
-// the armband are handed over at this desk, so they come first and are labelled
+// the wristband are handed over at this desk, so they come first and are labelled
 // as an instruction rather than a description: this list is read while reaching
 // into the box, before there is any photograph to check it against.
 function ExpectedOutfit({ appearance, playerName }) {
@@ -265,7 +265,7 @@ function ExpectedOutfit({ appearance, playerName }) {
 // Expected against read, one row per garment. The identification verdict says
 // whether the outfit decoded to the right person; this says *which* garment is
 // wrong when it did not - the difference between "send them home" and "swap
-// their armband".
+// their wristband".
 function OutfitComparison({ appearance, channels }) {
   const read = channels || {};
   const names = Object.keys(appearance).concat(
@@ -491,7 +491,7 @@ function PlayerDetail({ row, onClose, onChanged }) {
 
       {capturing ? (
         <>
-          {/* Before the photo, not after: this is the moment the armband and
+          {/* Before the photo, not after: this is the moment the wristband and
               the hat are handed over. */}
           <ExpectedOutfit appearance={expected} playerName={playerName} />
           <MyWebcam

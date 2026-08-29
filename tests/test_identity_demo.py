@@ -36,7 +36,7 @@ def test_default_scheme_matches_the_config():
         "tshirt": "black",
         "trousers": "black",
         "hat": "black",
-        "armbands": "black",
+        "wristbands": "black",
     }
 
 
@@ -50,7 +50,7 @@ def test_codebook_marks_unwearable_codewords():
                 name="trousers", labels=["black", "blue", "green", "red", "white"]
             ),
             demo.ChannelSpec(name="hat"),
-            demo.ChannelSpec(name="armbands"),
+            demo.ChannelSpec(name="wristbands"),
         ]
     )
     info = demo.describe_scheme(spec)
@@ -97,7 +97,7 @@ def test_per_channel_alphabets_are_allowed():
 def test_spare_palette_colours_via_explicit_q():
     spec = demo.SchemeSpec(
         palette=["red", "yellow", "green", "blue", "purple", "orange"],
-        channels=[demo.ChannelSpec(name=n) for n in ("shirt", "head", "armband")],
+        channels=[demo.ChannelSpec(name=n) for n in ("shirt", "head", "wristband")],
         target_distance=2,
         q=5,
     )
@@ -145,7 +145,7 @@ def test_bad_schemes_explain_themselves(spec, message_fragment):
 
 
 # Slot 7 is codeword (0, 1, 2, 3): black t-shirt, grey trousers, red hat, blue
-# armbands -- symbol 1 is "grey" in the trousers palette and "purple" in the
+# wristbands -- symbol 1 is "grey" in the trousers palette and "purple" in the
 # main one. Slot 14 is (0, 2, 4, 6) and shares only the t-shirt with it.
 TARGET = "p7"
 
@@ -275,7 +275,7 @@ def test_a_colour_outside_a_channels_palette_is_rejected():
                     name="trousers", labels=["black", "blue", "green", "red", "white"]
                 ),
                 demo.ChannelSpec(name="hat"),
-                demo.ChannelSpec(name="armbands"),
+                demo.ChannelSpec(name="wristbands"),
             ]
         ),
         candidates=candidates(10),
@@ -414,7 +414,7 @@ def test_api_defaults(admin_api_client):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["channel_names"] == ["tshirt", "trousers", "hat", "armbands"]
+    assert body["channel_names"] == ["tshirt", "trousers", "hat", "wristbands"]
     assert body["target_distance"] == 3
     # The trousers channel's own alphabet travels with the defaults, so the
     # workbench starts from the real scheme rather than the main palette; the

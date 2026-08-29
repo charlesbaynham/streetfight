@@ -1,5 +1,6 @@
 {
   "source": "sqlite:///data.db",
+  "note": "The fourth channel is named 'wristbands' throughout, but these photos were taken while the band was still worn on the upper arm. Only the channel keys were renamed: the admin notes and the stored model prose are left verbatim as the record of what was actually said about these images.",
   "shots": [
     {
       "shot_id": "d91548d3-80b9-49a8-8c1c-166dab877a9a",
@@ -39,7 +40,7 @@
             "confidence": 0.8,
             "hex": "#00A651"
           },
-          "armbands": {
+          "wristbands": {
             "visible": true,
             "colour": "green",
             "confidence": 0.75,
@@ -86,7 +87,7 @@
             "confidence": 0.85,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.9,
@@ -133,7 +134,7 @@
             "confidence": 0.8,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.85,
@@ -180,7 +181,7 @@
             "confidence": 0.0,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.0,
@@ -227,7 +228,7 @@
             "confidence": 0.8,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.8,
@@ -274,7 +275,7 @@
             "confidence": 0.95,
             "hex": "#0072CE"
           },
-          "armbands": {
+          "wristbands": {
             "visible": true,
             "colour": "green",
             "confidence": 0.95,
@@ -321,7 +322,7 @@
             "confidence": 0.95,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.95,
@@ -368,7 +369,7 @@
             "confidence": 0.95,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.95,
@@ -415,7 +416,7 @@
             "confidence": 0.0,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.0,
@@ -474,7 +475,7 @@
             "confidence": 1.0,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.95,
@@ -521,7 +522,7 @@
             "confidence": 0.0,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.0,
@@ -568,7 +569,7 @@
             "confidence": 0.95,
             "hex": null
           },
-          "armbands": {
+          "wristbands": {
             "visible": false,
             "colour": null,
             "confidence": 0.95,

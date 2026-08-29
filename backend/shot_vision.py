@@ -13,7 +13,7 @@ colour is each garment. It is never asked whether that person is a *player* --
 tests can pin it down and does not drift when the model behind
 ``OPENROUTER_MODEL`` changes.
 
-**Too little read is not a verdict.** :func:`classify` used to route "armbands
+**Too little read is not a verdict.** :func:`classify` used to route "wristbands
 hidden and the other garments do not complete to a codeword" to
 ``HIT_BYSTANDER``; that mapping is retired (roadmap #11), because it produced
 every one of #4's residual false misses. A hit on a person is now always
@@ -52,7 +52,7 @@ UNKNOWN = "unknown"
 # The one garment the game itself hands out, so the one whose colour says the
 # person is playing at all. Nothing here gates on it any more (see
 # :func:`classify`), but the escalation ladder still asks whether it was read.
-ARMBANDS_CHANNEL = "armbands"
+WRISTBANDS_CHANNEL = "wristbands"
 
 # A channel read below this confidence is treated as an erasure, exactly like
 # not-visible/unknown: the code corrects two erasures but only one misread, so
@@ -114,7 +114,7 @@ CHANNEL_DESCRIPTIONS = {
     "tshirt": "the t-shirt or top on their torso",
     "trousers": "the trousers, jeans or shorts on their legs",
     "hat": "the hat or headwear on their head",
-    "armbands": "the coloured armbands worn on the upper arms",
+    "wristbands": "the coloured wristbands worn around the wrists or forearms",
 }
 
 
@@ -633,10 +633,10 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
     1. the shot did not land on anybody -> miss;
     2. it landed on somebody -> a hit on a player, whatever was readable.
 
-    The old rule used the armbands as the player gate -- armbands read means a
-    player, armbands hidden means demand that the other three complete to a
+    The old rule used the wristbands as the player gate -- wristbands read means a
+    player, wristbands hidden means demand that the other three complete to a
     codeword, else bystander -- and it was wrong in the direction that costs a
-    player a life they earned: plan §12.3 puts the armbands out of view roughly
+    player a life they earned: plan §12.3 puts the wristbands out of view roughly
     a fifth of the time, and all four of roadmap #4's residual false misses were
     exactly that case. Nothing about what we could *read* tells us whether the
     person is playing.
@@ -668,7 +668,7 @@ def classify(result: ShotVisionResult, scheme=None) -> ShotVisionResult:
 
 
 def _readability_reason(scheme, symbols: List[Optional[int]]) -> str:
-    """ "read 3 of 4 garments confidently (armbands hidden)" -- what the reading
+    """ "read 3 of 4 garments confidently (wristbands hidden)" -- what the reading
     is worth, in the words the admin queue shows."""
     hidden = [
         channel.name
@@ -763,17 +763,17 @@ def confident_channel_count(review_dict: dict, scheme=None) -> int:
     return count
 
 
-def armbands_confident(review_dict: dict, scheme=None) -> bool:
-    """Whether a *stored* review read the armbands at or above the threshold.
+def wristbands_confident(review_dict: dict, scheme=None) -> bool:
+    """Whether a *stored* review read the wristbands at or above the threshold.
 
-    The armbands are the one garment the game hands out, so reading them is
+    The wristbands are the one garment the game hands out, so reading them is
     what makes player-ness solid rather than inferred -- which is why the
     escalation ladder (backend.shot_auto_actions) treats three channels with
-    the armbands among them differently from three without.
+    the wristbands among them differently from three without.
     """
     scheme = scheme or default_scheme()
     for channel in scheme.channels:
-        if channel.name != ARMBANDS_CHANNEL:
+        if channel.name != WRISTBANDS_CHANNEL:
             continue
         colour, confidence = _stored_channel(review_dict, channel)
         return colour is not None and confidence >= CONFIDENT_THRESHOLD

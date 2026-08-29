@@ -665,10 +665,10 @@ describe("ShotAiTags", () => {
         state: "done",
         review: {
           outcome: "hit_player",
-          outcome_reason: "armbands visible",
+          outcome_reason: "wristbands visible",
           reasoning: "clear daylight photo",
           channels: {
-            armbands: { colour: "red", hex: "#ff0000" },
+            wristbands: { colour: "red", hex: "#ff0000" },
             torso: { colour: null, hex: null },
           },
         },
@@ -677,10 +677,10 @@ describe("ShotAiTags", () => {
     await renderQueue();
 
     await screen.findByText("HIT");
-    expect(screen.getByText("armbands: red")).toBeInTheDocument();
+    expect(screen.getByText("wristbands: red")).toBeInTheDocument();
     expect(screen.getByText("torso: unknown")).toBeInTheDocument();
     expect(
-      screen.getByText("armbands visible - clear daylight photo"),
+      screen.getByText("wristbands visible - clear daylight photo"),
     ).toBeInTheDocument();
   });
 
@@ -691,7 +691,7 @@ describe("ShotAiTags", () => {
         state: "done",
         review: {
           outcome: "hit_player",
-          outcome_reason: "armbands visible",
+          outcome_reason: "wristbands visible",
           reasoning: "",
           zoom_used: true,
           channels: {},
@@ -711,7 +711,7 @@ describe("ShotAiTags", () => {
         state: "done",
         review: {
           outcome: "hit_player",
-          outcome_reason: "armbands visible",
+          outcome_reason: "wristbands visible",
           reasoning: "",
           zoom_used: true,
           zoom_count: 2,
@@ -871,7 +871,7 @@ describe("ShotAiTags", () => {
         state: "done",
         review: {
           outcome: "hit_player",
-          outcome_reason: "armbands visible",
+          outcome_reason: "wristbands visible",
           reasoning: "",
           channels: {},
         },
@@ -972,7 +972,7 @@ describe("RankedCandidates", () => {
           state: "done",
           review: {
             outcome: "hit_player",
-            outcome_reason: "armbands visible",
+            outcome_reason: "wristbands visible",
             reasoning: "",
             channels: {},
           },

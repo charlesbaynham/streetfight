@@ -2,7 +2,7 @@
 ``GF(q)`` indices.
 
 A :class:`Channel` is one categorical feature the vision model can read
-independently (shirt colour, head colour, armband colour -- or, in future, a
+independently (shirt colour, head colour, wristband colour -- or, in future, a
 *shape* printed on the shirt). Its ``labels`` are the ordered physical symbol
 names. Different channels may carry **different** alphabets (colours vs shapes)
 as long as each supplies at least ``q`` symbols, because the algebraic code only

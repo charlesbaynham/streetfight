@@ -781,7 +781,7 @@ class AdminInterface:
 
         Each row also carries what the player is *supposed* to be wearing
         (:func:`backend.identity_admin.expected_outfit`), because the kit check
-        is where the hat and the armband are handed over: the admin needs the
+        is where the hat and the wristband are handed over: the admin needs the
         colours to fetch out of the box before there is any photo to compare
         them with, not only afterwards.
 

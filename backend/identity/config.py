@@ -19,7 +19,7 @@ from backend.identity.code import build_code
 from backend.identity.decoder import DecoderThresholds
 from backend.identity.scheme import IdentityScheme
 
-# The main palette, worn on t-shirt / hat / armbands. Seven colours, so q = 7
+# The main palette, worn on t-shirt / hat / wristbands. Seven colours, so q = 7
 # (prime, which the dependency-free GF(q) arithmetic requires), and 7**2 = 49
 # codewords.
 DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"]
@@ -69,7 +69,7 @@ DEFAULT_Q = 7
 
 # The wearable channels (slots), in the order the code evaluates them.
 # Add/remove/reorder here -- e.g. a "shape" channel with a shape alphabet.
-DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "armbands"]
+DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "wristbands"]
 
 # Channels with an alphabet of their own; anything not listed uses
 # DEFAULT_PALETTE. Only the *cardinality* reaches the code, so a channel here
@@ -92,7 +92,7 @@ TEAM_CHANNEL = "hat"
 # TEAM_CHANNEL that makes the "wardrobe questions" -- the channels a player's
 # own clothes must answer -- exactly ``channels - {TEAM_CHANNEL,
 # PROVIDED_CHANNEL}``.
-PROVIDED_CHANNEL = "armbands"
+PROVIDED_CHANNEL = "wristbands"
 
 # The minimum distance the code must achieve. d = 3 over 4 channels gives the
 # [4,2,3] Reed-Solomon code: correct two erasures, or one misread, or one
@@ -240,7 +240,7 @@ def commonness_for(channel_name: str, colour: str) -> float:
     """How common this colour is in that garment, 0..1. Unknown -> 0.5.
 
     The neutral default keeps a colour or channel absent from
-    :data:`COLOUR_COMMONNESS` (e.g. a new palette entry, or ``armbands``,
+    :data:`COLOUR_COMMONNESS` (e.g. a new palette entry, or ``wristbands``,
     which has no wardrobe data because it is provided rather than worn-in)
     from silently sorting to an extreme.
     """

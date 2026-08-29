@@ -27,7 +27,7 @@ workflow:
   the positions both sides actually say something about
   (:func:`overlap_distance`, :func:`pairwise_distances`); and
 * help the admin *choose* colours for the channels they still control --
-  typically armbands handed out at the gate -- so the new player is as
+  typically wristbands handed out at the gate -- so the new player is as
   distinguishable as possible from everyone else already in play
   (:func:`suggest_free_channels`), and pick which slot to record the override
   against (:func:`nearest_slots`).
@@ -145,7 +145,7 @@ def suggest_free_channels(
     ``fixed`` are the channels already pinned by what the guest is physically
     wearing (a label, or ``None`` if that garment is out-of-palette); ``free``
     are the channels the admin can still choose for them (typically
-    ``["armbands"]``, handed out at the gate). Channels in neither are treated
+    ``["wristbands"]``, handed out at the gate). Channels in neither are treated
     as ``None`` -- unknown, not zero.
 
     Every combination of labels across ``free`` is tried (only the

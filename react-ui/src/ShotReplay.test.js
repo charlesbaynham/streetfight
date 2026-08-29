@@ -46,7 +46,7 @@ const hitReview = {
   shot_hit_a_person: true,
   confidence: 0.9,
   outcome: "hit_player",
-  outcome_reason: "armbands visible",
+  outcome_reason: "wristbands visible",
   is_hit: true,
   slot: 7,
   reasoning: "clear view of the target",
@@ -59,7 +59,7 @@ const hitReview = {
     {
       role: "assistant",
       reply: { shot_hit_a_person: true, confidence: 0.9 },
-      reasoning: "The armbands are clearly green in this crop.",
+      reasoning: "The wristbands are clearly green in this crop.",
     },
   ],
   channels: {
@@ -71,7 +71,7 @@ const hitReview = {
       hex: "#0072CE",
     },
     hat: { visible: true, colour: "red", confidence: 0.9, hex: "#C8102E" },
-    armbands: {
+    wristbands: {
       visible: true,
       colour: "green",
       confidence: 0.9,
@@ -426,7 +426,7 @@ test("shows a thinking model's reasoning trace alongside its reply", async () =>
   // led to -- only the turn that actually carried one gets a disclosure.
   expect(screen.getAllByText("Model reasoning")).toHaveLength(1);
   expect(
-    screen.getByText("The armbands are clearly green in this crop."),
+    screen.getByText("The wristbands are clearly green in this crop."),
   ).toBeInTheDocument();
 });
 

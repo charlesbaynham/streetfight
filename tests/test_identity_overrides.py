@@ -136,36 +136,42 @@ def test_pairwise_distances_empty_and_singleton():
 
 
 def _scheme():
-    return default_scheme()  # tshirt, trousers, hat, armbands; q=7
+    return default_scheme()  # tshirt, trousers, hat, wristbands; q=7
 
 
 def test_suggest_free_channels_maximises_distance_to_others():
     scheme = _scheme()
     channels = scheme.channels
-    # Everyone visible is wearing the same tshirt/trousers/hat; only armbands
+    # Everyone visible is wearing the same tshirt/trousers/hat; only wristbands
     # (the free channel) is still up to the admin.
     fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
-    other_word = effective_word((0, 0, 0, 0), {**fixed, "armbands": "black"}, channels)
+    other_word = effective_word(
+        (0, 0, 0, 0), {**fixed, "wristbands": "black"}, channels
+    )
     others = {"rival": other_word}
 
-    suggestions = suggest_free_channels(fixed, ["armbands"], others, channels, limit=5)
+    suggestions = suggest_free_channels(
+        fixed, ["wristbands"], others, channels, limit=5
+    )
 
     assert suggestions  # got something
     top = suggestions[0]
-    assert top.min_distance == 1  # only armbands can ever differ here
+    assert top.min_distance == 1  # only wristbands can ever differ here
     assert top.closest == ["rival"]
-    assert top.assignment["armbands"] != "black"  # must not repeat the rival
+    assert top.assignment["wristbands"] != "black"  # must not repeat the rival
     # Final deterministic tie-break is ascending symbol order: among the six
-    # non-black armband options, the lowest-index one wins.
-    assert top.assignment["armbands"] == channels.by_name("armbands").index_to_label(1)
+    # non-black wristband options, the lowest-index one wins.
+    assert top.assignment["wristbands"] == channels.by_name(
+        "wristbands"
+    ).index_to_label(1)
     # Every one of the (up to 5) suggestions actually beats "black".
-    assert all(s.assignment["armbands"] != "black" for s in suggestions)
+    assert all(s.assignment["wristbands"] != "black" for s in suggestions)
 
 
 def test_suggest_free_channels_offers_the_whole_trousers_palette():
     scheme = _scheme()
     channels = scheme.channels
-    fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
+    fixed = {"tshirt": "black", "hat": "red", "wristbands": "black"}
     palette = palette_for_channel("trousers")
 
     suggestions = suggest_free_channels(
@@ -184,11 +190,11 @@ def test_suggest_free_channels_respects_a_narrowed_palette():
             Channel(name="tshirt", labels=DEFAULT_PALETTE),
             Channel(name="trousers", labels=["black", "blue", "green"]),
             Channel(name="hat", labels=DEFAULT_PALETTE),
-            Channel(name="armbands", labels=DEFAULT_PALETTE),
+            Channel(name="wristbands", labels=DEFAULT_PALETTE),
         ],
         q=DEFAULT_Q,
     )
-    fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
+    fixed = {"tshirt": "black", "hat": "red", "wristbands": "black"}
 
     suggestions = suggest_free_channels(
         fixed, ["trousers"], others={}, channels=channels, limit=10
@@ -206,7 +212,7 @@ def test_suggest_free_channels_empty_others_uses_documented_sentinel():
     channels = scheme.channels
     fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
 
-    suggestions = suggest_free_channels(fixed, ["armbands"], {}, channels, limit=3)
+    suggestions = suggest_free_channels(fixed, ["wristbands"], {}, channels, limit=3)
 
     assert suggestions
     for s in suggestions:
@@ -219,20 +225,25 @@ def test_suggest_free_channels_avoids_avoid_words_and_all_black():
     channels = scheme.channels
     fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
     # An unassigned slot whose outfit is otherwise identical to `fixed` +
-    # armbands=blue (index 3): squatting on it should be avoided even though
+    # wristbands=blue (index 3): squatting on it should be avoided even though
     # there are no other in-play players to conflict with.
     avoid_word = (0, 1, 2, 3)
 
     suggestions = suggest_free_channels(
-        fixed, ["armbands"], others={}, channels=channels, avoid=[avoid_word], limit=10
+        fixed,
+        ["wristbands"],
+        others={},
+        channels=channels,
+        avoid=[avoid_word],
+        limit=10,
     )
-    armbands = channels.by_name("armbands")
+    wristbands = channels.by_name("wristbands")
     ordered_indices = [
-        armbands.label_to_index(s.assignment["armbands"]) for s in suggestions
+        wristbands.label_to_index(s.assignment["wristbands"]) for s in suggestions
     ]
 
     assert len(ordered_indices) == 7
-    # The avoid word's own armband colour (3) is dead last: it is the only
+    # The avoid word's own wristband colour (3) is dead last: it is the only
     # option with zero overlap distance to `avoid`.
     assert ordered_indices[-1] == 3
     # All-black (0) is also disfavoured, ranked below every other non-avoided
@@ -251,7 +262,7 @@ def test_suggest_free_channels_rejects_channel_in_both_fixed_and_free():
 def test_suggest_free_channels_rejects_unknown_channel_names():
     scheme = _scheme()
     with pytest.raises(ValueError):
-        suggest_free_channels({"cape": "red"}, ["armbands"], {}, scheme.channels)
+        suggest_free_channels({"cape": "red"}, ["wristbands"], {}, scheme.channels)
 
 
 # -- nearest_slots + overrides_for round trip ----------------------------------
@@ -359,11 +370,11 @@ def test_decode_ranks_an_overridden_player_top():
     codeword = scheme.codeword_of_slot(target)
 
     # The player's real outfit: a wrong hat (they couldn't find the colour)
-    # and armbands nobody could get a clean read on.
+    # and wristbands nobody could get a clean read on.
     wrong_hat = scheme.channels.by_name("hat").index_to_label(
         (codeword[2] + 1) % scheme.channels.max_addressable_symbol(2)
     )
-    overrides = {"hat": wrong_hat, "armbands": None}
+    overrides = {"hat": wrong_hat, "wristbands": None}
     target_word = effective_word(codeword, overrides, scheme.channels)
     assert target_word != tuple(codeword)  # genuinely not a codeword any more
     assert None in target_word

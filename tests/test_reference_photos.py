@@ -497,10 +497,10 @@ def test_the_roster_has_no_verdict_for_an_errored_review(admin_api_client, playe
     assert row["top_name"] is None
 
 
-def test_the_roster_carries_the_outfit_we_expect_including_the_armband(
+def test_the_roster_carries_the_outfit_we_expect_including_the_wristband(
     admin_api_client, player
 ):
-    """The kit check is where the armband and the hat are handed over, so the
+    """The kit check is where the wristband and the hat are handed over, so the
     colours have to be on the row before any photo is taken."""
     rows = admin_api_client.get(
         f"/api/admin_get_reference_photo_status?game_id={game_of(player)}"
@@ -512,10 +512,10 @@ def test_the_roster_carries_the_outfit_we_expect_including_the_armband(
     assert {
         name: entry["colour"] for name, entry in expected.items()
     } == SCHEME.appearance_of_slot(SLOT_A)
-    assert expected["armbands"]["provided"] is True
+    assert expected["wristbands"]["provided"] is True
     assert expected["hat"]["provided"] is True
     assert expected["tshirt"]["provided"] is False
-    assert expected["armbands"]["hex"].startswith("#")
+    assert expected["wristbands"]["hex"].startswith("#")
 
 
 def test_the_roster_expects_an_override_rather_than_the_codeword(

@@ -177,7 +177,7 @@ def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
 
 
 def test_options_never_share_a_wardrobe_combination():
-    """The armband is ours to assign, not the player's to choose (roadmap
+    """The wristband is ours to assign, not the player's to choose (roadmap
     #10 revision): across the whole open wardrobe space, no two returned
     options share a tshirt+trousers pair."""
     team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
@@ -187,10 +187,10 @@ def test_options_never_share_a_wardrobe_combination():
     assert len(combos) == len(set(combos))
 
 
-def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
+def test_collapsed_survivor_is_the_best_ranked_of_its_wristband_group():
     """Pin the wardrobe to a single tshirt+trousers pair, so every raw
-    candidate before collapsing differs only in armband colour, and check
-    the one option kept really is the best of that 7-armband-wide group
+    candidate before collapsing differs only in wristband colour, and check
+    the one option kept really is the best of that 7-wristband-wide group
     (fewest overrides needed against a real slot), not just the first seen.
     """
     team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
@@ -206,12 +206,12 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
         trousers,
     )
 
-    def overrides_needed_for(armband):
+    def overrides_needed_for(wristband):
         appearance = {
             "tshirt": tshirt,
             "trousers": trousers,
             TEAM_CHANNEL: team_colour,
-            PROVIDED_CHANNEL: armband,
+            PROVIDED_CHANNEL: wristband,
         }
         word = tuple(
             SCHEME.channels.by_name(name).label_to_index(appearance[name])
@@ -221,8 +221,8 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
         return len(overrides_for(word, slot, SCHEME))
 
     best_possible = min(
-        overrides_needed_for(armband)
-        for armband in SCHEME.channels.by_name(PROVIDED_CHANNEL).labels
+        overrides_needed_for(wristband)
+        for wristband in SCHEME.channels.by_name(PROVIDED_CHANNEL).labels
     )
     assert survivor.overrides_needed == best_possible
 
@@ -329,7 +329,7 @@ def test_wardrobe_that_cannot_clear_threshold_returns_empty_then_relaxed_finds_d
     r1 = next(c for c in palette_for_channel("trousers") if c != r0)
 
     # This wardrobe can only ever differ from the first player on trousers
-    # and armband (tshirt is pinned to the same colour), so its ceiling is
+    # and wristband (tshirt is pinned to the same colour), so its ceiling is
     # distance 2 - distance 3 is structurally unreachable.
     second_player = fresh_player(api_client_factory)
     wardrobe = {"tshirt": [t0], "trousers": [r0, r1]}
@@ -472,7 +472,7 @@ def test_pick_outfit_rejects_appearance_outside_declared_wardrobe(
         "tshirt": "purple",
         "trousers": "black",
         "hat": colour,
-        "armbands": "black",
+        "wristbands": "black",
     }
 
     response = pick_outfit_call(player, url, wardrobe, fabricated)

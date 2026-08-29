@@ -7,14 +7,14 @@ Everything else stays in the queue for the admin.
 
 **The escalation ladder** (roadmap #11) decides which of those a hit on a
 person gets, by how much of the outfit was legible (``confident_channel_count``
-and ``armbands_confident``, both in backend.shot_vision):
+and ``wristbands_confident``, both in backend.shot_vision):
 
-* **every channel read**, or **all but one with the armbands among them** --
-  the auto-eligible rung. The armbands are the one garment the game hands out,
+* **every channel read**, or **all but one with the wristbands among them** --
+  the auto-eligible rung. The wristbands are the one garment the game hands out,
   so reading them makes player-ness solid rather than inferred, and one erasure
   is well within the code. Acted on when the overall confidence and the
   posterior both clear their thresholds; otherwise it is the admin's.
-* **anything less** -- three channels without the armbands, or two, or fewer.
+* **anything less** -- three channels without the wristbands, or two, or fewer.
   Identification still runs and still ranks the candidates, but nothing here
   acts on it: the shot goes to a stronger model with the reference photos
   (backend.shot_escalation), whose verdict re-enters this same gate. The weak
@@ -62,8 +62,8 @@ from .shot_identification import rank_candidates
 from .shot_vision import HIT_BYSTANDER
 from .shot_vision import HIT_PLAYER
 from .shot_vision import MISS
-from .shot_vision import armbands_confident
 from .shot_vision import confident_channel_count
+from .shot_vision import wristbands_confident
 
 logger = logging.getLogger(__name__)
 
@@ -184,7 +184,7 @@ def _decide(
     3. a ``hit_bystander`` stored before roadmap #11 retired that mapping ->
        the admin's, or the bystander call itself when forced (it takes nothing
        off anybody). Any other unrecognised outcome is the admin's either way;
-    4. a hit with the whole outfit read (or all but one, armbands included) ->
+    4. a hit with the whole outfit read (or all but one, wristbands included) ->
        the auto-eligible rung, gated on confidence and the posterior;
     5. any other hit -> the escalation rung, which is about what the *stronger*
        model has said so far, not what this one thinks.
@@ -208,7 +208,7 @@ def _decide(
 
     readable = confident_channel_count(review)
     if readable == DEFAULT_SCHEME.channels.n or (
-        readable == DEFAULT_SCHEME.channels.n - 1 and armbands_confident(review)
+        readable == DEFAULT_SCHEME.channels.n - 1 and wristbands_confident(review)
     ):
         return _decide_auto_hit(head, game_id, review, confidence, resolve_everything)
 

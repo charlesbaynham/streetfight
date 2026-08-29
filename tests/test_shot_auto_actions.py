@@ -261,7 +261,7 @@ def test_a_legacy_review_without_confidence_never_fires(
 async def test_a_hit_with_shaky_channels_stays_queued(
     db_session, shot_from_user_in_team, target_with_slot
 ):
-    # High overall confidence, but only the armbands were read confidently: one
+    # High overall confidence, but only the wristbands were read confidently: one
     # readable channel names nobody, so this goes up the ladder rather than
     # taking a life. With no escalation model configured it waits for the admin.
     enable_ai(game_of(shot_from_user_in_team))
@@ -317,10 +317,10 @@ def test_four_readable_channels_are_acted_on(
     assert shot.target_user_id == target_with_slot
 
 
-def test_three_channels_with_the_armbands_are_acted_on(
+def test_three_channels_with_the_wristbands_are_acted_on(
     db_session, shot_from_user_in_team, target_with_slot
 ):
-    # The armbands are the garment the game hands out, so player-ness is solid
+    # The wristbands are the garment the game hands out, so player-ness is solid
     # and one erasure is well within the code: no second opinion needed.
     shot = drain_with(db_session, shot_from_user_in_team, partly_read_reply(("hat",)))
 
@@ -328,7 +328,7 @@ def test_three_channels_with_the_armbands_are_acted_on(
     assert shot.target_user_id == target_with_slot
 
 
-def test_three_channels_without_the_armbands_are_escalated(
+def test_three_channels_without_the_wristbands_are_escalated(
     mocker, db_session, shot_from_user_in_team, target_with_slot
 ):
     # The missing channel is the player marker, so however well the other three
@@ -336,7 +336,7 @@ def test_three_channels_without_the_armbands_are_escalated(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
 
     shot = drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.checked is False
@@ -349,7 +349,7 @@ def test_two_readable_channels_are_escalated(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
 
     shot = drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands", "hat"))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands", "hat"))
     )
 
     assert shot.checked is False
@@ -371,7 +371,7 @@ def test_the_escalate_rung_waits_for_the_admin_when_escalation_is_off(
     AdminInterface().set_ai_escalation_enabled(game_of(shot_from_user_in_team), False)
 
     shot = drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.checked is False
@@ -404,7 +404,7 @@ def test_an_escalation_in_flight_blocks_the_queue_and_is_not_re_enqueued(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
     game_id = game_of(shot_from_user_in_team)
     enable_ai(game_id)
-    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(shot_from_user_in_team, partly_read_reply(("wristbands",)))
     store_escalation(shot_from_user_in_team, ai_shot_review.STATE_PENDING)
 
     shot_auto_actions.process_queue_head(game_id)
@@ -419,7 +419,7 @@ def test_an_errored_escalation_is_left_to_the_admin(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
     game_id = game_of(shot_from_user_in_team)
     enable_ai(game_id)
-    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(shot_from_user_in_team, partly_read_reply(("wristbands",)))
     store_escalation(shot_from_user_in_team, ai_shot_review.STATE_ERROR, "timed out")
 
     shot_auto_actions.process_queue_head(game_id)
@@ -431,7 +431,7 @@ def test_an_errored_escalation_is_left_to_the_admin(
 def drain_with_escalation(db_session, shot_id, payload):
     game_id = game_of(shot_id)
     enable_ai(game_id)
-    store_done_review(shot_id, partly_read_reply(("armbands",)))
+    store_done_review(shot_id, partly_read_reply(("wristbands",)))
     store_escalation(shot_id, ai_shot_review.STATE_DONE, payload)
     shot_auto_actions.process_queue_head(game_id)
     return shot_row(db_session, shot_id)
@@ -529,7 +529,7 @@ def test_without_an_escalation_model_the_drain_stops_cleanly(
     assert shot_escalation.enqueue_escalation(shot_from_user_in_team) is None
 
     shot = drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.checked is False
@@ -882,7 +882,7 @@ def forced_drain_with(db_session, shot_id, raw):
 def forced_drain_with_escalation(db_session, shot_id, payload):
     game_id = game_of(shot_id)
     force(game_id)
-    store_done_review(shot_id, partly_read_reply(("armbands",)))
+    store_done_review(shot_id, partly_read_reply(("wristbands",)))
     store_escalation(shot_id, ai_shot_review.STATE_DONE, payload)
     shot_auto_actions.process_queue_head(game_id)
     return shot_row(db_session, shot_id)
@@ -1033,7 +1033,7 @@ def test_forcing_still_escalates_first(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
 
     shot = forced_drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.checked is False
@@ -1045,7 +1045,7 @@ def test_forcing_still_waits_for_an_escalation_in_flight(
 ):
     game_id = game_of(shot_from_user_in_team)
     force(game_id)
-    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(shot_from_user_in_team, partly_read_reply(("wristbands",)))
     store_escalation(shot_from_user_in_team, ai_shot_review.STATE_PENDING)
 
     shot_auto_actions.process_queue_head(game_id)
@@ -1058,7 +1058,7 @@ def test_forcing_leaves_an_errored_escalation_to_the_admin(
 ):
     game_id = game_of(shot_from_user_in_team)
     force(game_id)
-    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(shot_from_user_in_team, partly_read_reply(("wristbands",)))
     store_escalation(shot_from_user_in_team, ai_shot_review.STATE_ERROR, "timed out")
 
     shot_auto_actions.process_queue_head(game_id)
@@ -1110,7 +1110,7 @@ def test_forcing_falls_back_when_escalation_is_switched_off(
     AdminInterface().set_ai_escalation_enabled(game_of(shot_from_user_in_team), False)
 
     shot = forced_drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.result == "hit"
@@ -1122,7 +1122,7 @@ def test_forcing_falls_back_when_no_escalation_model_is_configured(
     no_escalation_model, db_session, shot_from_user_in_team, target_with_slot
 ):
     shot = forced_drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.result == "hit"
@@ -1133,7 +1133,7 @@ def test_the_fallback_still_refuses_a_head_that_ranks_nobody(
     no_escalation_model, db_session, shot_from_user_in_team
 ):
     shot = forced_drain_with(
-        db_session, shot_from_user_in_team, partly_read_reply(("armbands",))
+        db_session, shot_from_user_in_team, partly_read_reply(("wristbands",))
     )
 
     assert shot.checked is False
@@ -1195,7 +1195,7 @@ def test_enabling_escalation_escalates_a_head_that_was_waiting(
     game_id = game_of(shot_from_user_in_team)
     enable_ai(game_id)
     AdminInterface().set_ai_escalation_enabled(game_id, False)
-    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(shot_from_user_in_team, partly_read_reply(("wristbands",)))
     shot_auto_actions.process_queue_head(game_id)
     enqueue.assert_not_called()
 

@@ -114,7 +114,7 @@ same shots every model saw):
 
   > "The cross center is on the person's torso, indicating a hit. Visible
   > clothing includes a black t-shirt, black trousers, black hat, and black
-  > armbands with high confidence." (`hit_player`, confidence 0.9)
+  > wristbands with high confidence." (`hit_player`, confidence 0.9)
 
   It hallucinated a person and four garment colours out of open water.
 
@@ -134,7 +134,7 @@ better**: `qwen3-vl-8b-instruct` (0 false hits) versus `qwen3-vl-8b-thinking`
 2026-08-24 handover documented for Gemini** (`d91548d3`, the marker-geometry
 case — the crosshair's arms visually touch the person's head while the true
 aim point is in foliage above-left): it called `hit_player` at 0.85,
-reasoning "the t-shirt is clearly purple; armband and headband are green" —
+reasoning "the t-shirt is clearly purple; wristband and headband are green" —
 correct channel reads, wrong hit/miss call, same root cause (roadmap #4's
 marker geometry) as before. `gemini-3.7-flash` and most of the mid-size Qwen
 models got this one right ("centre of the crosshairs is on the plant foliage

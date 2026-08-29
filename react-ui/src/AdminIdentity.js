@@ -184,11 +184,11 @@ function WarningsList({ pairs }) {
 
 // Fixed/free suggestion tool: "what colour do I give them?". Fixed channels
 // default to whatever the player currently, actually wears; free channels
-// (armbands by default) are the ones being solved for.
+// (wristbands by default) are the ones being solved for.
 function SuggestPanel({ gameId, player, channels, onApplied }) {
   const channelNames = useMemo(() => channels.map((c) => c.name), [channels]);
 
-  const [freeChannels, setFreeChannels] = useState(["armbands"]);
+  const [freeChannels, setFreeChannels] = useState(["wristbands"]);
   const [fixedValues, setFixedValues] = useState({});
   const [suggestions, setSuggestions] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -207,8 +207,8 @@ function SuggestPanel({ gameId, player, channels, onApplied }) {
     setSuggestions(null);
     setError(null);
     setApplyError(null);
-    // Armbands are the usual thing handed out to a misdressed guest.
-    setFreeChannels(["armbands"].filter((n) => channelNames.includes(n)));
+    // Wristbands are the usual thing handed out to a misdressed guest.
+    setFreeChannels(["wristbands"].filter((n) => channelNames.includes(n)));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [player.user_id, channelNames.join(",")]);
 
@@ -266,7 +266,7 @@ function SuggestPanel({ gameId, player, channels, onApplied }) {
     <div className={styles.suggestPanel}>
       <h4>What colour do I give them?</h4>
       <p className={styles.hint}>
-        Pick which channels are free to solve for (armbands by default -
+        Pick which channels are free to solve for (wristbands by default -
         cheapest to hand out); everything else is treated as fixed to what they
         currently wear (or set it below).
       </p>

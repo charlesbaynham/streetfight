@@ -52,7 +52,7 @@ def candidates(db_session, team_factory, user_factory, test_image_string):
     return user_ids
 
 
-def weak_review(hidden=("armbands",)):
+def weak_review(hidden=("wristbands",)):
     """The stored reading that sends a shot up the ladder: too little read."""
     appearance = SCHEME.appearance_of_slot(CANDIDATE_SLOTS[0])
     raw = {

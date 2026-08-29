@@ -111,14 +111,14 @@ def test_an_overridden_player_is_still_identified():
 
 def test_two_readable_channels_still_identify_somebody():
     """The roadmap's stated symptom: two erasures is exactly what [4,2,3] is
-    meant to survive, but the old path gave up when neither was the armbands."""
+    meant to survive, but the old path gave up when neither was the wristbands."""
     shooter = player()
     worn = dict(SCHEME.appearance_of_slot(7))
     target = player(slot=7)
     others = [player(slot=s) for s in (13, 21, 27, 31)]
 
     partial = dict(worn)
-    partial["armbands"] = None
+    partial["wristbands"] = None
     partial["hat"] = None
 
     ranked = si.rank_candidates(

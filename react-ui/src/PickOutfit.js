@@ -133,7 +133,7 @@ function WardrobeChannel({ channel, selected, onToggle }) {
 
 // Both used to key/label an option by what the player can actually see and
 // chose: the wardrobe channels only (roadmap #10 revision) - the hat is
-// pinned to the team colour and the armband is ours to assign, so neither is
+// pinned to the team colour and the wristband is ours to assign, so neither is
 // a choice the player has a stake in, and the backend now collapses options
 // so no two share a wardrobe combination, keeping this a stable React key.
 function optionDescription(option, wardrobeChannels) {

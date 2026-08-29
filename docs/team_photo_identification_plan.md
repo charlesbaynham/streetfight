@@ -22,7 +22,7 @@ colours a player wears (read from a "shot" photo) to *which player it is*, robus
 against a hidden item or a misread colour.
 
 - Players wear colours across **channels** (wearable slots). **4 channels:
-  t-shirt, trousers, hat, armbands.**
+  t-shirt, trousers, hat, wristbands.**
 - Each channel uses a palette of **7 colours**. The code is the MDS
   Reed–Solomon `[4,2,3]` over `GF(7)`, giving **49 distinct player identities**
   at minimum distance **d = 3**.
@@ -87,8 +87,8 @@ top candidate for one-click confirmation (still calling the existing
 
 ### 2.1 Channels, colours, codewords
 - A **channel** is one categorical feature of a player's appearance that the
-  vision model can read independently: shirt colour, head colour, armband colour
-  (and, in future, left-arm vs right-arm separately, or a *shape* printed on the
+  vision model can read independently: shirt colour, head colour, wristband colour
+  (and, in future, left-wrist vs right-wrist separately, or a *shape* printed on the
   shirt).
 - Each channel has an **alphabet** of distinguishable symbols. For colour
   channels the alphabet is the colour palette; for a shape channel it would be a
@@ -96,7 +96,7 @@ top candidate for one-click confirmation (still calling the existing
   code they must share a common cardinality `q`** (see §4 — physical symbols are
   mapped onto `GF(q)` indices).
 - A player's identity is a **codeword**: one symbol per channel,
-  e.g. `(shirt=red, head=green, armband=blue)`.
+  e.g. `(shirt=red, head=green, wristband=blue)`.
 
 ### 2.2 The two fault types
 - **Erasure** — a channel is hidden/occluded, so the vision model returns
@@ -127,15 +127,26 @@ every channel added buys one more tolerated erasure, for free.
 | **4 (chosen)** | **49** | **3** | **2** | **any 2** |
 | 5 | 49 | 4 | 3 | any 2 |
 
-**The channels are: t-shirt, trousers, hat, armbands.** These were chosen because
-they are observable from *any* angle, which armbands alone are not.
+**The channels are: t-shirt, trousers, hat, wristbands.** These were chosen because
+they are observable from *any* angle, which wristbands alone are not.
 
-**The armbands are one symbol worn on both arms**, not two independent channels.
-This is deliberate: duplicating the symbol attacks the *erasure probability*
-(roughly 55% → 80% visible, since the two arms fail independently) rather than the
-code distance. Splitting them into two distinct channels was simulated and gains
-only ~1 percentage point of correct identification while requiring every guest to
-source two armband colours — see §12.3.
+**The wristbands are one symbol worn on both wrists**, not two independent
+channels. This is deliberate: duplicating the symbol attacks the *erasure
+probability* (roughly 55% → 80% visible, since the two limbs fail independently)
+rather than the code distance. Splitting them into two distinct channels was
+simulated and gains only ~1 percentage point of correct identification while
+requiring every guest to source two wristband colours — see §12.3.
+
+**The band is worn at the wrist or on the forearm, not the upper arm.** That is
+a later decision than the numbers below, and it cuts against them in two ways
+that are not yet measured: a forearm is a smaller patch of colour than an upper
+arm at the same distance (§12.1's warning about accessory size), and a hand goes
+into a pocket, behind a back or around a phone far more readily than a shoulder
+does, so the 55%-per-limb visibility estimate in §12.3 is more likely optimistic
+than pessimistic. Nothing in the code depends on the figure — the escalation
+ladder already treats this channel as the one whose absence sends a shot up to
+the stronger model — but it is the first number to re-fit once real shot photos
+exist.
 
 Guarantees at `d = 3`, from `d ≥ 2t + e + 1`:
 
@@ -233,9 +244,9 @@ question rather than in one shared list, which could not state both.
 
 | Decision | Value | Must be configurable? |
 |---|---|---|
-| Channels | `tshirt`, `trousers`, `hat`, `armbands` (4) | **Yes** — add/remove/reorder channels |
+| Channels | `tshirt`, `trousers`, `hat`, `wristbands` (4) | **Yes** — add/remove/reorder channels |
 | `q` (field size / max alphabet) | 7 | **Yes** — must stay prime (see below) |
-| Full palette (t-shirt, hat, armbands) | 7 colours, §9.1 | **Yes** |
+| Full palette (t-shirt, hat, wristbands) | 7 colours, §9.1 | **Yes** |
 | Trousers palette | 7 colours, §9.1 — a **wholly different physical set**, simulated for legs; 5 until the guest list outgrew it | **Yes** — `s` is a free parameter |
 | Code | `[4,2,3]` Reed–Solomon over GF(7) | **Yes** — swap per §2.5 |
 | Player capacity | `q × s` = 49 (35 while trousers were restricted to 5) | derived |
@@ -386,7 +397,7 @@ all integration code are untouched. That is the extensibility guarantee.
     (7 — deliberately a different physical set, see §9.1; it was the 5-colour
     `["black","blue","green","red","white"]` until §2.6's restriction was
     lifted),
-  - channels = `tshirt`, `trousers`, `hat`, `armbands` **in that order** (the order
+  - channels = `tshirt`, `trousers`, `hat`, `wristbands` **in that order** (the order
     fixes the RS evaluation points and therefore the codeword layout — changing it
     changes what everyone wears),
   - code = `reed_solomon_code(4, 2, 7)`,
@@ -407,7 +418,7 @@ parametrised tests:
    guest list grows or someone can't find red trousers. It has since been turned
    in anger: the guest list passed 35 and `s` went from 5 back to 7, one line of
    `config.py`.
-2. **Split armbands into left + right (5 channels).** Add a `Channel`; change the
+2. **Split wristbands into left + right (5 channels).** Add a `Channel`; change the
    code to `reed_solomon_code(5, 2, 7)` (`[5,2,4]`, tolerates 3 erasures). Only
    `config.py` changes. **Note §12.3: this was measured and is not worth it** —
    keep it as a documented option, not the default.
@@ -435,7 +446,7 @@ Pillow** — so the module is provably standalone. Suggested files/cases:
   - `reed_solomon_code(4,2,7)`: 49 codewords, `min_distance == 3`.
   - **Assert the closed form of §11** holds for all 49 codewords:
     `hat == (2·trousers − tshirt) mod 7` and
-    `armbands == (3·trousers − 2·tshirt) mod 7`.
+    `wristbands == (3·trousers − 2·tshirt) mod 7`.
   - **Assert the MDS property directly:** for every one of the six channel pairs,
     the 49 codewords project to 49 *distinct* pairs. This is the "any two garments
     identify you" guarantee and is the single most important invariant.
@@ -479,7 +490,7 @@ deliverable.
 - Implement behind an interface so the decoder/tests never need it. Provide a
   fake/stub implementation for local dev and tests.
 - Prompt design: ask a current **vision-capable Claude model** to report, for
-  each named channel (t-shirt, trousers, hat, armbands), the palette colour it
+  each named channel (t-shirt, trousers, hat, wristbands), the palette colour it
   sees *or* `"unknown"`, plus a confidence, as structured JSON. Include **that
   channel's own palette names only** — never offer a colour the channel cannot
   physically take (see §2.6). Confirm the exact current model ID at implementation
@@ -602,7 +613,7 @@ Selected by optimising the **worst-case minimum CIEDE2000 distance across three
 illuminants** — D65 daylight, 3000 K warm-white LED, and a high-pressure sodium
 model, each with 50% camera white-balance correction. Rationale in §12.4.
 
-**Main palette — t-shirt, hat, armbands (`q = 7`):**
+**Main palette — t-shirt, hat, wristbands (`q = 7`):**
 
 | Symbol | Colour | Hex | L* |
 |---|---|---|---|
@@ -702,7 +713,7 @@ self-evident.
 
 **Status update.** Steps 1–7 are built, and `config.py` now carries the revised
 configuration from §2.4/§9.1: four channels (`tshirt`, `trousers`, `hat`,
-`armbands`), the 7-colour main palette, the separately-simulated 7-colour
+`wristbands`), the 7-colour main palette, the separately-simulated 7-colour
 trousers palette (a restricted 5-colour set until the guest list outgrew the 35
 identities that allowed), and the `[4,2,3]` Reed–Solomon code. Two things the original spec did not anticipate came
 out of §2.6 and are now part of the module:
@@ -727,7 +738,7 @@ must require more than `k`.
 
 ## 11. Reference: the concrete code (`[4,2,3]` Reed-Solomon over GF(7))
 
-Channel order is fixed: **t-shirt, trousers, hat, armbands**, evaluated at
+Channel order is fixed: **t-shirt, trousers, hat, wristbands**, evaluated at
 `x = 1, 2, 3, 4` respectively. A codeword is `c_i = (m0 + m1·x_i) mod 7`.
 
 Because the code is MDS with `k = 2`, **any two channels can be treated as the
@@ -736,12 +747,12 @@ free gives a closed form that is checkable by hand:
 
 ```
 hat      = (2·trousers -   t-shirt) mod 7
-armbands = (3·trousers - 2·t-shirt) mod 7
+wristbands = (3·trousers - 2·t-shirt) mod 7
 ```
 
 Verified against all 49 codewords. Symbol indices:
 
-| Index | Main palette (t-shirt, hat, armbands) | Trousers palette |
+| Index | Main palette (t-shirt, hat, wristbands) | Trousers palette |
 |---|---|---|
 | 0 | black | black |
 | 1 | purple | grey |
@@ -760,7 +771,7 @@ to five, went with the restriction (§2.6). The trousers column uses that
 channel's own palette (§9.1), which is not the main one: symbol 1 is `grey`
 there and `purple` everywhere else, and so on down.
 
-| Slot | T-shirt | Trousers | Hat | Armbands |
+| Slot | T-shirt | Trousers | Hat | Wristbands |
 |---|---|---|---|---|
 | 0 | black | black | black | black |
 | 1 | black | grey | red | blue |
@@ -819,7 +830,7 @@ there and `purple` everywhere else, and so on down.
 > scheme for a specific player's outfit.
 
 > **Do not assign slot 0.** It is the all-zero codeword — black t-shirt, black
-> trousers, black hat, black armbands — which is both indistinguishable from an
+> trousers, black hat, black wristbands — which is both indistinguishable from an
 > ordinary member of the public and the single most likely outfit for someone to
 > be wearing by accident. The vision model's failure mode on unclear targets is
 > also to report "black" (§12.1), so the all-black codeword is exactly where
@@ -857,9 +868,19 @@ the target garment occupied:
 | Top (torso-sized) | black | **15/15**, mean confidence 94.6% | **15/15**, mean confidence 94.9% |
 
 **Conclusion: identify players by whole garments, never by small accessories.**
-A torso-sized garment is essentially solved even in bad light; a wrist-sized one is
-unsalvageable at any model tier. This is why the channels are t-shirt / trousers /
-hat / armbands and not, say, a badge or a wristband.
+A torso-sized garment is essentially solved even in bad light; a watch-face-sized
+one is unsalvageable at any model tier. This is why the channels are t-shirt /
+trousers / hat / wristbands and not, say, a badge or a logo.
+
+This is the measurement the wristband channel has to answer to. A coloured band
+around the wrist or forearm is much larger than the watch face tested here — it
+is a ring of one colour around the whole limb, not a dial — but it is the
+smallest of the four channels and the one closest to the size at which the
+models stop being reliable. Two things follow. Buy the band wide, in a
+saturated palette colour, so it reads as a band of colour rather than a detail;
+and treat a confident wristband read from the weak model with the suspicion
+§12.1 earned — which is what the escalation ladder already does by refusing to
+auto-act when it is the channel that went missing.
 
 A secondary result: repeated runs on the *same* image gave four different answers
 out of five attempts on the hard task, so a single confident-looking answer is not
@@ -880,21 +901,21 @@ self-triggering, so it is only paid on hard cases.
 ### 12.3 Simulation of the fleeing-subject scenario
 
 Monte Carlo, 200k trials. Assumed per-channel visibility: trousers 92%, t-shirt
-92%, hat 80%, a single arm 55%, armbands-on-both-arms 80%; misread rate 8% on
+92%, hat 80%, a single limb 55%, wristbands-on-both-limbs 80%; misread rate 8% on
 garments that *are* visible. **These visibility numbers are estimates — re-fit them
 once real shot photos exist. The ranking is more trustworthy than the absolutes.**
 
 | Scheme | Correct | **Wrong ID** | Flagged |
 |---|---|---|---|
 | 3 channels (t-shirt, trousers, hat) | 77.2% | 4.55% | 18.3% |
-| **4 channels, armbands on both arms** | **88.0%** | **2.07%** | 9.9% |
-| 5 channels, a different colour per arm | 89.2% | 1.71% | 9.1% |
+| **4 channels, wristbands on both limbs** | **88.0%** | **2.07%** | 9.9% |
+| 5 channels, a different colour per limb | 89.2% | 1.71% | 9.1% |
 | 4 channels, trousers restricted to 5 colours | 87.9% | 1.54% | 10.5% |
 | 5 channels (+socks), trousers only black/blue | 79.0% | 0.83% | 20.2% |
 
 Readings:
 - The 4th channel is worth ~11 points of correct identification and halves wrong-IDs.
-- Splitting the armbands into two channels buys ~1 point for double the sourcing
+- Splitting the wristbands into two channels buys ~1 point for double the sourcing
   effort. Not worth it.
 - **Restricting trousers to 5 colours costs nothing** and slightly *reduces*
   wrong-IDs (fewer symbols per channel means fewer ways to misread).
@@ -1013,10 +1034,10 @@ and are robust to reasonable changes; the absolute percentages are not.
 Pinning any channel to the team leaves the same number of slots — seven per
 colour, six for black (five and four while trousers were restricted) — because
 the code is MDS with `k = 2`. Confirmed for hat, t-shirt
-and armbands alike. **The team-channel choice does not change capacity.** What it
+and wristbands alike. **The team-channel choice does not change capacity.** What it
 changes is which garments a player has to source:
 
-| | team on armbands | team on hat (bulk-bought) |
+| | team on wristbands | team on hat (bulk-bought) |
 |---|---|---|
 | mean free slots the player can fully wear | 0.06 | **0.56** |
 | mean BYO garments worn as recorded | 1.49 / 3 | **2.33 / 3** |
@@ -1025,16 +1046,16 @@ changes is which garments a player has to source:
 The deeper reason to prefer the hat is structural rather than numerical.
 Teammates share the team colour by construction, so whichever channel carries the
 team is a channel we cannot vary *within* a team. Putting the team on the
-armbands spends the one garment we control and leaves nothing to adjust at
-handout time; putting it on the hat keeps the armband as a free per-player
-variable. Simulated with the armband as the team marker and the hat left to
+wristbands spends the one garment we control and leaves nothing to adjust at
+handout time; putting it on the hat keeps the wristband as a free per-player
+variable. Simulated with the wristband as the team marker and the hat left to
 whatever players own, minimum pairwise distance ≥ 2 was reached in **1.7%** of
 20-player games, against **99.0%** with the roles the other way round.
 
 #### The team partition removes §12.5's capacity tax
 
 Within one team the hat is fixed, so `d >= 3` forces every pair to differ in
-t-shirt **and** trousers **and** armband. A team therefore caps at as many
+t-shirt **and** trousers **and** wristband. A team therefore caps at as many
 players as the trousers channel has colours — seven now, five while it was
 restricted — and the code's own bucket is exactly that many mutually-distance-3
 outfits, one per trousers colour. **Free choice and the code have identical
@@ -1049,7 +1070,7 @@ that ignores teams.
 #### What free choice buys, at the same guarantee
 
 Percentage of players seated in clothes they actually own, all pairs at global
-`d >= 3`, team on the hat, armbands ours:
+`d >= 3`, team on the hat, wristbands ours:
 
 | players | free choice | canonical RS slots |
 |---|---|---|
@@ -1128,10 +1149,10 @@ numbers above are otherwise unchanged.
 The wardrobe model above priced hat ownership as a probability (black .30, blue
 .18, …) because the plan at the time was for each team to bulk-buy its hat
 colour, and a bulk order can come out wrong. That risk no longer exists: the
-hats were bought alongside the armbands (roadmap #9), so the hat-ownership row
+hats were bought alongside the wristbands (roadmap #9), so the hat-ownership row
 of the model no longer constrains anything — every player is handed the
 correct hat directly, not asked to own one. The section's conclusion is
-unchanged (team on the hat, armband free) but now holds for a stronger reason
+unchanged (team on the hat, wristband free) but now holds for a stronger reason
 than the one argued above: not because the hat is merely worth controlling
-more than the armband, but because we control both outright and the armband is
+more than the wristband, but because we control both outright and the wristband is
 the one we choose to leave free at handout time.

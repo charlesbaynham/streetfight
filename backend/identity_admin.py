@@ -145,7 +145,7 @@ def effective_words(users: List[UserModel], scheme: IdentityScheme) -> Dict[UUID
 
 def provided_channels(scheme: IdentityScheme) -> List[str]:
     """The garments we hand out at the door rather than leave to a wardrobe:
-    the team hat and the armband. Both have been bought (roadmap #9), and both
+    the team hat and the wristband. Both have been bought (roadmap #9), and both
     are put on the player by the admin doing the kit check, which is why
     :func:`expected_outfit` marks them -- that admin is standing at the box
     and needs to know which colours to take out of it.
@@ -473,7 +473,7 @@ def _team_for_pick(admin: AdminInterface, code: JoinCodeModel) -> TeamModel:
 
 def _wardrobe_channels(scheme: IdentityScheme) -> List[str]:
     """The channels a player's own clothes must answer: every channel except
-    the team-pinned hat and the armband we hand out (plan C4)."""
+    the team-pinned hat and the wristband we hand out (plan C4)."""
     provided = set(provided_channels(scheme))
     return [name for name in scheme.channels.names if name not in provided]
 
@@ -508,7 +508,7 @@ def outfit_options(
 
     Enumerates the product of the player's declared colours on each wardrobe
     channel (or that channel's whole palette, when nothing was declared -
-    "no constraint", not "no options") times every armband colour, hat
+    "no constraint", not "no options") times every wristband colour, hat
     pinned to ``team_colour``. An empty ``wardrobe`` entry for a channel is
     therefore as unconstrained as an absent one.
 
@@ -521,18 +521,18 @@ def outfit_options(
     from a canonical codeword beats rarity absolutely - an option needing no
     overrides always outranks a rarer one needing even one - and rarity (the
     summed ``1 - commonness`` over the *wardrobe* channels only; the hat is
-    fixed and the armband is ours) only breaks ties within a tier. The final
+    fixed and the wristband is ours) only breaks ties within a tier. The final
     ``symbols`` key (the candidate's own codeword-shaped word, numeric) makes
     the order fully deterministic.
 
     Finally, the ranked list is collapsed to **one option per distinct
     combination of the wardrobe channels** (e.g. one per tshirt+trousers
-    pair): the armband is ours to assign, not the player's to choose, so
+    pair): the wristband is ours to assign, not the player's to choose, so
     letting it vary would offer a choice the player has no stake in - rows
-    differing only in armband colour would even render identically once the
+    differing only in wristband colour would even render identically once the
     picker stops displaying it (plan revision, roadmap #10). Because the
     list is already ranked, the survivor kept from each group is
-    automatically its best-separating armband. Done here, inside
+    automatically its best-separating wristband. Done here, inside
     :func:`outfit_options` itself, so ``total`` and the pagination in
     :func:`outfit_options_page` stay honest.
     """

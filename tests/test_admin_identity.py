@@ -66,7 +66,7 @@ def test_report_empty_game(one_game):
         "tshirt",
         "trousers",
         "hat",
-        "armbands",
+        "wristbands",
     ]
     # Each channel reports its own addressable labels, with a hex for each
     for channel in report["channels"]:
@@ -132,7 +132,7 @@ def test_report_overrides_reflected_in_effective_appearance(
     assert player["effective_appearance"]["hat"] is None
     # Untouched channels keep the canonical colour
     assert player["effective_appearance"]["trousers"] == canonical["trousers"]
-    assert player["effective_appearance"]["armbands"] == canonical["armbands"]
+    assert player["effective_appearance"]["wristbands"] == canonical["wristbands"]
 
 
 def test_report_pairs_and_levels(db_session, one_game, one_team, user_factory):
@@ -146,7 +146,7 @@ def test_report_pairs_and_levels(db_session, one_game, one_team, user_factory):
         db_session,
         b,
         2,
-        overrides={"tshirt": "purple", "hat": "purple", "armbands": "purple"},
+        overrides={"tshirt": "purple", "hat": "purple", "wristbands": "purple"},
     )
     # b's effective word: (1, 2, 1, 1) vs a's (1, 1, 1, 1) -> distance 1
 
@@ -315,9 +315,9 @@ def test_set_overrides_full_replacement(db_session, one_game, one_team, user_fac
     # Writing a new (different) overrides dict fully replaces the old one --
     # "hat" is not carried forward.
     result = identity_admin.set_identity(
-        IdentitySetRequest(user_id=u1, slot=1, overrides={"armbands": "yellow"})
+        IdentitySetRequest(user_id=u1, slot=1, overrides={"wristbands": "yellow"})
     )
-    assert result["overrides"] == {"armbands": "yellow"}
+    assert result["overrides"] == {"wristbands": "yellow"}
     assert "hat" not in result["overrides"]
     assert "tshirt" not in result["overrides"]
 
@@ -434,7 +434,7 @@ def test_suggest_returns_ranked_suggestions(
             game_id=one_game,
             user_id=newcomer,
             fixed={},
-            free=["armbands"],
+            free=["wristbands"],
         )
     )
 
@@ -466,7 +466,7 @@ def test_suggest_apply_reproduces_effective_appearance(
             game_id=one_game,
             user_id=newcomer,
             fixed={},
-            free=["armbands"],
+            free=["wristbands"],
         )
     )
     suggestion = result["suggestions"][0]
@@ -498,7 +498,7 @@ def test_suggest_excludes_own_word(db_session, one_game, one_team, user_factory)
             game_id=one_game,
             user_id=a,
             fixed={"tshirt": "purple", "hat": "purple", "trousers": "blue"},
-            free=["armbands"],
+            free=["wristbands"],
         )
     )
     # With only `a` in the game and `a` excluded from `others`, there is
@@ -522,7 +522,7 @@ def test_suggest_no_free_slots_returns_empty(
     newcomer = add_player(db_session, user_factory, one_team, name="Newcomer")
     result = identity_admin.suggest_identity(
         IdentitySuggestRequest(
-            game_id=one_game, user_id=newcomer, fixed={}, free=["armbands"]
+            game_id=one_game, user_id=newcomer, fixed={}, free=["wristbands"]
         )
     )
     assert result["suggestions"] == []
@@ -587,7 +587,7 @@ def test_admin_identity_suggest_endpoint(
             "game_id": str(one_game),
             "user_id": str(u1),
             "fixed": {},
-            "free": ["armbands"],
+            "free": ["wristbands"],
         },
     )
     assert response.is_success

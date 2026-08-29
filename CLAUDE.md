@@ -63,7 +63,7 @@ inventing a look. What makes it work:
 - **Big, bulky, unmissable buttons.** `min-height: 3.5em` for the primary
   action, `3em` in a button row, `3.2em` for a roster row — comfortably past the
   44px touch minimum, because this is driven one-handed on a phone with a box of
-  armbands in the other hand.
+  wristbands in the other hand.
 - **One column of large targets**, ordered as the job is done: pick a player,
   act, read the verdict, go back.
 - **Status says the state in words**, in a pill with a shared colour tone
@@ -125,7 +125,7 @@ inventing a look. What makes it work:
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
-    and armband we hand over first, *before* the camera, because that is the
+    and wristband we hand over first, *before* the camera, because that is the
     moment they are handed over - captures a reference photo, and then puts the
     model's reading beside that expectation garment by garment. It falls back to
     `ShotQueue.js`'s exported tag renderers for a player with no outfit to
@@ -317,7 +317,7 @@ Three deployment targets share one service definition:
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an ambiguous head stays with the
   admin and blocks the shots behind it. The same drain escalates hard cases
-  (3 readable channels without armbands, or fewer) to a stronger model
+  (3 readable channels without wristbands, or fewer) to a stronger model
   (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL` — unset means
   no escalation, as does the per-game `ai_escalation_enabled` toggle, which
   unlike its siblings defaults **on**: it is a kill switch inside an
@@ -405,6 +405,14 @@ Three deployment targets share one service definition:
   colour. That is an allocation policy only — the decoder is unaffected. A hat
   colour covers seven slots (six for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
+- The other channel we hand out (`PROVIDED_CHANNEL`, the **wristbands**) is
+  worn **around the wrist or forearm**, not on the upper arm — the band moved
+  down the limb after the kit was bought (roadmap #9). Only the wearing
+  position changed: the channel is one symbol worn on both limbs, as it always
+  was. What it does affect is legibility, so `shot_vision.CHANNEL_DESCRIPTIONS`
+  tells the model where to look, and the visibility estimate the capacity
+  simulation used (plan §12.3) is now the shakiest number in that model — see
+  roadmap R6 for the check to run on the real bands.
 - `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
   for a game, and left untouched on every later call (even after a new team is
   added) — so a team that has already started picking outfits never gets

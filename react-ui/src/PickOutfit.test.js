@@ -17,7 +17,7 @@ function makeJoinData(overrides = {}) {
     team_name: "Reds",
     team_colour: "red",
     team_channel: "hat",
-    provided_channel: "armbands",
+    provided_channel: "wristbands",
     wardrobe_channels: ["tshirt", "trousers"],
     channels: [
       {
@@ -33,7 +33,7 @@ function makeJoinData(overrides = {}) {
       },
       { name: "hat", labels: ["red"], hex: { red: "#B00020" } },
       {
-        name: "armbands",
+        name: "wristbands",
         labels: ["red", "green"],
         hex: { red: "#B00020", green: "#00A651" },
       },
@@ -68,7 +68,7 @@ function makeOption(overrides = {}) {
       tshirt: "black",
       trousers: "black",
       hat: "red",
-      armbands: "red",
+      wristbands: "red",
     },
     slot: 1,
     overrides: {},
@@ -133,7 +133,7 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
             tshirt: "black",
             trousers: "black",
             hat: "red",
-            armbands: "red",
+            wristbands: "red",
           },
           overrides_needed: 0,
           is_canonical: true,
@@ -143,7 +143,7 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
             tshirt: "red",
             trousers: "black",
             hat: "red",
-            armbands: "green",
+            wristbands: "green",
           },
           overrides_needed: 1,
           is_canonical: false,
@@ -186,10 +186,10 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   expect(screen.getByText("1 colour different")).toBeInTheDocument();
   expect(screen.getByText("not ideal")).toBeInTheDocument();
 
-  // Only the player-supplied garments show on an option row - no hat/armband.
+  // Only the player-supplied garments show on an option row - no hat/wristband.
   expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
   expect(screen.queryByText(/^Hat:/)).not.toBeInTheDocument();
-  expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
+  expect(screen.queryByText(/^Wristbands:/)).not.toBeInTheDocument();
 });
 
 test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
@@ -231,7 +231,7 @@ test("paging fetches the next page", async () => {
               tshirt: "black",
               trousers: body.page === 0 ? "black" : "blue",
               hat: "red",
-              armbands: "red",
+              wristbands: "red",
             },
           }),
         ],
@@ -444,7 +444,7 @@ test("ticking the confirm box and pressing Lock in my choice claims the outfit a
 
   // The result screen shows only the player-supplied garments too.
   expect(screen.queryByText("Hat")).not.toBeInTheDocument();
-  expect(screen.queryByText("Armbands")).not.toBeInTheDocument();
+  expect(screen.queryByText("Wristbands")).not.toBeInTheDocument();
 });
 
 test("Choose a different outfit returns to the options list without claiming anything", async () => {
@@ -535,7 +535,7 @@ test("only the canonical outfits show until the player asks for the rest, which 
             tshirt: "black",
             trousers: "black",
             hat: "red",
-            armbands: "red",
+            wristbands: "red",
           },
         }),
         makeOption({
@@ -543,7 +543,7 @@ test("only the canonical outfits show until the player asks for the rest, which 
             tshirt: "red",
             trousers: "blue",
             hat: "red",
-            armbands: "green",
+            wristbands: "green",
           },
           overrides_needed: 1,
           is_canonical: false,
@@ -583,7 +583,7 @@ test("the recommended badge marks only the top of the list, ties included", asyn
             tshirt: "black",
             trousers: "black",
             hat: "red",
-            armbands: "red",
+            wristbands: "red",
           },
           rarity: 0.9,
         }),
@@ -592,7 +592,7 @@ test("the recommended badge marks only the top of the list, ties included", asyn
             tshirt: "black",
             trousers: "blue",
             hat: "red",
-            armbands: "red",
+            wristbands: "red",
           },
           rarity: 0.9,
         }),
@@ -601,7 +601,7 @@ test("the recommended badge marks only the top of the list, ties included", asyn
             tshirt: "red",
             trousers: "black",
             hat: "red",
-            armbands: "red",
+            wristbands: "red",
           },
           rarity: 0.4,
         }),
@@ -637,7 +637,7 @@ test("a later page badges nothing as recommended - only the first page holds the
               tshirt: "black",
               trousers: body.page === 0 ? "black" : "blue",
               hat: "red",
-              armbands: "red",
+              wristbands: "red",
             },
           }),
         ],
@@ -668,7 +668,7 @@ test("a wardrobe with no canonical outfit at all shows the whole list rather tha
             tshirt: "red",
             trousers: "blue",
             hat: "red",
-            armbands: "green",
+            wristbands: "green",
           },
           overrides_needed: 1,
           is_canonical: false,
@@ -698,7 +698,7 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
             tshirt: "red",
             trousers: "blue",
             hat: "red",
-            armbands: "green",
+            wristbands: "green",
           },
           overrides_needed: 1,
           is_canonical: false,

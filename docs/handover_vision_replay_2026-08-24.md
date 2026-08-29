@@ -98,7 +98,7 @@ Confusion (admin rows × CharlesBot columns): hit→hit 1, hit→bystander 4;
 miss→hit 1, miss→miss 3; bystander→bystander 4. All 13 reviews came back at
 confidence ≥ 0.85, so the confident/auto-action subset is the same set.
 
-| shot (prefix) | admin | model outcome | conf | zoom | model's channels (tshirt/trousers/hat/armbands) | vs the note |
+| shot (prefix) | admin | model outcome | conf | zoom | model's channels (tshirt/trousers/hat/wristbands) | vs the note |
 |---|---|---|---|---|---|---|
 | d91548d3 | miss | **hit_player** | 0.95 | no | purple/black/green/green | **False hit** — see below |
 | d1c4e6ad | bystander | hit_bystander | 0.85 | yes | purple/black/?/? | matches note (marginal hit, zoom needed) |
@@ -141,8 +141,8 @@ Findings:
   aim point while the arms reach into the target).
 - **Its channel reads weren't hallucinated.** The zoom shows the man really
   does have a dark green cloth on his head and a green band tied on his right
-  upper arm — hence green hat @0.75 / green armbands @0.85, which is what made
-  `classify` say `hit_player` ("armbands visible"). The entire error is the
+  upper arm — hence green hat @0.75 / green wristbands @0.85, which is what made
+  `classify` say `hit_player` ("wristbands visible"). The entire error is the
   hit/miss call, driven by the marker.
 - It never asked for the zoom because it was already certain from the full
   frame — the zoom view makes the truth (centre in foliage, head below-right)
@@ -164,7 +164,7 @@ though the observations were right.
 
 ### The "code" wording in stored AI reviews
 
-Eight stored reviews say things like *"armbands hidden and too few other
+Eight stored reviews say things like *"wristbands hidden and too few other
 garments readable to check the code"*. **That text is not the model's** — it
 is the `outcome_reason` written by `backend/shot_vision.py::classify()` (the
 strings at the `HIT_BYSTANDER` branches) and surfaced in the admin queue

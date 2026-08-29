@@ -45,7 +45,7 @@ function makeAppearance(overrides = {}) {
     tshirt: { colour: "green", hex: "#00A651", provided: false },
     trousers: { colour: "mustard", hex: "#C9962B", provided: false },
     hat: { colour: "blue", hex: "#0072CE", provided: true },
-    armbands: { colour: "red", hex: "#B00020", provided: true },
+    wristbands: { colour: "red", hex: "#B00020", provided: true },
     ...overrides,
   };
 }
@@ -71,7 +71,7 @@ function makeReview(overrides = {}) {
   return {
     outcome: "hit_player",
     outcome_reason: "a person fills the frame",
-    reasoning: "clear view of the armbands",
+    reasoning: "clear view of the wristbands",
     confidence: 0.9,
     zoom_used: false,
     zoom_count: 0,
@@ -313,8 +313,8 @@ describe("capturing", () => {
 });
 
 describe("the outfit we expect", () => {
-  test("is shown before the photo is taken, armband and hat first", async () => {
-    // The point of the page: the admin is standing at the box of armbands and
+  test("is shown before the photo is taken, wristband and hat first", async () => {
+    // The point of the page: the admin is standing at the box of wristbands and
     // needs to know which one to hand over, which is *before* there is any
     // photograph to check it against.
     installReferenceMock({ rows: [makeRow()] });
@@ -323,7 +323,7 @@ describe("the outfit we expect", () => {
     await openPlayer("Alice");
 
     expect(screen.getByText("Hand them")).toBeInTheDocument();
-    expect(screen.getByText("armbands")).toBeInTheDocument();
+    expect(screen.getByText("wristbands")).toBeInTheDocument();
     expect(screen.getByText("red")).toBeInTheDocument();
     expect(screen.getByText("blue")).toBeInTheDocument();
     // ...and their own two garments, which we only check rather than issue
@@ -465,7 +465,7 @@ describe("the verdict", () => {
       state: "done",
       review: makeReview({
         outcome: "hit_bystander",
-        outcome_reason: "armbands hidden and too few other garments readable",
+        outcome_reason: "wristbands hidden and too few other garments readable",
         channels: {},
         identification: {
           ranked: [],

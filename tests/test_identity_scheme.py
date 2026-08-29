@@ -31,7 +31,7 @@ def narrowed_scheme(trousers_colours):
             Channel(name="tshirt", labels=DEFAULT_PALETTE),
             Channel(name="trousers", labels=trousers_colours),
             Channel(name="hat", labels=DEFAULT_PALETTE),
-            Channel(name="armbands", labels=DEFAULT_PALETTE),
+            Channel(name="wristbands", labels=DEFAULT_PALETTE),
         ],
         q=DEFAULT_Q,
     )
@@ -75,7 +75,7 @@ def test_slot_zero_is_all_black():
         "tshirt": "black",
         "trousers": "black",
         "hat": "black",
-        "armbands": "black",
+        "wristbands": "black",
     }
 
 
@@ -133,12 +133,12 @@ def test_appearance_matches_codeword():
 def test_every_codeword_satisfies_the_documented_closed_form():
     # Plan §11: with t-shirt and trousers as the free pair,
     #   hat      = (2*trousers -   t-shirt) mod 7
-    #   armbands = (3*trousers - 2*t-shirt) mod 7
+    #   wristbands = (3*trousers - 2*t-shirt) mod 7
     scheme = default_scheme()
     for slot in range(scheme.capacity):
-        tshirt, trousers, hat, armbands = scheme.codeword_of_slot(slot)
+        tshirt, trousers, hat, wristbands = scheme.codeword_of_slot(slot)
         assert hat == (2 * trousers - tshirt) % DEFAULT_Q
-        assert armbands == (3 * trousers - 2 * tshirt) % DEFAULT_Q
+        assert wristbands == (3 * trousers - 2 * tshirt) % DEFAULT_Q
 
 
 def test_appearances_are_all_distinct():
