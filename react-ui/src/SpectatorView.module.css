@@ -1,0 +1,333 @@
+/* The spectator screen.
+ *
+ * DELIBERATELY NOT the admin house style (ReferencePhotos.module.css). That
+ * one is built for a phone held one-handed: 3.5em touch targets, light ground,
+ * one column. This is read from three metres by people who never touch it, in
+ * a room that is probably dim. What it keeps from the house style is the
+ * *meaning* of colour - green and red are answers, amber is the machine being
+ * unsure - and nothing else. See CLAUDE.md.
+ *
+ * Everything visual is a token below. The structure in SpectatorView.js emits
+ * semantic class names and no layout, so a restyle is this file alone.
+ */
+
+.screen {
+  /* -- ground and ink -- */
+  --bg: #101318;
+  --panel-bg: #191d25;
+  --panel-border: #2a303b;
+  --ink: #e8ecf2;
+  --ink-dim: #98a2b3;
+
+  /* -- meaning -- */
+  --good: #3ddc84;
+  --bad: #ff6b6b;
+  --warn: #ffc94d;
+  --thinking: #6fa8ff;
+
+  /* -- type -- */
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --size-headline: 2.6rem;
+  --size-title: 1.1rem;
+  --size-body: 1.35rem;
+  --size-small: 1rem;
+
+  /* -- shape -- */
+  --gap: 0.75rem;
+  --radius: 0.6rem;
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: var(--gap);
+  padding: var(--gap);
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: var(--size-body);
+  overflow: hidden;
+}
+
+/* -- headline -------------------------------------------------------------- */
+
+.headline {
+  display: flex;
+  align-items: baseline;
+  gap: 1.5rem;
+  padding: 0 0.4rem;
+}
+
+.headlineTitle {
+  font-size: var(--size-headline);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.headlineClock {
+  font-size: var(--size-headline);
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim);
+}
+
+.headlineAlive {
+  margin-left: auto;
+  font-size: var(--size-headline);
+}
+
+.headlineAlive strong {
+  color: var(--good);
+}
+
+.headlinePaused {
+  padding: 0.2em 0.8em;
+  border-radius: 2em;
+  background: var(--warn);
+  color: #201800;
+  font-size: var(--size-title);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+/* -- layout ---------------------------------------------------------------- */
+
+.body {
+  display: grid;
+  grid-template-columns: 62fr 38fr;
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.mapPanel {
+  min-height: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.sidebar {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--gap);
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding: 0.7rem 0.9rem;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background: var(--panel-bg);
+  overflow: hidden;
+}
+
+.panelTitle {
+  margin: 0 0 0.5rem;
+  font-size: var(--size-title);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ink-dim);
+}
+
+.empty {
+  color: var(--ink-dim);
+}
+
+/* -- shot feed ------------------------------------------------------------- */
+
+.shotList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+}
+
+.shot {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.shot:last-child {
+  border-bottom: none;
+}
+
+.shotThumb,
+.shotThumbPlaceholder {
+  width: 4.6rem;
+  height: 4.6rem;
+  flex: none;
+  border-radius: 0.35rem;
+  object-fit: cover;
+  background: #000;
+}
+
+.shotBody {
+  min-width: 0;
+}
+
+.shotWho {
+  display: flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 600;
+}
+
+.shotArrow {
+  color: var(--ink-dim);
+}
+
+.shotTarget {
+  color: var(--ink-dim);
+}
+
+.shotStatus {
+  font-size: var(--size-small);
+}
+
+/* Colour means certainty, exactly as it does on the admin pages. */
+.good {
+  color: var(--good);
+  font-weight: 600;
+}
+.bad {
+  color: var(--bad);
+  font-weight: 600;
+}
+.warn {
+  color: var(--warn);
+}
+.thinking {
+  color: var(--thinking);
+}
+
+/* -- roster ---------------------------------------------------------------- */
+
+.teamTotals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  list-style: none;
+  margin: 0 0 0.6rem;
+  padding: 0 0 0.6rem;
+  border-bottom: 1px solid var(--panel-border);
+  font-size: var(--size-small);
+}
+
+.teamTotal {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.teamName {
+  font-weight: 600;
+}
+
+.teamStat {
+  color: var(--ink-dim);
+}
+
+.teamDot {
+  width: 0.85em;
+  height: 0.85em;
+  flex: none;
+  border-radius: 50%;
+  /* The hat palette's warm reds sit close together (burgundy/rust are 14.2
+     dE2000 apart), so every dot gets a ring to separate it from its ground. */
+  box-shadow:
+    0 0 0 2px var(--panel-bg),
+    0 0 0 3px var(--panel-border);
+}
+
+/* Two columns, because a full game is ~30 people and a single column silently
+   clips at about half that. Nobody can scroll a television. */
+.roster {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  min-height: 0;
+  overflow: hidden;
+  columns: 2;
+  column-gap: 1.4rem;
+}
+
+.rosterRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.15rem 0;
+  border-bottom: 1px solid var(--panel-border);
+  /* Keep a row from being split down the middle by the column break */
+  break-inside: avoid;
+}
+
+.rosterName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.stat,
+.statWeapon,
+.rosterState {
+  font-size: var(--size-small);
+  color: var(--ink-dim);
+  white-space: nowrap;
+}
+
+.statWeapon {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 7ch;
+}
+
+.score {
+  min-width: 2.5ch;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.alive {
+  color: var(--ink);
+}
+
+.knockedOut {
+  color: var(--warn);
+}
+
+.dead,
+.waiting {
+  color: var(--ink-dim);
+  opacity: 0.65;
+}
+
+/* -- ticker ---------------------------------------------------------------- */
+
+.ticker {
+  padding: 0.4rem 0.9rem;
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius);
+  background: var(--panel-bg);
+  font-size: var(--size-small);
+  color: var(--ink-dim);
+}
+
+.ticker ul {
+  display: flex;
+  gap: 1.6rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}

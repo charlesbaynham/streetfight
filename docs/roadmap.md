@@ -2172,6 +2172,61 @@ held as a weapon, and it keeps going to sleep.
 
 ---
 
+### R11 — The spectator screen *(shipped)*
+
+**Shipped 2026-08-29.** A big-screen admin dashboard at `/admin/spectator`
+(`react-ui/src/SpectatorView.js`), for the people not playing: knocked-out
+players and friends who came to watch. A laptop wired to a TV, logged in as
+admin and left alone all evening. Read-only — nothing on it is clickable.
+
+Five panels: the venue map with a dot per player (reusing `MapViewAdmin`) and
+the game circles; the last six shots with their photographs and a sentence
+saying where adjudication has got to; a roster of everyone with armour, ammo,
+weapon and score; per-team totals; and the ticker.
+
+Mostly wiring rather than new code. New on the backend: `admin_get_recent_shots`
+(a columns-only feed, no images — it is refetched on every SSE bump),
+`admin_get_shot_thumbnail` (downscaled, cached client-side by id, because the
+photographs never change) and `admin_get_scoreboard` — the last because the
+player-facing `/get_scoreboard` resolves the game from the caller's own session
+and 404s for a browser that never joined a game, which is exactly what a TV is.
+`get_shot_ai_review`'s body became `_ai_review_payload(shot, users)` so the feed
+resolves the roster once instead of per shot. On the frontend, `AdminPage`
+gained a `bare` mode (gate and SSE connection, no nav or container), `MapView`
+gained a `circles` prop (for the same never-joined-a-game reason) and a
+non-square fill variant, and the fallback team palette moved to
+`react-ui/src/teamColours.js` so the map and the roster cannot disagree about
+what colour a team is.
+
+Two bugs fixed on the way, both of which had been there a while:
+
+- **The admin SSE stream sent no keepalives**, while `UpdateListener.js`
+  restarts any stream silent for 20s. Every admin page had been tearing its
+  connection down and rebuilding it every twenty seconds on a quiet game. The
+  user stream's keepalive machinery is now shared by both
+  (`backend/sse_event_streams.py`).
+- **`old_shot_prep` identified the shot it had just created by highest uuid4**,
+  which picks an arbitrary shot once there are two. That was the cause of the
+  long-standing "this test fails sometimes... suspicious" xfail on
+  `test_shots_record_targets`, now removed. A second test shadowed by a
+  duplicate name — and so never run — was un-shadowed and fixed.
+
+**Not designed yet, deliberately.** The page is styled plainly and the visual
+design is going to a separate Claude design session; `docs/spectator_view/`
+holds the brief and a screenshot. All layout and colour live in
+`SpectatorView.module.css` behind a token block, so the restyle is one file.
+
+Two things a design pass will have to answer: the venue map is black-on-white
+artwork filling 60% of a dark screen, and the roster fits 26 players in two
+columns at 1080p with little room for a 30-player game and no ability to
+scroll.
+
+**It is exempt from the admin house style**, at Charles's explicit direction —
+`ReferencePhotos.js` is built for a phone held one-handed, and this is read
+from three metres by people who never touch it. It keeps the house *semantics*
+(state in words; green and red for answers, amber for uncertainty) and none of
+its shapes.
+
 ### R7 — The reference photo as a kit check, run through the shot AI *(shipped)*
 
 **Shipped 2026-08-27** as `backend/reference_photos.py` (the review runner,

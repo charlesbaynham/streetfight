@@ -1,3 +1,4 @@
+import datetime
 import io
 import zipfile
 from uuid import uuid4
@@ -33,6 +34,21 @@ def test_making_item_fail():
         AdminInterface().make_new_item("whatever", {"num": 123})
 
 
+def submit_shot_and_get_id(db_session, user_id, image):
+    """Fire a shot and return *that* shot's id.
+
+    Ids are uuid4 and time_created has 1s resolution, so neither
+    "highest id" nor "latest timestamp" identifies the shot just created once
+    there is more than one. Taking the difference does.
+    """
+    before = {row[0] for row in db_session.query(Shot.id).all()}
+    UserInterface(user_id).submit_shot(image)
+    after = {row[0] for row in db_session.query(Shot.id).all()}
+
+    (new_id,) = after - before
+    return new_id
+
+
 @pytest.fixture
 def old_shot_prep(
     admin_api_client, db_session, user_factory, team_factory, test_image_string
@@ -54,12 +70,10 @@ def old_shot_prep(
     UserInterface(user_b).set_weapon_data(1, 6)
 
     # User A shoots user B (the admin hasn't checked it yet)
-    UserInterface(user_a).submit_shot(test_image_string)
-    shot_a = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
+    shot_a = submit_shot_and_get_id(db_session, user_a, test_image_string)
 
     # User B shoots user A (though they should be dead)
-    UserInterface(user_b).submit_shot(test_image_string)
-    shot_b = db_session.query(Shot.id).order_by(Shot.id.desc()).first()[0]
+    shot_b = submit_shot_and_get_id(db_session, user_b, test_image_string)
 
     # The admin checks user A and awards the shot to them
     response = admin_api_client.post(
@@ -118,18 +132,23 @@ def test_dead_user_old_shots_user_a_not_refunded(old_shot_prep):
 
 
 # The good Shot should now record both the shooter and the shootee
-def test_shots_record_targets(old_shot_prep):
+# Named apart from the check below it: the two shared a name, so this one was
+# shadowed and had never actually run.
+def test_awarded_shot_records_shooter_and_target(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
-    shot = AdminInterface()._get_shot_orm(shot_a)
+    # get_shot_model, not _get_shot_orm: the ORM instance is detached once
+    # @db_scoped closes its session, so reading off it raises.
+    shot = AdminInterface().get_shot_model(shot_a)
 
     assert shot.user_id == user_a
     assert shot.target_user_id == user_b
 
 
-# The refunded Shot should be only the shooter
-@pytest.mark.xfail(
-    reason="This test fails sometimes... Suspicious, but I have to ignore it. I'm sure I won't regret that"
-)
+# The refunded Shot should be only the shooter.
+# This was xfail'd as "fails sometimes... suspicious": the cause was
+# old_shot_prep identifying the shot it had just created by highest uuid4,
+# which picks an arbitrary shot once there are two. See
+# submit_shot_and_get_id.
 def test_shots_record_targets(old_shot_prep):
     user_a, user_b, shot_a, shot_b = old_shot_prep
     shot = AdminInterface().get_shot_model(shot_b)
@@ -564,3 +583,126 @@ def test_set_circle(admin_api_client, user_in_team):
     response = admin_api_client.post(endpoint)
 
     assert response.is_success
+
+
+# -- the spectator screen's reads (react-ui/src/SpectatorView.js) ------------
+
+
+def game_of_user(user_id):
+    return UserInterface(user_id).get_user_model().game_id
+
+
+def shots_a_second_apart(db_session, shot_ids):
+    """Push the given shots' timestamps apart, oldest first.
+
+    time_created has 1s resolution, so shots fired inside one test tie and sort
+    by the uuid4 tiebreak. Ordering is only testable once they differ.
+    """
+    for offset, shot_id in enumerate(shot_ids):
+        db_session.query(Shot).filter_by(id=shot_id).update(
+            {"time_created": datetime.datetime(2026, 9, 19, 20, offset)}
+        )
+    db_session.commit()
+
+
+def test_recent_shots_are_newest_first(admin_api_client, old_shot_prep, db_session):
+    user_a, _user_b, shot_a, shot_b = old_shot_prep
+    shots_a_second_apart(db_session, [shot_a, shot_b])
+
+    response = admin_api_client.get(
+        "/api/admin_get_recent_shots", params={"game_id": str(game_of_user(user_a))}
+    )
+    assert response.is_success
+
+    assert [row["id"] for row in response.json()] == [str(shot_b), str(shot_a)]
+
+
+def test_recent_shots_include_checked_ones(admin_api_client, old_shot_prep):
+    """The feed is a history of what just happened, not a queue of work.
+
+    old_shot_prep adjudicates shot A, so a queue-shaped read would drop it.
+    """
+    user_a, _user_b, shot_a, shot_b = old_shot_prep
+
+    response = admin_api_client.get(
+        "/api/admin_get_recent_shots", params={"game_id": str(game_of_user(user_a))}
+    )
+
+    assert {row["id"] for row in response.json()} == {str(shot_a), str(shot_b)}
+
+
+def test_recent_shots_say_who_fired_and_carry_the_verdict(
+    admin_api_client, old_shot_prep, db_session
+):
+    user_a, user_b, shot_a, _shot_b = old_shot_prep
+
+    names = {u_id: db_session.get(User, u_id).name for u_id in (user_a, user_b)}
+
+    response = admin_api_client.get(
+        "/api/admin_get_recent_shots", params={"game_id": str(game_of_user(user_a))}
+    )
+    row = next(r for r in response.json() if r["id"] == str(shot_a))
+
+    assert row["shooter_name"] == names[user_a]
+    assert row["target_name"] == names[user_b]
+    assert row["checked"] is True
+    assert row["result"] == "hit"
+    # The review block the screen renders through ShotQueue's charlesBotVerdict
+    assert set(row) >= {"state", "review", "identification", "escalation_state"}
+
+
+def test_recent_shots_never_carry_the_photograph(admin_api_client, old_shot_prep):
+    """It is refetched on every SSE bump - a megabyte per shot would be fatal."""
+    user_a, _user_b, _shot_a, _shot_b = old_shot_prep
+
+    response = admin_api_client.get(
+        "/api/admin_get_recent_shots", params={"game_id": str(game_of_user(user_a))}
+    )
+
+    for row in response.json():
+        assert "image_base64" not in row
+
+
+def test_recent_shots_respects_its_limit(admin_api_client, old_shot_prep, db_session):
+    user_a, _user_b, shot_a, shot_b = old_shot_prep
+    shots_a_second_apart(db_session, [shot_a, shot_b])
+
+    response = admin_api_client.get(
+        "/api/admin_get_recent_shots",
+        params={"game_id": str(game_of_user(user_a)), "limit": 1},
+    )
+
+    assert [row["id"] for row in response.json()] == [str(shot_b)]
+
+
+def test_a_thumbnail_is_much_smaller_than_the_stored_photograph(
+    admin_api_client, old_shot_prep
+):
+    _user_a, _user_b, shot_a, _shot_b = old_shot_prep
+
+    response = admin_api_client.get(
+        "/api/admin_get_shot_thumbnail", params={"shot_id": str(shot_a)}
+    )
+    assert response.is_success
+
+    thumbnail = response.json()["image_base64"]
+    original = AdminInterface().get_shot_image_base64(shot_a)
+
+    assert thumbnail.startswith("data:image/")
+    assert len(thumbnail) < len(original)
+
+
+def test_the_admin_scoreboard_answers_without_a_player_session(
+    admin_api_client, old_shot_prep
+):
+    """The whole reason it exists: a browser wired to a TV never joined a game,
+    so the player-facing /get_scoreboard 404s for it."""
+    user_a, _user_b, _shot_a, _shot_b = old_shot_prep
+
+    assert admin_api_client.get("/api/get_scoreboard").status_code == 404
+
+    response = admin_api_client.get(
+        "/api/admin_get_scoreboard", params={"game_id": str(game_of_user(user_a))}
+    )
+    assert response.is_success
+    assert len(response.json()["table"]) == 2

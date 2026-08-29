@@ -9,6 +9,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 
 import { sendAPIRequest } from "./utils";
 import { mapGeometry, mapProjection, useVenue } from "./venue";
+import { fallbackTeamColour } from "./teamColours";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
@@ -98,36 +99,28 @@ function MapCirclesFromAPI({ calculators }) {
     };
   }, [getCircles]);
 
+  return <MapCirclesFromData calculators={calculators} circles={circlesData} />;
+}
+
+// The nine flat circle fields the server uses (whether they come from
+// /get_circles or off a GameModel) turned into the three triplets MapCircles
+// draws. One place, so both callers agree on the field names.
+function circleTriplet(circles, name) {
+  if (!circles) return null;
+  return [
+    circles[`${name}_circle_lat`],
+    circles[`${name}_circle_long`],
+    circles[`${name}_circle_radius`],
+  ];
+}
+
+export function MapCirclesFromData({ calculators, circles }) {
   return (
     <MapCircles
       calculators={calculators}
-      exclusionCircle={
-        circlesData
-          ? [
-              circlesData["exclusion_circle_lat"],
-              circlesData["exclusion_circle_long"],
-              circlesData["exclusion_circle_radius"],
-            ]
-          : null
-      }
-      nextCircle={
-        circlesData
-          ? [
-              circlesData["next_circle_lat"],
-              circlesData["next_circle_long"],
-              circlesData["next_circle_radius"],
-            ]
-          : null
-      }
-      dropCircle={
-        circlesData
-          ? [
-              circlesData["drop_circle_lat"],
-              circlesData["drop_circle_long"],
-              circlesData["drop_circle_radius"],
-            ]
-          : null
-      }
+      exclusionCircle={circleTriplet(circles, "exclusion")}
+      nextCircle={circleTriplet(circles, "next")}
+      dropCircle={circleTriplet(circles, "drop")}
     />
   );
 }
@@ -215,6 +208,8 @@ function VenueMapView({
   other_positions_and_details = [],
   alwaysExpanded = false,
   onExpandedChange = null,
+  circles = undefined,
+  fillContainer = false,
 }) {
   const {
     mapSrc,
@@ -408,7 +403,8 @@ function VenueMapView({
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
   const containerClasses = [styles.mapContainer];
-  if (alwaysExpanded) containerClasses.push(styles.mapContainerExpanded);
+  if (fillContainer) containerClasses.push(styles.mapContainerFill);
+  else if (alwaysExpanded) containerClasses.push(styles.mapContainerExpanded);
   else if (poppedOut) containerClasses.push(styles.mapContainerPoppedOut);
   else containerClasses.push(styles.mapContainerCorner);
 
@@ -449,13 +445,24 @@ function VenueMapView({
               {ownPosition !== null ? <Dot x={dot_x} y={dot_y} /> : null}
               {otherDots}
 
-              {/* Circles */}
-              <MapCirclesFromAPI
-                // Note how the coordinate calculators are passed down to the
-                // circles so they can handle their own positioning. It would be
-                // better to do this for other elements too.
-                calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
-              />
+              {/* Circles. Note how the coordinate calculators are passed down
+              to the circles so they can handle their own positioning. It would
+              be better to do this for other elements too.
+
+              Given a `circles` prop we draw those and never call the API:
+              /get_circles resolves the game from the caller's own player
+              session, so a browser that never joined a game (a screen wired to
+              a TV) gets null from it and would draw nothing. */}
+              {circles === undefined ? (
+                <MapCirclesFromAPI
+                  calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
+                />
+              ) : (
+                <MapCirclesFromData
+                  calculators={{ coordsToKm, coordsToPixels, kmToPixels }}
+                  circles={circles}
+                />
+              )}
 
               {/* A box that intercepts clicks - transparent and at the top z-order */}
               <div
@@ -488,9 +495,11 @@ function MapView(props) {
   if (!geometry) {
     const containerClasses = [
       styles.mapContainer,
-      props.alwaysExpanded
-        ? styles.mapContainerExpanded
-        : styles.mapContainerCorner,
+      props.fillContainer
+        ? styles.mapContainerFill
+        : props.alwaysExpanded
+          ? styles.mapContainerExpanded
+          : styles.mapContainerCorner,
     ];
     return <div className={containerClasses.join(" ")} />;
   }
@@ -572,47 +581,53 @@ export function MapViewSelf() {
   return <MapView ownPosition={position} onExpandedChange={setIsExpanded} />;
 }
 
-export function MapViewAdmin() {
+export function MapViewAdmin({
+  gameId = null,
+  colourForTeam = null,
+  circles = undefined,
+  fillContainer = false,
+}) {
   const [locationWithDetails, setLocationWithDetails] = useState([]);
 
   const updateLocations = useCallback(() => {
-    sendAPIRequest("admin_get_locations").then(async (response) => {
+    // Passed explicitly where we know it: with no game_id the backend picks
+    // whichever game the database returns first, which is arbitrary.
+    const params = gameId ? { game_id: gameId } : {};
+    sendAPIRequest("admin_get_locations", params).then(async (response) => {
       if (!response.ok) return;
       const locations = await response.json();
 
-      const team_ids = locations.map((user) => user.team_id);
-      const unique_team_ids = [...new Set(team_ids)];
-
-      // Assign a color to each unique team
-      const colors = [
-        "red",
-        "blue",
-        "green",
-        "yellow",
-        "purple",
-        "orange",
-        "pink",
-        "cyan",
-        "brown",
-        "black",
+      const unique_team_ids = [
+        ...new Set(locations.map((user) => user.team_id)),
       ];
-      const teamColors = {};
+      const fallbackColors = {};
       unique_team_ids.forEach((team_id, index) => {
-        teamColors[team_id] = colors[index % colors.length];
+        fallbackColors[team_id] = fallbackTeamColour(index);
       });
 
-      // Color each location point according to the team
-      const locs = locations.map((user) => ({
-        position: {
-          timestamp: user.timestamp,
-          coords: { latitude: user.latitude, longitude: user.longitude },
-        },
-        color: user.state === "alive" ? teamColors[user.team_id] : "gray",
-        tooltip: `${user.user} - ${user.team}`,
-      }));
+      const locs = locations
+        // A player who has never reported a fix has no position to draw. The
+        // dots have no NaN guard of their own, unlike the circles.
+        .filter(
+          (user) =>
+            typeof user.latitude === "number" &&
+            typeof user.longitude === "number",
+        )
+        .map((user) => ({
+          position: {
+            timestamp: user.timestamp,
+            coords: { latitude: user.latitude, longitude: user.longitude },
+          },
+          color:
+            user.state === "alive"
+              ? (colourForTeam && colourForTeam(user.team_id)) ||
+                fallbackColors[user.team_id]
+              : "gray",
+          tooltip: `${user.user} - ${user.team}`,
+        }));
       setLocationWithDetails(locs);
     });
-  }, []);
+  }, [gameId, colourForTeam]);
 
   useEffect(() => {
     const handle = setInterval(updateLocations, MAP_POLL_TIME);
@@ -626,6 +641,8 @@ export function MapViewAdmin() {
     <MapView
       other_positions_and_details={locationWithDetails}
       alwaysExpanded={true}
+      circles={circles}
+      fillContainer={fillContainer}
     />
   );
 }

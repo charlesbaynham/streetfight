@@ -91,6 +91,14 @@ inventing a look. What makes it work:
 - **Colour means certainty**: green and red are for answers, amber for
   everything the machine is not sure of. See `IdentificationVerdict`.
 
+**One page is exempt: `SpectatorView.js`.** Charles exempted it explicitly -
+"an entirely different vibe". Everything above is tuned for a phone held
+one-handed with a box of armbands in the other; the spectator screen is read
+from three metres by people who will never touch it, on a TV left running for
+hours. It keeps the last two rules - state said in words, and colour meaning
+certainty - and none of the shapes. Do not "fix" it back towards this
+exemplar.
+
 ## Repository layout
 
 - `backend/` — FastAPI application.
@@ -146,6 +154,14 @@ inventing a look. What makes it work:
     the error-correcting code behind the outfits — currently a placeholder
     skeleton awaiting Charles's prose, marked `PLACEHOLDER START/END`. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
+    `SpectatorView.js` (route `/admin/spectator`) is the big-screen dashboard
+    for people who are not playing - a laptop wired to a TV, left alone all
+    evening (roadmap R11). Read-only: map, shot feed with live adjudication,
+    roster, team totals, ticker. **It is deliberately exempt from the admin
+    house style below** - see that section. Its visual design is going to a
+    separate Claude design session; `docs/spectator_view/design_brief.md` is
+    the brief, and all of its layout and colour live in one
+    `.module.css` behind a token block so that restyle stays a one-file change.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the
