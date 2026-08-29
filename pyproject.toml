@@ -12,6 +12,7 @@ dependencies = [
   "fastapi",
   "httpx",
   "itsdangerous",
+  "numpy>=2.4.6",
   "pillow",
   # psycopg2 proper is sdist-only and would need libpq/pg_config at build time;
   # the -binary wheel carries its own libpq and keeps sourcePreference = "wheel"
