@@ -233,7 +233,9 @@ def shot_prompt(scene: dict) -> str:
         "hat": "cap",
         "armbands": "armbands",
     }
-    named = [garment_words[c] for c in scen.ALL if c in scene["target"]["garments_visible"]]
+    named = [
+        garment_words[c] for c in scen.ALL if c in scene["target"]["garments_visible"]
+    ]
     listed = ", ".join(named[:-1]) + (" and " + named[-1] if len(named) > 1 else "")
 
     lines += [

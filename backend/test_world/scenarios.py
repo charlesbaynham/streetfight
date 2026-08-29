@@ -20,14 +20,14 @@ from typing import Optional
 
 class Scenario(NamedTuple):
     id: str
-    intended: str            # the truth an admin would record: hit/miss/bystander
-    locale_kind: str         # street | park | forecourt
-    light: str               # daylight | twilight | dark
-    distance: str            # close | mid | distant
-    facing: str              # toward | away
+    intended: str  # the truth an admin would record: hit/miss/bystander
+    locale_kind: str  # street | park | forecourt
+    light: str  # daylight | twilight | dark
+    distance: str  # close | mid | distant
+    facing: str  # toward | away
     occlusion: Optional[str]  # what is in the way, if anything
-    bystanders: bool         # un-kitted passers-by in frame
-    compass: str             # accurate | modest | large | miscalibrated
+    bystanders: bool  # un-kitted passers-by in frame
+    compass: str  # accurate | modest | large | miscalibrated
     # What the *fix* must be like at the moment of the shot.
     #
     # ``shooter_fix`` is the important one and is what the plan means by "fresh
@@ -44,9 +44,9 @@ class Scenario(NamedTuple):
     # The two scenarios where the *class* is the point name it below instead.
     target_fix: Optional[str]
     shooter_fix: Optional[str]
-    garments_visible: List[str]   # which channels the photo actually shows
-    probes: str              # what this photograph is testing
-    note: str                # what makes the picture itself unusual
+    garments_visible: List[str]  # which channels the photo actually shows
+    probes: str  # what this photograph is testing
+    note: str  # what makes the picture itself unusual
 
     # A second kitted player from another team who must genuinely have been
     # in frame. Unlike `bystanders` -- who are strangers, invented at render
@@ -95,51 +95,131 @@ FIX_POOR = (300.0, 60.0)
 
 SCENARIOS: List[Scenario] = [
     Scenario(
-        "S1", "miss", "street", "daylight", "close", "toward", None, False,
-        "modest", None, "fresh", ALL,
+        "S1",
+        "miss",
+        "street",
+        "daylight",
+        "close",
+        "toward",
+        None,
+        False,
+        "modest",
+        None,
+        "fresh",
+        ALL,
         "the false-hit failure mode: a crosshair past the shoulder is not a hit",
         "the aim point sits off the target's shoulder, not on their torso",
     ),
     Scenario(
-        "S2", "bystander", "street", "daylight", "close", "toward", None, True,
-        "large", "poor", "poor", ALL,
+        "S2",
+        "bystander",
+        "street",
+        "daylight",
+        "close",
+        "toward",
+        None,
+        True,
+        "large",
+        "poor",
+        "poor",
+        ALL,
         "bystander versus player: the crosshair is on someone not in the game",
         "an un-kitted passer-by stands under the crosshair; the kitted player is off to one side",
     ),
     Scenario(
-        "S3", "hit", "park", "daylight", "close", "toward", "a park bench", False,
-        "accurate", None, "fresh", ["tshirt", "hat", "armbands"],
+        "S3",
+        "hit",
+        "park",
+        "daylight",
+        "close",
+        "toward",
+        "a park bench",
+        False,
+        "accurate",
+        None,
+        "fresh",
+        ["tshirt", "hat", "armbands"],
         "partial reading: trousers and one arm are simply not in the picture",
         "seated behind a bench, so the legs and one forearm are hidden",
     ),
     Scenario(
-        "S4", "hit", "forecourt", "daylight", "mid", "toward", None, True,
-        "miscalibrated", "fresh", None, ALL,
+        "S4",
+        "hit",
+        "forecourt",
+        "daylight",
+        "mid",
+        "toward",
+        None,
+        True,
+        "miscalibrated",
+        "fresh",
+        None,
+        ALL,
         "Reed-Solomon correcting a single misread channel",
         "the armband photographs as the wrong colour; every other garment is right",
     ),
     Scenario(
-        "S5", "hit", "street", "daylight", "mid", "toward", None, True,
-        "accurate", None, "fresh", ALL,
+        "S5",
+        "hit",
+        "street",
+        "daylight",
+        "mid",
+        "toward",
+        None,
+        True,
+        "accurate",
+        None,
+        "fresh",
+        ALL,
         "picking the right one of two kitted players from different teams",
         "two kitted players in frame, from different teams; the crosshair is on one",
         needs_extra_kitted=True,
     ),
     Scenario(
-        "S6", "hit", "street", "twilight", "distant", "away", None, False,
-        "modest", None, "fresh", ALL,
+        "S6",
+        "hit",
+        "street",
+        "twilight",
+        "distant",
+        "away",
+        None,
+        False,
+        "modest",
+        None,
+        "fresh",
+        ALL,
         "the zoom follow-up: too far to read a colour without going closer",
         "the target is a small figure well down the street",
     ),
     Scenario(
-        "S7", "hit", "park", "twilight", "close", "away", "a parked car", False,
-        "large", "poor", "poor", ["tshirt", "hat", "armbands"],
+        "S7",
+        "hit",
+        "park",
+        "twilight",
+        "close",
+        "away",
+        "a parked car",
+        False,
+        "large",
+        "poor",
+        "poor",
+        ["tshirt", "hat", "armbands"],
         "the weak model should be unconfident here and escalate rather than guess",
         "poor light, target three-quarters away, partly behind a parked car",
     ),
     Scenario(
-        "S8", "hit", "street", "twilight", "mid", "away", None, True,
-        "modest", None, "fresh", ["tshirt", "trousers"],
+        "S8",
+        "hit",
+        "street",
+        "twilight",
+        "mid",
+        "away",
+        None,
+        True,
+        "modest",
+        None,
+        "fresh",
+        ["tshirt", "trousers"],
         "the headline case: looks like a bystander, and the location term is silent",
         "hat and armband have been taken off; only the tshirt and trousers still read",
         # About twenty minutes stale and a few hundred metres out, so the
@@ -151,15 +231,35 @@ SCENARIOS: List[Scenario] = [
         target_fix_distance_m=(200.0, 900.0),
     ),
     Scenario(
-        "S9", "hit", "park", "dark", "mid", "away", "a plane tree", False,
-        "accurate", None, "fresh", ["tshirt", "hat", "armbands"],
+        "S9",
+        "hit",
+        "park",
+        "dark",
+        "mid",
+        "away",
+        "a plane tree",
+        False,
+        "accurate",
+        None,
+        "fresh",
+        ["tshirt", "hat", "armbands"],
         "three channels, trousers erased entirely",
         "behind a tree trunk: head, shirt and one armband visible, legs gone",
         target_phone="urban_canyon",
     ),
     Scenario(
-        "S10", "hit", "street", "dark", "distant", "toward", "a plane tree", False,
-        "modest", None, "fresh", ["tshirt", "hat"],
+        "S10",
+        "hit",
+        "street",
+        "dark",
+        "distant",
+        "toward",
+        "a plane tree",
+        False,
+        "modest",
+        None,
+        "fresh",
+        ["tshirt", "hat"],
         "two channels only - the roadmap's hardest readable case",
         "behind a tree at distance: hat and shirt only, no armband, no legs",
     ),

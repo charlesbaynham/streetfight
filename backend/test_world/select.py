@@ -18,7 +18,6 @@ cannot do this" is a claim that has to be true when it is made.
 import math
 from typing import Dict
 from typing import List
-from typing import Optional
 
 import numpy as np
 
@@ -92,8 +91,13 @@ def _extra_kitted_at(cast, positions, tick, target, shooter) -> List[dict]:
             )
         )
         if distance <= _spec.IN_FRAME_RADIUS_M and person["team"] != target_team:
-            out.append({"slug": person["slug"], "team": person["team"],
-                        "distance_m": round(distance, 1)})
+            out.append(
+                {
+                    "slug": person["slug"],
+                    "team": person["team"],
+                    "distance_m": round(distance, 1),
+                }
+            )
     out.sort(key=lambda o: o["distance_m"])
     return out
 
@@ -130,14 +134,19 @@ def _candidates(scenario, world, positions) -> List[dict]:
                 continue
 
             for target, shooter in ((event["a"], event["b"]), (event["b"], event["a"])):
-                if scenario.target_phone and _phone_of(cast, target) != scenario.target_phone:
-                    continue
-                if not _fix_quality_ok(
-                    scenario.target_fix, _fix_facts(fixes, positions, cast, target, tick)
+                if (
+                    scenario.target_phone
+                    and _phone_of(cast, target) != scenario.target_phone
                 ):
                     continue
                 if not _fix_quality_ok(
-                    scenario.shooter_fix, _fix_facts(fixes, positions, cast, shooter, tick)
+                    scenario.target_fix,
+                    _fix_facts(fixes, positions, cast, target, tick),
+                ):
+                    continue
+                if not _fix_quality_ok(
+                    scenario.shooter_fix,
+                    _fix_facts(fixes, positions, cast, shooter, tick),
                 ):
                     continue
 
@@ -171,13 +180,15 @@ def _candidates(scenario, world, positions) -> List[dict]:
                         if not (lo <= distance <= hi):
                             continue
 
-                out.append({
-                    "event": event,
-                    "tick": int(tick),
-                    "separation_m": round(separation, 1),
-                    "target": target,
-                    "shooter": shooter,
-                })
+                out.append(
+                    {
+                        "event": event,
+                        "tick": int(tick),
+                        "separation_m": round(separation, 1),
+                        "target": target,
+                        "shooter": shooter,
+                    }
+                )
 
     # Prefer the middle of the distance band and a longer encounter: both make
     # a more photographable moment, and both are deterministic.
@@ -226,7 +237,10 @@ def select(world: dict, positions: np.ndarray) -> Dict[str, dict]:
             # photograph, so thirty people are not represented by the same
             # four faces. Appearing in the background of another scene is
             # fine and realistic, and is not excluded here.
-            if candidate["target"] in used_players or candidate["shooter"] in used_players:
+            if (
+                candidate["target"] in used_players
+                or candidate["shooter"] in used_players
+            ):
                 continue
             chosen[scenario.id] = candidate
             used_events.add(event["id"])
@@ -269,5 +283,7 @@ def _shortfall(scenario, world) -> str:
 def compass_heading(true_bearing: float, compass: str, rng) -> float:
     """``Shot.heading``: the true bearing plus this scenario's compass error."""
     kind, centre, sigma = scen.COMPASS_ERROR_DEG[compass]
-    offset = centre + rng.gauss(0.0, sigma) if kind == "offset" else rng.gauss(centre, sigma)
+    offset = (
+        centre + rng.gauss(0.0, sigma) if kind == "offset" else rng.gauss(centre, sigma)
+    )
     return round(math.fmod(true_bearing + offset + 360.0, 360.0), 1)

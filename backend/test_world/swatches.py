@@ -24,9 +24,11 @@ LEFT = 190
 def render(path: Path) -> Path:
     scheme = default_scheme()
     channels = list(scheme.channels.names)
-    width = LEFT + max(
-        len(scheme.channels.by_name(c).labels) for c in channels
-    ) * (SWATCH + GAP) + GAP
+    width = (
+        LEFT
+        + max(len(scheme.channels.by_name(c).labels) for c in channels) * (SWATCH + GAP)
+        + GAP
+    )
     height = GAP + len(channels) * (SWATCH + LABEL_H + GAP)
 
     image = Image.new("RGB", (width, height), "white")

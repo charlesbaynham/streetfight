@@ -9,7 +9,6 @@ the thirty is the person and their kit.
 """
 
 import math
-from typing import Dict
 from typing import List
 
 import numpy as np
@@ -37,7 +36,11 @@ def build(world: dict, positions: np.ndarray) -> dict:
         tick = candidate["tick"]
         extra = (
             select_mod._extra_kitted_at(
-                world["cast"], positions, tick, candidate["target"], candidate["shooter"]
+                world["cast"],
+                positions,
+                tick,
+                candidate["target"],
+                candidate["shooter"],
             )
             if scenario.needs_extra_kitted
             else []
@@ -129,7 +132,9 @@ def _telemetry_view(world, positions, candidate) -> dict:
             "fix_age_s": int(age),
             "fix_error_m": round(error, 1),
             "accuracy_m": fix["accuracy"],
-            "sigma_eff_m": round(telemetry_mod.effective_sigma_m(fix["accuracy"], age), 1),
+            "sigma_eff_m": round(
+                telemetry_mod.effective_sigma_m(fix["accuracy"], age), 1
+            ),
             "lambda_at_true_position": round(
                 telemetry_mod.likelihood_ratio(fix["accuracy"], age, error), 2
             ),
