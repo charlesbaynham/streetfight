@@ -46,6 +46,25 @@ test("Generate fetches admin_join_qr_codes with game_id only and renders one QR 
   expect(screen.getByText("Team Navy")).toBeInTheDocument();
 });
 
+test("each QR is itself a link to that team's join URL", async () => {
+  installFetchMock({ admin_join_qr_codes: REPORT });
+  render(<JoinQRCodes game_id="game-1" />);
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
+
+  const burgundy = await screen.findByRole("link", {
+    name: "Join link for team Burgundy",
+  });
+  expect(burgundy).toHaveAttribute("href", "https://example.com?j=burgundy");
+  expect(burgundy.querySelector("svg")).toBeInTheDocument();
+
+  expect(
+    screen.getByRole("link", { name: "Join link for team Navy" }),
+  ).toHaveAttribute("href", "https://example.com?j=navy");
+});
+
 test("each team card names its colour and full-accuracy capacity", async () => {
   installFetchMock({ admin_join_qr_codes: REPORT });
   render(<JoinQRCodes game_id="game-1" />);

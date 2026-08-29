@@ -36,7 +36,15 @@ export default function JoinQRCodes({ game_id }) {
                 <Swatch hex={team.team_colour_hex} label={team.team_colour} />{" "}
                 {team.team_colour} {data.team_channel}s
               </p>
-              <QRCode value={team.encoded_url} size={256} />
+              <a
+                className={styles.qrLink}
+                href={team.encoded_url}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Join link for team ${team.team_name}`}
+              >
+                <QRCode value={team.encoded_url} size={256} />
+              </a>
               <p className={styles.capacityLine}>
                 holds {team.capacity} players at full accuracy
               </p>
