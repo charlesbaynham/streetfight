@@ -270,7 +270,11 @@ def _street_led_opening(scene: dict) -> List[str]:
         "figure in a big picture, their face too small to make out. Do not "
         "walk closer to them, do not zoom in, and do not compose the "
         "photograph around them - they are incidental. Their whole body from "
-        "cap to shoes must be inside the frame.",
+        "cap to shoes must be inside the frame, and they must be somewhere "
+        "near the middle of it rather than out at one edge: the picture is "
+        "later cropped square-on to them, and a figure against the edge of "
+        "the frame forces that crop in so tight that the street they are "
+        "standing in disappears.",
     ]
 
 

@@ -49422,6 +49422,1001 @@
    "Victoria": "green"
   }
  },
+ "observations": {
+  "crops": {
+   "S1": {
+    "aim_point": [
+     0.39,
+     0.3994
+    ],
+    "band_wanted": 0.55,
+    "crop_box": [
+     502,
+     255,
+     1096,
+     1381
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.55,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S10": {
+    "aim_point": [
+     0.1428,
+     0.3116
+    ],
+    "band_wanted": 1.0,
+    "crop_box": [
+     0,
+     484,
+     585,
+     792
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.15,
+    "size": [
+     2048,
+     1080
+    ]
+   },
+   "S2": {
+    "aim_point": [
+     0.688,
+     0.3516
+    ],
+    "band_wanted": 0.55,
+    "crop_box": [
+     1112,
+     157,
+     1706,
+     1283
+    ],
+    "crosshair_offset": 0.0,
+    "kept_height": 0.55,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S3": {
+    "aim_point": [
+     0.384,
+     0.2978
+    ],
+    "band_wanted": 0.55,
+    "crop_box": [
+     489,
+     47,
+     1083,
+     1173
+    ],
+    "crosshair_offset": 0.0002,
+    "kept_height": 0.55,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S4": {
+    "aim_point": [
+     0.4455,
+     0.3685
+    ],
+    "band_wanted": 0.78,
+    "crop_box": [
+     514,
+     0,
+     1310,
+     1509
+    ],
+    "crosshair_offset": 0.0002,
+    "kept_height": 0.737,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S5": {
+    "aim_point": [
+     0.205,
+     0.353
+    ],
+    "band_wanted": 0.78,
+    "crop_box": [
+     39,
+     0,
+     801,
+     1446
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.706,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S6": {
+    "aim_point": [
+     0.5475,
+     0.7091
+    ],
+    "band_wanted": 1.0,
+    "crop_box": [
+     195,
+     964,
+     2048,
+     1941
+    ],
+    "crosshair_offset": 0.0002,
+    "kept_height": 0.477,
+    "size": [
+     2048,
+     1080
+    ]
+   },
+   "S7": {
+    "aim_point": [
+     0.455,
+     0.4995
+    ],
+    "band_wanted": 0.55,
+    "crop_box": [
+     635,
+     460,
+     1229,
+     1586
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.55,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S8": {
+    "aim_point": [
+     0.525,
+     0.6295
+    ],
+    "band_wanted": 0.78,
+    "crop_box": [
+     675,
+     530,
+     1475,
+     2048
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.741,
+    "size": [
+     1080,
+     2048
+    ]
+   },
+   "S9": {
+    "aim_point": [
+     0.415,
+     0.5645
+    ],
+    "band_wanted": 0.78,
+    "crop_box": [
+     429,
+     357,
+     1271,
+     1955
+    ],
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.78,
+    "size": [
+     1080,
+     2048
+    ]
+   }
+  },
+  "kit_colour": [
+   {
+    "channel": "hat",
+    "colour": "tan",
+    "delta_e": 2.3,
+    "measured_hex": "#C09260",
+    "slug": "pimlico-1",
+    "wanted_hex": "#C48E5B"
+   },
+   {
+    "channel": "armbands",
+    "colour": "blue",
+    "delta_e": 7.7,
+    "measured_hex": "#074CA4",
+    "slug": "pimlico-1",
+    "wanted_hex": "#0F61A6"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 10.4,
+    "measured_hex": "#F6CC0C",
+    "slug": "pimlico-1",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "tan",
+    "delta_e": 10.3,
+    "measured_hex": "#A27657",
+    "slug": "pimlico-4",
+    "wanted_hex": "#C48E5B"
+   },
+   {
+    "channel": "armbands",
+    "colour": "purple",
+    "delta_e": 17.0,
+    "measured_hex": "#6F2190",
+    "slug": "pimlico-4",
+    "wanted_hex": "#964F7E"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "green",
+    "delta_e": 29.2,
+    "measured_hex": "#035840",
+    "slug": "pimlico-4",
+    "wanted_hex": "#00A651"
+   },
+   {
+    "channel": "hat",
+    "colour": "tan",
+    "delta_e": 7.7,
+    "measured_hex": "#D3A87E",
+    "slug": "pimlico-5",
+    "wanted_hex": "#C48E5B"
+   },
+   {
+    "channel": "armbands",
+    "colour": "brown",
+    "delta_e": 13.9,
+    "measured_hex": "#6E3B26",
+    "slug": "pimlico-5",
+    "wanted_hex": "#8E6453"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 8.1,
+    "measured_hex": "#62397F",
+    "slug": "pimlico-5",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "delta_e": 3.8,
+    "measured_hex": "#AD4027",
+    "slug": "millbank-1",
+    "wanted_hex": "#BF4227"
+   },
+   {
+    "channel": "armbands",
+    "colour": "purple",
+    "delta_e": 9.8,
+    "measured_hex": "#8A439A",
+    "slug": "millbank-1",
+    "wanted_hex": "#964F7E"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 8.3,
+    "measured_hex": "#54276E",
+    "slug": "millbank-1",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "delta_e": 3.4,
+    "measured_hex": "#BA3D15",
+    "slug": "millbank-2",
+    "wanted_hex": "#BF4227"
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "delta_e": 11.5,
+    "measured_hex": "#FAE30E",
+    "slug": "millbank-2",
+    "wanted_hex": "#FCC221"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "black",
+    "delta_e": 4.5,
+    "measured_hex": "#060709",
+    "slug": "millbank-2",
+    "wanted_hex": "#1A1A1A"
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "delta_e": 6.1,
+    "measured_hex": "#CB5735",
+    "slug": "millbank-3",
+    "wanted_hex": "#BF4227"
+   },
+   {
+    "channel": "armbands",
+    "colour": "lime",
+    "delta_e": 12.5,
+    "measured_hex": "#6CD755",
+    "slug": "millbank-3",
+    "wanted_hex": "#AAC634"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 10.5,
+    "measured_hex": "#F7CC0E",
+    "slug": "millbank-3",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "delta_e": 6.3,
+    "measured_hex": "#A23C1F",
+    "slug": "millbank-4",
+    "wanted_hex": "#BF4227"
+   },
+   {
+    "channel": "armbands",
+    "colour": "brown",
+    "delta_e": 16.2,
+    "measured_hex": "#6C331B",
+    "slug": "millbank-4",
+    "wanted_hex": "#8E6453"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "orange",
+    "delta_e": 5.9,
+    "measured_hex": "#EE700A",
+    "slug": "millbank-4",
+    "wanted_hex": "#FF8200"
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "delta_e": 12.5,
+    "measured_hex": "#F35325",
+    "slug": "millbank-5",
+    "wanted_hex": "#BF4227"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 5.2,
+    "measured_hex": "#FC6803",
+    "slug": "millbank-5",
+    "wanted_hex": "#FA7A08"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "delta_e": 3.9,
+    "measured_hex": "#BE081B",
+    "slug": "millbank-5",
+    "wanted_hex": "#B00020"
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "delta_e": 23.7,
+    "measured_hex": "#834E47",
+    "slug": "horseferry-1",
+    "wanted_hex": "#DA7B70"
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "delta_e": 4.8,
+    "measured_hex": "#F7CC07",
+    "slug": "horseferry-1",
+    "wanted_hex": "#FCC221"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 8.9,
+    "measured_hex": "#F7D10F",
+    "slug": "horseferry-1",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "delta_e": 7.5,
+    "measured_hex": "#F49483",
+    "slug": "horseferry-2",
+    "wanted_hex": "#DA7B70"
+   },
+   {
+    "channel": "armbands",
+    "colour": "lime",
+    "delta_e": 9.9,
+    "measured_hex": "#D4EE3E",
+    "slug": "horseferry-2",
+    "wanted_hex": "#AAC634"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "orange",
+    "delta_e": 7.1,
+    "measured_hex": "#EE6C0E",
+    "slug": "horseferry-2",
+    "wanted_hex": "#FF8200"
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "delta_e": 13.3,
+    "measured_hex": "#F8AFA3",
+    "slug": "horseferry-3",
+    "wanted_hex": "#DA7B70"
+   },
+   {
+    "channel": "armbands",
+    "colour": "blue",
+    "delta_e": 4.3,
+    "measured_hex": "#015BBE",
+    "slug": "horseferry-3",
+    "wanted_hex": "#0F61A6"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "delta_e": 1.7,
+    "measured_hex": "#B50B1F",
+    "slug": "horseferry-3",
+    "wanted_hex": "#B00020"
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "delta_e": 14.3,
+    "measured_hex": "#FBB3A9",
+    "slug": "horseferry-4",
+    "wanted_hex": "#DA7B70"
+   },
+   {
+    "channel": "armbands",
+    "colour": "red",
+    "delta_e": 4.6,
+    "measured_hex": "#E9041A",
+    "slug": "horseferry-4",
+    "wanted_hex": "#F5252F"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "green",
+    "delta_e": 17.5,
+    "measured_hex": "#027B5A",
+    "slug": "horseferry-4",
+    "wanted_hex": "#00A651"
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "delta_e": 10.7,
+    "measured_hex": "#F7A391",
+    "slug": "horseferry-5",
+    "wanted_hex": "#DA7B70"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 3.3,
+    "measured_hex": "#FD6F03",
+    "slug": "horseferry-5",
+    "wanted_hex": "#FA7A08"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 8.5,
+    "measured_hex": "#51286E",
+    "slug": "horseferry-5",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "delta_e": 19.1,
+    "measured_hex": "#0D3D32",
+    "slug": "victoria-1",
+    "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "armbands",
+    "colour": "brown",
+    "delta_e": 15.8,
+    "measured_hex": "#6D3816",
+    "slug": "victoria-1",
+    "wanted_hex": "#8E6453"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 8.4,
+    "measured_hex": "#F0D00D",
+    "slug": "victoria-1",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "delta_e": 17.7,
+    "measured_hex": "#0E4238",
+    "slug": "victoria-2",
+    "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "delta_e": 11.0,
+    "measured_hex": "#F9E117",
+    "slug": "victoria-2",
+    "wanted_hex": "#FCC221"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 8.2,
+    "measured_hex": "#57367D",
+    "slug": "victoria-2",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "delta_e": 18.0,
+    "measured_hex": "#06423C",
+    "slug": "victoria-3",
+    "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 7.9,
+    "measured_hex": "#FA5F0C",
+    "slug": "victoria-3",
+    "wanted_hex": "#FA7A08"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "blue",
+    "delta_e": 14.1,
+    "measured_hex": "#024BA5",
+    "slug": "victoria-3",
+    "wanted_hex": "#0072CE"
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "delta_e": 19.3,
+    "measured_hex": "#063F2C",
+    "slug": "victoria-4",
+    "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "armbands",
+    "colour": "purple",
+    "delta_e": 16.5,
+    "measured_hex": "#71218E",
+    "slug": "victoria-4",
+    "wanted_hex": "#964F7E"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "delta_e": 5.3,
+    "measured_hex": "#C10816",
+    "slug": "victoria-4",
+    "wanted_hex": "#B00020"
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "delta_e": 18.8,
+    "measured_hex": "#083F33",
+    "slug": "victoria-5",
+    "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "orange",
+    "delta_e": 9.2,
+    "measured_hex": "#F3640C",
+    "slug": "victoria-5",
+    "wanted_hex": "#FF8200"
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "delta_e": 15.6,
+    "measured_hex": "#12244F",
+    "slug": "vauxhall-1",
+    "wanted_hex": "#2D5170"
+   },
+   {
+    "channel": "armbands",
+    "colour": "lime",
+    "delta_e": 12.1,
+    "measured_hex": "#ADF757",
+    "slug": "vauxhall-1",
+    "wanted_hex": "#AAC634"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "green",
+    "delta_e": 17.4,
+    "measured_hex": "#027953",
+    "slug": "vauxhall-1",
+    "wanted_hex": "#00A651"
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "delta_e": 14.9,
+    "measured_hex": "#182753",
+    "slug": "vauxhall-2",
+    "wanted_hex": "#2D5170"
+   },
+   {
+    "channel": "armbands",
+    "colour": "red",
+    "delta_e": 5.3,
+    "measured_hex": "#E30B1E",
+    "slug": "vauxhall-2",
+    "wanted_hex": "#F5252F"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "delta_e": 5.6,
+    "measured_hex": "#C7101F",
+    "slug": "vauxhall-2",
+    "wanted_hex": "#B00020"
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "delta_e": 13.4,
+    "measured_hex": "#0C2967",
+    "slug": "vauxhall-3",
+    "wanted_hex": "#2D5170"
+   },
+   {
+    "channel": "armbands",
+    "colour": "purple",
+    "delta_e": 18.9,
+    "measured_hex": "#7736C5",
+    "slug": "vauxhall-3",
+    "wanted_hex": "#964F7E"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 6.9,
+    "measured_hex": "#F9D80D",
+    "slug": "vauxhall-3",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "delta_e": 13.6,
+    "measured_hex": "#0A2868",
+    "slug": "vauxhall-4",
+    "wanted_hex": "#2D5170"
+   },
+   {
+    "channel": "armbands",
+    "colour": "blue",
+    "delta_e": 5.5,
+    "measured_hex": "#0253AD",
+    "slug": "vauxhall-4",
+    "wanted_hex": "#0F61A6"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 6.1,
+    "measured_hex": "#5A2F80",
+    "slug": "vauxhall-4",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "delta_e": 17.4,
+    "measured_hex": "#0C1E48",
+    "slug": "vauxhall-5",
+    "wanted_hex": "#2D5170"
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "delta_e": 14.2,
+    "measured_hex": "#F5EA36",
+    "slug": "vauxhall-5",
+    "wanted_hex": "#FCC221"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "orange",
+    "delta_e": 7.0,
+    "measured_hex": "#F06C0B",
+    "slug": "vauxhall-5",
+    "wanted_hex": "#FF8200"
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "delta_e": 17.9,
+    "measured_hex": "#570D27",
+    "slug": "smith-square-1",
+    "wanted_hex": "#A62C3E"
+   },
+   {
+    "channel": "armbands",
+    "colour": "brown",
+    "delta_e": 15.3,
+    "measured_hex": "#773717",
+    "slug": "smith-square-1",
+    "wanted_hex": "#8E6453"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "delta_e": 1.9,
+    "measured_hex": "#B40A1D",
+    "slug": "smith-square-1",
+    "wanted_hex": "#B00020"
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "delta_e": 12.8,
+    "measured_hex": "#6F0524",
+    "slug": "smith-square-2",
+    "wanted_hex": "#A62C3E"
+   },
+   {
+    "channel": "armbands",
+    "colour": "red",
+    "delta_e": 7.3,
+    "measured_hex": "#E0080B",
+    "slug": "smith-square-2",
+    "wanted_hex": "#F5252F"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "delta_e": 7.9,
+    "measured_hex": "#5B2F75",
+    "slug": "smith-square-2",
+    "wanted_hex": "#6A1B9A"
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "delta_e": 14.4,
+    "measured_hex": "#67011F",
+    "slug": "smith-square-3",
+    "wanted_hex": "#A62C3E"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 7.2,
+    "measured_hex": "#FB6108",
+    "slug": "smith-square-3",
+    "wanted_hex": "#FA7A08"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "delta_e": 8.0,
+    "measured_hex": "#F7D416",
+    "slug": "smith-square-3",
+    "wanted_hex": "#FFF200"
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "delta_e": 16.5,
+    "measured_hex": "#5D0B26",
+    "slug": "smith-square-4",
+    "wanted_hex": "#A62C3E"
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "delta_e": 10.7,
+    "measured_hex": "#F4DD0B",
+    "slug": "smith-square-4",
+    "wanted_hex": "#FCC221"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "green",
+    "delta_e": 18.0,
+    "measured_hex": "#02764C",
+    "slug": "smith-square-4",
+    "wanted_hex": "#00A651"
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "delta_e": 16.6,
+    "measured_hex": "#5D0624",
+    "slug": "smith-square-5",
+    "wanted_hex": "#A62C3E"
+   },
+   {
+    "channel": "armbands",
+    "colour": "blue",
+    "delta_e": 4.3,
+    "measured_hex": "#1558AF",
+    "slug": "smith-square-5",
+    "wanted_hex": "#0F61A6"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "black",
+    "delta_e": 4.6,
+    "measured_hex": "#07080C",
+    "slug": "smith-square-5",
+    "wanted_hex": "#1A1A1A"
+   }
+  ],
+  "wardrobe_variance": [
+   {
+    "channel": "armbands",
+    "colour": "blue",
+    "max_pairwise_delta_e": 5.6,
+    "mean_pairwise_delta_e": 3.2,
+    "worn_by": 4
+   },
+   {
+    "channel": "armbands",
+    "colour": "brown",
+    "max_pairwise_delta_e": 4.4,
+    "mean_pairwise_delta_e": 3.6,
+    "worn_by": 4
+   },
+   {
+    "channel": "armbands",
+    "colour": "lime",
+    "max_pairwise_delta_e": 16.3,
+    "mean_pairwise_delta_e": 11.7,
+    "worn_by": 3
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "max_pairwise_delta_e": 4.7,
+    "mean_pairwise_delta_e": 2.7,
+    "worn_by": 4
+   },
+   {
+    "channel": "armbands",
+    "colour": "purple",
+    "max_pairwise_delta_e": 9.8,
+    "mean_pairwise_delta_e": 7.9,
+    "worn_by": 4
+   },
+   {
+    "channel": "armbands",
+    "colour": "red",
+    "max_pairwise_delta_e": 3.0,
+    "mean_pairwise_delta_e": 2.4,
+    "worn_by": 3
+   },
+   {
+    "channel": "armbands",
+    "colour": "yellow",
+    "max_pairwise_delta_e": 9.6,
+    "mean_pairwise_delta_e": 4.2,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "burgundy",
+    "max_pairwise_delta_e": 6.6,
+    "mean_pairwise_delta_e": 3.6,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "green",
+    "max_pairwise_delta_e": 6.1,
+    "mean_pairwise_delta_e": 2.9,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "navy",
+    "max_pairwise_delta_e": 5.9,
+    "mean_pairwise_delta_e": 3.5,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "rust",
+    "max_pairwise_delta_e": 18.8,
+    "mean_pairwise_delta_e": 9.8,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "salmon",
+    "max_pairwise_delta_e": 35.8,
+    "mean_pairwise_delta_e": 16.3,
+    "worn_by": 5
+   },
+   {
+    "channel": "hat",
+    "colour": "tan",
+    "max_pairwise_delta_e": 16.2,
+    "mean_pairwise_delta_e": 11.3,
+    "worn_by": 3
+   },
+   {
+    "channel": "tshirt",
+    "colour": "black",
+    "max_pairwise_delta_e": 0.9,
+    "mean_pairwise_delta_e": 0.9,
+    "worn_by": 2
+   },
+   {
+    "channel": "tshirt",
+    "colour": "green",
+    "max_pairwise_delta_e": 11.7,
+    "mean_pairwise_delta_e": 6.7,
+    "worn_by": 4
+   },
+   {
+    "channel": "tshirt",
+    "colour": "orange",
+    "max_pairwise_delta_e": 4.0,
+    "mean_pairwise_delta_e": 2.1,
+    "worn_by": 4
+   },
+   {
+    "channel": "tshirt",
+    "colour": "purple",
+    "max_pairwise_delta_e": 5.3,
+    "mean_pairwise_delta_e": 3.2,
+    "worn_by": 6
+   },
+   {
+    "channel": "tshirt",
+    "colour": "red",
+    "max_pairwise_delta_e": 4.1,
+    "mean_pairwise_delta_e": 2.6,
+    "worn_by": 5
+   },
+   {
+    "channel": "tshirt",
+    "colour": "yellow",
+    "max_pairwise_delta_e": 3.6,
+    "mean_pairwise_delta_e": 2.0,
+    "worn_by": 6
+   }
+  ]
+ },
  "scenes": {
   "background": {
    "prompt": "A photograph of an empty domestic living room, taken on a mobile phone, with nobody in it.\n\nA small British living room: a wooden bookcase of paperbacks against one wall, trailing pothos plants along the tops of the walls, a wooden internal door standing open onto a hallway, laminate wood flooring, a patterned red runner rug, a wall-mounted television, and a wooden cabinet. Warm domestic lighting from a table lamp, daylight from out of frame.\n\nSTYLE: an ordinary phone snapshot, natural colours, no filter, no people, no text or watermark. Framed from about chest height looking along the room towards the open door."
@@ -50177,7 +51172,7 @@
     "occlusion": null,
     "other_kitted_in_frame": [],
     "probes": "the zoom follow-up: too far to read a colour without going closer",
-    "prompt": "A wide photograph of Horseferry Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a wide four-storey street of offices and mansion blocks, plane trees at the kerb. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry, high thin cloud, no wind.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 40-year-old white male, slim build, short and tousled brown hair, a folded newspaper under one arm. Turned three-quarters away from the camera, looking off to one side, half-turned away with a phone held up to one ear.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain blue trousers in exactly #2E5FA3 (includes navy and denim); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a red elasticated armband on each upper arm in exactly #F5252F (bright red -- not orange, not brown).\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, trousers, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
+    "prompt": "A wide photograph of Horseferry Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a wide four-storey street of offices and mansion blocks, plane trees at the kerb. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry, high thin cloud, no wind.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame, and they must be somewhere near the middle of it rather than out at one edge: the picture is later cropped square-on to them, and a figure against the edge of the frame forces that crop in so tight that the street they are standing in disappears.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 40-year-old white male, slim build, short and tousled brown hair, a folded newspaper under one arm. Turned three-quarters away from the camera, looking off to one side, half-turned away with a phone held up to one ear.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain blue trousers in exactly #2E5FA3 (includes navy and denim); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a red elasticated armband on each upper arm in exactly #F5252F (bright red -- not orange, not brown).\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, trousers, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
     "scenario": "S6",
     "separation_m": 30.0,
     "setting": "a wide four-storey street of offices and mansion blocks, plane trees at the kerb",
@@ -50457,7 +51452,7 @@
     "occlusion": "a plane tree",
     "other_kitted_in_frame": [],
     "probes": "two channels only - the roadmap's hardest readable case",
-    "prompt": "A wide photograph of Vauxhall Bridge Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a busy arterial road, four lanes, railings along the pavement. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:41, full darkness, lit only by street lighting and shop windows - pools of warm sodium and cold LED with genuinely dark gaps between them. Weather: dry after earlier rain, damp pavements reflecting the light.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 18-year-old of another ethnic background male, average build, long wavy auburn hair, a cardigan knotted round the waist, wearing glasses. Facing the camera, looking towards it, leaning against a wall looking straight down the lens, one hand in a pocket.\nWEARING: a plain red t-shirt in exactly #B00020; a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol).\nNOT VISIBLE: the subject's trousers, armbands must not be visible in the photograph at all.\nIN THE WAY: a plane tree partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt and cap must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
+    "prompt": "A wide photograph of Vauxhall Bridge Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a busy arterial road, four lanes, railings along the pavement. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:41, full darkness, lit only by street lighting and shop windows - pools of warm sodium and cold LED with genuinely dark gaps between them. Weather: dry after earlier rain, damp pavements reflecting the light.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame, and they must be somewhere near the middle of it rather than out at one edge: the picture is later cropped square-on to them, and a figure against the edge of the frame forces that crop in so tight that the street they are standing in disappears.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 18-year-old of another ethnic background male, average build, long wavy auburn hair, a cardigan knotted round the waist, wearing glasses. Facing the camera, looking towards it, leaning against a wall looking straight down the lens, one hand in a pocket.\nWEARING: a plain red t-shirt in exactly #B00020; a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol).\nNOT VISIBLE: the subject's trousers, armbands must not be visible in the photograph at all.\nIN THE WAY: a plane tree partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt and cap must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
     "scenario": "S10",
     "separation_m": 30.0,
     "setting": "a busy arterial road, four lanes, railings along the pavement",

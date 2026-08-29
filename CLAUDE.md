@@ -156,6 +156,15 @@ inventing a look. What makes it work:
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).
+  - `test_world/` — the deterministic thirty-player sample game (roadmap R11):
+    a cast dealt to locked counts, an hour of simulated movement and
+    phone-shaped telemetry over the real venue, ten shot scenarios *selected*
+    out of the encounter pool rather than invented, and a content-addressed
+    image store. Driven by `python -m backend.test_world <world|scenes|
+    generate|observe|gate|gateb|check>`; `world.json` in
+    `tests/fixtures/test_game/` is its single source of truth and everything
+    else is derived from it. `MAKE_DEBUG_ENTRIES` builds this game, so the
+    sample database is a real crowd rather than ten empty teams.
 - `scripts/` — standalone analysis tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
@@ -341,6 +350,21 @@ Three deployment targets share one service definition:
   dropping the map into `react-ui/src/images/` and adding one line to
   `react-ui/src/mapImages.js` — nothing in `MapView.js` should need touching.
   Note the resort venue currently active is a temporary test one.
+- **The test world costs money to change, and only in one direction.** An
+  image in `tests/fixtures/test_game/images/` is named for the hash of its
+  prompt, its input images, the model and the parameters, so editing a scene
+  description regenerates exactly the images it touches and nothing else —
+  and re-running `generate` when nothing has changed sends nothing at all.
+  Generation goes through OpenRouter's **Image** API
+  (`OpenRouterImageClient`), *not* `/chat/completions`, which does not serve
+  image models; the default is `bytedance-seed/seedream-5-0-lite` at about
+  $0.035 a picture. Google models are refused in both the generation and the
+  localisation paths by an explicit guard, because the recogniser under test
+  is a Google model and using one to make or measure its own inputs would
+  make the benchmark circular. Measurements from `observe` are recorded and
+  reported, never acted on: nothing regenerates an image because a colour
+  came out wrong. Wanting a different picture means editing the scene
+  description.
 - Run `pre-commit run --all-files` before committing, and never introduce
   `FIXME` comments (CI gate).
 - **AI shot review** (`backend/ai_shot_review.py`, `backend/shot_vision.py`,
