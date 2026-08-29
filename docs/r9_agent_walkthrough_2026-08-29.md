@@ -16,6 +16,23 @@ judgement rather than on finding 500s.
 **No code was changed.** This report and its appendices are the only commit.
 Every finding is written down, none is fixed.
 
+**Freshness.** The pass ran against `6cf5608`. Five PRs (#165–#169) landed on
+master while it was running, and this branch has since been merged up to
+`bd97bc2`. Two of them touch pages this pass tested:
+
+- **#168** ("Show the expected outfit on the kit-check page") substantially
+  reworks `react-ui/src/ReferencePhotos.js`, which agent A8 walked. The page
+  gained a new feature; the three findings against it were re-checked on
+  master and **all still stand** — `ranked.slice(1, 4)` at :189, the
+  `Probably ${topName}` headline at :163, and the uncapped `GameSelector`.
+- **#167** ("Show OpenRouter credit balance in the admin footer") renames
+  `VersionFooter` to `VersionReadout` and adds a balance line beside it, so
+  A12's line references to the footer are stale even though its finding — the
+  footer identifies the *backend* only — is unaffected.
+
+Nothing else in #165–#169 touches code this pass reported on. Anything found
+here should still be confirmed against the current head before it is acted on.
+
 ---
 
 ## How it was run
