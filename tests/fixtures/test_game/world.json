@@ -49797,6 +49797,7 @@
      "height": "chest height, phone held up in both hands"
     },
     "compass_class": "modest",
+    "distance_band": "close",
     "encounter_id": "E0052",
     "heading": 191.0,
     "intended_result": "miss",
@@ -49868,6 +49869,7 @@
      "height": "chest height, phone held up in both hands"
     },
     "compass_class": "large",
+    "distance_band": "close",
     "encounter_id": "E0004",
     "heading": 159.4,
     "intended_result": "bystander",
@@ -49931,6 +49933,7 @@
      "height": "chest height, phone held up in both hands"
     },
     "compass_class": "accurate",
+    "distance_band": "close",
     "encounter_id": "E0026",
     "heading": 160.7,
     "intended_result": "hit",
@@ -49997,6 +50000,7 @@
      "height": "chest height, phone held up in one hand"
     },
     "compass_class": "miscalibrated",
+    "distance_band": "mid",
     "encounter_id": "E0012",
     "heading": 288.7,
     "intended_result": "hit",
@@ -50082,6 +50086,7 @@
      "height": "chest height, phone held up in one hand"
     },
     "compass_class": "accurate",
+    "distance_band": "mid",
     "encounter_id": "E0049",
     "heading": 18.1,
     "intended_result": "hit",
@@ -50161,6 +50166,7 @@
      "height": "chest height, phone held up and slightly zoomed"
     },
     "compass_class": "modest",
+    "distance_band": "distant",
     "encounter_id": "E0058",
     "heading": 137.8,
     "intended_result": "hit",
@@ -50171,7 +50177,7 @@
     "occlusion": null,
     "other_kitted_in_frame": [],
     "probes": "the zoom follow-up: too far to read a colour without going closer",
-    "prompt": "A candid photograph taken on a mobile phone by someone playing a street game, held up quickly and not carefully composed.\n\nSETTING: Horseferry Road, Westminster, London - a wide four-storey street of offices and mansion blocks, plane trees at the kerb.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry, high thin cloud, no wind.\nCAMERA: 25-35 metres from the subject, chest height, phone held up and slightly zoomed.\nHOW BIG IN FRAME: the subject appears no more than about one tenth of the frame height - a small, recognisable figure a long way down the street, with the buildings, road and pavement taking up most of the picture. Their face should be too small to make out. This is the size they really are at that distance, and it matters more than making a nice picture of them - the photograph is cropped afterwards, so leave room on all sides.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 40-year-old white male, slim build, short and tousled brown hair, a folded newspaper under one arm. Turned three-quarters away from the camera, looking off to one side, half-turned away with a phone held up to one ear.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain blue trousers in exactly #2E5FA3 (includes navy and denim); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a red elasticated armband on each upper arm in exactly #F5252F (bright red -- not orange, not brown).\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, trousers, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
+    "prompt": "A wide photograph of Horseferry Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a wide four-storey street of offices and mansion blocks, plane trees at the kerb. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry, high thin cloud, no wind.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 40-year-old white male, slim build, short and tousled brown hair, a folded newspaper under one arm. Turned three-quarters away from the camera, looking off to one side, half-turned away with a phone held up to one ear.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain blue trousers in exactly #2E5FA3 (includes navy and denim); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a red elasticated armband on each upper arm in exactly #F5252F (bright red -- not orange, not brown).\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, trousers, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
     "scenario": "S6",
     "separation_m": 30.0,
     "setting": "a wide four-storey street of offices and mansion blocks, plane trees at the kerb",
@@ -50232,6 +50238,7 @@
      "height": "chest height, phone held up in both hands"
     },
     "compass_class": "large",
+    "distance_band": "close",
     "encounter_id": "E0059",
     "heading": 330.5,
     "intended_result": "hit",
@@ -50298,6 +50305,7 @@
      "height": "chest height, phone held up in one hand"
     },
     "compass_class": "modest",
+    "distance_band": "mid",
     "encounter_id": "E0098",
     "heading": 173.2,
     "intended_result": "hit",
@@ -50367,6 +50375,7 @@
      "height": "chest height, phone held up in one hand"
     },
     "compass_class": "accurate",
+    "distance_band": "mid",
     "encounter_id": "E0218",
     "heading": 112.9,
     "intended_result": "hit",
@@ -50437,6 +50446,7 @@
      "height": "chest height, phone held up and slightly zoomed"
     },
     "compass_class": "modest",
+    "distance_band": "distant",
     "encounter_id": "E0157",
     "heading": 219.9,
     "intended_result": "hit",
@@ -50447,7 +50457,7 @@
     "occlusion": "a plane tree",
     "other_kitted_in_frame": [],
     "probes": "two channels only - the roadmap's hardest readable case",
-    "prompt": "A candid photograph taken on a mobile phone by someone playing a street game, held up quickly and not carefully composed.\n\nSETTING: Vauxhall Bridge Road, Westminster, London - a busy arterial road, four lanes, railings along the pavement.\nTIME AND LIGHT: 19:41, full darkness, lit only by street lighting and shop windows - pools of warm sodium and cold LED with genuinely dark gaps between them. Weather: dry after earlier rain, damp pavements reflecting the light.\nCAMERA: 25-35 metres from the subject, chest height, phone held up and slightly zoomed.\nHOW BIG IN FRAME: the subject appears no more than about one tenth of the frame height - a small, recognisable figure a long way down the street, with the buildings, road and pavement taking up most of the picture. Their face should be too small to make out. This is the size they really are at that distance, and it matters more than making a nice picture of them - the photograph is cropped afterwards, so leave room on all sides.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 18-year-old of another ethnic background male, average build, long wavy auburn hair, a cardigan knotted round the waist, wearing glasses. Facing the camera, looking towards it, leaning against a wall looking straight down the lens, one hand in a pocket.\nWEARING: a plain red t-shirt in exactly #B00020; a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol).\nNOT VISIBLE: the subject's trousers, armbands must not be visible in the photograph at all.\nIN THE WAY: a plane tree partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt and cap must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
+    "prompt": "A wide photograph of Vauxhall Bridge Road, Westminster, London, taken on a mobile phone by somebody standing on the pavement. The subject of the picture is the street itself.\n\nTHE STREET: a busy arterial road, four lanes, railings along the pavement. It fills the frame - road, pavement, buildings, parked cars, the sky above.\nTIME AND LIGHT: 19:41, full darkness, lit only by street lighting and shop windows - pools of warm sodium and cold LED with genuinely dark gaps between them. Weather: dry after earlier rain, damp pavements reflecting the light.\n\nSOMEWHERE IN IT, ONE PERSON: a long way down the street, about 25-35 metres from the camera, there is one person, standing on the pavement in the middle distance. They are a small figure in a big picture, their face too small to make out. Do not walk closer to them, do not zoom in, and do not compose the photograph around them - they are incidental. Their whole body from cap to shoes must be inside the frame.\n\nTHE SAME PERSON: the attached indoor photograph is a posed reference shot of this person, taken standing still against a wall before the game started. Take from it only who they are - face, hair, build - and the exact colours of their kit. Everything else must be different: this is a candid photograph of them out in the street later that evening. Do not reproduce the reference's pose, expression, camera angle, framing or lighting.\n\nSUBJECT: 18-year-old of another ethnic background male, average build, long wavy auburn hair, a cardigan knotted round the waist, wearing glasses. Facing the camera, looking towards it, leaning against a wall looking straight down the lens, one hand in a pocket.\nWEARING: a plain red t-shirt in exactly #B00020; a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol).\nNOT VISIBLE: the subject's trousers, armbands must not be visible in the photograph at all.\nIN THE WAY: a plane tree partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt and cap must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
     "scenario": "S10",
     "separation_m": 30.0,
     "setting": "a busy arterial road, four lanes, railings along the pavement",

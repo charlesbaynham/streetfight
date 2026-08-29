@@ -199,6 +199,7 @@ def scene_description(world, chosen, scenario, extra_kitted) -> dict:
         "locale_kind": locale.kind,
         "setting": locale.description,
         "separation_m": chosen["separation_m"],
+        "distance_band": scenario.distance,
         "camera": {
             "distance": distance_words,
             "height": camera_height,
@@ -241,21 +242,61 @@ def _tick_time(tick: int) -> str:
     return (spec.START_LOCAL + datetime.timedelta(seconds=int(tick))).strftime("%H:%M")
 
 
-def shot_prompt(scene: dict) -> str:
-    """The generation prompt for one shot photograph."""
-    lines = [
-        "A candid photograph taken on a mobile phone by someone playing a "
-        "street game, held up quickly and not carefully composed.",
+def _street_led_opening(scene: dict) -> List[str]:
+    """The opening of a distant shot: a photograph *of a street*.
+
+    Told "25-35 metres from the subject" the model renders a portrait anyway,
+    and adding a fraction of the frame height only moved it from about half to
+    about a third. It frames whatever the sentence is *about* -- so for the
+    distant band the sentence is about the street, and the player is an
+    incidental detail in it. Measured while wiring up Gate E: this reliably
+    fills the frame with road, cars and buildings, though the figure still
+    lands nearer a third of the frame height than the tenth it asks for. The
+    rest of the way is the aim-point crop's job, not the prompt's.
+    """
+    return [
+        f"A wide photograph of {scene['locale']}, Westminster, London, taken "
+        "on a mobile phone by somebody standing on the pavement. The subject "
+        "of the picture is the street itself.",
         "",
-        f"SETTING: {scene['locale']}, Westminster, London - {scene['setting']}.",
+        f"THE STREET: {scene['setting']}. It fills the frame - road, "
+        "pavement, buildings, parked cars, the sky above.",
         f"TIME AND LIGHT: {scene['time_local']}, {LIGHT_WORDS[scene['light']]}. "
         f"Weather: {scene['weather']}.",
-        f"CAMERA: {scene['camera']['distance']} from the subject, "
-        f"{scene['camera']['height']}.",
-        f"HOW BIG IN FRAME: the subject appears {scene['camera']['framing']}. "
-        f"This is the size they really are at that distance, and it matters "
-        f"more than making a nice picture of them - the photograph is cropped "
-        f"afterwards, so leave room on all sides.",
+        "",
+        "SOMEWHERE IN IT, ONE PERSON: a long way down the street, about "
+        f"{scene['camera']['distance']} from the camera, there is one person, "
+        "standing on the pavement in the middle distance. They are a small "
+        "figure in a big picture, their face too small to make out. Do not "
+        "walk closer to them, do not zoom in, and do not compose the "
+        "photograph around them - they are incidental. Their whole body from "
+        "cap to shoes must be inside the frame.",
+    ]
+
+
+def shot_prompt(scene: dict) -> str:
+    """The generation prompt for one shot photograph."""
+    if scene["distance_band"] == "distant":
+        lines = _street_led_opening(scene)
+    else:
+        lines = [
+            "A candid photograph taken on a mobile phone by someone playing a "
+            "street game, held up quickly and not carefully composed.",
+            "",
+            f"SETTING: {scene['locale']}, Westminster, London - "
+            f"{scene['setting']}.",
+            f"TIME AND LIGHT: {scene['time_local']}, "
+            f"{LIGHT_WORDS[scene['light']]}. Weather: {scene['weather']}.",
+            f"CAMERA: {scene['camera']['distance']} from the subject, "
+            f"{scene['camera']['height']}.",
+            f"HOW BIG IN FRAME: the subject appears "
+            f"{scene['camera']['framing']}. This is the size they really are "
+            f"at that distance, and it matters more than making a nice "
+            f"picture of them - the photograph is cropped afterwards, so "
+            f"leave room on all sides.",
+        ]
+
+    lines += [
         "",
         "THE SAME PERSON: the attached indoor photograph is a posed reference "
         "shot of this person, taken standing still against a wall before the "
