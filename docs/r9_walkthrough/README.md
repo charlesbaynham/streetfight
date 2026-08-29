@@ -23,9 +23,13 @@ reproduction steps and the reasoning behind each verdict.
 
 ## Reading these
 
-- **Screenshot paths are dangling.** Each agent references PNGs under a
+- **Screenshot paths are dangling** — each agent references PNGs under a
   scratch directory in the container this ran in, which no longer exists. The
-  descriptions of what the screenshots showed are in the text.
+  images themselves are preserved in
+  **`R9_walkthrough_screenshots.docx`** in the repository root: the same
+  report with 236 of the screenshots embedded under the findings they are
+  evidence for, plus a gallery per checklist line. Open that if you want to
+  see what an agent saw.
 - **Every CharlesBot verdict quoted came from a local stub**, not a real vision
   model — see the limitations section of the main report. Agents were asked to
   flag this themselves and did.
