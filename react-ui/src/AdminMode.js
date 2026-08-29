@@ -441,6 +441,7 @@ function AdminPanel() {
   const [games, setGames] = useState(null);
   const [users, setUsers] = useState([]);
   const [freeSlotsByGame, setFreeSlotsByGame] = useState({});
+  const [showUnnamed, setShowUnnamed] = useState(false);
 
   // Failures show up in AdminPage's error log box
   const update = useCallback(() => {
@@ -511,16 +512,31 @@ function AdminPanel() {
       <h2>Players</h2>
       <p>
         Everyone who has opened the app, including players not yet in a team.
+        Unnamed players are hidden by default.
+      </p>
+      <p>
+        <label>
+          <input
+            type="checkbox"
+            checked={showUnnamed}
+            onChange={(e) => setShowUnnamed(e.target.checked)}
+          />{" "}
+          {`Show unnamed players (${
+            users.filter((user) => !user.name).length
+          })`}
+        </label>
       </p>
       <ul>
-        {users.map((user) => (
-          <PlayerRow
-            key={user.id}
-            user={user}
-            teams={allTeams}
-            freeSlotsByGame={freeSlotsByGame}
-          />
-        ))}
+        {users
+          .filter((user) => showUnnamed || user.name)
+          .map((user) => (
+            <PlayerRow
+              key={user.id}
+              user={user}
+              teams={allTeams}
+              freeSlotsByGame={freeSlotsByGame}
+            />
+          ))}
       </ul>
 
       <Row>
