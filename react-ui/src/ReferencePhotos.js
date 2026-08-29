@@ -7,9 +7,16 @@
 // same vision pipeline a real shot uses, and see whether their outfit actually
 // decodes to *them*. Nothing here is a shot - no HP, no ammo, no queue.
 //
+// The armband and the hat are handed over at this exact moment, so the page
+// says what they should be *before* there is a photograph to check: which
+// colours to take out of the box, and what the player's own two garments are
+// supposed to be. Afterwards the same list gains a second column - what the
+// model actually read - so a failure names the garment that is wrong rather
+// than only the player.
+//
 // Driven one-handed on a phone with a box of armbands in the other, so it is a
-// single column of big targets: pick a player, take the photo, read the
-// verdict, move on.
+// single column of big targets: pick a player, hand out their kit, take the
+// photo, read the verdict, move on.
 
 import React, { useCallback, useEffect, useState } from "react";
 
@@ -18,6 +25,7 @@ import { AdminPage, adminPost } from "./AdminCommon";
 import UpdateListener from "./UpdateListener";
 import { MyWebcam } from "./MyWebcam";
 import { ChannelTags, isMarginal, outcomeTag, zoomTag } from "./ShotQueue";
+import { Swatch } from "./Swatch";
 
 import styles from "./ReferencePhotos.module.css";
 // The reading is rendered with the shot queue's own tags, so a review reads
@@ -66,6 +74,30 @@ function rosterStatus(row) {
   ];
 }
 
+// The outfit at a glance, so the admin can see whose armband to fetch without
+// opening the row. Ordered with the garments we supply first, matching the
+// order they are handed over in.
+function RosterOutfit({ appearance }) {
+  if (!appearance) return <span className={styles.hint}>no outfit</span>;
+
+  const entries = Object.entries(appearance).sort(
+    ([, a], [, b]) => (b.provided ? 1 : 0) - (a.provided ? 1 : 0),
+  );
+
+  return (
+    <span className={styles.rosterOutfit}>
+      {entries.map(([name, entry]) => (
+        <Swatch
+          key={name}
+          hex={entry.hex}
+          label={`${name}: ${entry.colour || "not in palette"}`}
+          small
+        />
+      ))}
+    </span>
+  );
+}
+
 function Roster({ rows, onSelect }) {
   if (rows.length === 0)
     return <p className={styles.hint}>No players in this game yet.</p>;
@@ -86,6 +118,7 @@ function Roster({ rows, onSelect }) {
                   {row.team_name || "no team"}
                 </small>
               </span>
+              <RosterOutfit appearance={row.expected_appearance} />
               <span className={`${styles.status} ${statusStyle}`}>{text}</span>
             </button>
           </li>
@@ -164,7 +197,128 @@ function IdentificationVerdict({ identification, playerName }) {
   );
 }
 
-function ReviewView({ state, review, playerName }) {
+// One garment, as a swatch and the colour's name. `entry` is a channel of
+// either an expected outfit or a review's reading - the backend gives both the
+// same {colour, hex} shape on purpose, so one component renders both columns.
+function Garment({ entry, missing = "not read", size = "normal" }) {
+  const colour = entry && entry.colour;
+  return (
+    <span className={styles.garment}>
+      <Swatch hex={(entry && entry.hex) || null} label={colour} size={size} />
+      <span className={styles.garmentColour}>{colour || missing}</span>
+    </span>
+  );
+}
+
+// What this player should be wearing, split by who supplies it. The hat and
+// the armband are handed over at this desk, so they come first and are labelled
+// as an instruction rather than a description: this list is read while reaching
+// into the box, before there is any photograph to check it against.
+function ExpectedOutfit({ appearance, playerName }) {
+  if (!appearance)
+    return (
+      <div className={`${styles.verdict} ${styles.verdictWarn}`}>
+        {playerName} has not picked an outfit, so there is nothing to hand out
+        or to check a photo against.
+      </div>
+    );
+
+  const entries = Object.entries(appearance);
+  const provided = entries.filter(([, entry]) => entry.provided);
+  const own = entries.filter(([, entry]) => !entry.provided);
+
+  const list = (rows) => (
+    <ul className={styles.outfitList}>
+      {rows.map(([name, entry]) => (
+        <li key={name} className={styles.outfitRow}>
+          <span className={styles.channelName}>{name}</span>
+          <Garment
+            entry={entry}
+            missing="anything - not part of their code"
+            size="large"
+          />
+        </li>
+      ))}
+    </ul>
+  );
+
+  return (
+    <div className={styles.expected}>
+      {provided.length > 0 ? (
+        <>
+          <h3 className={styles.expectedHeading}>Hand them</h3>
+          {list(provided)}
+        </>
+      ) : null}
+      {own.length > 0 ? (
+        <>
+          <h3 className={styles.expectedHeading}>
+            They should have turned up in
+          </h3>
+          {list(own)}
+        </>
+      ) : null}
+    </div>
+  );
+}
+
+// Expected against read, one row per garment. The identification verdict says
+// whether the outfit decoded to the right person; this says *which* garment is
+// wrong when it did not - the difference between "send them home" and "swap
+// their armband".
+function OutfitComparison({ appearance, channels }) {
+  const read = channels || {};
+  const names = Object.keys(appearance).concat(
+    Object.keys(read).filter((name) => !(name in appearance)),
+  );
+
+  return (
+    <ul className={styles.outfitList}>
+      {names.map((name) => {
+        const expected = appearance[name] || null;
+        const actual = read[name] || null;
+        const actualColour = actual && actual.colour;
+        const marginal = actual
+          ? isMarginal(actual, MARGINAL_CONFIDENCE)
+          : false;
+
+        let mark = "-";
+        let markStyle = styles.statusNone;
+        if (!expected || !actualColour) {
+          // Nothing to compare: an unreadable garment is a gap in the
+          // evidence, not a mismatch, and amber is where those live.
+          markStyle = styles.statusWarn;
+        } else if (actualColour === expected.colour) {
+          mark = marginal ? "~" : "✓";
+          markStyle = marginal ? styles.statusWarn : styles.statusGood;
+        } else {
+          mark = "✗";
+          markStyle = marginal ? styles.statusWarn : styles.statusBad;
+        }
+
+        return (
+          <li key={name} className={styles.comparisonRow}>
+            <span className={styles.channelName}>
+              {name}
+              {expected && expected.provided ? (
+                <small className={styles.rosterTeam}>we supply</small>
+              ) : null}
+            </span>
+            <Garment entry={expected} missing="no expectation" />
+            <span className={styles.arrow}>&rarr;</span>
+            <Garment entry={actual} />
+            <span className={`${styles.status} ${markStyle}`}>
+              {mark}
+              {marginal ? ` ${Math.round(100 * actual.confidence)}%` : null}
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function ReviewView({ state, review, playerName, expected }) {
   if (!state)
     return (
       <p className={styles.hint}>
@@ -196,11 +350,18 @@ function ReviewView({ state, review, playerName }) {
       <div className={tagStyles.tagRow}>
         {outcomeTag(review)}
         {zoomTag(review)}
-        <ChannelTags
-          channels={review.channels}
-          warnBelow={MARGINAL_CONFIDENCE}
-        />
+        {/* Only when there is nothing to compare against: the comparison below
+            says everything these tags do, garment by garment. */}
+        {expected ? null : (
+          <ChannelTags
+            channels={review.channels}
+            warnBelow={MARGINAL_CONFIDENCE}
+          />
+        )}
       </div>
+      {expected ? (
+        <OutfitComparison appearance={expected} channels={review.channels} />
+      ) : null}
       {marginal.length > 0 ? (
         <p className={styles.marginalWarning}>
           Marginal:{" "}
@@ -226,6 +387,7 @@ function ReviewView({ state, review, playerName }) {
 function PlayerDetail({ row, onClose, onChanged }) {
   const userId = row.user_id;
   const playerName = row.name || "This player";
+  const expected = row.expected_appearance || null;
 
   const [hasPhoto, setHasPhoto] = useState(row.has_photo);
   const [photo, setPhoto] = useState(null);
@@ -329,6 +491,9 @@ function PlayerDetail({ row, onClose, onChanged }) {
 
       {capturing ? (
         <>
+          {/* Before the photo, not after: this is the moment the armband and
+              the hat are handed over. */}
+          <ExpectedOutfit appearance={expected} playerName={playerName} />
           <MyWebcam
             className={styles.camera}
             trigger={trigger}
@@ -356,7 +521,20 @@ function PlayerDetail({ row, onClose, onChanged }) {
           ) : (
             <p className={styles.hint}>Loading the stored photo...</p>
           )}
-          <ReviewView state={state} review={review} playerName={playerName} />
+          {/* Until there is a reading to put beside it, the expectation is
+              shown on its own, so the kit can still be handed out from this
+              screen while a photo sits there unreviewed. Once the review lands
+              the comparison below carries it - and says the "no outfit picked"
+              case in the verdict, so it is not said twice. */}
+          {state === "done" && review ? null : (
+            <ExpectedOutfit appearance={expected} playerName={playerName} />
+          )}
+          <ReviewView
+            state={state}
+            review={review}
+            playerName={playerName}
+            expected={expected}
+          />
           <div className={styles.buttonRow}>
             <button
               className={styles.bigButton}

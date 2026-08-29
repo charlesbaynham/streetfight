@@ -94,7 +94,11 @@ inventing a look. What makes it work:
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who
-    has picked an outfit. Stored on the `User`, never as a `Shot`.
+    has picked an outfit. Stored on the `User`, never as a `Shot`. What the
+    player is *supposed* to be wearing rides on the roster instead
+    (`identity_admin.expected_outfit`, in each
+    `admin_get_reference_photo_status` row), shaped like a review's `channels`
+    so the page renders expectation and reading through one component.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
@@ -120,8 +124,12 @@ inventing a look. What makes it work:
     team join code lands on; it shares the colour `Swatch.js` component with
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
-    (roadmap R7): capture a reference photo per player and see whether it
-    decodes to them, reusing `ShotQueue.js`'s exported tag renderers.
+    (roadmap R7): it shows what each player is expected to be wearing - the hat
+    and armband we hand over first, *before* the camera, because that is the
+    moment they are handed over - captures a reference photo, and then puts the
+    model's reading beside that expectation garment by garment. It falls back to
+    `ShotQueue.js`'s exported tag renderers for a player with no outfit to
+    compare against.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
 - `server/` — Express server (`server/index.js`) that serves the built React app
   and proxies `/api` in production (`npm run frontend`).

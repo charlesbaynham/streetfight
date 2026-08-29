@@ -38,6 +38,18 @@ jest.mock("./MyWebcam", () => {
 
 const STORED_PHOTO = "data:image/jpeg;base64,STORED";
 
+// What the door is told to expect of a player: the two garments we hand over
+// marked as such, and the two they bring themselves.
+function makeAppearance(overrides = {}) {
+  return {
+    tshirt: { colour: "green", hex: "#00A651", provided: false },
+    trousers: { colour: "mustard", hex: "#C9962B", provided: false },
+    hat: { colour: "blue", hex: "#0072CE", provided: true },
+    armbands: { colour: "red", hex: "#B00020", provided: true },
+    ...overrides,
+  };
+}
+
 function makeRow(overrides = {}) {
   return {
     user_id: "user-1",
@@ -45,6 +57,7 @@ function makeRow(overrides = {}) {
     team_name: "Reds",
     has_photo: false,
     review_state: null,
+    expected_appearance: makeAppearance(),
     matches_expected: null,
     top_name: null,
     top_probability: null,
@@ -299,6 +312,79 @@ describe("capturing", () => {
   });
 });
 
+describe("the outfit we expect", () => {
+  test("is shown before the photo is taken, armband and hat first", async () => {
+    // The point of the page: the admin is standing at the box of armbands and
+    // needs to know which one to hand over, which is *before* there is any
+    // photograph to check it against.
+    installReferenceMock({ rows: [makeRow()] });
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    expect(screen.getByText("Hand them")).toBeInTheDocument();
+    expect(screen.getByText("armbands")).toBeInTheDocument();
+    expect(screen.getByText("red")).toBeInTheDocument();
+    expect(screen.getByText("blue")).toBeInTheDocument();
+    // ...and their own two garments, which we only check rather than issue
+    expect(
+      screen.getByText("They should have turned up in"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("mustard")).toBeInTheDocument();
+
+    // The camera is up at the same time, so it is one screen, not two
+    expect(
+      screen.getByRole("button", { name: "Photograph Alice" }),
+    ).toBeInTheDocument();
+  });
+
+  test("is put beside what the model read, garment by garment", async () => {
+    installReferenceMock({
+      rows: [makeRow({ has_photo: true, review_state: "done" })],
+      state: "done",
+      review: makeReview({
+        channels: {
+          tshirt: {
+            visible: true,
+            colour: "green",
+            confidence: 0.9,
+            hex: "#00A651",
+          },
+          trousers: {
+            visible: true,
+            colour: "black",
+            confidence: 0.9,
+            hex: "#1A1A1A",
+          },
+        },
+      }),
+    });
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    // The t-shirt is as picked, the trousers are not, and the two garments we
+    // hand out were not read at all - three different things, and the admin
+    // does something different about each.
+    expect(screen.getByText("✓")).toBeInTheDocument();
+    expect(screen.getByText("✗")).toBeInTheDocument();
+    expect(screen.getByText("mustard")).toBeInTheDocument();
+    expect(screen.getByText("black")).toBeInTheDocument();
+    expect(screen.getAllByText("not read")).toHaveLength(2);
+  });
+
+  test("says so when the player has picked nothing to expect", async () => {
+    installReferenceMock({
+      rows: [makeRow({ expected_appearance: null })],
+    });
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    expect(screen.getByText(/nothing to hand out/)).toBeInTheDocument();
+  });
+});
+
 describe("the verdict", () => {
   const doneRow = makeRow({ has_photo: true, review_state: "done" });
 
@@ -452,7 +538,9 @@ describe("the verdict", () => {
     expect(
       screen.getByText(/trousers read as black at 0.40/),
     ).toBeInTheDocument();
-    expect(screen.getByText(/trousers: black \(40%\)/)).toBeInTheDocument();
+    // A shaky read is neither a tick nor a cross: the confidence rides along
+    // with the mark so "black, but only just" is visible on the garment's row.
+    expect(screen.getByText("✗ 40%")).toBeInTheDocument();
   });
 
   test("a failed review is shown rather than an empty panel", async () => {
