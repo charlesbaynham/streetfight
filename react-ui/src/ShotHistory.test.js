@@ -329,7 +329,14 @@ describe("ShotHistoryController", () => {
   });
 
   test("opening the popup marks every shot seen", async () => {
-    const shots = [makeShot({ checked: false }), makeShot({ checked: false })];
+    // Stamped explicitly, newest first, because that is the order the store
+    // merges into: two shots made back to back usually share a millisecond
+    // and come back in insertion order, but when the clock happens to tick
+    // between them the newer one sorts first and the assertion below flips.
+    const shots = [
+      makeShot({ checked: false, time_created: "2026-01-01T10:00:01.000Z" }),
+      makeShot({ checked: false, time_created: "2026-01-01T10:00:00.000Z" }),
+    ];
     installFetchMock({ user_shots: shots });
 
     // Rendered standalone (no ShotHistoryController in this tree yet) so the
