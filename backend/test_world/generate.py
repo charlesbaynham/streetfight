@@ -223,20 +223,33 @@ def summarise(jobs: List[Job], store: store_mod.ImageStore) -> Dict:
 
 
 async def run(
-    jobs: List[Job], store: store_mod.ImageStore, dry_run: bool = True
+    jobs: List[Job],
+    store: store_mod.ImageStore,
+    dry_run: bool = True,
+    blocked: int = 0,
 ) -> Dict:
-    """Generate whatever is missing. ``dry_run`` spends nothing."""
+    """Generate whatever is missing. ``dry_run`` spends nothing.
+
+    ``blocked`` is how many shots are waiting on a reference photo this pass
+    will create. They cost money on the next pass, so the ceiling has to see
+    them: checked per pass alone, it would wave through a two-pass run that
+    spends well over it in total.
+    """
     from backend.vision_client import OpenRouterImageClient
 
     report = summarise(jobs, store)
+    report["blocked_usd"] = round(blocked * PRICE[PRIMARY_MODEL], 2)
     if dry_run:
         report["ran"] = False
         return report
 
-    if report["estimated_usd"] > HARD_CEILING_USD:
+    committed = report["estimated_usd"] + report["blocked_usd"]
+    if committed > HARD_CEILING_USD:
         raise RuntimeError(
-            f"planned spend ${report['estimated_usd']:.2f} exceeds the "
-            f"${HARD_CEILING_USD:.2f} ceiling; refusing to start"
+            f"planned spend ${committed:.2f} (${report['estimated_usd']:.2f} "
+            f"now, ${report['blocked_usd']:.2f} once the references unblock "
+            f"the shots) exceeds the ${HARD_CEILING_USD:.2f} ceiling; "
+            "refusing to start"
         )
 
     generated, failed = [], []
@@ -269,5 +282,5 @@ def _data_url(path: Path) -> str:
     return f"data:{mime};base64,{encoded}"
 
 
-def run_sync(jobs, store, dry_run=True) -> Dict:
-    return asyncio.run(run(jobs, store, dry_run=dry_run))
+def run_sync(jobs, store, dry_run=True, blocked=0) -> Dict:
+    return asyncio.run(run(jobs, store, dry_run=dry_run, blocked=blocked))

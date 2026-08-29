@@ -237,7 +237,9 @@ def cmd_generate(args) -> int:
     # last one unblocked, and the loop ends when nothing new was generated.
     while True:
         plan = generate_mod.plan(world, out, gate=gate, store=store)
-        report = generate_mod.run_sync(plan.jobs, store, dry_run=not args.execute)
+        report = generate_mod.run_sync(
+            plan.jobs, store, dry_run=not args.execute, blocked=len(plan.blocked)
+        )
 
         print(
             f"planned {report['total']} image(s); "
@@ -245,8 +247,13 @@ def cmd_generate(args) -> int:
             f"{report['to_generate']} to generate"
         )
         print(
-            f"estimated cost ${report['estimated_usd']:.2f} "
-            f"(ceiling ${generate_mod.HARD_CEILING_USD:.2f})"
+            f"estimated cost ${report['estimated_usd']:.2f} now"
+            + (
+                f" + ${report['blocked_usd']:.2f} once the shots unblock"
+                if report["blocked_usd"]
+                else ""
+            )
+            + f" (ceiling ${generate_mod.HARD_CEILING_USD:.2f})"
         )
         for job in report["missing"]:
             print(
