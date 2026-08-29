@@ -267,7 +267,11 @@ Three deployment targets share one service definition:
   `nixosConfigurations.streetfight-cloud` in the flake, wiring the
   deployment-agnostic `nix/streetfight.nix` module to `nix/disko-cloud.nix`
   (disk layout) and `nix/cloud-host.nix` (machine config). Installed once,
-  destructively, with `nixos-anywhere`; updated with
+  destructively, with `nix run .#install-cloud -- --target root@<ip>
+  --secrets <file>`, which captures the droplet's networking into
+  `nix/cloud-net.json` before anything destructive happens (DigitalOcean
+  offers no DHCP, so a config carrying another droplet's address installs a
+  machine that boots dark); updated with
   `nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
   — though a master push now deploys itself within a few minutes, pulled by
   a timer on the droplet (`nix/auto-deploy.nix`, roadmap R10), so that line

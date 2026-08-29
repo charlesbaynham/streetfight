@@ -114,6 +114,9 @@ jobs:
         authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
     - name: Build the cloud system closure
       run: nix build .#nixosConfigurations.streetfight-cloud.config.system.build.toplevel
+    # Builds the installer app too, which is what runs ShellCheck over it.
+    - name: Build the installer
+      run: nix build .#installCloud
 
   # Build the Proxmox LXC rootfs template and publish it as a release asset.
   # Deployment is pull-based — CI has no route to a hypervisor behind domestic
