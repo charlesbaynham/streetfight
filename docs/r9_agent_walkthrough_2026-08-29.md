@@ -16,9 +16,11 @@ judgement rather than on finding 500s.
 **No code was changed.** This report and its appendices are the only commit.
 Every finding is written down, none is fixed.
 
-**Screenshots.** `R9_walkthrough_screenshots.docx` in the repository root is
-this same report with the evidence in it — 236 screenshots, at the 390×844
-viewport they were taken at, under the findings they belong to.
+**Screenshots.** `R9_walkthrough_screenshots.pdf` (65 pages) and
+`R9_walkthrough_screenshots.docx` in the repository root are this same report
+with the evidence in it — the screenshots, at the 390×844 viewport they were
+taken at, under the findings they belong to. The PDF is the one to read; the
+docx is there if you want to edit or annotate it.
 
 **Freshness.** The pass ran against `6cf5608`. Five PRs (#165–#169) landed on
 master while it was running, and this branch has since been merged up to
