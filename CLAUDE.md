@@ -319,24 +319,36 @@ Three deployment targets share one service definition:
   that toggle only annotates the queue. A second, independent per-game toggle
   (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
-  but only ever to the **head** of the queue: an ambiguous head stays with the
-  admin and blocks the shots behind it. The same drain escalates hard cases
-  (3 readable channels without armbands, or fewer) to a stronger model
-  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL` — unset means
-  no escalation, as does the per-game `ai_escalation_enabled` toggle, which
-  unlike its siblings defaults **on**: it is a kill switch inside an
-  opted-in feature, not a third opt-in); a pending or punted escalation
-  blocks the queue the same way, and "too few channels" is never a bystander
-  verdict on its own — `classify()`'s old mapping to that is retired. The
-  admin can also fire one by hand (`admin_escalate_shot`, "Run escalated
-  review" in the queue), which runs whatever the toggles say. A fourth
-  per-game toggle, `ai_resolve_everything_enabled` (default off), relaxes only
-  the confidence gate: an unconfident miss/bystander/ambiguous-hit ranking
-  resolves to the best call so the players can appeal it (see appeals,
-  below), rather than waiting on the admin. It never forces a resolution with
-  nothing to resolve *from* — no usable review, an inconsistent reading, no
-  ranking at all, an errored escalation — since with nobody to notify, nobody
-  can appeal; strict queue ordering is untouched either way.
+  but only ever to the **head** of the queue: an unsettled head blocks the
+  shots behind it. **The stronger model stands in for the admin**
+  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL`): with it
+  configured and the per-game `ai_escalation_enabled` toggle on, *nothing
+  reaches a human until it has looked*. Every way the weak reading fails to
+  settle a shot — unconfident, fits nobody (`inconsistent`), a tie, an
+  unrecognised outcome, or too little read to name anybody — escalates. So
+  the readable-channel test (4, or 3 including armbands) no longer picks who
+  gets a second opinion; it only decides whether the **weak** reading may name
+  somebody on its own. A stored escalation is consulted *before* the weak
+  reading is retried — its verdict outranks the reading that prompted it,
+  including one an admin fired by hand (`admin_escalate_shot`, "Run escalated
+  review"). The admin sees a shot only when the stronger model handed it back
+  ("unsure", or below its own thresholds: 0.75 to name a player, 0.6 for a
+  miss/bystander), when the escalation errored, or when there is no stronger
+  model to ask — that toggle is a kill switch inside an opted-in feature, not
+  a third opt-in, which is why it defaults **on**. A pending escalation blocks
+  the queue the same way. "Too few channels" is never a bystander verdict on
+  its own — `classify()`'s old mapping to that is retired. A fourth per-game
+  toggle, `ai_resolve_everything_enabled` (default off), relaxes only the
+  confidence gate: an unconfident verdict resolves to the best call so the
+  players can appeal it (see appeals, below) rather than waiting on the admin
+  — but only once the stronger model is out of the picture, since a second
+  opinion that is actually coming beats a forced guess. It never forces a
+  resolution with nothing to resolve *from* — no usable review, an
+  inconsistent reading, no ranking at all, an errored escalation — since with
+  nobody to notify, nobody can appeal; strict queue ordering is untouched
+  either way. A vision call that errors or answers off-schema is retried
+  automatically (`ai_shot_review.REVIEW_ATTEMPTS`, 3 attempts) before it is
+  stored as an error, since that is what pressing "re-run review" did by hand.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
   keep the client and the prompt model-agnostic: no provider-specific features,
   and never assume structured-output support. User-facing strings call all of

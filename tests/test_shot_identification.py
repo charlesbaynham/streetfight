@@ -144,6 +144,47 @@ def test_no_candidate_is_ever_given_a_zero_posterior():
     assert all(posterior > 0 for _, posterior in ranked.ranked)
 
 
+def test_a_lone_candidate_survives_one_misread():
+    """A two-player game leaves exactly one candidate, and then there are no
+    pairs to take an effective minimum distance over. Falling back to "no
+    exact match" there makes the loosest candidate set the strictest test:
+    the single misread [4,2,3] exists to correct flags the reading as fitting
+    nobody, and the auto-action gate refuses a shot with one possible target.
+    """
+    shooter = player()
+    target = player(slot=7)
+
+    worn = dict(SCHEME.appearance_of_slot(7))
+    palette = {channel.name: channel.labels for channel in SCHEME.channels}
+    misread = dict(worn)
+    misread["hat"] = next(c for c in palette["hat"] if c != worn["hat"])
+
+    ranked = si.rank_candidates(shot_by(shooter), [shooter, target], review_of(misread))
+
+    assert ranked.best == target.id
+    assert ranked.confident and not ranked.ambiguous
+    assert not ranked.inconsistent
+
+
+def test_a_lone_candidate_is_still_contradicted_by_a_reading_that_fits_nobody():
+    """The counterweight: one candidate must not mean every reading fits them.
+    Two misreads are past what the code can correct, so the shot stays the
+    admin's rather than being pinned on the only person available.
+    """
+    shooter = player()
+    target = player(slot=7)
+
+    worn = dict(SCHEME.appearance_of_slot(7))
+    palette = {channel.name: channel.labels for channel in SCHEME.channels}
+    misread = dict(worn)
+    for garment in ("hat", "tshirt"):
+        misread[garment] = next(c for c in palette[garment] if c != worn[garment])
+
+    ranked = si.rank_candidates(shot_by(shooter), [shooter, target], review_of(misread))
+
+    assert ranked.inconsistent
+
+
 # -- who is a candidate at all ----------------------------------------------
 
 
