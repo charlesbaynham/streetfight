@@ -355,6 +355,20 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
   );
 }
 
+// Shown under every screen of the flow. A plain anchor with target=_blank
+// rather than a router Link on purpose: the wardrobe ticks and the fetched
+// option list are React state on this page, so navigating away mid-pick
+// would silently throw them away.
+function CuriosityFooter() {
+  return (
+    <p className={styles.curiosityFooter}>
+      <a href="/how-it-works" target="_blank" rel="noopener noreferrer">
+        Interested in what's happening here?
+      </a>
+    </p>
+  );
+}
+
 function PickOutfitForm({
   code,
   joinData,
@@ -685,6 +699,7 @@ function PickOutfit() {
             )}
           </>
         )}
+        <CuriosityFooter />
       </div>
     </div>
   );

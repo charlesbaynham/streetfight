@@ -141,7 +141,11 @@ inventing a look. What makes it work:
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
-    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`). Its
+    footer links to `HowItWorks.js` (route `/how-it-works`), a static essay on
+    the error-correcting code behind the outfits — currently a placeholder
+    skeleton awaiting Charles's prose, marked `PLACEHOLDER START/END`. It opens
+    in a new tab because the picker's wardrobe ticks are unsaved React state.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the

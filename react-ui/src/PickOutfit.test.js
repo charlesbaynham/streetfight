@@ -757,3 +757,42 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
     screen.getByRole("button", { name: "Show more outfits" }),
   ).toBeInTheDocument();
 });
+
+// The footer is trivial to render but easy to break silently: it must survive
+// every screen of the flow, and it must open in a new tab, since navigating
+// away would discard the wardrobe ticks held in React state.
+test("the curiosity footer links to the essay in a new tab, on the picker and on the already-picked screen", async () => {
+  installFetchMock({ join_options: makeJoinData() });
+
+  const { unmount } = renderPickOutfit();
+  await goPastHeader();
+
+  const link = screen.getByRole("link", {
+    name: "Interested in what's happening here?",
+  });
+  expect(link).toHaveAttribute("href", "/how-it-works");
+  expect(link).toHaveAttribute("target", "_blank");
+
+  unmount();
+
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        effective_appearance: {
+          tshirt: "black",
+          trousers: "blue",
+          hat: "burgundy",
+          armbands: "red",
+        },
+      }),
+    }),
+  });
+  renderPickOutfit();
+  await goPastHeader();
+
+  expect(screen.getByText("You're set")).toBeInTheDocument();
+  expect(
+    screen.getByRole("link", { name: "Interested in what's happening here?" }),
+  ).toBeInTheDocument();
+});
