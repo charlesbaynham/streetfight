@@ -49,11 +49,7 @@ def _centroid_route(team_name: str, rng: np.random.Generator) -> np.ndarray:
 
     # Candidate waypoints: every pub-ish landmark, so routes stay on the parts
     # of the map players actually walk between.
-    names = [
-        n
-        for n in ACTIVE_VENUE.landmarks
-        if not n.startswith(("CIRCLE", "DROP_"))
-    ]
+    names = [n for n in ACTIVE_VENUE.landmarks if not n.startswith(("CIRCLE", "DROP_"))]
     points = np.array([geo.landmark_m(n) for n in names])
 
     path = np.zeros((spec.N_TICKS, 2))

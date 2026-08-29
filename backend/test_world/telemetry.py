@@ -49,10 +49,23 @@ def _windows_for(phone, rng: np.random.Generator) -> List[tuple]:
         length = int(rng.integers(*phone.window_length_s))
         return [(start, min(start + length, spec.N_TICKS))]
 
-    # Otherwise scatter the windows across the hour without overlapping.
-    starts = sorted(
-        int(s) for s in rng.choice(spec.N_TICKS, n, replace=False)
-    )
+    # The first window starts in the opening minutes: a player opens the app
+    # when the game starts, checks where everyone is and reads the ticker.
+    # Scattering every window uniformly instead leaves the early game with
+    # almost no coverage at all, which is both unlike a real start and fatal
+    # to the daylight scenes -- daylight is only the first twenty-six minutes,
+    # so a scene needing a fresh position then has nothing to select from.
+    # ...but not everybody. Some arrive late, some leave it in a pocket until
+    # something happens. Making it universal would leave the early game with
+    # no stale phones at all, which is just as unreal as having no fresh ones
+    # and removes the daylight cases that need a poor position.
+    starts = []
+    if rng.random() < spec.OPENING_CHECKIN_FRACTION:
+        starts.append(int(rng.integers(0, spec.OPENING_WINDOW_S)))
+    starts += [
+        int(s) for s in rng.choice(spec.N_TICKS, max(n - len(starts), 0), replace=False)
+    ]
+    starts = sorted(starts)
     windows = []
     for start in starts:
         length = int(rng.integers(*phone.window_length_s))
@@ -94,9 +107,7 @@ def fix_timelines(
             for tick in range(start, end, spec.READING_INTERVAL_S):
                 true_east, true_north = positions[tick, index]
                 error = rng.normal(0.0, accuracy, size=2)
-                lat, long = geo.to_latlong(
-                    true_east + error[0], true_north + error[1]
-                )
+                lat, long = geo.to_latlong(true_east + error[0], true_north + error[1])
                 fixes.append(
                     {
                         "t": int(tick),

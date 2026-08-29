@@ -31,7 +31,15 @@ def _deal(counts: Dict[str, int], rng: random.Random) -> List[str]:
 # ordinary people in ordinary clothes look alike, and a cast of memorable
 # individuals would quietly make the benchmark easier than the real thing.
 BUILDS = ["slight", "slim", "average", "average", "stocky", "broad", "tall and lean"]
-HAIR_COLOURS = ["dark brown", "brown", "black", "light brown", "blonde", "auburn", "grey"]
+HAIR_COLOURS = [
+    "dark brown",
+    "brown",
+    "black",
+    "light brown",
+    "blonde",
+    "auburn",
+    "grey",
+]
 HAIR_STYLES_LONG = ["long straight", "long wavy", "shoulder-length", "long curly"]
 HAIR_STYLES_SHORT = ["short", "cropped", "buzzed", "short and tousled", "tied back"]
 DISTINGUISHING = [
@@ -68,18 +76,70 @@ DISTINGUISHING = [
 ]
 
 FIRST_NAMES_M = [
-    "Tom", "Ali", "James", "Dan", "Rob", "Sam", "Josh", "Marcus", "Ben", "Nick",
-    "Owen", "Chris", "Adam", "Luke", "Ravi",
+    "Tom",
+    "Ali",
+    "James",
+    "Dan",
+    "Rob",
+    "Sam",
+    "Josh",
+    "Marcus",
+    "Ben",
+    "Nick",
+    "Owen",
+    "Chris",
+    "Adam",
+    "Luke",
+    "Ravi",
 ]
 FIRST_NAMES_F = [
-    "Ellie", "Priya", "Hannah", "Kate", "Sophie", "Amy", "Nadia", "Jess", "Laura",
-    "Beth", "Rachel", "Zoe", "Chloe", "Maya", "Fran",
+    "Ellie",
+    "Priya",
+    "Hannah",
+    "Kate",
+    "Sophie",
+    "Amy",
+    "Nadia",
+    "Jess",
+    "Laura",
+    "Beth",
+    "Rachel",
+    "Zoe",
+    "Chloe",
+    "Maya",
+    "Fran",
 ]
 SURNAMES = [
-    "Ashby", "Bell", "Coyle", "Doran", "Ellis", "Fenn", "Gale", "Hart", "Irwin",
-    "Judd", "Kerr", "Lowe", "Mace", "Nash", "Ogden", "Pryce", "Quill", "Rand",
-    "Sayer", "Tate", "Usher", "Vaughn", "Ward", "Yates", "Zane", "Abbott",
-    "Brody", "Chase", "Dunn", "Frost",
+    "Ashby",
+    "Bell",
+    "Coyle",
+    "Doran",
+    "Ellis",
+    "Fenn",
+    "Gale",
+    "Hart",
+    "Irwin",
+    "Judd",
+    "Kerr",
+    "Lowe",
+    "Mace",
+    "Nash",
+    "Ogden",
+    "Pryce",
+    "Quill",
+    "Rand",
+    "Sayer",
+    "Tate",
+    "Usher",
+    "Vaughn",
+    "Ward",
+    "Yates",
+    "Zane",
+    "Abbott",
+    "Brody",
+    "Chase",
+    "Dunn",
+    "Frost",
 ]
 
 

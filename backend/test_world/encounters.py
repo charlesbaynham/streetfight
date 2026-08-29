@@ -65,7 +65,10 @@ def sweep(cast: List[dict], positions: np.ndarray) -> List[dict]:
     distances = np.empty((n_ticks, len(pairs)), dtype=np.float32)
     for start in range(0, n_ticks, _CHUNK):
         stop = min(start + _CHUNK, n_ticks)
-        delta = positions[start:stop, pairs[:, 0], :] - positions[start:stop, pairs[:, 1], :]
+        delta = (
+            positions[start:stop, pairs[:, 0], :]
+            - positions[start:stop, pairs[:, 1], :]
+        )
         distances[start:stop] = np.hypot(delta[..., 0], delta[..., 1])
 
     within = distances <= spec.ENCOUNTER_RADIUS_M
@@ -102,11 +105,20 @@ def _describe(cast, positions, i, j, first, last, closest) -> dict:
     for k, person in enumerate(cast):
         if k in (i, j):
             continue
-        d = float(np.hypot(positions[closest, k, 0] - mid_east,
-                           positions[closest, k, 1] - mid_north))
+        d = float(
+            np.hypot(
+                positions[closest, k, 0] - mid_east,
+                positions[closest, k, 1] - mid_north,
+            )
+        )
         if d <= spec.IN_FRAME_RADIUS_M:
-            others.append({"slug": person["slug"], "team": person["team"],
-                           "distance_m": round(d, 1)})
+            others.append(
+                {
+                    "slug": person["slug"],
+                    "team": person["team"],
+                    "distance_m": round(d, 1),
+                }
+            )
     others.sort(key=lambda o: o["distance_m"])
 
     lat, long = geo.to_latlong(mid_east, mid_north)
@@ -157,8 +169,6 @@ def summarise(events: List[dict]) -> Dict:
         "by_distance_band": dict(Counter(band(e["separation_m"]) for e in events)),
         "with_bystanders": sum(1 for e in events if e["others_in_frame"]),
         "team_pairs": dict(
-            Counter(
-                " / ".join(sorted((e["a_team"], e["b_team"]))) for e in events
-            )
+            Counter(" / ".join(sorted((e["a_team"], e["b_team"]))) for e in events)
         ),
     }

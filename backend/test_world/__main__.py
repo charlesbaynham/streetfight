@@ -69,11 +69,150 @@ def cmd_check(args) -> int:
         import json
 
         a, b = (json.loads(d) for d in digests)
-        differing = [k for k in a if json.dumps(a[k], sort_keys=True) != json.dumps(b[k], sort_keys=True)]
+        differing = [
+            k
+            for k in a
+            if json.dumps(a[k], sort_keys=True) != json.dumps(b[k], sort_keys=True)
+        ]
         print(f"NOT reproducible - differing keys: {differing}", file=sys.stderr)
         return 1
 
     print(f"reproducible: two builds of seed {args.seed} agree byte for byte")
+    return 0
+
+
+def _load(args):
+    import numpy as np
+
+    from backend.test_world import world as world_mod
+
+    world = world_mod.load(Path(args.out))
+    positions = np.load(Path(args.out).with_suffix(".truth.npz"))["positions"]
+    return world, positions
+
+
+def cmd_scenes(args) -> int:
+    from backend.test_world import scenes as scenes_mod
+    from backend.test_world import swatches
+    from backend.test_world import world as world_mod
+
+    world, positions = _load(args)
+    world["scenes"] = scenes_mod.build(world, positions)
+    world_mod.save(world, Path(args.out))
+    card = swatches.render(Path(args.out).parent / "kit_swatches.png")
+
+    scenes = world["scenes"]
+    print(
+        f"selected and described {len(scenes['shots'])} shots, "
+        f"{len(scenes['references'])} reference photos, 1 background"
+    )
+    print(f"  {len(scenes['shots']) + len(scenes['references']) + 1} prompts in total")
+    print(f"  wrote {card}")
+    return 0
+
+
+def cmd_availability(args) -> int:
+    """Which (locale kind, light, distance) cells the world can actually serve."""
+    import datetime
+    import math
+    from collections import Counter
+
+    from backend.test_world import scenarios as scen
+    from backend.test_world import spec as spec_mod
+
+    world, positions = _load(args)
+    index_of = {p["slug"]: i for i, p in enumerate(world["cast"])}
+    counts = Counter()
+    for event in world["encounters"]:
+        ia, ib = index_of[event["a"]], index_of[event["b"]]
+        seen = set()
+        for tick in range(event["first_tick"], event["last_tick"] + 1):
+            delta = positions[tick, ia] - positions[tick, ib]
+            separation = math.hypot(delta[0], delta[1])
+            band = next(
+                (
+                    k
+                    for k, (lo, hi) in scen.DISTANCE_BANDS.items()
+                    if lo <= separation <= hi
+                ),
+                None,
+            )
+            if band is None:
+                continue
+            moment = spec_mod.START_LOCAL + datetime.timedelta(seconds=int(tick))
+            seen.add((event["locale_kind"], spec_mod.light_band(moment), band))
+        for key in seen:
+            counts[key] += 1
+
+    print(f"{'locale':10s} {'light':9s} {'distance':9s} encounters")
+    for locale_kind in ("street", "park", "forecourt"):
+        for light in ("daylight", "twilight", "dark"):
+            for band in ("close", "mid", "distant"):
+                n = counts[(locale_kind, light, band)]
+                flag = "   <- EMPTY" if n == 0 else ""
+                print(f"{locale_kind:10s} {light:9s} {band:9s} {n:5d}{flag}")
+    return 0
+
+
+def cmd_gate_b(args) -> int:
+    world, _ = _load(args)
+    scenes = world.get("scenes")
+    if not scenes:
+        print("no scenes yet - run `scenes` first", file=sys.stderr)
+        return 1
+
+    only = getattr(args, "only", None)
+    if only in (None, "background"):
+        print("=" * 78)
+        print("BACKGROUND (generated once, reused by all thirty reference photos)")
+        print("=" * 78)
+        print(scenes["background"]["prompt"])
+        print()
+
+    for shot in scenes["shots"]:
+        if only and only != shot["scenario"]:
+            continue
+        print("=" * 78)
+        print(
+            f"{shot['scenario']}  intended: {shot['intended_result']}  "
+            f"({shot['probes']})"
+        )
+        print(
+            f"  encounter {shot['encounter_id']} at {shot['time_local']}, "
+            f"{shot['locale']} - {shot['separation_m']} m apart"
+        )
+        print(
+            f"  heading {shot['heading']} (true {shot['true_bearing']}, "
+            f"compass {shot['compass_class']})"
+        )
+        for role, row in shot["telemetry"].items():
+            if row.get("fix_age_s") is None:
+                print(f"  {role:8s} {row['slug']}: never reported")
+            else:
+                print(
+                    f"  {role:8s} {row['slug']:15s} {row['phone_class']:16s} "
+                    f"fix {row['fix_age_s']:5d}s old, {row['fix_error_m']:6.1f} m out, "
+                    f"Lambda {row['lambda_at_true_position']}"
+                )
+        if shot.get("misread"):
+            m = shot["misread"]
+            print(
+                f"  MISREAD: {m['channel']} is really {m['true_colour']}, "
+                f"photographed as {m['photographed_as']} "
+                f"(distance {m['distance_to_target']} to target vs "
+                f"{m['distance_to_nearest_other']} to {m['nearest_other']})"
+            )
+        print("-" * 78)
+        print(shot["prompt"])
+        print()
+
+    if only in (None, "references"):
+        for reference in scenes["references"]:
+            print("=" * 78)
+            print(f"REFERENCE {reference['slug']} ({reference['team']})")
+            print("-" * 78)
+            print(reference["prompt"])
+            print()
     return 0
 
 
@@ -88,11 +227,15 @@ def cmd_gate(args) -> int:
     print("\n-- teams --")
     colours = world.get("identity", {}).get("team_colours", {})
     for team in world["teams"]:
-        print(f"  {team['name']:14s} {colours.get(team['name'],'?'):10s} from {team['start_landmark']}")
+        print(
+            f"  {team['name']:14s} {colours.get(team['name'],'?'):10s} from {team['start_landmark']}"
+        )
     print("\n-- telemetry, as it actually came out --")
     for name, row in world["telemetry_summary"].items():
-        print(f"  {name:16s} median age {row['median_age_s']:>6.0f}s  "
-              f"p90 {row['p90_age_s']:>6.0f}s  median error {row['median_position_error_m']:>5.0f}m")
+        print(
+            f"  {name:16s} median age {row['median_age_s']:>6.0f}s  "
+            f"p90 {row['p90_age_s']:>6.0f}s  median error {row['median_position_error_m']:>5.0f}m"
+        )
         print(f"  {'':16s} {row['note']}")
     print("\n-- encounter pool --")
     print(json.dumps(world["encounter_summary"], indent=1))
@@ -107,9 +250,20 @@ def main(argv=None) -> int:
     sub.add_parser("world", help="build world.json from the seed")
     sub.add_parser("check", help="confirm the build is byte-reproducible")
     sub.add_parser("gate", help="print the Gate A review summary")
+    sub.add_parser("scenes", help="select and describe the ten scenes (free)")
+    sub.add_parser("availability", help="which (locale, light, distance) cells exist")
+    gate_b = sub.add_parser("gateb", help="print every prompt for review")
+    gate_b.add_argument("--only", help="one scenario id, or 'references'")
 
     args = parser.parse_args(argv)
-    return {"world": cmd_world, "check": cmd_check, "gate": cmd_gate}[args.command](args)
+    return {
+        "world": cmd_world,
+        "check": cmd_check,
+        "gate": cmd_gate,
+        "scenes": cmd_scenes,
+        "availability": cmd_availability,
+        "gateb": cmd_gate_b,
+    }[args.command](args)
 
 
 if __name__ == "__main__":

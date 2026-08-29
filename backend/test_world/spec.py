@@ -95,6 +95,7 @@ HARD_FEATURE_COUNTS: Dict[str, int] = {
     "hood_bunched_at_neck": 3,
 }
 
+
 # Phone classes, per player. The accuracy range is what the browser reports as
 # `coords.accuracy`; the staleness is how old the newest fix tends to be by the
 # time somebody photographs this player.
@@ -114,9 +115,9 @@ HARD_FEATURE_COUNTS: Dict[str, int] = {
 class PhoneClass(NamedTuple):
     name: str
     count: int
-    accuracy_m: tuple            # (low, high) metres
-    windows: tuple               # (low, high) app-open windows across the hour
-    window_length_s: tuple       # (low, high) seconds per window
+    accuracy_m: tuple  # (low, high) metres
+    windows: tuple  # (low, high) app-open windows across the hour
+    window_length_s: tuple  # (low, high) seconds per window
     note: str
 
 
@@ -160,6 +161,11 @@ PHONE_MIX: Dict[str, int] = {p.name: p.count for p in PHONE_CLASSES}
 # A window is one stretch with the page actually open; between windows the
 # phone reports nothing at all. Lengths are per class, above.
 READING_INTERVAL_S = 10
+
+# Most players open the app within the first few minutes of the game starting;
+# the rest do not, so the early game has both fresh and stale phones in it.
+OPENING_WINDOW_S = 240
+OPENING_CHECKIN_FRACTION = 0.65
 
 # --------------------------------------------------------------------------
 # Movement
