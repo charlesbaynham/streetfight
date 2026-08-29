@@ -44,6 +44,7 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_EXCLUSION = auto()
     ADMIN_SET_CIRCLE_BOTH = auto()
     ADMIN_SET_CIRCLE_DROP = auto()
+    ADMIN_CLEARED_CIRCLE_DROP = auto()
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
@@ -151,6 +152,10 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_SET_CIRCLE_DROP: (
         TickerTarget.PUBLIC,
         "A supply drop has appeared! It's marked in blue",
+    ),
+    TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP: (
+        TickerTarget.PUBLIC,
+        "The supply drop has been claimed!",
     ),
     TickerMessageType.MISSED_SHOT: (
         TickerTarget.PRIVATE_USER,
