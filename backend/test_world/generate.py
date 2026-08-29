@@ -32,6 +32,9 @@ PRICE = {PRIMARY_MODEL: 0.04, FALLBACK_MODEL: 0.12}
 
 HARD_CEILING_USD = 8.00
 
+# How many images to have in flight at once. See run().
+CONCURRENCY = 4
+
 
 class Job(NamedTuple):
     kind: str  # reference | shot | background
@@ -249,16 +252,27 @@ async def run(
 
     generated, failed = [], []
     actual = 0.0
-    for job in report["missing"]:
-        client = OpenRouterImageClient(model=job.model)
-        urls = [_data_url(path) for path in job.inputs]
-        try:
-            data_url = await client.generate(job.prompt, urls, **job.params)
+    # A few at a time: a full run is nearly forty images at half a minute
+    # each, which sequentially outlives a short-lived API key. Bounded
+    # because the provider rate-limits, and because a failure should cost one
+    # image's wait rather than the whole batch's.
+    semaphore = asyncio.Semaphore(CONCURRENCY)
+
+    async def attempt(job):
+        nonlocal actual
+        async with semaphore:
+            client = OpenRouterImageClient(model=job.model)
+            urls = [_data_url(path) for path in job.inputs]
+            try:
+                data_url = await client.generate(job.prompt, urls, **job.params)
+            except Exception as e:  # noqa: BLE001 - reported, not swallowed
+                failed.append((job, str(e)))
+                return
             store.save_data_url(job.image_id, data_url)
             generated.append(job)
             actual += client.last_cost_usd or job.price
-        except Exception as e:  # noqa: BLE001 - reported, not swallowed
-            failed.append((job, str(e)))
+
+    await asyncio.gather(*(attempt(job) for job in report["missing"]))
 
     report["ran"] = True
     report["generated"] = [(j.kind, j.name, j.image_id) for j in generated]
