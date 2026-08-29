@@ -37,6 +37,12 @@ STATE_ERROR = AI_REVIEW_STATE_ERROR
 
 DEFAULT_CONCURRENCY = 2
 
+# A vision call that errors or answers off-schema is usually having a bad
+# moment rather than being stuck: the admin's own fix is to press "re-run
+# review", so spend those attempts here first. Both failures arrive as an
+# exception out of the pipeline, so one loop covers them.
+REVIEW_ATTEMPTS = 3
+
 # asyncio only holds a weak reference to a running task, so keep our own or a
 # review can be collected mid-flight.
 _tasks = set()
@@ -180,6 +186,32 @@ async def replay_shot_review(
     return result.to_dict(include_transcript=True)
 
 
+async def _review_with_retries(
+    image_base64: str, client
+) -> "shot_vision.ShotVisionResult":
+    """:func:`_review_image_data` again on a transient failure, up to
+    :data:`REVIEW_ATTEMPTS` times; the last failure is raised as its own.
+
+    The semaphore is taken per attempt rather than around the loop, so a retry
+    queues behind other shots instead of holding a slot open across all three.
+    """
+    for attempt in range(1, REVIEW_ATTEMPTS + 1):
+        try:
+            async with _get_semaphore():
+                return await _review_image_data(image_base64, client)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if attempt == REVIEW_ATTEMPTS:
+                raise
+            logger.warning(
+                "Vision attempt %s of %s failed; retrying",
+                attempt,
+                REVIEW_ATTEMPTS,
+                exc_info=True,
+            )
+
+
 async def review_shot(shot_id: UUID, client=None) -> None:
     """Review one shot and store the result. Never raises."""
     from .admin_interface import AdminInterface
@@ -198,8 +230,7 @@ async def review_shot(shot_id: UUID, client=None) -> None:
     state = STATE_DONE
     payload = None
     try:
-        async with _get_semaphore():
-            result = await _review_image_data(image_base64, client)
+        result = await _review_with_retries(image_base64, client)
         payload = result.to_dict()
         logger.info(
             "Shot %s reviewed: %s (%s)", shot_id, result.outcome, result.outcome_reason

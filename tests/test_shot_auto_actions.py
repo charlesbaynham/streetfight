@@ -98,6 +98,19 @@ def misread_hit_reply(garment, confidence=0.9):
     return reply
 
 
+def contradicted_hit_reply(confidence=0.9):
+    """A confident hit whose reading fits nobody: two misreads is past what
+    d = 3 can correct."""
+    reply = confident_hit_reply(confidence=confidence)
+    for garment in ("hat", "tshirt"):
+        channel = next(c for c in SCHEME.channels if c.name == garment)
+        worn = reply["channels"][garment]["colour"]
+        reply["channels"][garment]["colour"] = next(
+            label for label in channel.labels if label != worn
+        )
+    return reply
+
+
 def escalation_payload(verdict, confidence=0.9, target_user_id=None):
     """The payload a completed escalation would have stored."""
     return {
@@ -390,26 +403,6 @@ def test_the_escalate_rung_waits_for_the_admin_when_escalation_is_off(
     )
 
     assert shot.checked is False
-    enqueue.assert_not_called()
-
-
-def test_a_legacy_bystander_review_is_left_to_the_admin(
-    mocker, db_session, shot_from_user_in_team
-):
-    # Reviews stored before #11 carry outcome "hit_bystander". They are not
-    # acted on and they are not escalated: they are simply the admin's.
-    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
-    game_id = game_of(shot_from_user_in_team)
-    enable_ai(game_id)
-    AdminInterface().store_shot_ai_review(
-        shot_from_user_in_team,
-        ai_shot_review.STATE_DONE,
-        {"outcome": shot_vision.HIT_BYSTANDER, "is_hit": False, "confidence": 0.95},
-    )
-
-    shot_auto_actions.process_queue_head(game_id)
-
-    assert shot_row(db_session, shot_from_user_in_team).checked is False
     enqueue.assert_not_called()
 
 
@@ -976,10 +969,13 @@ def test_forcing_resolves_a_stored_bystander_outcome(
 ):
     # Retired as an auto-action by #11 because "we could not read any of it" is
     # not evidence the person is not playing. Forced, it is still the best the
-    # reading offers, and a bystander call takes nothing off anybody.
+    # reading offers, and a bystander call takes nothing off anybody -- but
+    # only once the stronger model is out of the picture, since a second
+    # opinion that is actually coming beats a forced guess.
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
     game_id = game_of(shot_from_user_in_team)
     force(game_id)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
     AdminInterface().store_shot_ai_review(
         shot_from_user_in_team,
         ai_shot_review.STATE_DONE,
@@ -1239,3 +1235,167 @@ def test_enabling_escalation_escalates_a_head_that_was_waiting(
 
     assert response.is_success
     enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+# -- nothing reaches the admin without the stronger model first --------------
+#
+# The escalation toggle means "the stronger model does what the admin would
+# have done": every uncertainty goes to it, and only its own hand-back reaches
+# a human. These all patch enqueue_escalation, which stands in for a configured
+# escalation client.
+
+
+@pytest.fixture
+def crowd(db_session, team_factory, user_factory, target_with_slot):
+    """Extra candidates, so the candidate set has pairs of its own."""
+    team_id = team_factory()
+    for slot in (13, 21, 27):
+        uid = user_factory()
+        with UserInterface(uid) as ui:
+            ui.join_team(team_id)
+        db_session.query(User).filter_by(id=uid).update({"identity_slot": slot})
+        db_session.commit()
+    return target_with_slot
+
+
+@pytest.fixture
+def twin(db_session, team_factory, user_factory, target_with_slot):
+    """A second player wearing exactly what the target wears -- an unbreakable
+    tie for any reading."""
+    team_id = team_factory()
+    uid = user_factory()
+    with UserInterface(uid) as ui:
+        ui.join_team(team_id)
+    db_session.query(User).filter_by(id=uid).update({"identity_slot": TARGET_SLOT})
+    db_session.commit()
+    return uid
+
+
+def drain_escalating(mocker, db_session, shot_id, raw):
+    """Drain with an escalation client available; returns (shot, enqueue mock)."""
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    return drain_with(db_session, shot_id, raw), enqueue
+
+
+def test_a_contradicted_reading_is_escalated(
+    mocker, db_session, shot_from_user_in_team, crowd
+):
+    """The hardest case there is -- a fully-read photo that fits nobody -- used
+    to be classified as easy and handed straight to the admin."""
+    shot, enqueue = drain_escalating(
+        mocker, db_session, shot_from_user_in_team, contradicted_hit_reply()
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_a_tied_ranking_is_escalated(
+    mocker, db_session, shot_from_user_in_team, target_with_slot, twin
+):
+    shot, enqueue = drain_escalating(
+        mocker, db_session, shot_from_user_in_team, confident_hit_reply()
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_an_unconfident_hit_is_escalated(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    shot, enqueue = drain_escalating(
+        mocker, db_session, shot_from_user_in_team, confident_hit_reply(confidence=0.3)
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_an_unconfident_miss_is_escalated(mocker, db_session, shot_from_user_in_team):
+    shot, enqueue = drain_escalating(
+        mocker, db_session, shot_from_user_in_team, miss_reply(confidence=0.3)
+    )
+
+    assert shot.checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_a_legacy_bystander_review_is_escalated(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().store_shot_ai_review(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        {"outcome": shot_vision.HIT_BYSTANDER, "confidence": 0.9},
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    enqueue.assert_called_once_with(shot_from_user_in_team)
+
+
+def test_the_admin_only_sees_what_the_stronger_model_handed_back(
+    mocker, db_session, shot_from_user_in_team, crowd
+):
+    """The one door to the admin: the stronger model looked and said unsure."""
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, contradicted_hit_reply())
+    store_escalation(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        escalation_payload(shot_escalation.VERDICT_UNSURE),
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.checked is False
+    # Crucially not escalated a second time: the ladder must terminate.
+    enqueue.assert_not_called()
+
+
+def test_an_escalated_verdict_resolves_a_reading_the_first_model_botched(
+    mocker, db_session, shot_from_user_in_team, crowd, target_with_slot
+):
+    """The whole point: the stronger model's answer overrides a first reading
+    that contradicted everybody."""
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, contradicted_hit_reply())
+    store_escalation(
+        shot_from_user_in_team,
+        ai_shot_review.STATE_DONE,
+        escalation_payload(
+            shot_escalation.VERDICT_PLAYER, target_user_id=target_with_slot
+        ),
+    )
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_with_escalation_off_an_uncertain_head_still_waits_for_the_admin(
+    mocker, db_session, shot_from_user_in_team, crowd
+):
+    """The kill switch still works: no stronger model means the admin, exactly
+    as before any of this existed."""
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    store_done_review(shot_from_user_in_team, contradicted_hit_reply())
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    enqueue.assert_not_called()

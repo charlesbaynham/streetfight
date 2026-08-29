@@ -183,6 +183,47 @@ async def test_a_failing_review_leaves_the_shot_alone(
 
 
 @pytest.mark.asyncio
+async def test_a_transient_failure_is_retried_rather_than_stored(
+    mocker, db_session, shot_from_user_in_team
+):
+    """The model falls over or answers off-schema more often than it is truly
+    stuck, and pressing "re-run review" by hand usually fixes it. Both failures
+    surface here as an exception out of the pipeline, so one retry loop covers
+    them."""
+    good = shot_vision.classify(shot_vision.parse_result(hit_reply()), SCHEME)
+    attempt = mocker.patch.object(
+        ai_shot_review,
+        "_review_image_data",
+        side_effect=[VisionError("502 from the provider"), good],
+    )
+
+    await ai_shot_review.review_shot(shot_from_user_in_team, FakeVisionClient())
+
+    assert attempt.call_count == 2
+    stored = AdminInterface().get_shot_ai_review(shot_from_user_in_team)
+    assert stored["state"] == ai_shot_review.STATE_DONE
+    assert stored["review"]["outcome"] == shot_vision.HIT_PLAYER
+
+
+@pytest.mark.asyncio
+async def test_a_review_gives_up_after_three_attempts(
+    mocker, db_session, shot_from_user_in_team
+):
+    attempt = mocker.patch.object(
+        ai_shot_review,
+        "_review_image_data",
+        side_effect=VisionError("the model is properly down"),
+    )
+
+    await ai_shot_review.review_shot(shot_from_user_in_team, FakeVisionClient())
+
+    assert attempt.call_count == ai_shot_review.REVIEW_ATTEMPTS == 3
+    stored = AdminInterface().get_shot_ai_review(shot_from_user_in_team)
+    assert stored["state"] == ai_shot_review.STATE_ERROR
+    assert "properly down" in stored["review"]["error"]
+
+
+@pytest.mark.asyncio
 async def test_a_garbled_reply_is_recorded_as_an_error(
     db_session, shot_from_user_in_team
 ):

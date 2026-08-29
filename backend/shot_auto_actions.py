@@ -5,26 +5,41 @@ annotation into the game action the admin would have taken -- mark_shot_missed
 for a confident miss, hit_user for a confident, unambiguously identified hit.
 Everything else stays in the queue for the admin.
 
-**The escalation ladder** (roadmap #11) decides which of those a hit on a
-person gets, by how much of the outfit was legible (``confident_channel_count``
-and ``armbands_confident``, both in backend.shot_vision):
+**The stronger model stands in for the admin.** That is what the game's
+escalation toggle means: with it on and a model configured, *nothing reaches a
+human until the stronger model has looked at it*. Every way the weak reading
+can fail to settle a shot -- an unconfident verdict, a reading that fits
+nobody, a tie between two candidates, an outcome this code does not recognise,
+or simply too little read to name anybody -- routes to
+backend.shot_escalation rather than to the queue.
+
+So the readability test (``confident_channel_count`` and
+``armbands_confident``, both in backend.shot_vision) no longer decides who gets
+a second opinion; it decides only whether the **weak** reading is allowed to
+name somebody on its own:
 
 * **every channel read**, or **all but one with the armbands among them** --
-  the auto-eligible rung. The armbands are the one garment the game hands out,
-  so reading them makes player-ness solid rather than inferred, and one erasure
-  is well within the code. Acted on when the overall confidence and the
-  posterior both clear their thresholds; otherwise it is the admin's.
-* **anything less** -- three channels without the armbands, or two, or fewer.
-  Identification still runs and still ranks the candidates, but nothing here
-  acts on it: the shot goes to a stronger model with the reference photos
-  (backend.shot_escalation), whose verdict re-enters this same gate. The weak
-  model's own confidence is deliberately *not* a gate on that rung -- the weak
-  model being unsure is exactly what escalation is for.
+  enough for this reading to name a player, if the overall confidence and the
+  posterior also clear their thresholds. The armbands are the one garment the
+  game hands out, so reading them makes player-ness solid rather than
+  inferred, and one erasure is well within the code.
+* **anything less** -- with only ``k`` readable positions an MDS code matches
+  *some* codeword for any reading, so it vouches for nothing however it is
+  scored. Straight to the stronger model.
 
-An escalated verdict of "unsure" -- and an escalation that errored, and one
-never made because no escalation model is configured or the game's escalation
-toggle is off -- all land in the same place: the admin queue, where every shot
-went before any of this existed.
+Either way an unsettled shot ends up in the same place, which is the point:
+the ladder sorts on whether the reading *settles* the shot, not on how legible
+the photograph happened to be. A stored escalation, once one exists, is
+consulted before the weak reading is retried -- its verdict outranks the
+reading that prompted it, including one an admin fired by hand.
+
+The admin therefore sees a shot only when the stronger model **handed it
+back**: a verdict of "unsure" or one below its own thresholds. Two other
+things land there too, and both are the absence of a second opinion rather
+than the result of one -- an escalation that errored, and no stronger model to
+ask, because none is configured or the game's escalation toggle is off. That
+last is the kill switch: turn escalation off and every uncertainty goes back
+to being the admin's, exactly as it was before any of this existed.
 
 **Resolve everything** (roadmap R8) relaxes the *accuracy* half of that, and
 only that half. With the game's toggle on, a rung that would hand the head to
@@ -193,6 +208,12 @@ def _decide(
     if review is None:
         return None
 
+    # A stronger opinion, once one exists, outranks the weak reading that
+    # prompted it -- including an escalation the admin fired by hand on a shot
+    # this reading would have resolved on its own.
+    if head.ai_escalation_state is not None:
+        return _decide_escalated(head, game_id, resolve_everything)
+
     try:
         confidence = float(review.get("confidence"))
     except (TypeError, ValueError):
@@ -200,11 +221,11 @@ def _decide(
 
     outcome = review.get("outcome")
     if outcome == MISS:
-        return (_MISS, None) if confidence >= CONFIDENT or resolve_everything else None
-    if outcome == HIT_BYSTANDER:
-        return (_BYSTANDER, None) if resolve_everything else None
+        if confidence >= CONFIDENT:
+            return (_MISS, None)
+        return _decide_escalated(head, game_id, resolve_everything)
     if outcome != HIT_PLAYER:
-        return None
+        return _decide_escalated(head, game_id, resolve_everything)
 
     readable = confident_channel_count(review)
     if readable == DEFAULT_SCHEME.channels.n or (
@@ -262,13 +283,14 @@ def _decide_auto_hit(
     """
     from .admin_interface import AdminInterface
 
-    if confidence < CONFIDENT and not resolve_everything:
-        return None
+    if confidence >= CONFIDENT:
+        users = AdminInterface().get_users_for_game(game_id)
+        ranked = rank_candidates(head, users, review)
+        decision = _target_from_ranking(head, users, ranked, False)
+        if decision is not None:
+            return decision
 
-    users = AdminInterface().get_users_for_game(game_id)
-    ranked = rank_candidates(head, users, review)
-
-    return _target_from_ranking(head, users, ranked, resolve_everything)
+    return _decide_escalated(head, game_id, resolve_everything)
 
 
 def _forced_fallback(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]]:
@@ -283,6 +305,16 @@ def _forced_fallback(head, game_id: UUID) -> Optional[Tuple[str, Optional[UUID]]
 
     review = _stored_review(head)
     if review is None:
+        return None
+
+    # Whatever the weak reading's own bottom line was: the ranking is only the
+    # right answer when it said somebody was hit.
+    outcome = review.get("outcome")
+    if outcome == MISS:
+        return (_MISS, None)
+    if outcome == HIT_BYSTANDER:
+        return (_BYSTANDER, None)
+    if outcome != HIT_PLAYER:
         return None
 
     users = AdminInterface().get_users_for_game(game_id)

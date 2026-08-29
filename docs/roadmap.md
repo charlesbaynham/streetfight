@@ -1526,6 +1526,42 @@ escalation is off and everything behaves as before), two columns on `Shot`
 admin queue (`ShotQueue.js`), which shows the strong model's verdict,
 reasoning and the ranked candidate list it was given.
 
+**Widened 29 Aug — the stronger model stands in for the admin.** Charles's
+call, after a test shot with one wrong garment colour sat in the queue
+un-escalated: *"nothing should ever reach the admin unless it has first passed
+through the stronger model"*. The ladder as shipped sorted on how much of the
+outfit was legible, so a fully-read but self-contradictory photo — the hardest
+case there is — was classified as easy and offered only the top rung's two
+exits, auto-resolve or the admin. A merely *shy* reading escalated happily.
+Now every way the weak reading fails to settle a shot routes to
+`_decide_escalated`: unconfident overall, `inconsistent`, a tie, an
+unrecognised outcome, a legacy `hit_bystander`, or too few readable channels.
+The readable-channel test survives, but it now decides only whether the weak
+reading may name somebody *on its own*. A stored escalation is consulted
+before the weak reading is retried, so a manually fired one outranks it. The
+admin's door is the stronger model handing the shot back — "unsure", or below
+its own thresholds — plus the two absences of a second opinion: an errored
+escalation, and no model to ask. `ai_escalation_enabled` is therefore a real
+kill switch: off, every uncertainty is the admin's again.
+
+Two consequences worth knowing. Under `ai_resolve_everything_enabled` an
+unconfident head now escalates *before* it is forced, since a second opinion
+that is actually coming beats a forced guess — `_forced_fallback` fires only
+once the stronger model is out of the picture, and it now dispatches on the
+weak reading's own outcome rather than always ranking candidates. And the one
+case that still cannot escalate is a head with **no usable review at all**
+(errored or unparseable), because `shot_escalation._load_context` builds its
+candidate ranking from that reading; retries (below) make it rare, and
+teaching escalation to run on a flat GPS-only ranking is the open follow-up.
+
+**Retry, 29 Aug.** A vision call that errors or answers off-schema is now
+retried up to twice before being stored as an error
+(`ai_shot_review.REVIEW_ATTEMPTS = 3`, `_review_with_retries`) — that is
+exactly what pressing "re-run review" in the queue did by hand, and it usually
+worked. The semaphore is taken per attempt, so a retry queues behind other
+shots rather than holding a slot across all three. Escalation calls are *not*
+retried yet.
+
 **Decisions taken on the open questions, and along the way:**
 
 - **Storage:** a second column pair on `Shot` (`ai_escalation_state`,
