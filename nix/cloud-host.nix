@@ -12,6 +12,11 @@
 { config, lib, ... }:
 
 let
+  # Captured off the stock droplet by `nix run .#install-cloud`, because
+  # DigitalOcean offers no DHCP and every droplet lands on a different
+  # address. Regenerate it rather than editing it by hand.
+  net = lib.importJSON ./cloud-net.json;
+
   # The keys that can deploy (and get root on) this host. The assertion below
   # refuses to build a system that would be installed with no way in.
   deployKeys = [
@@ -58,22 +63,19 @@ in
   # DigitalOcean offers NO DHCP: the stock image reads a static config from
   # cloud-init metadata, so a system relying on DHCP boots unreachable (it
   # did, on 2026-08-28 - the installer survives only because nixos-anywhere's
-  # kexec replays the running system's config). Values captured from the
-  # droplet's own netplan; re-capture them if the droplet is ever rebuilt.
-  # The VPC NIC and DO's anchor IP are unused here and left unconfigured.
+  # kexec replays the running system's config, a favour the installed system
+  # does not get). The VPC NIC and DO's anchor IP are unused here and left
+  # unconfigured.
   networking.useDHCP = false;
   networking.usePredictableInterfaceNames = false;
-  networking.interfaces.eth0.ipv4.addresses = [
-    {
-      address = "167.172.62.186";
-      prefixLength = 20;
-    }
+  networking.interfaces.${net.interface}.ipv4.addresses = [
+    { inherit (net) address prefixLength; }
   ];
   networking.defaultGateway = {
-    address = "167.172.48.1";
-    interface = "eth0";
+    address = net.gateway;
+    interface = net.interface;
   };
-  networking.nameservers = [ "1.1.1.1" "8.8.8.8" ];
+  networking.nameservers = net.nameservers;
 
   # 22 for deploys; 80/443 are what Caddy answers on once
   # services.streetfight.hostname is set (80 also carries the ACME HTTP
