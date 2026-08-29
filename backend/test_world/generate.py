@@ -19,26 +19,22 @@ from typing import Optional
 
 from backend.test_world import store as store_mod
 
-PRIMARY_MODEL = "openai/gpt-5.4-image-2"
-FALLBACK_MODEL = "openai/gpt-5-image"
-CHEAP_MODEL = "openai/gpt-5-image-mini"
+PRIMARY_MODEL = "bytedance-seed/seedream-5-0-lite"
+FALLBACK_MODEL = "bytedance-seed/seedream-5-0-pro"
 
 # Dollars per generated image, for the gate arithmetic *before* anything is
-# sent; what a run actually cost is read back from OpenRouter per call. Not
-# the rate card, which is out by an order of magnitude here: five 1024x1024
-# primary images billed $0.240-$0.252 each, against $0.03 of per-token
-# arithmetic. The other two models are scaled from that by their published
-# image-output rates and are not themselves measured.
-#
-# At this price the full set is over HARD_CEILING_USD, which is the ceiling
-# doing its job rather than a number to raise quietly.
-PRICE = {PRIMARY_MODEL: 0.25, FALLBACK_MODEL: 0.33, CHEAP_MODEL: 0.07}
+# sent; what a run actually cost is read back from OpenRouter per call. These
+# are measured, not taken off a rate card -- the card was out by an order of
+# magnitude for the model this started on. Seedream Lite billed $0.035 flat
+# for four 2048x2048 images at Gate C; the pro tier is a guess until it is
+# used, which is why the primary is the one the gates spend on.
+PRICE = {PRIMARY_MODEL: 0.04, FALLBACK_MODEL: 0.12}
 
 HARD_CEILING_USD = 8.00
 
 
 class Job(NamedTuple):
-    kind: str  # reference | shot | background | ab
+    kind: str  # reference | shot | background
     name: str  # player slug, scenario id, or a label
     prompt: str
     inputs: List[Path]
@@ -93,8 +89,15 @@ def plan(
     scenes = world["scenes"]
     jobs: List[Job] = []
 
+    # Square, to match what the fixture set already carries. `seed` is
+    # honoured by the Image API even though the chat endpoint's parameter list
+    # for this model does not mention it. One dict, used both to add a job and
+    # to work out what a reference photo's id *would* be: computing that with
+    # different parameters silently blocks every shot for ever.
+    default_params = {"seed": seed, "aspect_ratio": "1:1"}
+
     def add(kind, name, prompt, inputs, model, params=None):
-        params = params or {"seed": seed}
+        params = params or dict(default_params)
         jobs.append(
             Job(
                 kind=kind,
@@ -119,7 +122,7 @@ def plan(
             references[slug]["prompt"],
             [background, card],
             PRIMARY_MODEL,
-            {"seed": seed},
+            default_params,
         )
         if store is None or not store.has(reference_id):
             blocked.append(f"{shot['scenario']} (needs {slug})")
@@ -135,8 +138,7 @@ def plan(
     if gate == "c":
         # The repeatability test: one person's reference photo, then that same
         # person rendered into a scene from it, so we can see whether the face
-        # and the kit survive the trip. Plus the one-image A/B against the
-        # cheap model, since it is a quarter of the price and worth knowing.
+        # and the kit survive the trip.
         probe = shots["S1"]["target"]["slug"]
         add(
             "reference",
@@ -144,13 +146,6 @@ def plan(
             references[probe]["prompt"],
             [background, card],
             PRIMARY_MODEL,
-        )
-        add(
-            "ab",
-            f"{probe}-mini",
-            references[probe]["prompt"],
-            [background, card],
-            CHEAP_MODEL,
         )
         add_shot(shots["S1"])
         return Plan(jobs, blocked)

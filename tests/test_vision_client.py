@@ -6,7 +6,7 @@ reasoning across turns without depending on any one provider's format.
 
 import pytest
 
-from backend.vision_client import IMAGE_MAX_TOKENS
+from backend.vision_client import OPENROUTER_IMAGE_URL
 from backend.vision_client import OpenRouterImageClient
 from backend.vision_client import OpenRouterVisionClient
 from backend.vision_client import VisionError
@@ -247,45 +247,49 @@ class _FakeImageResponse:
     status_code = 200
 
     def json(self):
-        body = response_body(
-            {
-                "role": "assistant",
-                "images": [{"image_url": {"url": "data:image/png;base64,AAAA"}}],
-            }
-        )
-        body["usage"] = {"cost": 0.0513}
-        return body
+        return {
+            "data": [{"b64_json": "AAAA", "media_type": "image/jpeg"}],
+            "usage": {"cost": 0.035},
+        }
 
 
 class _FakeImageHTTPXClient(_FakeHTTPXClient):
+    posted_urls = []
+
     async def post(self, url, json, headers):
+        _FakeImageHTTPXClient.posted_urls.append(url)
         _FakeHTTPXClient.sent_payloads.append(json)
         return _FakeImageResponse()
 
 
 @pytest.mark.asyncio
-async def test_generate_posts_the_prompt_and_returns_the_image_url(mocker):
+async def test_generate_posts_to_the_image_api_and_returns_a_data_url(mocker):
     """The whole transport, not just its parts: the first real generation run
-    failed on a NameError inside it, which no unit test here would have seen.
+    failed on a NameError inside it, and the second on being pointed at
+    /chat/completions, which does not serve image models at all.
     """
     _FakeHTTPXClient.sent_payloads = []
+    _FakeImageHTTPXClient.posted_urls = []
     mocker.patch("httpx.AsyncClient", _FakeImageHTTPXClient)
 
-    client = OpenRouterImageClient(api_key="k", model="openai/gpt-5.4-image-2")
-    url = await client.generate("a photograph", ["data:image/jpeg;base64,BBBB"], seed=1)
+    client = OpenRouterImageClient(
+        api_key="k", model="bytedance-seed/seedream-5-0-lite"
+    )
+    url = await client.generate(
+        "a photograph", ["data:image/jpeg;base64,BBBB"], seed=1, aspect_ratio="1:1"
+    )
 
-    assert url == "data:image/png;base64,AAAA"
+    assert url == "data:image/jpeg;base64,AAAA"
     # What it cost is read back rather than estimated: the gates spend real
-    # money and the rate-card arithmetic was out by several times.
-    assert client.last_cost_usd == 0.0513
+    # money and the rate-card arithmetic was out by an order of magnitude.
+    assert client.last_cost_usd == 0.035
+    assert _FakeImageHTTPXClient.posted_urls == [OPENROUTER_IMAGE_URL]
+
     payload = _FakeHTTPXClient.sent_payloads[0]
-    assert payload["modalities"] == ["image", "text"]
-    assert payload["usage"] == {"include": True}
-    # Uncapped, OpenRouter reserves the model's whole completion budget and
-    # refuses the request outright on a small balance.
-    assert payload["max_tokens"] == IMAGE_MAX_TOKENS
+    assert payload["prompt"] == "a photograph"
     assert payload["seed"] == 1
-    assert [part["type"] for part in payload["messages"][0]["content"]] == [
-        "text",
-        "image_url",
+    assert payload["aspect_ratio"] == "1:1"
+    # Reference images ride in input_references here, not as message content.
+    assert payload["input_references"] == [
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,BBBB"}}
     ]

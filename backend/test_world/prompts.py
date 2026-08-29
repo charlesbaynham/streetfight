@@ -46,10 +46,34 @@ LIGHT_WORDS = {
     ),
 }
 
+# Distance, how the phone is held, and -- the part the model actually obeys --
+# how much of the frame the subject fills. Told only the distance in metres it
+# frames every shot like a portrait whatever the scene says, because that is
+# what a photograph of a person usually looks like. A fraction of the frame
+# height is a thing it can check itself against, and it is what the distance
+# means anyway: a figure 30 m off is a small shape in a wide street, not a
+# person photographed from further away.
 CAMERA = {
-    "close": ("3-5 metres", "chest height, phone held up in both hands"),
-    "mid": ("8-15 metres", "chest height, phone held up in one hand"),
-    "distant": ("25-35 metres", "chest height, phone held up and slightly zoomed"),
+    "close": (
+        "3-5 metres",
+        "chest height, phone held up in both hands",
+        "head to foot, filling about half the frame height, with the street "
+        "visible all around them",
+    ),
+    "mid": (
+        "8-15 metres",
+        "chest height, phone held up in one hand",
+        "about a quarter of the frame height - a whole person with a lot of "
+        "street around them, not a portrait",
+    ),
+    "distant": (
+        "25-35 metres",
+        "chest height, phone held up and slightly zoomed",
+        "no more than about one tenth of the frame height - a small,"
+        " recognisable figure a long way down the street, with the buildings,"
+        " road and pavement taking up most of the picture. Their face should"
+        " be too small to make out",
+    ),
 }
 
 # A shot is conditioned on its target's reference photo so that it is the same
@@ -153,7 +177,7 @@ def scene_description(world, chosen, scenario, extra_kitted) -> dict:
     locale = next(loc for loc in locales_mod.LOCALES if loc.name == event["locale"])
 
     rng = random.Random(f"{world['seed']}:scene:{scenario.id}")
-    distance_words, camera_height = CAMERA[scenario.distance]
+    distance_words, camera_height, framing = CAMERA[scenario.distance]
 
     facing = (
         "facing the camera, looking towards it"
@@ -175,7 +199,11 @@ def scene_description(world, chosen, scenario, extra_kitted) -> dict:
         "locale_kind": locale.kind,
         "setting": locale.description,
         "separation_m": chosen["separation_m"],
-        "camera": {"distance": distance_words, "height": camera_height},
+        "camera": {
+            "distance": distance_words,
+            "height": camera_height,
+            "framing": framing,
+        },
         "target": {
             "slug": target["slug"],
             "team": target["team"],
@@ -223,10 +251,11 @@ def shot_prompt(scene: dict) -> str:
         f"TIME AND LIGHT: {scene['time_local']}, {LIGHT_WORDS[scene['light']]}. "
         f"Weather: {scene['weather']}.",
         f"CAMERA: {scene['camera']['distance']} from the subject, "
-        f"{scene['camera']['height']}. Frame it wide: the subject stands well "
-        f"inside the frame with clear space above their head and below their "
-        f"feet, small enough that the street around them is most of the "
-        f"picture - it will be cropped afterwards.",
+        f"{scene['camera']['height']}.",
+        f"HOW BIG IN FRAME: the subject appears {scene['camera']['framing']}. "
+        f"This is the size they really are at that distance, and it matters "
+        f"more than making a nice picture of them - the photograph is cropped "
+        f"afterwards, so leave room on all sides.",
         "",
         "THE SAME PERSON: the attached indoor photograph is a posed reference "
         "shot of this person, taken standing still against a wall before the "

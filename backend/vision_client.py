@@ -21,6 +21,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images"
 OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
 
 # A placeholder while the prompt is developed. The intended workflow is to trial
@@ -31,8 +32,6 @@ DEFAULT_MODEL = "google/gemini-3.7-flash-20260813"
 DEFAULT_TIMEOUT_SECONDS = 60.0
 MAX_ATTEMPTS = 3
 
-# See OpenRouterImageClient.generate.
-IMAGE_MAX_TOKENS = 16384
 
 # Fenced code blocks are the most common way a model wraps JSON it was asked to
 # emit bare.
@@ -478,14 +477,16 @@ class ImageGenerationError(RuntimeError):
 class OpenRouterImageClient:
     """Generate an image from a prompt and zero or more input images.
 
-    Posts to the same ``/chat/completions`` endpoint as
-    :class:`OpenRouterVisionClient`, with ``modalities`` asking for an image
-    back, and reads it out of ``choices[0].message.images``. That arrives as a
-    ``data:image/...;base64,...`` URL, which is the form the rest of this
-    codebase already consumes.
+    Posts to OpenRouter's **Image** API, not to ``/chat/completions``: the
+    image models are served there, take their reference images as
+    ``input_references``, and answer with base64 rather than with a data URL
+    on a chat message. Asking ``/chat/completions`` for one is a 500 (or, if
+    the model emits image only and the request asks for image *and* text, a
+    404) -- which is a whole evening of debugging written down so nobody
+    repeats it.
 
-    ``complete()`` cannot serve this: it hard-codes a ``json_schema`` response
-    format and would demand text back.
+    The base64 is turned back into a ``data:image/...;base64,...`` URL, which
+    is the form the rest of this codebase already consumes.
     """
 
     def __init__(
@@ -516,25 +517,22 @@ class OpenRouterImageClient:
     async def generate(
         self, prompt: str, input_image_urls: Optional[List[str]] = None, **params
     ) -> str:
-        """Return a ``data:image/...;base64,...`` URL for the generated image."""
-        import httpx
+        """Return a ``data:image/...;base64,...`` URL for the generated image.
 
-        content: List[dict] = [{"type": "text", "text": prompt}]
-        for url in input_image_urls or []:
-            content.append({"type": "image_url", "image_url": {"url": url}})
+        ``params`` are the Image API's generation parameters -- ``seed``,
+        ``aspect_ratio``, ``resolution``, ``n`` -- and an unlisted one is
+        rejected, so they are passed through rather than guessed at here.
+        """
+        import httpx
 
         payload = {
             "model": self.model,
-            "modalities": ["image", "text"],
-            "messages": [{"role": "user", "content": content}],
-            # OpenRouter reserves credit for the whole completion budget up
-            # front, so an uncapped request is refused on a small balance
-            # (402) even though one image costs a fraction of it. A cap large
-            # enough for an image and its text, small enough to reserve
-            # pennies. Deliberately not part of the image's identity: it
-            # bounds the reply, it does not change the picture.
-            "max_tokens": IMAGE_MAX_TOKENS,
-            "usage": {"include": True},
+            "prompt": prompt,
+            "n": 1,
+            "input_references": [
+                {"type": "image_url", "image_url": {"url": url}}
+                for url in input_image_urls or []
+            ],
         }
         payload.update(params)
 
@@ -548,9 +546,11 @@ class OpenRouterImageClient:
             try:
                 async with httpx.AsyncClient(timeout=self.timeout) as client:
                     response = await client.post(
-                        OPENROUTER_URL, json=payload, headers=headers
+                        OPENROUTER_IMAGE_URL, json=payload, headers=headers
                     )
                 if response.status_code == 429 or response.status_code >= 500:
+                    # 502 is an upstream generation failure, and OpenRouter
+                    # does not bill it, so retrying costs nothing.
                     last_error = ImageGenerationError(
                         f"OpenRouter returned {response.status_code}: "
                         f"{response.text[:200]}"
@@ -563,7 +563,7 @@ class OpenRouterImageClient:
                 else:
                     body = response.json()
                     self.last_cost_usd = (body.get("usage") or {}).get("cost")
-                    return _image_url_of(body)
+                    return _image_data_url_of(body)
             except httpx.HTTPError as e:
                 last_error = ImageGenerationError(f"OpenRouter request failed: {e}")
 
@@ -574,19 +574,12 @@ class OpenRouterImageClient:
         raise last_error or ImageGenerationError("image generation failed")
 
 
-def _image_url_of(body: dict) -> str:
-    """Pull the generated image out of a chat-completions response."""
-    try:
-        message = body["choices"][0]["message"]
-    except (KeyError, IndexError) as e:
-        raise ImageGenerationError(f"unexpected response shape: {e}")
-
-    images = message.get("images") or []
+def _image_data_url_of(body: dict) -> str:
+    """Turn an Image API reply into the data URL the rest of the code uses."""
+    images = body.get("data") or []
     for image in images:
-        url = (image.get("image_url") or {}).get("url")
-        if url:
-            return url
-    raise ImageGenerationError(
-        "the model returned no image; it replied: "
-        + repr(str(message.get("content"))[:200])
-    )
+        encoded = image.get("b64_json")
+        if encoded:
+            media = image.get("media_type") or "image/png"
+            return f"data:{media};base64,{encoded}"
+    raise ImageGenerationError(f"the model returned no image: {json.dumps(body)[:200]}")
