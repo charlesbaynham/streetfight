@@ -178,18 +178,17 @@
         # docs/deployment_droplet.md. It captures the droplet's networking
         # first, because DigitalOcean gives no DHCP and a config carrying the
         # previous droplet's address installs a machine that boots dark.
-        installCloud = flake-utils.lib.mkApp {
-          drv = pkgs.writeShellApplication {
-            name = "install-cloud";
-            runtimeInputs = [
-              pkgs.openssh
-              pkgs.python3
-              pkgs.git
-              nixos-anywhere.packages.${system}.default
-            ];
-            text = builtins.readFile ./nix/install-cloud.sh;
-          };
+        installCloudScript = pkgs.writeShellApplication {
+          name = "install-cloud";
+          runtimeInputs = [
+            pkgs.openssh
+            pkgs.python3
+            pkgs.git
+            nixos-anywhere.packages.${system}.default
+          ];
+          text = builtins.readFile ./nix/install-cloud.sh;
         };
+        installCloud = flake-utils.lib.mkApp { drv = installCloudScript; };
 
         loadDocker = flake-utils.lib.mkApp
           {
@@ -237,6 +236,9 @@
 
         packages = {
           inherit backendEnv devEnv frontendBuild frontendBuildWithCaddy;
+          # Exposed as a package as well as an app so CI builds it, which is
+          # what runs ShellCheck over nix/install-cloud.sh.
+          installCloud = installCloudScript;
           backendPackage = pythonSet.streetfight;
           default = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildLayeredImage {
