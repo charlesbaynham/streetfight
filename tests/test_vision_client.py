@@ -6,6 +6,8 @@ reasoning across turns without depending on any one provider's format.
 
 import pytest
 
+from backend.vision_client import IMAGE_MAX_TOKENS
+from backend.vision_client import OpenRouterImageClient
 from backend.vision_client import OpenRouterVisionClient
 from backend.vision_client import VisionError
 from backend.vision_client import _as_message
@@ -236,3 +238,54 @@ async def test_fetch_openrouter_key_balance_raises_on_an_unexpected_body(mocker)
 
     with pytest.raises(VisionError):
         await fetch_openrouter_key_balance("k")
+
+
+# -- OpenRouterImageClient -----------------------------------------------------
+
+
+class _FakeImageResponse:
+    status_code = 200
+
+    def json(self):
+        body = response_body(
+            {
+                "role": "assistant",
+                "images": [{"image_url": {"url": "data:image/png;base64,AAAA"}}],
+            }
+        )
+        body["usage"] = {"cost": 0.0513}
+        return body
+
+
+class _FakeImageHTTPXClient(_FakeHTTPXClient):
+    async def post(self, url, json, headers):
+        _FakeHTTPXClient.sent_payloads.append(json)
+        return _FakeImageResponse()
+
+
+@pytest.mark.asyncio
+async def test_generate_posts_the_prompt_and_returns_the_image_url(mocker):
+    """The whole transport, not just its parts: the first real generation run
+    failed on a NameError inside it, which no unit test here would have seen.
+    """
+    _FakeHTTPXClient.sent_payloads = []
+    mocker.patch("httpx.AsyncClient", _FakeImageHTTPXClient)
+
+    client = OpenRouterImageClient(api_key="k", model="openai/gpt-5.4-image-2")
+    url = await client.generate("a photograph", ["data:image/jpeg;base64,BBBB"], seed=1)
+
+    assert url == "data:image/png;base64,AAAA"
+    # What it cost is read back rather than estimated: the gates spend real
+    # money and the rate-card arithmetic was out by several times.
+    assert client.last_cost_usd == 0.0513
+    payload = _FakeHTTPXClient.sent_payloads[0]
+    assert payload["modalities"] == ["image", "text"]
+    assert payload["usage"] == {"include": True}
+    # Uncapped, OpenRouter reserves the model's whole completion budget and
+    # refuses the request outright on a small balance.
+    assert payload["max_tokens"] == IMAGE_MAX_TOKENS
+    assert payload["seed"] == 1
+    assert [part["type"] for part in payload["messages"][0]["content"]] == [
+        "text",
+        "image_url",
+    ]

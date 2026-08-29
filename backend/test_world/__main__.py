@@ -228,34 +228,48 @@ def cmd_generate(args) -> int:
     out = Path(args.out)
     store = store_mod.ImageStore(out.parent / "images")
     gate = args.gate if args.gate != "e" else None
-    jobs = generate_mod.plan(world, out, gate=gate)
-    report = generate_mod.run_sync(jobs, store, dry_run=not args.execute)
 
-    print(
-        f"planned {report['total']} image(s); "
-        f"{report['already_present']} already in the store, "
-        f"{report['to_generate']} to generate"
-    )
-    print(
-        f"estimated cost ${report['estimated_usd']:.2f} "
-        f"(ceiling ${generate_mod.HARD_CEILING_USD:.2f})"
-    )
-    for job in report["missing"]:
+    spent = 0.0
+    failed = []
+    # Reference photos first, then the shots that are conditioned on them: a
+    # shot's identity includes its target's reference photo, so it can only be
+    # planned once that photo is in the store. Each pass picks up whatever the
+    # last one unblocked, and the loop ends when nothing new was generated.
+    while True:
+        plan = generate_mod.plan(world, out, gate=gate, store=store)
+        report = generate_mod.run_sync(plan.jobs, store, dry_run=not args.execute)
+
         print(
-            f"  {job.kind:10s} {job.name:16s} {job.model:24s} "
-            f"${job.price:.4f}  -> {job.image_id}.jpg"
+            f"planned {report['total']} image(s); "
+            f"{report['already_present']} already in the store, "
+            f"{report['to_generate']} to generate"
         )
-    if not report.get("ran"):
-        print("\nnothing was sent. Re-run with --execute to spend.")
-        return 0
+        print(
+            f"estimated cost ${report['estimated_usd']:.2f} "
+            f"(ceiling ${generate_mod.HARD_CEILING_USD:.2f})"
+        )
+        for job in report["missing"]:
+            print(
+                f"  {job.kind:10s} {job.name:16s} {job.model:24s} "
+                f"${job.price:.4f}  -> {job.image_id}.jpg"
+            )
+        for waiting in plan.blocked:
+            print(f"  shot       {waiting:16s} after its reference photo")
 
-    print(
-        f"\ngenerated {len(report['generated'])}, "
-        f"failed {len(report['failed'])}, spent ${report['spent_usd']:.2f}"
-    )
-    for kind, name, err in report["failed"]:
+        if not report.get("ran"):
+            print("\nnothing was sent. Re-run with --execute to spend.")
+            return 0
+
+        spent += report["spent_usd"]
+        failed += report["failed"]
+        if not plan.blocked or not report["generated"]:
+            break
+        print()
+
+    print(f"\nactually spent ${spent:.3f}, {len(failed)} failed")
+    for kind, name, err in failed:
         print(f"  FAILED {kind} {name}: {err}", file=sys.stderr)
-    return 1 if report["failed"] else 0
+    return 1 if failed else 0
 
 
 def cmd_gate(args) -> int:

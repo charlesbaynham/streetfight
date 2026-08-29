@@ -23,9 +23,13 @@ PRIMARY_MODEL = "openai/gpt-5.4-image-2"
 FALLBACK_MODEL = "openai/gpt-5-image"
 CHEAP_MODEL = "openai/gpt-5-image-mini"
 
-# Dollars per generated image, for the gate arithmetic. Approximate and
-# deliberately rounded up; the point is an honest ceiling, not accountancy.
-PRICE = {PRIMARY_MODEL: 0.03, FALLBACK_MODEL: 0.04, CHEAP_MODEL: 0.0075}
+# Dollars per generated image, for the gate arithmetic *before* anything is
+# sent; what a run actually cost is read back from OpenRouter. Measured at
+# Gate C rather than taken off the rate card: a capped primary image billed
+# $0.051, four times what the per-token arithmetic suggested, because the
+# model bills its own reasoning tokens too. The other two are scaled from
+# that by their published image-output rates.
+PRICE = {PRIMARY_MODEL: 0.06, FALLBACK_MODEL: 0.08, CHEAP_MODEL: 0.02}
 
 HARD_CEILING_USD = 8.00
 
@@ -44,6 +48,13 @@ class Job(NamedTuple):
         return PRICE.get(self.model, PRICE[PRIMARY_MODEL])
 
 
+class Plan(NamedTuple):
+    """What can be sent now, and what is still waiting on something else."""
+
+    jobs: List[Job]
+    blocked: List[str]  # shots whose target has no reference photo yet
+
+
 def _fixture_dir(world_path: Path) -> Path:
     return Path(world_path).parent
 
@@ -53,8 +64,17 @@ def plan(
     world_path: Path,
     gate: Optional[str] = None,
     seed: int = 1,
-) -> List[Job]:
-    """Every image the world calls for, whether or not it already exists."""
+    store: Optional[store_mod.ImageStore] = None,
+) -> Plan:
+    """Every image the world calls for, whether or not it already exists.
+
+    A shot is conditioned on its target's reference photo, so it cannot be
+    planned until that photo exists -- its bytes are part of the shot's
+    identity, which is what makes a regenerated reference cascade into the
+    shots taken of that person. Such a shot comes back as ``blocked`` rather
+    than as an unconditioned job, and planning again after the references
+    have been generated picks it up.
+    """
     fixtures = _fixture_dir(world_path)
     background = fixtures / "background_living_room.jpg"
     card = fixtures / "kit_swatches.png"
@@ -86,6 +106,28 @@ def plan(
 
     references = {r["slug"]: r for r in scenes["references"]}
     shots = {s["scenario"]: s for s in scenes["shots"]}
+    blocked: List[str] = []
+
+    def add_shot(shot):
+        """Plan a shot, if the reference photo it is conditioned on is here."""
+        slug = shot["target"]["slug"]
+        reference_id = store_mod.image_id(
+            "reference",
+            references[slug]["prompt"],
+            [background, card],
+            PRIMARY_MODEL,
+            {"seed": seed},
+        )
+        if store is None or not store.has(reference_id):
+            blocked.append(f"{shot['scenario']} (needs {slug})")
+            return
+        add(
+            "shot",
+            shot["scenario"],
+            shot["prompt"],
+            [card, store.path_for(reference_id)],
+            PRIMARY_MODEL,
+        )
 
     if gate == "c":
         # The repeatability test: one person's reference photo, then that same
@@ -107,8 +149,8 @@ def plan(
             [background, card],
             CHEAP_MODEL,
         )
-        add("shot", "S1", shots["S1"]["prompt"], [card], PRIMARY_MODEL)
-        return jobs
+        add_shot(shots["S1"])
+        return Plan(jobs, blocked)
 
     if gate == "d":
         # Deliberately awkward: the extremes of the palette and the scene
@@ -121,8 +163,8 @@ def plan(
                 [background, card],
                 PRIMARY_MODEL,
             )
-        add("shot", "S8", shots["S8"]["prompt"], [card], PRIMARY_MODEL)
-        return jobs
+        add_shot(shots["S8"])
+        return Plan(jobs, blocked)
 
     for reference in scenes["references"]:
         add(
@@ -133,8 +175,8 @@ def plan(
             PRIMARY_MODEL,
         )
     for shot in scenes["shots"]:
-        add("shot", shot["scenario"], shot["prompt"], [card], PRIMARY_MODEL)
-    return jobs
+        add_shot(shot)
+    return Plan(jobs, blocked)
 
 
 def _awkward_players(world: dict) -> List[str]:
@@ -195,6 +237,7 @@ async def run(
         )
 
     generated, failed = [], []
+    actual = 0.0
     for job in report["missing"]:
         client = OpenRouterImageClient(model=job.model)
         urls = [_data_url(path) for path in job.inputs]
@@ -202,13 +245,15 @@ async def run(
             data_url = await client.generate(job.prompt, urls, **job.params)
             store.save_data_url(job.image_id, data_url)
             generated.append(job)
+            actual += client.last_cost_usd or job.price
         except Exception as e:  # noqa: BLE001 - reported, not swallowed
             failed.append((job, str(e)))
 
     report["ran"] = True
     report["generated"] = [(j.kind, j.name, j.image_id) for j in generated]
     report["failed"] = [(j.kind, j.name, err) for j, err in failed]
-    report["spent_usd"] = round(sum(j.price for j in generated), 2)
+    # What it really cost, as OpenRouter billed it -- not the estimate.
+    report["spent_usd"] = round(actual, 3)
     return report
 
 

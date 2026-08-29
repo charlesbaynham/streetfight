@@ -31,6 +31,9 @@ DEFAULT_MODEL = "google/gemini-3.7-flash-20260813"
 DEFAULT_TIMEOUT_SECONDS = 60.0
 MAX_ATTEMPTS = 3
 
+# See OpenRouterImageClient.generate.
+IMAGE_MAX_TOKENS = 16384
+
 # Fenced code blocks are the most common way a model wraps JSON it was asked to
 # emit bare.
 _FENCE = re.compile(r"```(?:json)?\s*(.*?)```", re.DOTALL)
@@ -496,6 +499,10 @@ class OpenRouterImageClient:
             raise ImageGenerationError("OPENROUTER_API_KEY is not set")
         self.model = model or os.getenv("OPENROUTER_IMAGE_MODEL") or DEFAULT_IMAGE_MODEL
         self.timeout = timeout if timeout is not None else _timeout_from_env()
+        # What the last generation actually cost, straight from OpenRouter.
+        # The gates are about spending honestly, and a price table written
+        # from a rate card was out by several times when it was first run.
+        self.last_cost_usd: Optional[float] = None
 
         lowered = self.model.lower()
         for prefix in FORBIDDEN_GENERATION_PREFIXES:
@@ -510,6 +517,8 @@ class OpenRouterImageClient:
         self, prompt: str, input_image_urls: Optional[List[str]] = None, **params
     ) -> str:
         """Return a ``data:image/...;base64,...`` URL for the generated image."""
+        import httpx
+
         content: List[dict] = [{"type": "text", "text": prompt}]
         for url in input_image_urls or []:
             content.append({"type": "image_url", "image_url": {"url": url}})
@@ -518,6 +527,14 @@ class OpenRouterImageClient:
             "model": self.model,
             "modalities": ["image", "text"],
             "messages": [{"role": "user", "content": content}],
+            # OpenRouter reserves credit for the whole completion budget up
+            # front, so an uncapped request is refused on a small balance
+            # (402) even though one image costs a fraction of it. A cap large
+            # enough for an image and its text, small enough to reserve
+            # pennies. Deliberately not part of the image's identity: it
+            # bounds the reply, it does not change the picture.
+            "max_tokens": IMAGE_MAX_TOKENS,
+            "usage": {"include": True},
         }
         payload.update(params)
 
@@ -544,7 +561,9 @@ class OpenRouterImageClient:
                         f"{response.text[:200]}"
                     )
                 else:
-                    return _image_url_of(response.json())
+                    body = response.json()
+                    self.last_cost_usd = (body.get("usage") or {}).get("cost")
+                    return _image_url_of(body)
             except httpx.HTTPError as e:
                 last_error = ImageGenerationError(f"OpenRouter request failed: {e}")
 
