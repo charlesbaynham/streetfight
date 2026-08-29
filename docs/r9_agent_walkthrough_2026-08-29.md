@@ -114,10 +114,10 @@ All **28** checklist lines were driven. No line was skipped.
 | 25 | The admin nav on a real phone screen | works, with caveats |
 | 26 | The running app version on admin pages | works, with caveats |
 | 27 | The replay workbench at `/admin/replay` (R1) | **works** |
-| 28 | Reset (`resetdb`) and replay from a clean state | *see the reset section* |
+| 28 | Reset (`resetdb`) and replay from a clean state | works, with caveats — **two blockers around it** |
 
-**109 findings** so far: 1 blocker, 28 major, 42 minor, 26 cosmetic, 12 questions. (Line 28 —
-the reset pass — was still running when this was written; its section is below.)
+**117 findings**: 3 blockers, 30 major, 44 minor, 26 cosmetic, 13 questions, plus one
+recorded non-defect (loot QRs surviving a reset, which is half the scheduling answer).
 
 ---
 
@@ -168,7 +168,11 @@ which is its own (lesser) finding, below.
 
 ---
 
-## The blocker
+## Blockers
+
+Three. **B1** is below; **B2** and **B3** both live around the reset and are
+written up in the reset section, because they only make sense together with
+what does and does not survive a `resetdb`.
 
 ### B1 — every cookieless client shares one player identity
 
@@ -542,10 +546,88 @@ Full reproduction detail for each is in the appendix in the last column.
 
 ## Resetting and replaying from a clean state
 
-*(Checklist line 28. This pass was still running when the rest of the report
-was committed; this section is filled in below.)*
+*(Checklist line 28 — the transition between the dry run on 30 August and the
+night itself.)*
 
-<!-- A13 -->
+**The reset itself is solid.** 658 ms with all services live, no backend
+exception, and idempotent across four consecutive runs — always exactly one
+sample game, ten teams and nothing else, with no accumulation or drift. A full
+game replays end to end on the fresh database: real join links, outfit
+picking, a loot QR, a shot, a CharlesBot verdict, resolution, appeal,
+settlement. **What breaks is everything around the reset.**
+
+### B2 — every join QR printed before a `resetdb` is dead
+
+A team join QR encodes `(game_id, team_id, slot=None)`, HMAC-signed.
+`reset_db` drops the tables and re-mints the ten sample teams with fresh
+`uuid4()`s (`backend/reset_db.py:30`); any hand-made game is destroyed
+outright. `SECRET_KEY` is unchanged, so the signature still verifies, the code
+parses, and *then* the team lookup 404s. The player lands on `/pick` and gets a
+dismissible popup reading, in full:
+
+```
+Team 7979f5ca-0a95-4bdb-a589-f8b2b2dd56c0 not found
+```
+
+behind which is the ordinary onboarding page telling them to "Scan your team's
+join QR code with your camera app…" — that is, to scan the same dead code
+again.
+
+**This is a scheduling fact, not just a bug.** Roadmap #8 is a print run. If
+the join QRs are printed before the last `resetdb`, every one of them is waste
+paper and every player is stuck at a screen telling them to rescan the code
+that just failed.
+
+### B3 — after a `resetdb` the sample game cannot generate join QRs at all
+
+`MAKE_DEBUG_ENTRIES` creates **ten** teams; the team channel (the hat) has
+**seven** colours. So `admin_join_qr_codes` fails outright:
+
+```
+400 {"detail":"10 teams need a colour each, but 'hat' only has 7"}
+```
+
+In the UI that is the "Generate" button on the admin home, producing a red
+error banner and no QR codes, with no partial result and no hint that deleting
+teams would fix it (`backend/reset_db.py:18` vs
+`backend/identity/allocation.py:166`).
+
+The default state after every reset is therefore one where the single active
+ready-to-play sample game cannot produce the artefact the night depends on.
+Charles will not hit it if he makes his own game with ≤7 teams — but he will
+hit it the moment he uses the game `resetdb` hands him, which is the obvious
+thing to do at 6pm on the 19th.
+
+### Two more, major
+
+- **A phone left open across a reset never notices and never self-heals.**
+  Sixty seconds after the database was wiped it still showed ammo, ticker and
+  crosshair. SSE stays healthy but silent; only a manual reload recovers, after
+  which onboarding is clean. Every phone that was at the dry run is in this
+  state on the night.
+- **The first shot of the night renders as "Shot 0 of 1" with a blank panel.**
+  `ShotQueue.js:652` clamps the index to −1 on an empty queue and never
+  restores it — exactly the fresh-DB path. The same bug hides a lodged appeal
+  in the Contested view.
+
+### The scheduling answer, in full
+
+| Artefact | Survives `resetdb`? | Why |
+|---|---|---|
+| **Loot item QRs** | **Yes** | Self-contained signed payload; the row only records collection, so they simply become collectable again. Safe to print and hide in advance. |
+| **Team join QRs** | **No** | Team UUIDs are re-minted. |
+
+So either the print run happens **after** the final reset, or the final reset
+is `admin_reset_game` — which keeps teams, usernames, picked outfits and live
+join QRs while clearing stats, shots, ticker and reference photos. Nothing in
+the app currently explains that difference to an admin (a comparison table is
+in appendix A13).
+
+**One caveat on this pass:** the backend was running stale code for the first
+half of it (started 07:44, tree merged 08:12). The agent restarted it and
+re-verified every finding above against `edb1612`; an
+`admin_get_openrouter_balance` 404 banner visible in some early screenshots was
+that artefact, not a product bug.
 
 ---
 
@@ -554,17 +636,18 @@ was committed; this section is filled in below.)*
 Not a plan, and not prescriptive — this is the reporter's read of what the
 19th actually depends on. Charles decides what blocks and what is accepted.
 
-1. **B1, the shared player identity.** It is the only finding that can make the
+1. **B1, the shared player identity.** It is the finding most able to make the
    game incoherent for a player rather than merely annoying, it is invisible
    when it happens, and the dry run may not reproduce it.
 2. **The crosshair contrast**, because #4 is already the item being rushed and
    this is an input to it. Worth measuring before spending more on the prompt.
 3. **The queue's touch targets and the 134×71 px photo.** These are what the
    admin does all night, and the fixes are CSS.
-4. **The three "printed artefact" findings** — team QRs resolving the wrong
-   team, `collected_as_team` unimplemented for three item types, and whatever
-   the reset pass says about QR survival — because #8 is a print run and
-   reprinting is not free.
+4. **B2 and B3, before the print run is scheduled.** Together with the team-QR
+   finding above and `collected_as_team` being unimplemented for three item
+   types, these decide *when* #8 can happen. Reprinting is not free, and the
+   ordering constraint (print after the final reset, or reset with
+   `admin_reset_game`) is the cheapest thing on this list to get wrong.
 5. **The server-side gaps** — nameless `pick_outfit`, unenforced shot cooldown,
    unvalidated player names reaching a filename.
 6. Everything else, in severity order, as time allows.
