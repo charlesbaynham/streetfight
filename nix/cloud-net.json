@@ -1,0 +1,9 @@
+{
+  "interface": "eth0",
+  "address": "167.172.62.186",
+  "prefixLength": 20,
+  "gateway": "167.172.48.1",
+  "nameservers": ["1.1.1.1", "8.8.8.8"],
+  "capturedFrom": "167.172.62.186",
+  "capturedAt": "2026-08-28"
+}

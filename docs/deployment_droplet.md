@@ -45,60 +45,71 @@ address the home deployment served, so nothing already shared changes.
 containerised Caddy the same way - and works on any Docker host. It is the
 fallback, not the plan.)
 
-## Before the install
-
-1. **Droplet size**: `nixos-anywhere` runs its installer from RAM - 2 GB is
-   comfortable. If the droplet is smaller, resize it before starting rather
-   than fighting it.
-2. **Deploy key**: the deploy public keys are committed in `deployKeys` in
-   `nix/cloud-host.nix` (an assertion refuses to evaluate a config with the
-   placeholder instead - password auth is off, so a host installed without
-   a key is unreachable). Check the key you'll deploy with is among them,
-   and give the same key root access on the stock droplet when
-   provisioning it.
-3. **Confirm the disk**: run
-   `nixos-anywhere --generate-hardware-config` against the droplet and check
-   the device node and firmware it reports. `nix/disko-cloud.nix` assumes
-   `/dev/vda` and carries a hybrid BIOS+UEFI GPT layout so either firmware
-   boots, but the device node must match what the droplet actually has.
-4. **Prove it boots**: `nixos-anywhere --vm-test --flake .#streetfight-cloud`
-   before pointing anything at the real droplet. The install is destructive
-   and irreversible.
-5. **DNS**: the `streetfight.houseabsolute.co.uk` record must reach the
-   droplet directly - **DNS-only (grey cloud) in Cloudflare, not proxied** -
-   or the ACME HTTP challenge can't arrive. (Ports 22/80/443 are opened by
-   the NixOS firewall config; if a DO cloud firewall is attached, open them
-   there too.)
-
-## Secrets
-
-`/data/secrets/streetfight.env` must exist before first boot - the service's
-preflight check refuses to start without it, deliberately. Deliver it with
-`--extra-files`: build a local tree containing
-`data/secrets/streetfight.env` (directory mode 0700) and pass it at install
-time. `nix/streetfight.env.example` documents the format; the real values
-come from the home deployment's escrow (cutover, below). At minimum:
-`SECRET_KEY`, `ADMIN_PASSWORD`, `WEBSITE_URL`, plus `OPENROUTER_API_KEY` and
-the model settings for CharlesBot. Never commit the real file.
-
-Keeping the escrowed `SECRET_KEY` (rather than minting a new one) keeps
-every join link already shared alive across the cutover.
-
-## Install and deploy loop
+## Installing a droplet
 
 ```bash
-# One-time, destructive install onto the stock droplet:
-nixos-anywhere --flake .#streetfight-cloud \
-  --extra-files ./extra-files \
-  root@<droplet-ip>
+nix run .#install-cloud -- --target root@<droplet-ip> --secrets ./streetfight.env
+```
 
-# Every update after that:
+That is the install. It is **destructive** - it reformats the target's disk -
+and asks you to type the target address before it does. What it does, in
+order, and why each step is in there rather than in this document:
+
+1. **Checks the secrets file** against the same contract the service's
+   preflight enforces at boot: `SECRET_KEY`, `ADMIN_PASSWORD` and
+   `WEBSITE_URL` present and not the placeholders from
+   `nix/streetfight.env.example`, and `WEBSITE_URL` naming the host Caddy
+   will get a certificate for. A bad secrets file should cost a message, not
+   a reinstall.
+2. **Captures the droplet's networking** into `nix/cloud-net.json`, which
+   `nix/cloud-host.nix` reads. DigitalOcean offers no DHCP, so those literals
+   decide whether the installed system comes up at all - and they are
+   different on every droplet. This step is why installing onto a new droplet
+   no longer needs a hand-edit first. It stages the file, because nix reads
+   only tracked files and an uncommitted capture would be invisible to the
+   build it configures; commit it after the install.
+3. **Confirms the disk** disko is about to format actually exists on the
+   target, printing the droplet's real disks if not.
+4. **Assembles the `--extra-files` tree** with `data/secrets/streetfight.env`
+   at 0600 inside a 0700 directory, in a temporary directory it cleans up.
+5. **Boots the built image locally** (`nixos-anywhere --vm-test`). Skippable
+   with `--skip-vm-test`; don't. It runs under plain TCG without KVM - slow,
+   not broken - and it is the only check that catches a system which installs
+   cleanly and then never comes up. It was skipped for the first two installs,
+   which is exactly how both went dark.
+6. **Installs.**
+
+### What it does not do
+
+- **Create the droplet.** Do that in the DigitalOcean UI first: 2 GB
+  (`nixos-anywhere` runs its installer from RAM), and give the key you will
+  deploy with root access when provisioning it. That key must also be in
+  `deployKeys` in `nix/cloud-host.nix` - an assertion refuses to evaluate a
+  config carrying the placeholder, because password auth is off and a host
+  installed without a key is unreachable.
+- **DNS.** The record must reach the droplet directly - **DNS-only (grey
+  cloud) in Cloudflare, not proxied** - or the ACME challenge cannot arrive.
+  Ports 22/80/443 are opened by the NixOS firewall config; if a DO cloud
+  firewall is attached, open them there too.
+- **Fill in the secrets.** `nix/streetfight.env.example` documents the
+  format. Keeping an escrowed `SECRET_KEY` rather than minting a new one
+  keeps every join link already shared alive across a rebuild. Never commit
+  the real file.
+
+## Updating a droplet
+
+```bash
 nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>
 ```
 
 `nixos-rebuild --target-host` builds on the deploying machine (which has the
 `streetfight.cachix.org` substituter from the flake's `nixConfig`) and pushes
 the closure, so the droplet itself never has to build or trust anything.
+
+You will rarely need it - auto-deploy, below, is the routine path. It is the
+tool for deploying something that is not on master, and for the **one deploy
+that has to be manual**: the first one after an install, which is what
+installs the auto-deployer itself.
 
 ### Auto-deploy
 
