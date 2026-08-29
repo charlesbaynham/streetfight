@@ -143,6 +143,55 @@ def effective_words(users: List[UserModel], scheme: IdentityScheme) -> Dict[UUID
     return words
 
 
+def provided_channels(scheme: IdentityScheme) -> List[str]:
+    """The garments we hand out at the door rather than leave to a wardrobe:
+    the team hat and the armband. Both have been bought (roadmap #9), and both
+    are put on the player by the admin doing the kit check, which is why
+    :func:`expected_outfit` marks them -- that admin is standing at the box
+    and needs to know which colours to take out of it.
+
+    The complement of :func:`_wardrobe_channels`, and defined in the same terms
+    so the two can never disagree about which channels a player supplies.
+    """
+    return [
+        name
+        for name in scheme.channels.names
+        if name in (TEAM_CHANNEL, PROVIDED_CHANNEL)
+    ]
+
+
+def expected_outfit(
+    slot: Optional[int], overrides_raw: Optional[str], scheme: IdentityScheme
+) -> Optional[Dict[str, dict]]:
+    """What a player is supposed to turn up in, per channel.
+
+    Shaped like a vision review's ``channels`` -- ``{name: {"colour", "hex"}}``
+    -- so the kit-check page can render the expectation and the reading with
+    one component and put them side by side, which is the only way to see
+    *which* garment is wrong rather than merely that something is.
+
+    The **effective** word, not the canonical codeword: an override is what the
+    player actually agreed to wear, and it is what the decoder scores the
+    photograph against, so it is what "expected" has to mean here. ``None`` for
+    a player who has not picked an outfit -- there is nothing to expect of
+    them yet, and nothing to check a photo against either.
+    """
+    if slot is None:
+        return None
+
+    provided = set(provided_channels(scheme))
+    overrides = _parse_json_column(overrides_raw) or {}
+    word = effective_word(scheme.codeword_of_slot(slot), overrides, scheme.channels)
+    return {
+        name: {
+            "colour": colour,
+            "hex": None if colour is None else hex_for(name, colour),
+            "provided": name in provided,
+        }
+        for name, colour in _word_to_appearance(word, scheme).items()
+    }
+
+
 def _player_row(user: UserModel, scheme: IdentityScheme) -> dict:
     """The report/response shape for one player."""
     overrides = _parse_json_column(user.identity_overrides)
@@ -425,11 +474,8 @@ def _team_for_pick(admin: AdminInterface, code: JoinCodeModel) -> TeamModel:
 def _wardrobe_channels(scheme: IdentityScheme) -> List[str]:
     """The channels a player's own clothes must answer: every channel except
     the team-pinned hat and the armband we hand out (plan C4)."""
-    return [
-        name
-        for name in scheme.channels.names
-        if name not in (TEAM_CHANNEL, PROVIDED_CHANNEL)
-    ]
+    provided = set(provided_channels(scheme))
+    return [name for name in scheme.channels.names if name not in provided]
 
 
 def _validate_wardrobe(scheme: IdentityScheme, wardrobe: Dict[str, List[str]]) -> None:

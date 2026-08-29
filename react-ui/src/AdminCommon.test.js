@@ -228,6 +228,7 @@ describe("AdminErrorLog", () => {
       admin_is_authed: true,
       admin_get_shots_info: [],
       get_version: { version: "test-version" },
+      admin_get_openrouter_balance: { configured: false },
     });
     await actAndFlush(() =>
       render(
@@ -368,6 +369,69 @@ describe("AdminErrorLog", () => {
 
     expect(setHandlerSpy).toHaveBeenLastCalledWith(null);
     setHandlerSpy.mockRestore();
+  });
+});
+
+describe("OpenRouterBalanceReadout (part of the admin footer)", () => {
+  async function renderFooterWith(balance) {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      get_version: { version: "test-version" },
+      admin_get_openrouter_balance: balance,
+    });
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <AdminPage>
+            <p>Page content</p>
+          </AdminPage>
+        </MemoryRouter>,
+      ),
+    );
+  }
+
+  test("shows nothing when OpenRouter has no key configured", async () => {
+    await renderFooterWith({ configured: false });
+
+    expect(screen.queryByText(/OpenRouter/)).not.toBeInTheDocument();
+  });
+
+  test("shows the remaining balance out of the key's spending limit", async () => {
+    await renderFooterWith({
+      configured: true,
+      limit: 100,
+      limit_remaining: 74.5,
+      usage: 25.5,
+    });
+
+    expect(
+      screen.getByText("OpenRouter: $74.50 remaining of $100.00"),
+    ).toBeInTheDocument();
+  });
+
+  test("shows total usage instead when the key has no spending limit set", async () => {
+    await renderFooterWith({
+      configured: true,
+      limit: null,
+      limit_remaining: null,
+      usage: 25.5,
+    });
+
+    expect(
+      screen.getByText("OpenRouter: $25.50 used (no key limit set)"),
+    ).toBeInTheDocument();
+  });
+
+  test("shows an unavailable message when the balance lookup failed", async () => {
+    await renderFooterWith({
+      configured: true,
+      error: "OpenRouter rejected the request",
+    });
+
+    expect(
+      screen.getByText("OpenRouter balance unavailable"),
+    ).toBeInTheDocument();
   });
 });
 

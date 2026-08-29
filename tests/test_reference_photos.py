@@ -497,6 +497,62 @@ def test_the_roster_has_no_verdict_for_an_errored_review(admin_api_client, playe
     assert row["top_name"] is None
 
 
+def test_the_roster_carries_the_outfit_we_expect_including_the_armband(
+    admin_api_client, player
+):
+    """The kit check is where the armband and the hat are handed over, so the
+    colours have to be on the row before any photo is taken."""
+    rows = admin_api_client.get(
+        f"/api/admin_get_reference_photo_status?game_id={game_of(player)}"
+    ).json()
+    row = next(r for r in rows if r["user_id"] == str(player))
+
+    expected = row["expected_appearance"]
+    assert set(expected) == set(SCHEME.channels.names)
+    assert {
+        name: entry["colour"] for name, entry in expected.items()
+    } == SCHEME.appearance_of_slot(SLOT_A)
+    assert expected["armbands"]["provided"] is True
+    assert expected["hat"]["provided"] is True
+    assert expected["tshirt"]["provided"] is False
+    assert expected["armbands"]["hex"].startswith("#")
+
+
+def test_the_roster_expects_an_override_rather_than_the_codeword(
+    admin_api_client, db_session, player
+):
+    """An override is what the player actually agreed to wear, and what the
+    decoder scores the photo against, so it is what the door is told to expect."""
+    canonical = SCHEME.appearance_of_slot(SLOT_A)
+    other = next(
+        c for c in SCHEME.channels.by_name("tshirt").labels if c != canonical["tshirt"]
+    )
+    db_session.query(User).filter_by(id=player).update(
+        {"identity_overrides": json.dumps({"tshirt": other})}
+    )
+    db_session.commit()
+
+    rows = admin_api_client.get(
+        f"/api/admin_get_reference_photo_status?game_id={game_of(player)}"
+    ).json()
+    row = next(r for r in rows if r["user_id"] == str(player))
+
+    assert row["expected_appearance"]["tshirt"]["colour"] == other
+
+
+def test_the_roster_expects_nothing_of_a_player_with_no_outfit(
+    admin_api_client, db_session, player
+):
+    set_slot(db_session, player, None)
+
+    rows = admin_api_client.get(
+        f"/api/admin_get_reference_photo_status?game_id={game_of(player)}"
+    ).json()
+    row = next(r for r in rows if r["user_id"] == str(player))
+
+    assert row["expected_appearance"] is None
+
+
 def test_the_roster_404s_on_an_unknown_game(admin_api_client, db_session):
     response = admin_api_client.get(
         f"/api/admin_get_reference_photo_status?game_id={get_uuid()}"

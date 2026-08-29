@@ -46,4 +46,8 @@
   border-top: 1px solid #dee2e6;
   color: #6c757d;
   font-size: 0.85em;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25em 1em;
+  justify-content: space-between;
 }

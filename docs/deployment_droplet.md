@@ -4,6 +4,26 @@ The runbook for running the game from a public cloud VM - written for the dry
 run of 30 Aug 2026, but nothing in it is specific to that day. The droplet
 replaces the home-lab LXC deployment (see the cutover section at the bottom).
 
+> **Status, 28 Aug 2026**: cutover in progress on the live droplet
+> `167.172.62.186`. The first two installs completed cleanly and then never
+> booted - two independent holes, both invisible from outside (a dark
+> droplet, no SSH, no ping) and both now fixed in `nix/cloud-host.nix`:
+> the default initrd carries **no virtio drivers**, so stage 1 hung looking
+> for `/dev/vda`; and **DigitalOcean provides no DHCP** - the stock image's
+> netplan is fully static from cloud-init metadata, so `useDHCP` boots with
+> no addresses (the installer masks this by replaying the live config
+> through kexec). The static values are baked in; re-capture them from a
+> stock rebuild if the droplet is ever rebuilt. Root also gained a hashed
+> *console* password (plaintext escrowed on homeserver) so the DO web
+> console can reach a network-dead host; SSH stays key-only, and the deploy
+> key that did the install is now in `deployKeys` alongside Charles's own.
+> The `--vm-test` step was initially skipped (no KVM in the deploying
+> container) in favour of a disk/firmware pre-check, which caught neither
+> hole - the vm-test *does* (it boots the installed disk), and it runs fine
+> under plain TCG emulation, just slowly. Don't skip it again.
+> Third install (virtio + static networking fixes) booted first time on
+> 28 Aug; the site is live.
+
 The droplet is a **NixOS host**: `nixosConfigurations.streetfight-cloud` in
 the flake, installed destructively onto the stock droplet with
 `nixos-anywhere` and updated afterwards with `nixos-rebuild --target-host`.
@@ -80,11 +100,44 @@ nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>
 `streetfight.cachix.org` substituter from the flake's `nixConfig`) and pushes
 the closure, so the droplet itself never has to build or trust anything.
 
-Note what this means for updates today: **a master push does not update the
-droplet by itself** - somebody runs the `nixos-rebuild` line. That gap is
-deliberate but temporary: auto-deploy (a pull-based systemd timer on the
-droplet, the same trust model as the LXC's) is specced as roadmap **R10**
-and closes it. Until R10 ships, the manual line above is the deploy.
+### Auto-deploy
+
+**A master push deploys itself, within a few minutes.** `nix/auto-deploy.nix`
+puts a timer and a oneshot on the droplet: each tick asks GitHub for the head
+of master with `git ls-remote`, and does nothing at all unless it has moved.
+When it has, the droplet runs `nixos-rebuild switch` against
+`github:charlesbaynham/streetfight/<rev>#streetfight-cloud`, then checks
+`/api/get_version` reports that revision. The host reaches out; nothing on
+the internet holds credentials into it.
+
+`/var/lib/streetfight-autodeploy/` records the last revision that succeeded
+and the last that failed, and neither is retried — so a commit that breaks
+the build or the health check is deployed once and then left alone until a
+new commit lands. `journalctl -u streetfight-autodeploy` is the log.
+
+```bash
+systemctl start streetfight-autodeploy       # deploy now, don't wait for the tick
+systemctl disable --now streetfight-autodeploy.timer   # kill switch
+nixos-rebuild switch --rollback              # recovery; there is no auto-rollback
+```
+
+The manual `nixos-rebuild --target-host` line above still works and is the
+right tool for deploying something that is not on master.
+
+Three things this needs on the droplet, all of them set by the module and
+each of which silently breaks the deploy if it goes missing (all three were
+found broken on the live box, 2026-08-29):
+
+- **`nix.settings.experimental-features`** — `nixos-rebuild --flake` fails
+  outright without `nix-command` and `flakes`, and neither is on by default.
+- **`git`** — needed for the `ls-remote` gate, and again because the flake
+  takes `cattle` as a `git+https` input, which nix cannot fetch without a git
+  binary even when the configuration being evaluated never uses it.
+- **`nix.settings.substituters`** — the flake's own `nixConfig` only applies
+  once accepted at a prompt, which a systemd service never sees, so
+  `streetfight.cachix.org` is baked into the system configuration. Without
+  it the droplet builds the frontend and the Python environment itself on one
+  vCPU.
 
 ## State and backups
 
@@ -107,7 +160,11 @@ consequences, both deliberate for a one-box deployment:
    certificate warning - a warning means DNS is wrong or still proxied, and
    phones will refuse the camera).
 2. `https://streetfight.houseabsolute.co.uk/api/get_version` returns the
-   deployed git revision, and it matches the commit you deployed.
+   deployed git revision, and it matches the commit you deployed. It reads
+   `unknown` when the flake was evaluated from a source carrying no git
+   revision — which is what a `path:` reference or a bare directory gives
+   you. Deploying from `.#` in a clean checkout, or from `github:.../<rev>`
+   as auto-deploy does, both stamp it properly.
 3. On a real phone: log in as admin (`/admin`), create a game and a team,
    and open the identity page - the team join links it mints should start
    with `https://streetfight.houseabsolute.co.uk`. Follow one and check the

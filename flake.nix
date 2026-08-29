@@ -260,10 +260,11 @@
 
       # `.#nixosConfigurations.streetfight-cloud` is the public cloud VM (a
       # DigitalOcean droplet): same deployment-agnostic service module, but
-      # installed as a whole NixOS host by nixos-anywhere and updated with
-      # `nixos-rebuild --target-host`, with Caddy terminating TLS itself
-      # (`hostname`) since there is no border router in front of it. See
-      # docs/deployment_droplet.md for the install and deploy loop.
+      # installed as a whole NixOS host by nixos-anywhere, with Caddy
+      # terminating TLS itself (`hostname`) since there is no border router in
+      # front of it. Thereafter it redeploys itself from master on a timer
+      # (./nix/auto-deploy.nix); `nixos-rebuild --target-host` remains the
+      # manual override. See docs/deployment_droplet.md.
       cloudHost = {
         nixosConfigurations.streetfight-cloud = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
@@ -271,6 +272,7 @@
             disko.nixosModules.disko
             ./nix/disko-cloud.nix
             ./nix/cloud-host.nix
+            ./nix/auto-deploy.nix
             streetfightModule
             {
               services.streetfight = {
@@ -279,6 +281,7 @@
                 frontend = perSystem.packages.x86_64-linux.frontendBuild;
                 hostname = "streetfight.houseabsolute.co.uk";
               };
+              services.streetfight-autodeploy.enable = true;
             }
           ];
         };

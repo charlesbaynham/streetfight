@@ -194,3 +194,85 @@
   color: #666;
   font-size: 0.85em;
 }
+
+/* --- The outfit: expected, and expected against read --- */
+
+.rosterOutfit {
+  display: flex;
+  gap: 0.2em;
+  align-items: center;
+}
+
+.expected {
+  border: 1px solid #adb5bd;
+  border-radius: 0.5em;
+  background: #f8f9fa;
+  padding: 0.5em 0.7em;
+  margin: 0.5em 0;
+}
+
+.expectedHeading {
+  font-size: 1em;
+  font-weight: bold;
+  margin: 0.4em 0 0.2em 0;
+}
+
+.outfitList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.outfitRow,
+.comparisonRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  /* A row is read while holding a phone in one hand and an armband in the
+     other, so it stays a touch-sized target even though it is not one. */
+  min-height: 2.6em;
+  border-bottom: 1px solid #e3e3e3;
+}
+
+/* The expected outfit is read across the desk while reaching into a box, so
+   it is the larger of the two: one colour per line, big swatch, no second
+   column competing with it. */
+.outfitRow {
+  min-height: 3em;
+  font-size: 1.1em;
+}
+
+.outfitList li:last-child {
+  border-bottom: none;
+}
+
+.channelName {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 5.5em;
+  font-weight: 600;
+}
+
+.garment {
+  display: flex;
+  align-items: center;
+  gap: 0.35em;
+  flex: 1 1 6em;
+  min-width: 0;
+}
+
+.garmentColour {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arrow {
+  flex: 0 0 auto;
+  color: #6c757d;
+}
+
+.comparisonRow .status {
+  flex: 0 0 auto;
+  font-weight: bold;
+}
