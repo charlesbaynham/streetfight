@@ -21,8 +21,10 @@ packing -- and records how many players it fitted. Two configurations are run:
   points.
 
 The live scheme is the unconstrained one: the guest list outgrew the 35 slots a
-five-colour trousers channel allows, so that channel now shares the main palette
-(plan section 2.6 and 11.1 both name widening it as the remedy). The constrained
+five-colour trousers channel allows, so that channel now carries a full seven of
+its own (plan section 2.6 and 11.1 both name widening it as the remedy). Only
+the counts matter here -- three of the four channels carry a physical palette of
+their own, and none of it reaches the code. The constrained
 row is kept because it is what the restriction cost, and the size the scheme
 drops back to if a channel ever has to be narrowed again.
 

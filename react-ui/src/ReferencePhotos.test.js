@@ -44,8 +44,8 @@ function makeAppearance(overrides = {}) {
   return {
     tshirt: { colour: "green", hex: "#00A651", provided: false },
     trousers: { colour: "mustard", hex: "#C9962B", provided: false },
-    hat: { colour: "blue", hex: "#0072CE", provided: true },
-    armbands: { colour: "red", hex: "#B00020", provided: true },
+    hat: { colour: "navy", hex: "#2D5170", provided: true },
+    armbands: { colour: "red", hex: "#F5252F", provided: true },
     ...overrides,
   };
 }
@@ -325,7 +325,7 @@ describe("the outfit we expect", () => {
     expect(screen.getByText("Hand them")).toBeInTheDocument();
     expect(screen.getByText("armbands")).toBeInTheDocument();
     expect(screen.getByText("red")).toBeInTheDocument();
-    expect(screen.getByText("blue")).toBeInTheDocument();
+    expect(screen.getByText("navy")).toBeInTheDocument();
     // ...and their own two garments, which we only check rather than issue
     expect(
       screen.getByText("They should have turned up in"),

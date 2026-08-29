@@ -502,9 +502,17 @@ def outfit_options(
     game_users: List[UserModel],
     user_id: Optional[UUID],
     threshold: int,
+    dedupe: bool = True,
 ) -> List[Option]:
     """Every wearable, currently-free outfit for a player joining
     ``team_colour``, ranked best first (plan C4).
+
+    ``dedupe`` collapses each tshirt+trousers combination to its best-ranked
+    survivor, which is what the picking page wants: the armband is ours to
+    assign, so offering the player seven near-identical rows would be noise.
+    Pass ``False`` to get the whole enumeration, which is what
+    ``_revalidate_appearance`` needs -- see the note there, because the
+    difference is load-bearing rather than cosmetic.
 
     Enumerates the product of the player's declared colours on each wardrobe
     channel (or that channel's whole palette, when nothing was declared -
@@ -609,6 +617,9 @@ def outfit_options(
             item[1],
         )
     )
+
+    if not dedupe:
+        return [option for option, _word in scored]
 
     seen_combos = set()
     deduped = []
@@ -735,6 +746,16 @@ def _revalidate_appearance(
     the same way - simply absent from the recomputed set - so there is
     nothing here for a malicious client to distinguish.
 
+    That enumeration must be **undeduped**. Collapsing to one survivor per
+    tshirt+trousers combination happens *after* the distance gate, so which
+    armband colour survives depends on the gate that was applied: the page
+    offers the best of the group that clears the threshold, while an ungated
+    enumeration can hand the same combination to a lower-ranked sibling. Ask
+    for the deduped set here and a perfectly legitimate pick is simply absent
+    from it, and the player is told someone took their outfit when nobody
+    did. The gate is what makes ungated the widest set; dedupe is what would
+    quietly stop it being one.
+
     An appearance that clears the gate this file offered but has since
     dropped below the *relaxed* threshold (because someone else was placed
     nearby in the meantime) is rejected too, unless nothing else currently
@@ -742,7 +763,9 @@ def _revalidate_appearance(
     escape hatch ``outfit_options_page`` applies, so a legitimately exhausted
     pick is never bounced on a technicality.
     """
-    all_options = outfit_options(scheme, team_colour, wardrobe, game_users, user_id, 0)
+    all_options = outfit_options(
+        scheme, team_colour, wardrobe, game_users, user_id, 0, dedupe=False
+    )
     matching = next((o for o in all_options if o.appearance == appearance), None)
     if matching is None:
         raise OutfitUnavailableError(

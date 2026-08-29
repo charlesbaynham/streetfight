@@ -13,8 +13,14 @@ distinct codewords of the same scheme -- it merely constrains *which* of the
 usable slots each team draws from.
 
 The constraint has a hard ceiling: a hat colour only covers as many slots as
-there are codewords carrying it (seven each in the default scheme, six for
-black -- the all-black slot 0 is never handed out). Past that a team needs a
+there are codewords carrying it. The code is MDS and every channel wears a full
+seven colours, so each hat colour lands on exactly ``q**k / q`` = seven of the
+49 codewords -- an even split, whatever the colours physically are. Black gets
+six of them rather than seven for one reason only: slot 0, the all-zero
+codeword, is never handed out (plan §11.1) and its hat symbol is black. Nothing
+about the palettes causes that, so the bought kit (2026-08-29) does not change
+it; moving black off symbol 0 in ``HAT_PALETTE`` would, and would only move the
+missing slot onto whatever took its place. Past that ceiling a team needs a
 second colour, and :func:`allocate_team_slots` gives it one *whole* extra
 colour rather than sharing a part-used one, so a hat colour still names exactly
 one team. Slots are emitted primary-colour-first, so a team that never fills its
@@ -134,8 +140,8 @@ def allocate_team_slots(
 
 
 def colour_capacity(scheme, channel_name: str) -> Dict[str, int]:
-    """``{label: number of usable slots wearing it}`` -- 5 per colour in the
-    default scheme, 4 for black (slot 0 is excluded).
+    """``{label: number of usable slots wearing it}`` -- 7 per colour in the
+    configured scheme, 6 for black (slot 0 is excluded).
     """
     return {
         label: len(slots)

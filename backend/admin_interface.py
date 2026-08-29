@@ -317,9 +317,17 @@ class AdminInterface:
         return [UserModel.model_validate(g) for g in q.all()]
 
     @db_scoped
-    def create_game(self) -> UUID:
+    def create_game(self, game_id: Optional[UUID] = None) -> UUID:
+        """Make a game, optionally at a caller-chosen id.
+
+        ``game_id`` exists for fixtures. A generated sample game whose id is
+        minted afresh on every reset cannot have its join QR codes printed in
+        advance, because the codes encode the ids -- so the fixture derives
+        stable ids from its seed and passes them in here. A real game never
+        supplies one and gets the usual random id.
+        """
         logger.info("AdminInterface - create_game")
-        g = Game()
+        g = Game(id=game_id) if game_id is not None else Game()
         self._session.add(g)
         self._session.commit()
 
@@ -375,10 +383,18 @@ class AdminInterface:
         trigger_circle_update(game_id)
 
     @db_scoped
-    def create_team(self, game_id: UUID, name: str) -> UUID:
+    def create_team(
+        self, game_id: UUID, name: str, team_id: Optional[UUID] = None
+    ) -> UUID:
+        """Add a team to a game, optionally at a caller-chosen id.
+
+        See :meth:`create_game` for why ``team_id`` exists: a printed team
+        join code encodes the team id, so a fixture that wants its codes to
+        survive a database reset has to choose the id rather than discover it.
+        """
         logger.info("AdminInterface - create_team")
         game = self._get_game_orm(game_id)
-        team = Team(name=name)
+        team = Team(name=name, id=team_id) if team_id is not None else Team(name=name)
         game.teams.append(team)
         self._session.commit()
 

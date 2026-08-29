@@ -146,7 +146,9 @@ def test_report_pairs_and_levels(db_session, one_game, one_team, user_factory):
         db_session,
         b,
         2,
-        overrides={"tshirt": "purple", "hat": "purple", "armbands": "purple"},
+        overrides={
+            channel: SLOT_1[channel] for channel in ("tshirt", "hat", "armbands")
+        },
     )
     # b's effective word: (1, 2, 1, 1) vs a's (1, 1, 1, 1) -> distance 1
 
@@ -497,7 +499,11 @@ def test_suggest_excludes_own_word(db_session, one_game, one_team, user_factory)
         IdentitySuggestRequest(
             game_id=one_game,
             user_id=a,
-            fixed={"tshirt": "purple", "hat": "purple", "trousers": "blue"},
+            fixed={
+                "tshirt": "purple",
+                "hat": SLOT_1["hat"],
+                "trousers": "blue",
+            },
             free=["armbands"],
         )
     )

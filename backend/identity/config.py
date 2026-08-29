@@ -6,11 +6,28 @@ palette, add a :class:`Channel`, or switch the code to
 :mod:`~backend.identity.scheme`, or :mod:`~backend.identity.channels` needs to
 change -- that is the extensibility guarantee.
 
-The values here are the ones chosen in ``docs/team_photo_identification_plan.md``
-§9.1, selected by optimising the worst-case minimum CIEDE2000 distance across
-daylight, warm-white LED and high-pressure sodium illuminants. The palettes are
-still subject to live camera testing with the real hardware (plan §9), so keep
-swapping a colour a one-line change here.
+The t-shirt and trousers palettes are the ones chosen in
+``docs/team_photo_identification_plan.md`` §9.1, selected by optimising the
+worst-case minimum CIEDE2000 distance across daylight, warm-white LED and
+high-pressure sodium illuminants -- those two channels are the player's own
+clothes, so the palette is a *description* of what we will accept.
+
+The hat and armband palettes are not. Those two garments have been **bought**
+(2026-08-29), so their colours are measured from the kit itself rather than
+optimised: seven suede/corduroy caps and seven rolls of cohesive bandage, each
+photographed on white paper lit by the same phone torch, each white-balanced
+against the paper *in its own frame*, and recorded below. Where the simulation
+and the kit disagree, the kit wins -- it is what players will actually be
+wearing.
+
+Two caveats ride with these numbers. A phone torch is a low-CRI LED with a spiky
+spectrum: normalising the paper to neutral fixes the cast but cannot undo what
+that spectrum does to a highly saturated dye, so the deep reds (the burgundy cap
+above all) are the least certain entries here. And the hats were shot in a pile,
+so the paper around them carries bounce from the warm caps -- see plan §9.1a for
+how that was measured and worked around. A daylight re-photograph would settle
+both; until then treat the neutrals and mid-tones as solid and the saturated
+reds as good to a few ΔE. See plan §9.1a.
 """
 
 from backend.identity.channels import Channel
@@ -19,9 +36,12 @@ from backend.identity.code import build_code
 from backend.identity.decoder import DecoderThresholds
 from backend.identity.scheme import IdentityScheme
 
-# The main palette, worn on t-shirt / hat / armbands. Seven colours, so q = 7
-# (prime, which the dependency-free GF(q) arithmetic requires), and 7**2 = 49
-# codewords.
+# The main palette. Every channel now has a physical set of its own except the
+# t-shirt, so in the configured scheme this *is* the t-shirt palette; it stays
+# named "main" because it is also the fallback for any channel not listed in
+# CHANNEL_PALETTES (an extra channel added by scheme_with_distance, say).
+# Seven colours, so q = 7 (prime, which the dependency-free GF(q) arithmetic
+# requires), and 7**2 = 49 codewords.
 DEFAULT_PALETTE = ["black", "purple", "red", "blue", "green", "orange", "yellow"]
 
 # Trousers, also seven -- the whole point of widening this channel (plan §2.6:
@@ -63,6 +83,85 @@ TROUSERS_PALETTE = [
     "mustard",
 ]
 
+# The hats, measured from the kit (2026-08-29). Six plain suede caps plus one
+# corduroy (the burgundy), photographed in a pile on white paper and newsprint
+# under a phone torch; the hexes below are after white-balancing against that
+# paper, so they are the caps as they look in neutral light rather than as the
+# photograph rendered them. The paper immediately around a cap carries bounce
+# from it -- measurably, and only from the warm ones -- so the white reference is
+# the median over every paper patch in the frame rather than the nearest one;
+# the black cap, which is the one object here known to be neutral, lands within
+# ΔE 3 of grey under that correction, which is what says it is right.
+#
+#   symbol  colour     hex        L*   hue    what it is
+#   0       black      #1A1A1A    ~18  --     plain black suede
+#   1       navy       #2D5170     33  263°   dark blue suede
+#   2       green      #4F7468     46  171°   deep bottle/pine green, slightly blue
+#   3       burgundy   #A62C3E     38   21°   the corduroy one: dark wine red
+#   4       rust       #BF4227     46   41°   burnt orange / terracotta
+#   5       tan        #C48E5B     63   67°   camel
+#   6       salmon     #DA7B70     62   32°   dusty coral pink
+#
+# No purple, no yellow, no bright primary red, no bright blue: the set Charles
+# bought is muted and earthy, which is the opposite of what the §9.1 simulation
+# would have picked. It is still comfortably separable -- three of the seven are
+# warm reds (burgundy, rust, salmon) but they are pulled apart on *two* axes at
+# once, lightness and hue: salmon is 24 L* lighter than either, and burgundy has
+# no orange in it where rust is nothing but. COLOUR_BUCKETS draws those lines in
+# words, because a vision model that answers "reddish" has to land on one of
+# them.
+#
+# "black" is the only one that coincides with the main palette, so it is the
+# only one absent from PALETTE_HEX["hat"] below. Keeping it at symbol 0 is what
+# keeps slot 0 -- the all-zero codeword, never handed out -- the all-black
+# outfit that plan §11.1 excludes.
+HAT_PALETTE = [
+    "black",
+    "navy",
+    "green",
+    "burgundy",
+    "rust",
+    "tan",
+    "salmon",
+]
+
+# The armbands, likewise measured (2026-08-29): seven rolls of cohesive bandage,
+# laid out on white paper under the same phone torch and corrected against the
+# paper in their own frame. That frame is not dominated by warm objects the way
+# the hats' is, so its paper starts closer to neutral and needed a gain of only
+# (0.955, 1.002, 1.047) against the hats' (0.865, 1.035, 1.139). The two
+# estimates of the *same* torch therefore differ by about ΔE 6 -- the phone's
+# per-frame auto white balance plus that bounce -- which is exactly why each
+# photograph is corrected against its own paper and neither against the other.
+#
+#   symbol  colour     hex        L*   hue    what it is
+#   0       brown      #8E6453     46   49°   mid brown, the colour of a plaster
+#   1       blue       #0F61A6     40  275°   strong mid blue
+#   2       purple     #964F7E     44  340°   plum
+#   3       lime       #AAC634     76  113°   yellow-green
+#   4       red        #F5252F     54   33°   pillar-box red
+#   5       orange     #FA7A08     66   57°   bright orange
+#   6       yellow     #FCC221     82   84°   golden yellow
+#
+# No black, and the green is a *lime* rather than the deep green the simulation
+# chose; the brown is unlike anything else in the scheme. Nothing here coincides
+# with the main palette (the blue, red, orange, yellow and purple are all
+# different shades of their name), so PALETTE_HEX["armbands"] lists all seven.
+#
+# There is no black to put at symbol 0. Brown takes it instead -- the drabbest
+# of the seven, which keeps slot 0 the least conspicuous outfit in the scheme
+# even though it is no longer literally black in every channel. A passer-by
+# wears no armband at all, so the channel barely matters to that exclusion.
+ARMBANDS_PALETTE = [
+    "brown",
+    "blue",
+    "purple",
+    "lime",
+    "red",
+    "orange",
+    "yellow",
+]
+
 # The field cardinality. Must be prime, and must be at least the size of the
 # largest channel alphabet.
 DEFAULT_Q = 7
@@ -72,12 +171,18 @@ DEFAULT_Q = 7
 DEFAULT_CHANNEL_NAMES = ["tshirt", "trousers", "hat", "armbands"]
 
 # Channels with an alphabet of their own; anything not listed uses
-# DEFAULT_PALETTE. Only the *cardinality* reaches the code, so a channel here
-# may carry a different physical set (trousers) or fewer labels than ``q``,
-# which makes the codewords it cannot wear unassignable
+# DEFAULT_PALETTE. Three of the four channels have one -- trousers because legs
+# want different colours, hat and armbands because those are physical objects
+# sitting in Charles's house. Only the *cardinality* reaches the code, so a
+# channel here may carry a wholly different physical set or fewer labels than
+# ``q``, which makes the codewords it cannot wear unassignable
 # (``ChannelSet.is_representable``). A channel listed here may also give its own
 # shades in PALETTE_HEX under the same name, for the colours that differ.
-CHANNEL_PALETTES = {"trousers": TROUSERS_PALETTE}
+CHANNEL_PALETTES = {
+    "trousers": TROUSERS_PALETTE,
+    "hat": HAT_PALETTE,
+    "armbands": ARMBANDS_PALETTE,
+}
 
 # The channel spent on telling teams apart by eye: every member of a team is
 # pre-allocated a slot with the same colour here, and no two teams share one
@@ -124,6 +229,29 @@ PALETTE_HEX = {
         "olive": "#6B7A3A",
         "mustard": "#C9962B",
     },
+    # Measured off the bought caps (2026-08-29), white-balanced against the
+    # paper they were photographed on. "black" is the only one that coincides
+    # with the main palette, so it is the only one missing here.
+    "hat": {
+        "navy": "#2D5170",
+        "green": "#4F7468",
+        "burgundy": "#A62C3E",
+        "rust": "#BF4227",
+        "tan": "#C48E5B",
+        "salmon": "#DA7B70",
+    },
+    # Measured off the bought bandage rolls (2026-08-29). Every one differs from
+    # the main palette -- even where the name is the same, the dye is not -- so
+    # all seven are listed.
+    "armbands": {
+        "brown": "#8E6453",
+        "blue": "#0F61A6",
+        "purple": "#964F7E",
+        "lime": "#AAC634",
+        "red": "#F5252F",
+        "orange": "#FA7A08",
+        "yellow": "#FCC221",
+    },
 }
 
 # Wide, dispute-free buckets -- one person's "burgundy" is another's "red".
@@ -150,6 +278,32 @@ COLOUR_BUCKETS = {
         "red": "includes burgundy and rust",
         "olive": "olive, khaki or army green",
         "mustard": "mustard, ochre, tan or camel",
+    },
+    # Three of the seven caps are warm reds, so this channel earns its notes:
+    # burgundy, rust and salmon are separated on lightness *and* hue, and every
+    # note says which. Everything but "green" is defined, because in poor light
+    # a dark cap is where a reading goes wrong.
+    "hat": {
+        "black": "true black -- a very dark blue or green is navy or green",
+        "navy": "dark blue, navy or petrol",
+        "green": "dark bottle or pine green",
+        "burgundy": "dark wine red, no orange in it",
+        "rust": "burnt orange or terracotta -- orange, not pink",
+        "tan": "camel, light brown or beige, no pink in it",
+        "salmon": "pale coral pink -- much lighter than burgundy or rust",
+    },
+    # One colour per hue here, so most of these buckets are as wide as the name
+    # allows: the only green is the lime, the only blue is the mid blue. Brown
+    # is the one that needs pinning down, because a dim photo turns it into
+    # orange or red.
+    "armbands": {
+        "brown": "mid brown, like a plaster -- duller than orange",
+        "blue": "any blue -- royal, mid or navy",
+        "purple": "purple, plum or violet",
+        "lime": "yellow-green, and the only green here",
+        "red": "bright red -- not orange, not brown",
+        "orange": "bright orange -- lighter and brighter than brown",
+        "yellow": "golden or bright yellow, not lime",
     },
 }
 
@@ -182,15 +336,22 @@ COLOUR_COMMONNESS = {
         "red": 0.35,
         "mustard": 0.08,
     },
+    # Nothing reads this today: outfit_options sums rarity over the *wardrobe*
+    # channels only (tshirt, trousers), because the hat is pinned to the team
+    # and the armband is ours to assign. It is kept, in the bought colours, as
+    # the estimate the ranking would need the day the hat stops being the team
+    # channel -- how likely a passer-by is to have that colour on their head.
     "hat": {
         "black": 0.30,
-        "blue": 0.18,
-        "red": 0.12,
-        "green": 0.10,
-        "purple": 0.06,
-        "orange": 0.05,
-        "yellow": 0.05,
+        "navy": 0.20,
+        "tan": 0.10,
+        "green": 0.08,
+        "burgundy": 0.05,
+        "rust": 0.04,
+        "salmon": 0.03,
     },
+    # No "armbands" entry, deliberately: nobody but a player wears one, so there
+    # is no ownership to estimate, and nothing would read it if there were.
 }
 
 # Decoder flag thresholds (tune per field experience).

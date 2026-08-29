@@ -395,20 +395,41 @@ Three deployment targets share one service definition:
   only `k` readable channels an MDS code matches *some* codeword for any
   reading, so it vouches for nothing however it is scored.
 - The colour scheme players wear lives in `backend/identity/config.py`
-  (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). `backend/identity/` must stay
-  pure — no database, web or vision imports. See
+  (4 channels × 7 colours, `[4,2,3]` Reed–Solomon). Seven everywhere, but **four
+  different physical palettes**: `main` (which is now the t-shirt's alone, plus
+  the fallback for any channel without one), `TROUSERS_PALETTE`, `HAT_PALETTE`
+  and `ARMBANDS_PALETTE`. Only the *cardinality* reaches the code, so nothing
+  has to match anything else and almost nothing does.
+  `backend/identity/` must stay pure — no database, web or vision imports. See
   `docs/team_photo_identification_plan.md` for the reasoning.
 - **Trousers are their own palette** (`TROUSERS_PALETTE`), simulated separately
   for legs and sharing only `black` with the main one, hex and all: black, grey,
   off-white, blue, red, olive, mustard. Three achromatics spread across the
   lightness range plus four chromatics spread around the hue circle — the
   neutrals are separated by `L*`, which survives a colour cast, rather than by
-  hue. Only the *cardinality* reaches the code, so nothing has to match the main
-  palette and almost nothing does. See plan §9.1.
+  hue. See plan §9.1.
+- **The hat and armband palettes are measured, not designed** (`HAT_PALETTE`,
+  `ARMBANDS_PALETTE`, added 2026-08-29). Those two garments have been bought, so
+  the kit in Charles's house is the ground truth and the CIEDE2000 optimisation
+  is superseded for them — hats are black, navy, green, burgundy, rust, tan,
+  salmon; armbands are brown, blue, purple, lime, red, orange, yellow. Their
+  hexes were taken off photographs, each white-balanced against the paper in its
+  own frame (both were lit by a phone torch, whose low-CRI spectrum is why the
+  saturated reds — burgundy above all — are the least certain entries and want a
+  daylight re-shoot if they ever need to be exact). Two consequences worth
+  carrying: the armbands have **no black**, so
+  the withheld slot 0 is black/black/black/**brown** rather than all-black; and
+  the hat is now the least separated channel in the scheme (min ΔE2000 14.2,
+  burgundy/rust), which `d = 3` absorbs but which is the first suspect if
+  identification underperforms. See plan §9.1a and roadmap R6.
 - **Colour definitions (`COLOUR_BUCKETS`) are keyed per channel**, like
   `PALETTE_HEX`, with a per-colour fallback to `main` — because the channels
   genuinely disagree: charcoal is `black` on the legs (grey is two stops away)
-  and explicitly not black on a top (no grey to catch it). Both audiences that
+  and explicitly not black on a top (no grey to catch it), and `red` means a
+  pillar-box bandage on the arm but a much darker dye on a t-shirt. Three of the
+  four channels now define most of their own terms; the hat's matter most,
+  because burgundy, rust and salmon are three warm reds a loose definition would
+  let collapse. Both audiences that
   answer in these words render each channel's own: the swatch notes on `/pick`
   (`channels[].notes` from `_channels_payload`) and the vision prompt, which
   puts them inside that channel's question rather than in one shared list. Keep
@@ -419,8 +440,11 @@ Three deployment targets share one service definition:
   (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
   each team a block of slots sharing one hat colour, and no two teams share a
   colour. That is an allocation policy only — the decoder is unaffected. A hat
-  colour covers seven slots (six for black), so a bigger team picks up a whole
-  second colour rather than sharing a part-used one.
+  colour covers seven slots — six for black, and only because slot 0 is withheld
+  and its hat symbol is black; the palettes have nothing to do with it — so a
+  bigger team picks up a whole second colour rather than sharing a part-used
+  one. Six teams of five fit comfortably: each takes one colour and black is
+  never reached.
 - `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
   for a game, and left untouched on every later call (even after a new team is
   added) — so a team that has already started picking outfits never gets

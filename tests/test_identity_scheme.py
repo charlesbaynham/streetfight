@@ -69,13 +69,18 @@ def test_narrowing_a_channel_costs_the_codewords_it_cannot_wear():
     assert len(scheme.usable_slots()) == 34
 
 
-def test_slot_zero_is_all_black():
+def test_slot_zero_is_the_drabbest_outfit_in_the_scheme():
+    """Slot 0 is withheld (plan §11.1) because it is what a passer-by is most
+    likely to be wearing by accident. Every channel that *has* a black wears it
+    there; the bought armbands have none, so symbol 0 of that channel is the
+    drabbest colour they do have.
+    """
     scheme = default_scheme()
     assert scheme.appearance_of_slot(0) == {
         "tshirt": "black",
         "trousers": "black",
         "hat": "black",
-        "armbands": "black",
+        "armbands": "brown",
     }
 
 

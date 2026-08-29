@@ -71,9 +71,11 @@ class ChannelSet:
     of colours. A channel may also supply **more** than ``q`` labels (only the
     first ``q`` are addressable) or **fewer** (plan §2.6): the trousers channel
     used to carry just five easy-to-source colours while ``q = 7``, because
-    guests supply their own clothing. Every channel shares one seven-colour
-    palette now that the guest list needs the capacity, but the mechanism
-    stays: a channel with ``s < q`` labels simply makes the codewords whose
+    guests supply their own clothing. Every channel carries a full seven
+    colours now that the guest list needs the capacity -- though three of the
+    four (trousers, hat, armbands) carry seven of their *own*, which the code
+    never notices because only the index reaches it. The mechanism for a
+    narrow channel stays: one with ``s < q`` labels simply makes the codewords whose
     symbol at that position is ``>= s`` unwearable, which
     :meth:`is_representable` reports and ``IdentityScheme.usable_slots`` uses
     to trim the assignable identities.
