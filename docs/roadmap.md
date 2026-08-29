@@ -706,9 +706,11 @@ this file is kept current.
 
 **Admin-facing:**
 
-- [ ] The reference-photo kit check at `/admin/reference` (R7): capturing a
-  player's photo at the door and reading the resulting verdict, including
-  the "unreadable photo identifies nobody" case.
+- [ ] The reference-photo kit check at `/admin/reference` (R7): reading off the
+  hat and armband colours to hand out, capturing a player's photo at the door
+  and reading the resulting verdict — including the "unreadable photo
+  identifies nobody" case and the expected-against-read comparison naming the
+  garment that is wrong.
 - [ ] The shot review queue: ranked candidate list per shot (#3), CharlesBot's
   verdict and confidence, the AI vision zoom usage indicator, and manually
   approving/rejecting a shot.
@@ -2083,7 +2085,23 @@ page printed it as "Recognised as … (p=0.50)" — p=1.00 had the photographed
 player been the only one placed. The section now carries
 `readable_channels`, and at zero there is no ranking and no
 `matches_expected` at all; the page reserves green for a match the decoder
-calls confident, and shows everything else amber. The original brief follows.
+calls confident, and shows everything else amber.
+
+Amended 2026-08-29: the page now says what the player is *expected* to be
+wearing, not only what the model made of them. Each
+`admin_get_reference_photo_status` row carries an `expected_appearance`
+(`identity_admin.expected_outfit` — the effective word, so an override is what
+is expected, shaped like a review's `channels` so one component renders both),
+and the roster shows it as a swatch strip. In a player's own view it is shown
+**before** the camera, split into "hand them" (the hat and the armband, which
+`identity_admin.provided_channels` names — the complement of the wardrobe
+channels, so the two cannot disagree) and what they should have arrived in:
+this is the moment the kit is handed over, so the colours have to be readable
+while reaching into the box rather than only afterwards. Once the review lands,
+the same list gains a second column — expected → read, with a per-garment
+tick, cross or amber "not read" — so a failure names the garment rather than
+only the player, which is the difference between sending somebody home and
+swapping their armband. The original brief follows.
 
 **Why the admin takes it, not the player.** The reference photo's first job is
 not to feed #11 — it is a **manual gate**. Two of the four channels are

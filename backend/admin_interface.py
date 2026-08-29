@@ -779,9 +779,18 @@ class AdminInterface:
         """One row per player in a game: have they been photographed, and did
         the photo resolve to them?
 
+        Each row also carries what the player is *supposed* to be wearing
+        (:func:`backend.identity_admin.expected_outfit`), because the kit check
+        is where the hat and the armband are handed over: the admin needs the
+        colours to fetch out of the box before there is any photo to compare
+        them with, not only afterwards.
+
         Selects columns only -- never reference_photo_base64, which the roster
         has no use for and which would make this response enormous.
         """
+        from .identity.config import default_scheme
+        from .identity_admin import expected_outfit
+
         self._get_game_orm(game_id)  # 404 if the game doesn't exist
 
         rows = (
@@ -792,6 +801,8 @@ class AdminInterface:
                 User.reference_photo_base64.isnot(None),
                 User.reference_review_state,
                 User.reference_review,
+                User.identity_slot,
+                User.identity_overrides,
             )
             .join(Team, User.team_id == Team.id)
             .filter(Team.game_id == game_id)
@@ -799,6 +810,7 @@ class AdminInterface:
             .all()
         )
 
+        scheme = default_scheme()
         return [
             {
                 "user_id": user_id,
@@ -806,9 +818,19 @@ class AdminInterface:
                 "team_name": team_name,
                 "has_photo": bool(has_photo),
                 "review_state": state,
+                "expected_appearance": expected_outfit(slot, overrides, scheme),
                 **_reference_verdict(state, review),
             }
-            for user_id, name, team_name, has_photo, state, review in rows
+            for (
+                user_id,
+                name,
+                team_name,
+                has_photo,
+                state,
+                review,
+                slot,
+                overrides,
+            ) in rows
         ]
 
     def add_user_to_team(self, user_id: UUID, team_id: UUID):
