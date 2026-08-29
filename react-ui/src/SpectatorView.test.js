@@ -4,10 +4,14 @@
 // two joins that are easy to get silently wrong (score by user id, armour as
 // HP minus one).
 
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 
-import SpectatorView, { adjudicationStatus } from "./SpectatorView";
+import SpectatorView, {
+  adjudicationStatus,
+  hasConcluded,
+  teamLetters,
+} from "./SpectatorView";
 import { UpdateSSEConnection } from "./UpdateListener";
 import {
   installFetchMock,
@@ -119,8 +123,7 @@ describe("the roster", () => {
   test("counts only the living in the headline", async () => {
     await renderScreen();
 
-    expect(screen.getByText("1")).toBeInTheDocument();
-    expect(screen.getByText(/of 2 alive/)).toBeInTheDocument();
+    expect(screen.getByText("1 of 2 alive")).toBeInTheDocument();
   });
 
   test("shows a knocked-out player's countdown instead of their stats", async () => {
@@ -264,5 +267,229 @@ describe("empty states", () => {
   test("says so when there is no game at all", async () => {
     await renderScreen({ admin_list_games: [] });
     expect(screen.getByText("No games yet.")).toBeInTheDocument();
+  });
+});
+
+// -- the team letter, which is what separates two near-identical hat colours --
+
+describe("team letters", () => {
+  test("gives teams that share an initial different letters", () => {
+    // The reason the attribute exists: burgundy and rust are 14.2 dE2000
+    // apart and read alike across a room, so the letter has to do the work.
+    // With Blue holding "B", Burgundy must take something else.
+    const letters = teamLetters([
+      { id: "t1", name: "Blue Team" },
+      { id: "t2", name: "Burgundy" },
+      { id: "t3", name: "Rust" },
+    ]);
+
+    expect(letters.t1).toBe("B");
+    expect(new Set(Object.values(letters)).size).toBe(3);
+  });
+
+  test("still gives a letter to a team with no usable name", () => {
+    const letters = teamLetters([
+      { id: "t1", name: "Red" },
+      { id: "t2", name: "" },
+    ]);
+
+    expect(letters.t2).toBeTruthy();
+    expect(letters.t2).not.toBe(letters.t1);
+  });
+});
+
+// -- what counts as a conclusion, for the takeover ---------------------------
+
+describe("hasConcluded", () => {
+  test.each([
+    ["nothing yet", {}, false],
+    ["CharlesBot still looking", { state: "pending" }, false],
+    ["CharlesBot has a reading", { state: "done" }, true],
+    ["CharlesBot errored", { state: "error" }, true],
+    // The design is explicit that escalating counts: it is news.
+    ["escalating", { state: "done", escalation_state: "pending" }, true],
+    ["resolved", { checked: true, result: "hit" }, true],
+  ])("%s", (_name, shot, expected) => {
+    expect(hasConcluded(shot)).toBe(expected);
+  });
+});
+
+// -- the takeover and the face cycle -----------------------------------------
+//
+// Both are timer-driven, so these use fake timers and advance them by hand.
+// renderScreen's real-timer flushing does not mix with that, so these mount
+// the screen themselves.
+
+describe("the takeover", () => {
+  // state "pending" is a shot CharlesBot has picked up but not yet answered -
+  // the state the takeover is built to sit in. (state null means nothing has
+  // started at all, which reads as "Waiting for the admin".)
+  const shot = (overrides) => ({
+    id: "shot-new",
+    time_created: new Date().toISOString(),
+    shooter_name: "Zoe",
+    target_name: null,
+    checked: false,
+    result: null,
+    state: "pending",
+    review: null,
+    identification: null,
+    escalation_state: null,
+    escalation: null,
+    ...overrides,
+  });
+
+  async function mountWith(initialShots) {
+    let feed = initialShots;
+    installFetchMock(world({ admin_get_recent_shots: () => feed }));
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <UpdateSSEConnection endpoint="sse_admin_updates" />
+          <SpectatorView />
+        </MemoryRouter>,
+      );
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+      jest.advanceTimersByTime(0);
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    });
+
+    return {
+      async setFeed(next) {
+        feed = next;
+        await act(async () => {
+          emitUpdate("shots");
+          for (let i = 0; i < 8; i++) await Promise.resolve();
+        });
+      },
+      async tick(ms) {
+        await act(async () => {
+          jest.advanceTimersByTime(ms);
+          for (let i = 0; i < 8; i++) await Promise.resolve();
+        });
+      },
+    };
+  }
+
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  // The same sentences appear in the sidebar feed, so assert on the overlay
+  // itself rather than on text anywhere in the document.
+  const takeover = () => document.querySelector(".shotTakeover");
+
+  test("does not fire for shots that were already there on load", async () => {
+    // Opening the page mid-game must not replay the last six shots at the room.
+    await mountWith([shot({ id: "old-1" }), shot({ id: "old-2" })]);
+
+    expect(takeover()).toBeNull();
+  });
+
+  test("fires for a shot that arrives afterwards, and follows it to a verdict", async () => {
+    const screenApi = await mountWith([shot({ id: "old-1" })]);
+
+    await screenApi.setFeed([shot({ id: "new-1" }), shot({ id: "old-1" })]);
+    expect(
+      within(takeover()).getByText("CharlesBot looking..."),
+    ).toBeInTheDocument();
+
+    // The verdict lands in the feed; the panel must follow it rather than
+    // showing a snapshot taken when it popped.
+    await screenApi.setFeed([
+      shot({ id: "new-1", checked: true, result: "hit", target_name: "Kit" }),
+      shot({ id: "old-1" }),
+    ]);
+    expect(within(takeover()).getByText("Hit on Kit")).toBeInTheDocument();
+  });
+
+  test("lets go on its own when nothing ever concludes", async () => {
+    // CharlesBot is off unless a per-game toggle is on, so this is the
+    // ordinary case: without the cap the first shot of the night would park
+    // on screen for the rest of the evening.
+    const screenApi = await mountWith([shot({ id: "old-1" })]);
+    await screenApi.setFeed([
+      shot({ id: "new-1", state: null }),
+      shot({ id: "old-1" }),
+    ]);
+
+    expect(takeover()).not.toBeNull();
+
+    // A stage at a time: each timeout is only scheduled once the previous
+    // state change has re-rendered, so one bulk advance would not chain.
+    await screenApi.tick(8050); // the cap, waiting -> resolving
+    await screenApi.tick(2050); // the 2s hold
+    await screenApi.tick(350); // the exit
+
+    expect(takeover()).toBeNull();
+  });
+
+  test("says how many are waiting, and never queues more than three", async () => {
+    const screenApi = await mountWith([shot({ id: "old-1" })]);
+
+    await screenApi.setFeed([
+      shot({ id: "n1" }),
+      shot({ id: "n2" }),
+      shot({ id: "n3" }),
+      shot({ id: "n4" }),
+      shot({ id: "n5" }),
+      shot({ id: "old-1" }),
+    ]);
+
+    // Three held, so two behind the one on screen
+    expect(screen.getByText("2 more waiting")).toBeInTheDocument();
+  });
+});
+
+describe("the face cycle", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  async function mount(shots) {
+    installFetchMock(world({ admin_get_recent_shots: shots }));
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <UpdateSSEConnection endpoint="sse_admin_updates" />
+          <SpectatorView />
+        </MemoryRouter>,
+      );
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    });
+  }
+
+  const aShot = {
+    id: "s1",
+    shooter_name: "Zoe",
+    target_name: "Kit",
+    checked: true,
+    result: "hit",
+    state: "done",
+  };
+
+  test("swaps to the gallery once the map face has had its turn", async () => {
+    await mount([aShot]);
+
+    // The map face carries the roster; the gallery does not.
+    expect(screen.getByTestId("map-view-admin")).toBeInTheDocument();
+
+    await act(async () => {
+      jest.advanceTimersByTime(90 * 1000 + 50);
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    });
+
+    expect(screen.queryByTestId("map-view-admin")).not.toBeInTheDocument();
+  });
+
+  test("stays on the map while there are no shots to show", async () => {
+    // A photo wall with nothing on it is the first hour of every game.
+    await mount([]);
+
+    await act(async () => {
+      jest.advanceTimersByTime(90 * 1000 + 50);
+      for (let i = 0; i < 8; i++) await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("map-view-admin")).toBeInTheDocument();
   });
 });

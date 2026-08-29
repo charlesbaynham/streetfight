@@ -50,9 +50,11 @@ from .utils import add_params_to_url
 logger = logging.getLogger(__name__)
 
 
-# Wide enough to see who is in the frame across a room, small enough that a
-# screen showing several of them is not pulling megabytes.
-THUMBNAIL_MAX_DIMENSION = 320
+# One size, used by all three faces of the spectator screen. The takeover
+# frame is 600x900, so anything smaller upscales and goes soft on a
+# television; the sidebar's small thumbnails just downsample in the browser.
+# At quality 70 this is ~100KB, fetched once per shot and then held.
+THUMBNAIL_MAX_DIMENSION = 900
 
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped

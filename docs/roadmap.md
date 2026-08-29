@@ -2211,15 +2211,44 @@ Two bugs fixed on the way, both of which had been there a while:
   `test_shots_record_targets`, now removed. A second test shadowed by a
   duplicate name — and so never run — was un-shadowed and fixed.
 
-**Not designed yet, deliberately.** The page is styled plainly and the visual
-design is going to a separate Claude design session; `docs/spectator_view/`
-holds the brief and a screenshot. All layout and colour live in
-`SpectatorView.module.css` behind a token block, so the restyle is one file.
+**Designed 29 Aug**, in a separate Claude design session against
+`docs/spectator_view/design_brief.md`. What came back went past a repaint and
+the page grew two more faces to match it:
 
-Two things a design pass will have to answer: the venue map is black-on-white
-artwork filling 60% of a dark screen, and the roster fits 26 players in two
-columns at 1080p with little room for a 30-player game and no ability to
-scroll.
+- **The map face**, as above, but toned *towards* the map rather than away from
+  it: a warm low-chroma dark reading as shadow around a lit table, the venue
+  paper knocked back a stop and vignetted. That is the answer to the brief's
+  first hazard — black-on-white artwork over 60% of a dark screen.
+- **A shot takeover.** A new shot's photograph takes the room, holds while
+  CharlesBot works, and leaves two seconds after the first conclusion —
+  "escalating" counts. It overlays *either* face, scrimming rather than
+  replacing, so the map never disappears. Shots landing during that window
+  queue behind it, at most three, with the rest dropped (they are still in the
+  feed seconds later). A shot that never concludes is let go after 8s: the
+  design assumed a conclusion was always coming, but CharlesBot is off unless
+  its per-game toggle is on, so without a cap the first shot of the night would
+  park on screen all evening.
+- **A gallery face**: one row of four tall portrait frames, the recent shots
+  large. The screen alternates - 90s map, 45s gallery, the 45s matching the
+  countdown baked into `.screenProgress` - and skips the gallery entirely while
+  no shots exist, since an empty photo wall is the first hour of every game.
+
+The second hazard, two teams whose hat colours read alike across a room
+(burgundy and rust are 14.2 dE2000 apart), is answered with a team letter
+inside every dot. `teamLetters()` guarantees they are *distinct* rather than
+just `name[0]` - with a Blue team holding "B", Burgundy has to take something
+else, or the dot stops disambiguating in exactly the case it exists for.
+
+Two integration problems the design session could not have known about:
+
+- `react-ui/src/index.css` carries a global
+  `* { font-family: ...; font-size: 12px }`. A universal selector beats
+  inheritance, so every element taking its face or size from an ancestor -
+  most of a real type scale - rendered as 12px Lucida. Scoped shim at the top
+  of the module rather than a fix to `index.css`, because that rule is also
+  what gives buttons and inputs their font on every other page, player UI
+  included, and unpicking it is a whole-app change with its own testing pass.
+- The takeover frame is 600x900, so `THUMBNAIL_MAX_DIMENSION` went 320 -> 900.
 
 **It is exempt from the admin house style**, at Charles's explicit direction —
 `ReferencePhotos.js` is built for a phone held one-handed, and this is read

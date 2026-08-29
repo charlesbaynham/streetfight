@@ -1,113 +1,241 @@
-/* The spectator screen.
- *
- * DELIBERATELY NOT the admin house style (ReferencePhotos.module.css). That
- * one is built for a phone held one-handed: 3.5em touch targets, light ground,
- * one column. This is read from three metres by people who never touch it, in
- * a room that is probably dim. What it keeps from the house style is the
- * *meaning* of colour - green and red are answers, amber is the machine being
- * unsure - and nothing else. See CLAUDE.md.
- *
- * Everything visual is a token below. The structure in SpectatorView.js emits
- * semantic class names and no layout, so a restyle is this file alone.
- */
+@import url("https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;700&display=swap");
+
+/* --- integration shim, not design -----------------------------
+   index.css carries a global `* { font-family: ...; font-size: 12px }`.
+   A universal selector beats inheritance, so without this every element
+   below that takes its face or size from an ancestor - which, in a design
+   with a real type scale, is most of them - would render as 12px Lucida
+   instead. Scoped to this page rather than fixed in index.css, because that
+   rule is also what gives buttons and inputs their font across the player
+   UI and every other admin page, and unpicking it is a whole-app change.
+
+   Deliberately first in the file: it ties on specificity with the design's
+   own rules below, so they win on order. */
+.screen * {
+  font-family: inherit;
+  font-size: inherit;
+}
+
+/* =============================================================
+   SpectatorView — big-screen, read-only, four hours unattended.
+   Design size 1920x1080. No hover, no scroll, no interaction.
+
+   Palette note: the venue map is black line-work on white paper
+   and occupies ~60% of the screen. Rather than fight it, the page
+   is toned *towards* it: a warm, low-chroma dark that reads as
+   shadow around a lit table, not as a black void beside a lamp.
+   The map keeps its paper, knocked back a stop and vignetted so
+   the corners stop glaring. Nothing is inverted.
+   ============================================================= */
 
 .screen {
-  /* -- ground and ink -- */
-  --bg: #101318;
-  --panel-bg: #191d25;
-  --panel-border: #2a303b;
-  --ink: #e8ecf2;
-  --ink-dim: #98a2b3;
+  /* --- surfaces (warm, hue 90, very low chroma) --- */
+  --bg: oklch(0.215 0.01 90);
+  --bg-deep: oklch(0.175 0.01 90);
+  --panel-bg: oklch(0.262 0.011 90);
+  --panel-bg-2: oklch(0.3 0.012 90);
+  --panel-border: oklch(0.365 0.013 90);
+  --paper: oklch(0.93 0.014 90);
 
-  /* -- meaning -- */
-  --good: #3ddc84;
-  --bad: #ff6b6b;
-  --warn: #ffc94d;
-  --thinking: #6fa8ff;
+  /* --- ink --- */
+  --ink: oklch(0.945 0.01 90);
+  --ink-dim: oklch(0.72 0.01 90);
+  --ink-faint: oklch(0.56 0.01 90);
 
-  /* -- type -- */
-  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --size-headline: 2.6rem;
-  --size-title: 1.1rem;
-  --size-body: 1.35rem;
-  --size-small: 1rem;
+  /* --- semantics: green/red are answers, amber is doubt,
+         blue is work still in flight --- */
+  --good: oklch(0.8 0.15 148);
+  --bad: oklch(0.7 0.175 27);
+  --warn: oklch(0.835 0.14 82);
+  --thinking: oklch(0.76 0.095 240);
 
-  /* -- shape -- */
-  --gap: 0.75rem;
-  --radius: 0.6rem;
+  --font: "Barlow", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono: "Roboto Mono", ui-monospace, "SF Mono", Menlo, monospace;
+
+  --size-hero: 44px; /* alive count */
+  --size-title: 30px; /* wordmark, clock */
+  --size-lead: 19px; /* shot status */
+  --size-body: 17px; /* roster rows */
+  --size-meta: 15px; /* stats, ticker */
+  --size-label: 13px; /* panel titles */
+
+  --gap: 16px;
+  --radius: 10px;
 
   position: fixed;
   inset: 0;
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  /* flex, not a fixed row template: the middle region is .body on
+     the map face and .gallery on the photo face, and the gallery
+     face carries an extra .screenProgress hairline. Row count
+     varies, so nothing may depend on child order. */
+  display: flex;
+  flex-direction: column;
   gap: var(--gap);
   padding: var(--gap);
   box-sizing: border-box;
-  background: var(--bg);
+  background: radial-gradient(
+    120% 90% at 32% 40%,
+    oklch(0.255 0.012 90) 0%,
+    var(--bg) 45%,
+    var(--bg-deep) 100%
+  );
   color: var(--ink);
   font-family: var(--font);
   font-size: var(--size-body);
+  line-height: 1.25;
   overflow: hidden;
+  cursor: none; /* nobody is driving this */
+  -webkit-font-smoothing: antialiased;
 }
 
-/* -- headline -------------------------------------------------------------- */
+.screen *,
+.screen *::before,
+.screen *::after {
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------
+   HEADLINE
+   --------------------------------------------------------------- */
 
 .headline {
+  flex: 0 0 auto;
   display: flex;
   align-items: baseline;
-  gap: 1.5rem;
-  padding: 0 0.4rem;
+  gap: 20px;
+  padding: 2px 6px 10px;
+  border-bottom: 1px solid var(--panel-border);
 }
 
 .headlineTitle {
-  font-size: var(--size-headline);
+  font-size: var(--size-title);
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--ink);
 }
 
 .headlineClock {
-  font-size: var(--size-headline);
+  font-family: var(--font-mono);
+  font-size: var(--size-title);
+  font-weight: 400;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
   color: var(--ink-dim);
 }
 
+/* Alive count is the one number a spectator glances at from the bar. */
 .headlineAlive {
   margin-left: auto;
-  font-size: var(--size-headline);
-}
-
-.headlineAlive strong {
-  color: var(--good);
+  font-size: var(--size-hero);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.015em;
+  line-height: 1;
+  color: var(--ink);
 }
 
 .headlinePaused {
-  padding: 0.2em 0.8em;
-  border-radius: 2em;
+  align-self: center;
+  padding: 6px 16px 7px;
+  border-radius: 999px;
   background: var(--warn);
-  color: #201800;
-  font-size: var(--size-title);
+  color: oklch(0.2 0.03 82);
+  font-size: var(--size-lead);
   font-weight: 700;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
+  /* A slow pulse: legible when still, impossible to miss across a room.
+     It reinforces the word "Paused"; it never replaces it. */
+  animation: pausedBreathe 2.6s ease-in-out infinite;
 }
 
-/* -- layout ---------------------------------------------------------------- */
+@keyframes pausedBreathe {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .headlinePaused {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------------
+   BODY
+   --------------------------------------------------------------- */
 
 .body {
+  flex: 1 1 auto;
   display: grid;
-  grid-template-columns: 62fr 38fr;
+  grid-template-columns: minmax(0, 1fr) 740px;
   gap: var(--gap);
   min-height: 0;
 }
 
+/* ---------------------------------------------------------------
+   MAP — the lit table
+   The panel is paper-coloured so that the moment before the image
+   paints looks intentional rather than like a hole. A multiply
+   wash + vignette sits over the top: it takes the white down about
+   a stop and warms it, while leaving hue alone, so team dots keep
+   the colour the roster promised. Nothing here is inverted.
+   --------------------------------------------------------------- */
+
 .mapPanel {
+  position: relative;
+  isolation: isolate;
   min-height: 0;
-  border-radius: var(--radius);
   overflow: hidden;
+  border-radius: var(--radius);
+  background: var(--paper);
+  /* a mount board, not a border */
+  box-shadow:
+    0 0 0 1px oklch(0.44 0.014 90),
+    0 0 0 9px oklch(0.238 0.011 90),
+    0 0 0 10px oklch(0.4 0.013 90),
+    0 26px 70px -20px oklch(0.12 0.01 90 / 0.85);
 }
+
+/* the third-party pan/zoom component expects to fill its box */
+.mapPanel > * {
+  width: 100%;
+  height: 100%;
+}
+.mapPanel img,
+.mapPanel svg,
+.mapPanel canvas {
+  display: block;
+}
+
+.mapPanel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: multiply;
+  background: radial-gradient(
+    115% 105% at 50% 45%,
+    oklch(0.985 0.008 90) 0%,
+    oklch(0.945 0.014 88) 42%,
+    oklch(0.865 0.022 84) 78%,
+    oklch(0.78 0.028 80) 100%
+  );
+}
+
+/* ---------------------------------------------------------------
+   SIDEBAR + PANELS
+   --------------------------------------------------------------- */
 
 .sidebar {
   display: grid;
-  grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: var(--gap);
   min-height: 0;
 }
@@ -116,88 +244,152 @@
   display: flex;
   flex-direction: column;
   min-height: 0;
-  padding: 0.7rem 0.9rem;
+  padding: 14px 16px 16px;
   border: 1px solid var(--panel-border);
   border-radius: var(--radius);
-  background: var(--panel-bg);
-  overflow: hidden;
+  background: linear-gradient(oklch(0.285 0.012 90), var(--panel-bg));
+  box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.05);
 }
 
 .panelTitle {
-  margin: 0 0 0.5rem;
-  font-size: var(--size-title);
+  flex: 0 0 auto;
+  margin: 0 0 12px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid oklch(0.365 0.013 90 / 0.7);
+  font-size: var(--size-label);
   font-weight: 600;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  color: var(--ink-dim);
+  color: var(--ink-faint);
 }
 
-.empty {
-  color: var(--ink-dim);
-}
+/* ---------------------------------------------------------------
+   SHOT FEED
+   Six cards. The photograph is evidence, so it gets real size and
+   a light mat — most of them are dark, blurry phone frames and a
+   thumbnail floated on a dark panel just disappears.
+   --------------------------------------------------------------- */
 
-/* -- shot feed ------------------------------------------------------------- */
-
+/* Six cards in two columns of three, newest at the top left. A single
+   column of six eats the height the roster needs; the roster is the
+   piece that cannot be allowed to compress. */
 .shotList {
-  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  list-style: none;
 }
 
+/* Most shots are portrait phone photos, so every photo box on this
+   page is portrait-first: a 3:4-ish frame that a 9:16 phone shot
+   nearly fills, and that a landscape shot letterboxes into without
+   being cropped. */
 .shot {
-  display: flex;
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  gap: 12px;
   align-items: center;
-  gap: 0.8rem;
-  padding: 0.45rem 0;
-  border-bottom: 1px solid var(--panel-border);
+  min-width: 0;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: oklch(0.238 0.011 90);
+  border: 1px solid oklch(0.33 0.012 90);
 }
 
-.shot:last-child {
-  border-bottom: none;
+/* newest first — give the top card a little more presence */
+.shot:first-child {
+  background: oklch(0.262 0.012 90);
+  border-color: oklch(0.42 0.014 90);
 }
 
 .shotThumb,
 .shotThumbPlaceholder {
-  width: 4.6rem;
-  height: 4.6rem;
-  flex: none;
-  border-radius: 0.35rem;
+  width: 62px;
+  height: 82px;
+  border-radius: 5px;
   object-fit: cover;
-  background: #000;
+  background: oklch(0.32 0.01 90);
+  box-shadow:
+    0 0 0 3px oklch(0.86 0.014 90),
+    0 2px 8px oklch(0.1 0 0 / 0.5);
+}
+
+.shotThumbPlaceholder {
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.34 0.01 90) 0 6px,
+    oklch(0.3 0.01 90) 6px 12px
+  );
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .shotBody {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 }
 
 .shotWho {
   display: flex;
   align-items: baseline;
-  gap: 0.4rem;
+  gap: 8px;
+  min-width: 0;
+  font-size: var(--size-meta);
+  color: var(--ink-dim);
+}
+
+.shotShooter {
   font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .shotArrow {
-  color: var(--ink-dim);
+  flex: 0 0 auto;
+  color: var(--ink-faint);
+  font-family: var(--font-mono);
 }
 
 .shotTarget {
-  color: var(--ink-dim);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* The sentence is the point of the card. It gets the largest type
+   in the panel and it is allowed to wrap to three lines — a
+   CharlesBot verdict with two candidate names must never clip. */
 .shotStatus {
-  font-size: var(--size-small);
+  font-size: var(--size-lead);
+  font-weight: 500;
+  line-height: 1.2;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+  color: var(--ink);
 }
 
-/* Colour means certainty, exactly as it does on the admin pages. */
 .good {
   color: var(--good);
-  font-weight: 600;
 }
 .bad {
   color: var(--bad);
-  font-weight: 600;
 }
 .warn {
   color: var(--warn);
@@ -206,128 +398,917 @@
   color: var(--thinking);
 }
 
-/* -- roster ---------------------------------------------------------------- */
+/* Resolved verdicts (good/bad) are settled facts and get a touch
+   more weight; the in-flight and unsure states stay lighter so the
+   feed reads as "three things decided, three still moving". */
+.shotStatus.good,
+.shotStatus.bad {
+  font-weight: 700;
+}
+.shotStatus.warn {
+  font-weight: 600;
+}
+
+/* still-in-progress: a slow travelling sheen, no spinner, no icon */
+.shotStatus.thinking {
+  font-weight: 500;
+  background: linear-gradient(
+    100deg,
+    var(--thinking) 30%,
+    oklch(0.9 0.05 240) 50%,
+    var(--thinking) 70%
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: thinkingSheen 3.4s linear infinite;
+}
+
+@keyframes thinkingSheen {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -150% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shotStatus.thinking {
+    animation: none;
+    background: none;
+    -webkit-text-fill-color: var(--thinking);
+  }
+}
+
+/* ---------------------------------------------------------------
+   TEAM TOTALS
+   --------------------------------------------------------------- */
 
 .teamTotals {
+  flex: 0 0 auto;
   display: flex;
   flex-wrap: wrap;
-  gap: 0.4rem 1rem;
-  list-style: none;
-  margin: 0 0 0.6rem;
-  padding: 0 0 0.6rem;
-  border-bottom: 1px solid var(--panel-border);
-  font-size: var(--size-small);
+  gap: 6px 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid oklch(0.365 0.013 90 / 0.7);
 }
 
 .teamTotal {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 8px;
+  padding: 5px 11px 6px;
+  border-radius: 999px;
+  background: oklch(0.238 0.011 90);
+  border: 1px solid oklch(0.34 0.012 90);
+  font-size: var(--size-meta);
+  white-space: nowrap;
 }
 
 .teamName {
   font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--ink);
 }
 
 .teamStat {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
   color: var(--ink-dim);
 }
 
+/* ---------------------------------------------------------------
+   TEAM DOT
+   The fill is inline from JS and must stay untouched — same
+   resolver as the map, so a dot on the map and a dot in the roster
+   are literally the same colour.
+
+   Hazard: the hat palette is measured kit, not a designed ramp, so
+   burgundy and rust land ~14 dE apart. A ring cannot fix that, and
+   CSS alone cannot tell teams apart — the dot carries no team
+   identity beyond its fill. So the dot is made as legible as a
+   colour chip can be (bigger, squared off, hard-edged against both
+   dark panel and light map) and an opt-in hook is provided:
+
+     if JS adds  data-letter="R"  to .teamDot, a team initial is
+     stamped into it automatically, and the pair stops depending on
+     hue at all. Recommended.
+   --------------------------------------------------------------- */
+
 .teamDot {
-  width: 0.85em;
-  height: 0.85em;
-  flex: none;
-  border-radius: 50%;
-  /* The hat palette's warm reds sit close together (burgundy/rust are 14.2
-     dE2000 apart), so every dot gets a ring to separate it from its ground. */
+  flex: 0 0 auto;
+  display: inline-grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 4px;
+  /* light inner hairline + dark outer keeps the chip's edge crisp
+     on the dark panel AND on white paper */
   box-shadow:
-    0 0 0 2px var(--panel-bg),
-    0 0 0 3px var(--panel-border);
+    inset 0 0 0 1px oklch(1 0 0 / 0.45),
+    0 0 0 1px oklch(0.16 0.01 90 / 0.9);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  color: oklch(0.14 0.01 90 / 0.85);
+  text-shadow: 0 0 2px oklch(1 0 0 / 0.55);
 }
 
-/* Two columns, because a full game is ~30 people and a single column silently
-   clips at about half that. Nobody can scroll a television. */
+.teamDot[data-letter]::after {
+  content: attr(data-letter);
+}
+
+.teamTotal .teamDot {
+  width: 17px;
+  height: 17px;
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------
+   ROSTER
+   Overflow strategy, in order:
+     - two columns of 1fr rows: at 26 players that is 13 rows of
+       ~28px, which is comfortable;
+     - rows are minmax(0, 1fr) tracks, so as the count climbs the
+       padding is spent before anything else — 32 players still
+       clear their line box;
+     - past ~32 the dense hook below goes to three columns.
+   Nothing scrolls. The rows give before the text does.
+   --------------------------------------------------------------- */
+
 .roster {
-  list-style: none;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: minmax(0, 1fr);
+  column-gap: 22px;
+  align-content: stretch;
   margin: 0;
   padding: 0;
-  min-height: 0;
-  overflow: hidden;
-  columns: 2;
-  column-gap: 1.4rem;
+  list-style: none;
+}
+
+/* CSS cannot count rows, so the one thing it cannot do by itself is
+   know when 2 columns have run out. The escape valve is one line of
+   JS on the roster element:
+
+     data-size={players.length > 32 ? "dense" : undefined}
+
+   Dense goes to three columns and drops the weapon — the least
+   load-bearing stat — which buys room for 45 players at 15px. That
+   is the deliberate cut. Without the attribute nothing changes, and
+   two columns hold 32 comfortably. */
+.roster[data-size="dense"] {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  column-gap: 16px;
+  font-size: var(--size-meta);
+}
+.roster[data-size="dense"] .rosterRow {
+  font-size: var(--size-meta);
+  gap: 6px;
+}
+.roster[data-size="dense"] .statWeapon {
+  display: none;
+}
+.roster[data-size="dense"] .rosterName {
+  min-width: 5ch;
+}
+.roster[data-size="dense"] .score {
+  font-size: var(--size-meta);
 }
 
 .rosterRow {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.15rem 0;
-  border-bottom: 1px solid var(--panel-border);
-  /* Keep a row from being split down the middle by the column break */
-  break-inside: avoid;
+  gap: 7px;
+  min-width: 0;
+  padding: 3px 2px;
+  overflow: hidden;
+  border-bottom: 1px solid oklch(0.33 0.012 90 / 0.55);
+  font-size: var(--size-body);
+  line-height: 1.15;
 }
 
 .rosterName {
-  flex: 1;
-  min-width: 0;
+  flex: 1 1 auto;
+  min-width: 7ch;
+  font-weight: 600;
+  letter-spacing: 0.005em;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-weight: 600;
+  color: var(--ink);
 }
 
-.stat,
-.statWeapon,
-.rosterState {
-  font-size: var(--size-small);
+/* Numbers are mono and tabular so 26 rows form clean vertical
+   rules instead of a ragged mess. */
+.stat {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
   color: var(--ink-dim);
   white-space: nowrap;
 }
 
+/* Weapon names are the ragged ones ("Eat-a-bullet"). Given a real
+   column and allowed to end in an ellipsis only when it truly
+   cannot fit — please stop truncating to 7 characters in JS. */
 .statWeapon {
+  flex: 0 1 auto;
+  min-width: 7ch;
+  max-width: 12ch;
+  font-family: var(--font);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--ink-faint);
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 7ch;
+  white-space: nowrap;
 }
 
 .score {
-  min-width: 2.5ch;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
+  flex: 0 0 auto;
+  width: 2.4ch;
+  font-family: var(--font-mono);
+  font-size: var(--size-body);
   font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  color: var(--ink);
 }
 
-.alive {
+/* State is always a word. Colour only ever agrees with it. */
+.rosterState {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: var(--size-meta);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.alive .score {
   color: var(--ink);
 }
 
 .knockedOut {
+  color: var(--ink-dim);
+}
+.knockedOut .rosterName {
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+.knockedOut .rosterState {
   color: var(--warn);
 }
-
-.dead,
-.waiting {
-  color: var(--ink-dim);
-  opacity: 0.65;
+.knockedOut .teamDot {
+  opacity: 0.55;
+}
+.knockedOut .score {
+  color: var(--ink-faint);
 }
 
-/* -- ticker ---------------------------------------------------------------- */
+.dead {
+  color: var(--ink-faint);
+}
+.dead .rosterName {
+  font-weight: 400;
+  color: var(--ink-faint);
+  text-decoration: line-through;
+  text-decoration-color: oklch(0.48 0.01 90);
+  text-decoration-thickness: 1px;
+}
+.dead .rosterState {
+  color: var(--ink-faint);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+.dead .teamDot {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+.dead .score {
+  color: var(--ink-faint);
+  font-weight: 500;
+}
+
+/* players trickling in during the first hour */
+.waiting {
+  color: var(--ink-faint);
+}
+.waiting .rosterName {
+  font-weight: 500;
+  color: var(--ink-dim);
+}
+.waiting .rosterState {
+  color: var(--ink-faint);
+  font-style: italic;
+}
+.waiting .teamDot {
+  opacity: 0.5;
+}
+
+/* ---------------------------------------------------------------
+   TICKER — a strip, quiet, newest at the left
+   --------------------------------------------------------------- */
 
 .ticker {
-  padding: 0.4rem 0.9rem;
-  border: 1px solid var(--panel-border);
-  border-radius: var(--radius);
-  background: var(--panel-bg);
-  font-size: var(--size-small);
-  color: var(--ink-dim);
+  flex: 0 0 auto;
+  padding: 0 4px;
+  overflow: hidden;
 }
 
 .ticker ul {
   display: flex;
-  gap: 1.6rem;
+  align-items: center;
+  gap: 0;
+  margin: 0;
+  padding: 8px 0 2px;
+  border-top: 1px solid var(--panel-border);
   list-style: none;
+  white-space: nowrap;
+}
+
+.ticker li {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 16px;
+  font-size: var(--size-meta);
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticker li::before {
+  content: "";
+  flex: 0 0 auto;
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  transform: rotate(45deg);
+  background: oklch(0.48 0.012 90);
+}
+
+.ticker li:first-child {
+  padding-left: 0;
+  color: var(--ink);
+  font-weight: 500;
+}
+.ticker li:first-child::before {
+  display: none;
+}
+
+/* the oldest lines fade out rather than being cut mid-word */
+.ticker li:nth-child(n + 5) {
+  color: var(--ink-faint);
+}
+.ticker li:last-child {
+  mask-image: linear-gradient(to right, #000 55%, transparent 100%);
+}
+
+/* ---------------------------------------------------------------
+   EMPTY STATES
+   The first hour is mostly empty. It should read as "waiting",
+   which is a state, not as "broken", which is an absence.
+   --------------------------------------------------------------- */
+
+.empty {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  padding: 22px 18px;
+  border: 1px dashed oklch(0.38 0.012 90);
+  border-radius: 8px;
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.245 0.011 90) 0 10px,
+    oklch(0.232 0.011 90) 10px 20px
+  );
+  font-family: var(--font-mono);
+  font-size: var(--size-meta);
+  letter-spacing: 0.05em;
+  color: var(--ink-faint);
+  text-align: center;
+}
+
+/* ===============================================================
+   A. SHOT TAKEOVER
+   A new shot lands and the photograph gets the room immediately —
+   before anyone has adjudicated anything. It holds while CharlesBot
+   works, then leaves two seconds after the first conclusion arrives,
+   whatever that conclusion is ("escalating" counts). Shots landing
+   during that window queue behind it.
+
+   Three states the JS drives, all on the timer element:
+     .takeoverTimer                waiting for the first conclusion
+     .takeoverTimer.resolving      conclusion in, 2s and gone
+   plus .shotTakeover.leaving      the 300ms exit
+
+   The dashboard stays behind it, scrimmed rather than replaced, so
+   the map never disappears and nobody loses their place.
+   Read-only, non-interactive, same as everything else here.
+   =============================================================== */
+
+.shotTakeover {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: takeoverIn 420ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+.shotTakeover.leaving {
+  animation: takeoverOut 300ms ease-in both;
+}
+@keyframes takeoverOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.shotTakeover.leaving .takeoverCard {
+  animation: takeoverCardOut 300ms ease-in both;
+}
+@keyframes takeoverCardOut {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.985);
+  }
+}
+
+.takeoverScrim {
+  position: absolute;
+  inset: 0;
+  background: oklch(0.145 0.01 90 / 0.86);
+  backdrop-filter: blur(3px) saturate(0.7);
+}
+
+.takeoverCard {
+  position: relative;
+  width: 1180px;
+  max-width: 82vw;
+  display: flex;
+  flex-direction: column;
+  padding: 22px 22px 20px;
+  border-radius: 14px;
+  border: 1px solid oklch(0.44 0.014 90);
+  background: linear-gradient(oklch(0.3 0.012 90), oklch(0.252 0.011 90));
+  box-shadow: 0 50px 120px -30px oklch(0.1 0 0 / 0.95);
+  animation: takeoverCardIn 480ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+
+@keyframes takeoverIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes takeoverCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.975);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The photograph, as big as 1080 allows, in a portrait frame beside
+   the words rather than above them — a portrait shot stacked over a
+   caption would be about 400px tall. Contained, never cropped: the
+   whole point is what the shooter actually caught, and the target is
+   sometimes a few pixels at the edge. */
+.takeoverCard {
+  display: grid;
+  /* fixed words column: an auto track would let one long CharlesBot
+     sentence make the card twice as wide as the last one */
+  grid-template-columns: 600px 540px;
+  grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr);
+  gap: 0 34px;
+  align-items: center;
+  width: auto;
+  height: 900px;
+  max-width: none;
+}
+
+.takeoverPhoto,
+.takeoverPhotoPlaceholder {
+  grid-column: 1;
+  grid-row: 1 / 4;
+  width: 600px;
+  height: 100%;
+  border-radius: 8px;
+  object-fit: contain;
+  background: oklch(0.18 0.01 90);
+  box-shadow:
+    0 0 0 4px oklch(0.88 0.014 90),
+    inset 0 0 60px oklch(0.1 0 0 / 0.6);
+}
+
+.takeoverPhotoPlaceholder {
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.245 0.011 90) 0 14px,
+    oklch(0.215 0.011 90) 14px 28px
+  );
+  font-family: var(--font-mono);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* The words column is narrow, so shooter and target stack rather
+   than running off the end of a long name. */
+.takeoverWho {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: end;
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 2px 14px;
+  margin-top: 0;
+  font-size: 46px;
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  line-height: 1.05;
+  color: var(--ink);
+}
+
+.takeoverShooter {
+  grid-column: 1 / -1;
+  overflow-wrap: anywhere;
+}
+
+.takeoverArrow {
+  font-family: var(--font-mono);
+  font-weight: 400;
+  color: var(--ink-faint);
+}
+
+.takeoverTarget {
+  color: var(--ink-dim);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.takeoverStatus {
+  grid-column: 2;
+  grid-row: 2;
+  align-self: start;
+  margin-top: 22px;
+  font-size: 32px;
+  font-weight: 600;
+  line-height: 1.15;
+  min-height: 1.15em;
+  text-wrap: pretty;
+  color: var(--ink);
+}
+
+/* The sentence is replaced in place as adjudication moves on. A
+   short lift marks the change so a glancing room notices that the
+   answer arrived, without the card moving. */
+.takeoverStatus.good,
+.takeoverStatus.bad,
+.takeoverStatus.warn {
+  animation: verdictLand 320ms cubic-bezier(0.16, 0.9, 0.3, 1) both;
+}
+@keyframes verdictLand {
+  from {
+    opacity: 0;
+    transform: translateY(7px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.takeoverStatus.good {
+  color: var(--good);
+  font-weight: 700;
+}
+.takeoverStatus.bad {
+  color: var(--bad);
+  font-weight: 700;
+}
+.takeoverStatus.warn {
+  color: var(--warn);
+}
+.takeoverStatus.thinking {
+  color: var(--thinking);
+}
+
+/* Waiting on CharlesBot: indeterminate, because there is no honest
+   number to show. It shuttles, so a frozen page is obvious.
+   Once a conclusion lands, JS adds .resolving and the same rule
+   becomes a two-second drain — the bar stops asking and starts
+   counting. */
+.takeoverTimer {
+  position: relative;
+  grid-column: 2;
+  grid-row: 3;
+  align-self: end;
+  height: 3px;
+  margin-top: 28px;
+  border-radius: 2px;
+  background: oklch(0.38 0.012 90);
+  overflow: hidden;
+}
+.takeoverTimer::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 34%;
+  border-radius: 2px;
+  background: var(--thinking);
+  animation: takeoverPending 1.5s cubic-bezier(0.5, 0, 0.5, 1) infinite;
+}
+@keyframes takeoverPending {
+  from {
+    transform: translateX(-105%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+.takeoverTimer.resolving::after {
+  width: 100%;
+  background: var(--ink-dim);
+  transform-origin: left center;
+  animation: takeoverCountdown 2s linear both;
+}
+@keyframes takeoverCountdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
+
+/* Queue depth. A word, not a badge — if three shots landed while
+   this one was being judged, the room should know they are coming
+   rather than wonder why the screen keeps flashing. */
+.takeoverQueue {
+  position: absolute;
+  top: 22px;
+  right: 26px;
+  z-index: 3;
+  padding: 6px 13px 7px;
+  border-radius: 999px;
+  background: oklch(0.2 0.01 90 / 0.82);
+  border: 1px solid oklch(0.44 0.014 90);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  color: var(--ink-dim);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shotTakeover,
+  .takeoverCard,
+  .takeoverStatus {
+    animation-duration: 1ms;
+  }
+  .takeoverTimer::after {
+    animation: none;
+    width: 100%;
+  }
+}
+
+/* ===============================================================
+   B. GALLERY SCREEN
+   The page's second face. Every couple of minutes it swaps from
+   the map to the last six photographs at proper size, then swaps
+   back. Headline and ticker stay put across both so the room never
+   loses the clock, the alive count, or the announcements — only
+   the middle changes.
+   =============================================================== */
+
+/* the swap timer, a hairline under the headline */
+.screenProgress {
+  flex: 0 0 auto;
+  height: 2px;
+  margin: -6px 6px 0;
+  border-radius: 1px;
+  background: oklch(0.32 0.012 90);
+  overflow: hidden;
+}
+.screenProgress::after {
+  content: "";
+  display: block;
+  height: 100%;
+  width: 100%;
+  background: var(--ink-faint);
+  transform-origin: left center;
+  animation: screenCountdown 45s linear infinite;
+}
+@keyframes screenCountdown {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+/* One row of tall frames, not a 3x2 of wide ones: a portrait phone
+   shot in a landscape cell is either cropped to a torso or floated
+   in two black bars. Four across at 1920 gives each shot a frame
+   close to 9:16, which a portrait photo fills almost exactly. The
+   template is auto-flow, so five still works and six gets narrow —
+   four is the number. The other two stay in the dashboard feed. */
+.gallery {
+  flex: 1 1 auto;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: var(--gap);
+  min-height: 0;
   margin: 0;
   padding: 0;
+  list-style: none;
+}
+
+.galleryItem {
+  position: relative;
+  min-height: 0;
   overflow: hidden;
-  white-space: nowrap;
+  border-radius: var(--radius);
+  border: 1px solid var(--panel-border);
+  background: oklch(0.18 0.01 90);
+  box-shadow: 0 14px 40px -18px oklch(0.1 0 0 / 0.9);
+}
+
+/* newest first: the left-hand frame is the one that just happened */
+.galleryItem:first-child {
+  border-color: oklch(0.52 0.016 90);
+}
+
+.galleryPhoto,
+.galleryPhotoPlaceholder {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.galleryPhotoPlaceholder {
+  display: grid;
+  place-items: center;
+  background: repeating-linear-gradient(
+    135deg,
+    oklch(0.245 0.011 90) 0 14px,
+    oklch(0.215 0.011 90) 14px 28px
+  );
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* Caption over the photo, on a gradient deep enough that a bright
+   pub ceiling behind the subject still leaves the words readable. */
+.galleryCaption {
+  position: absolute;
+  inset: auto 0 0 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 44px 18px 15px;
+  background: linear-gradient(
+    oklch(0.14 0.01 90 / 0) 0%,
+    oklch(0.14 0.01 90 / 0.72) 45%,
+    oklch(0.12 0.01 90 / 0.94) 100%
+  );
+}
+
+.galleryWho {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 0 9px;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.005em;
+  color: oklch(0.97 0.008 90);
+  text-shadow: 0 1px 6px oklch(0.1 0 0 / 0.8);
+}
+.galleryWho .shotShooter {
+  grid-column: 1 / -1;
+}
+.galleryWho .shotArrow {
+  font-size: 21px;
+}
+.galleryWho .shotTarget {
+  font-weight: 600;
+  color: oklch(0.86 0.01 90);
+}
+
+.galleryStatus {
+  font-size: 21px;
+  font-weight: 600;
+  line-height: 1.2;
+  text-wrap: pretty;
+  color: oklch(0.94 0.01 90);
+  text-shadow: 0 1px 6px oklch(0.1 0 0 / 0.9);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+}
+
+.galleryStatus.good {
+  color: oklch(0.86 0.15 148);
+}
+.galleryStatus.bad {
+  color: oklch(0.78 0.17 27);
+}
+.galleryStatus.warn {
+  color: oklch(0.88 0.14 82);
+}
+.galleryStatus.thinking {
+  color: oklch(0.84 0.095 240);
+}
+
+/* Gallery empty state fills the row rather than sitting in one cell. */
+.gallery .empty {
+  grid-column: 1 / -1;
+  min-height: 0;
+  font-size: var(--size-lead);
+}
+
+/* ---------------------------------------------------------------
+   Below the design size the sidebar narrows before anything is
+   dropped. Not supported under 1280.
+   --------------------------------------------------------------- */
+
+@media (max-width: 1600px) {
+  .screen {
+    --size-hero: 36px;
+    --size-title: 26px;
+    --size-lead: 17px;
+    --size-body: 16px;
+  }
+  .body {
+    grid-template-columns: minmax(0, 1fr) 600px;
+  }
+  .shot {
+    grid-template-columns: 66px minmax(0, 1fr);
+  }
+  .shotThumb,
+  .shotThumbPlaceholder {
+    width: 66px;
+    height: 54px;
+  }
+  .takeoverCard {
+    height: 700px;
+    grid-template-columns: 460px 420px;
+  }
+  .takeoverPhoto,
+  .takeoverPhotoPlaceholder {
+    width: 460px;
+  }
+  .takeoverWho {
+    font-size: 34px;
+  }
+  .takeoverStatus {
+    font-size: 25px;
+  }
+  .galleryWho {
+    font-size: 21px;
+  }
+  .galleryStatus {
+    font-size: 17px;
+  }
 }

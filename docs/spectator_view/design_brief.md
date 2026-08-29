@@ -1,5 +1,41 @@
 # Spectator screen — design brief
 
+> **Fulfilled, 2026-08-29.** The design session answered this brief and its
+> `SpectatorView.module.css` is what ships. Kept as the record of what was
+> asked for, and as the starting point if the screen is ever redesigned.
+>
+> What came back went past a repaint, and the page grew to match it:
+>
+> - **The white map** (hazard 1) is handled by toning the *page* towards the
+>   map — a warm, low-chroma dark that reads as shadow around a lit table, the
+>   map knocked back a stop and vignetted. Nothing inverted.
+> - **Burgundy vs rust** (hazard 3) is handled with a team letter inside each
+>   dot (`data-letter`). The letters have to be *distinct*, which is why
+>   `teamLetters()` is not simply `name[0]`: with Blue holding "B", Burgundy
+>   takes something else.
+> - **Two new faces.** A **shot takeover** — a new shot's photograph gets the
+>   room, holds while CharlesBot works, and leaves two seconds after the first
+>   conclusion ("escalating" counts) — and a **gallery** of the recent shots
+>   large. The screen alternates map (90s) and gallery (45s); the takeover
+>   overlays either.
+>
+> Screenshots of all three faces are in this directory:
+> `spectator_screen.jpg`, `shot_takeover.jpg`, `gallery_face.jpg`.
+>
+> Two things the brief could not have told the designer, found on integration:
+>
+> - `index.css` carries a global `* { font-family: ...; font-size: 12px }`. A
+>   universal selector beats inheritance, so every element taking its face or
+>   size from an ancestor rendered as 12px Lucida. There is now a scoped
+>   integration shim at the top of the module. **A redesign will still need
+>   it**, and it is the first thing to suspect if type comes out wrong.
+> - The takeover frame is 600×900, so `THUMBNAIL_MAX_DIMENSION` went from 320
+>   to 900. Anything smaller upscales and goes soft on a television.
+>
+> Everything below is the brief as it was sent.
+
+---
+
 **This file is a prompt.** Paste the whole thing into a Claude design session.
 Everything below the rule is addressed to that session; everything above it is
 notes for whoever is doing the pasting.

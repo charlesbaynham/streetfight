@@ -151,4 +151,11 @@
   height: 100%;
   max-width: 100%;
   max-height: 100%;
+  /* The chrome goes too. The only user of this is the spectator screen, whose
+     .mapPanel supplies its own mount board - paper ground, radius and a
+     layered shadow - and .mapContainer's white background, radius and drop
+     shadow would sit inside that as a visible second box. */
+  background-color: transparent;
+  border-radius: 0;
+  box-shadow: none;
 }

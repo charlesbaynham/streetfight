@@ -30,9 +30,33 @@ import { sendAPIRequest } from "./utils";
 import styles from "./SpectatorView.module.css";
 
 const RECENT_SHOT_COUNT = 6;
+const GALLERY_SHOT_COUNT = 4;
 const TICKER_LINES = 6;
 // The headline clock only has to look live, so a slow tick is plenty.
 const CLOCK_TICK_MS = 1000;
+
+// How long each face holds before the screen swaps. The gallery's 45s is not
+// arbitrary: .screenProgress's countdown animation runs for exactly that, so
+// the hairline finishes as the face changes. The map gets twice the airtime
+// because it is the main event and the gallery is the interstitial.
+const DASHBOARD_MS = 90 * 1000;
+const GALLERY_MS = 45 * 1000;
+
+// The takeover: a new shot's photograph gets the room, holds while CharlesBot
+// works, and leaves two seconds after the first conclusion - "escalating"
+// counts as a conclusion.
+//
+// TAKEOVER_MAX_WAIT_MS is the part the design could not know about. CharlesBot
+// is off unless a per-game toggle is on, and the roadmap's safety valve is
+// that the game runs with the admin adjudicating by hand. With it off no
+// conclusion ever arrives, so without a cap the first shot of the night would
+// park on screen for the rest of the evening.
+const TAKEOVER_MAX_WAIT_MS = 8 * 1000;
+const TAKEOVER_RESOLVED_MS = 2 * 1000; // matches takeoverCountdown
+const TAKEOVER_LEAVING_MS = 300; // matches takeoverOut
+// A busy minute must not hide the map. Older ones are dropped rather than
+// queued forever; they still reach the feed and the gallery seconds later.
+const TAKEOVER_QUEUE_MAX = 3;
 
 // -- data -------------------------------------------------------------------
 
@@ -47,7 +71,10 @@ function pickGame(games) {
 function useSpectatorData() {
   const [games, setGames] = useState(null);
   const [scoreboard, setScoreboard] = useState([]);
-  const [shots, setShots] = useState([]);
+  // null until the first response: an empty feed and an unloaded one are
+  // different things to the takeover, which must not fire for shots that
+  // happened before anybody was watching.
+  const [shots, setShots] = useState(null);
   const [ticker, setTicker] = useState([]);
   const [identity, setIdentity] = useState(null);
 
@@ -106,7 +133,8 @@ function useSpectatorData() {
     game,
     games,
     scoreboard,
-    shots,
+    shots: shots || [],
+    shotsLoaded: shots !== null,
     ticker,
     identity,
     refreshAll,
@@ -140,6 +168,107 @@ function useThumbnails(shots) {
   return thumbnails;
 }
 
+// -- the takeover -----------------------------------------------------------
+
+// Which shots have just landed, and where the one on screen has got to.
+//
+// Returns the id of the shot to show (or null), its stage, and how many are
+// queued behind it. The *content* is deliberately not returned: the caller
+// looks the id up in the live feed each render, so the status updates in place
+// as the pipeline advances. Watching a verdict land is the whole point of the
+// panel, and a snapshot taken at pop time would freeze it.
+export function useShotTakeover(shots, loaded) {
+  const [queue, setQueue] = useState([]);
+  const [stage, setStage] = useState("waiting");
+  const seen = useRef(null);
+
+  // New arrivals join the queue. The first response only seeds the set:
+  // opening the page mid-game would otherwise take over for six shots that
+  // happened before anybody was watching.
+  useEffect(() => {
+    if (!loaded) return;
+
+    const ids = shots.map((shot) => shot.id);
+
+    if (seen.current === null) {
+      seen.current = new Set(ids);
+      return;
+    }
+
+    const arrived = ids.filter((id) => !seen.current.has(id));
+    if (arrived.length === 0) return;
+
+    arrived.forEach((id) => seen.current.add(id));
+    setQueue((previous) =>
+      [...previous, ...arrived.reverse()].slice(-TAKEOVER_QUEUE_MAX),
+    );
+  }, [shots, loaded]);
+
+  const current = queue[0] || null;
+  const shot = current ? shots.find((s) => s.id === current) : null;
+  const concluded = hasConcluded(shot);
+
+  // waiting -> resolving, on a conclusion or the cap, whichever comes first
+  useEffect(() => {
+    if (!current || stage !== "waiting") return undefined;
+    if (concluded) {
+      setStage("resolving");
+      return undefined;
+    }
+    const handle = setTimeout(
+      () => setStage("resolving"),
+      TAKEOVER_MAX_WAIT_MS,
+    );
+    return () => clearTimeout(handle);
+  }, [current, stage, concluded]);
+
+  // resolving -> leaving -> gone, and on to whatever queued behind it
+  useEffect(() => {
+    if (!current || stage !== "resolving") return undefined;
+    const handle = setTimeout(() => setStage("leaving"), TAKEOVER_RESOLVED_MS);
+    return () => clearTimeout(handle);
+  }, [current, stage]);
+
+  useEffect(() => {
+    if (!current || stage !== "leaving") return undefined;
+    const handle = setTimeout(() => {
+      setQueue((previous) => previous.slice(1));
+      setStage("waiting");
+    }, TAKEOVER_LEAVING_MS);
+    return () => clearTimeout(handle);
+  }, [current, stage]);
+
+  return { shotId: current, stage, waiting: Math.max(0, queue.length - 1) };
+}
+
+// -- team letters -----------------------------------------------------------
+
+// A letter per team, dropped into each .teamDot via data-letter.
+//
+// This is the fix for the one hazard the palette cannot solve on its own: team
+// colours are the hat each team wears, and the hat palette is measured off real
+// kit rather than designed for contrast - burgundy and rust are 14.2 dE2000
+// apart and read alike across a room. So the letters must be *distinct*, which
+// is why this is not simply name[0]: with a Blue team already holding "B",
+// Burgundy has to take something else or the dot stops disambiguating in
+// exactly the case it exists for.
+export function teamLetters(teams) {
+  const taken = new Set();
+  const out = {};
+
+  teams.forEach((team) => {
+    const candidates = [
+      ...(team.name || "").toUpperCase().replace(/[^A-Z]/g, ""),
+      ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ",
+    ];
+    const letter = candidates.find((c) => !taken.has(c)) || "?";
+    taken.add(letter);
+    out[team.id] = letter;
+  });
+
+  return out;
+}
+
 // -- adjudication -----------------------------------------------------------
 
 // Where a shot has got to, as a sentence. The tone classes carry the house
@@ -168,6 +297,19 @@ export function adjudicationStatus(shot) {
   if (verdict) return [verdict, "thinking"];
 
   return ["Waiting for the admin", "warn"];
+}
+
+// Has anything at all been concluded about this shot? The takeover holds until
+// this is true (or it times out). The design is explicit that "escalating"
+// counts: it is news, so it is a conclusion.
+export function hasConcluded(shot) {
+  if (!shot) return false;
+  return Boolean(
+    shot.checked ||
+    shot.state === "done" ||
+    shot.state === "error" ||
+    shot.escalation_state,
+  );
 }
 
 // -- roster -----------------------------------------------------------------
@@ -208,13 +350,27 @@ function Headline({ game, players, now }) {
           minute: "2-digit",
         })}
       </span>
-      <span className={styles.headlineAlive}>
-        <strong>{alive}</strong> of {players.length} alive
-      </span>
       {game && !game.active ? (
         <span className={styles.headlinePaused}>Paused</span>
       ) : null}
+      {/* One string, and the number is not picked out in green: on this page
+          colour means certainty, and a count is not a verdict. */}
+      <span className={styles.headlineAlive}>
+        {alive} of {players.length} alive
+      </span>
     </header>
+  );
+}
+
+// The letter is what separates two teams whose hat colours are nearly the
+// same; the fill is the hat colour itself.
+function TeamDot({ colour, letter }) {
+  return (
+    <span
+      className={styles.teamDot}
+      style={colour ? { background: colour } : undefined}
+      data-letter={letter}
+    />
   );
 }
 
@@ -266,7 +422,7 @@ function ShotFeed({ shots, thumbnails }) {
   );
 }
 
-function TeamTotals({ teams, players, scoreById, colourForTeam }) {
+function TeamTotals({ teams, players, scoreById, colourForTeam, letters }) {
   return (
     <ul className={styles.teamTotals}>
       {teams.map((team) => {
@@ -278,9 +434,9 @@ function TeamTotals({ teams, players, scoreById, colourForTeam }) {
         );
         return (
           <li key={team.id} className={styles.teamTotal}>
-            <span
-              className={styles.teamDot}
-              style={{ background: colourForTeam(team.id) }}
+            <TeamDot
+              colour={colourForTeam(team.id)}
+              letter={letters[team.id]}
             />
             <span className={styles.teamName}>{team.name}</span>
             <span className={styles.teamStat}>{alive} alive</span>
@@ -292,7 +448,7 @@ function TeamTotals({ teams, players, scoreById, colourForTeam }) {
   );
 }
 
-function Roster({ teams, players, scoreById, colourForTeam, now }) {
+function Roster({ teams, players, scoreById, colourForTeam, letters, now }) {
   const ordered = useMemo(
     () =>
       [...players].sort((a, b) => {
@@ -312,6 +468,7 @@ function Roster({ teams, players, scoreById, colourForTeam, now }) {
         players={players}
         scoreById={scoreById}
         colourForTeam={colourForTeam}
+        letters={letters}
       />
       <ul className={styles.roster}>
         {ordered.map((player) => {
@@ -324,9 +481,9 @@ function Roster({ teams, players, scoreById, colourForTeam, now }) {
               key={player.id}
               className={`${styles.rosterRow} ${styles[STATE_CLASS[player.state] || "waiting"]}`}
             >
-              <span
-                className={styles.teamDot}
-                style={{ background: colourForTeam(player.team_id) }}
+              <TeamDot
+                colour={colourForTeam(player.team_id)}
+                letter={letters[player.team_id]}
               />
               <span className={styles.rosterName}>
                 {player.name || "unnamed"}
@@ -359,6 +516,93 @@ function Roster({ teams, players, scoreById, colourForTeam, now }) {
   );
 }
 
+// -- the gallery face -------------------------------------------------------
+
+// One row of tall frames, the photographs big. Portrait phone shots fill a
+// 9:16 cell almost exactly, which is why this is four across rather than a
+// grid of wide ones.
+function Gallery({ shots, thumbnails }) {
+  return (
+    <ul className={styles.gallery}>
+      {shots.slice(0, GALLERY_SHOT_COUNT).map((shot) => {
+        const [status, tone] = adjudicationStatus(shot);
+        return (
+          <li key={shot.id} className={styles.galleryItem}>
+            {thumbnails[shot.id] ? (
+              <img
+                className={styles.galleryPhoto}
+                src={thumbnails[shot.id]}
+                alt=""
+              />
+            ) : (
+              <div className={styles.galleryPhotoPlaceholder} />
+            )}
+            <div className={styles.galleryCaption}>
+              <div className={styles.galleryWho}>
+                <span className={styles.shotShooter}>
+                  {shot.shooter_name || "Someone"}
+                </span>
+                <span className={styles.shotArrow}>&rarr;</span>
+                <span className={styles.shotTarget}>
+                  {shot.target_name || "?"}
+                </span>
+              </div>
+              <div className={`${styles.galleryStatus} ${styles[tone]}`}>
+                {status}
+              </div>
+            </div>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+// -- the takeover -----------------------------------------------------------
+
+// Sits over whichever face is showing - the dashboard is scrimmed rather than
+// replaced, so the map never disappears and nobody loses their place.
+function ShotTakeover({ shot, stage, waiting, thumbnail }) {
+  const [status, tone] = adjudicationStatus(shot);
+
+  return (
+    <div
+      className={`${styles.shotTakeover} ${
+        stage === "leaving" ? styles.leaving : ""
+      }`}
+    >
+      <div className={styles.takeoverScrim} />
+      <div className={styles.takeoverCard}>
+        {waiting > 0 ? (
+          <div className={styles.takeoverQueue}>{waiting} more waiting</div>
+        ) : null}
+        {thumbnail ? (
+          <img className={styles.takeoverPhoto} src={thumbnail} alt="" />
+        ) : (
+          <div className={styles.takeoverPhotoPlaceholder} />
+        )}
+        <div className={styles.takeoverWho}>
+          <span className={styles.takeoverShooter}>
+            {shot.shooter_name || "Someone"}
+          </span>
+          <span className={styles.takeoverArrow}>&rarr;</span>
+          <span className={styles.takeoverTarget}>
+            {shot.target_name || "?"}
+          </span>
+        </div>
+        <div className={`${styles.takeoverStatus} ${styles[tone]}`}>
+          {status}
+        </div>
+        <div
+          className={`${styles.takeoverTimer} ${
+            stage === "waiting" ? "" : styles.resolving
+          }`}
+        />
+      </div>
+    </div>
+  );
+}
+
 function Ticker({ lines }) {
   if (!lines || lines.length === 0) return null;
   return (
@@ -374,6 +618,29 @@ function Ticker({ lines }) {
 
 // -- the screen -------------------------------------------------------------
 
+// -- the face cycle ---------------------------------------------------------
+
+// The screen alternates between the map and the photo wall. `hasGallery` is
+// false for the first hour of every game - a photo wall with nothing on it
+// reads as broken, so the map simply stays up until there is a shot to show.
+function useFaceCycle(hasGallery) {
+  const [face, setFace] = useState("dashboard");
+
+  useEffect(() => {
+    if (!hasGallery) {
+      setFace("dashboard");
+      return undefined;
+    }
+    const handle = setTimeout(
+      () => setFace((f) => (f === "dashboard" ? "gallery" : "dashboard")),
+      face === "dashboard" ? DASHBOARD_MS : GALLERY_MS,
+    );
+    return () => clearTimeout(handle);
+  }, [face, hasGallery]);
+
+  return hasGallery ? face : "dashboard";
+}
+
 function SpectatorScreen() {
   useWakeLock();
 
@@ -384,10 +651,16 @@ function SpectatorScreen() {
     shots,
     ticker,
     identity,
+    shotsLoaded,
     refreshAll,
     refreshShots,
   } = useSpectatorData();
   const thumbnails = useThumbnails(shots);
+  const face = useFaceCycle(shots.length > 0);
+  const takeover = useShotTakeover(shots, shotsLoaded);
+  const takeoverShot = takeover.shotId
+    ? shots.find((shot) => shot.id === takeover.shotId)
+    : null;
 
   // Only for the elapsed clock and the knocked-out countdowns, which have to
   // move without anything arriving from the server.
@@ -408,6 +681,8 @@ function SpectatorScreen() {
     () => teams.flatMap((team) => team.users || []),
     [teams],
   );
+
+  const letters = useMemo(() => teamLetters(teams), [teams]);
 
   const scoreById = useMemo(() => {
     const out = {};
@@ -449,28 +724,49 @@ function SpectatorScreen() {
 
       <Headline game={game} players={players} now={now} />
 
-      <div className={styles.body}>
-        <div className={styles.mapPanel}>
-          <MapViewAdmin
-            gameId={game ? game.id : null}
-            colourForTeam={colourForTeam}
-            circles={game || null}
-            fillContainer
-          />
+      {face === "gallery" ? (
+        <>
+          {/* The swap timer. Its countdown runs for GALLERY_MS, so the
+              hairline finishes as the face changes. */}
+          <div className={styles.screenProgress} />
+          <Gallery shots={shots} thumbnails={thumbnails} />
+        </>
+      ) : (
+        <div className={styles.body}>
+          <div className={styles.mapPanel}>
+            <MapViewAdmin
+              gameId={game ? game.id : null}
+              colourForTeam={colourForTeam}
+              circles={game || null}
+              fillContainer
+            />
+          </div>
+          <div className={styles.sidebar}>
+            <ShotFeed shots={shots} thumbnails={thumbnails} />
+            <Roster
+              teams={teams}
+              players={players}
+              scoreById={scoreById}
+              colourForTeam={colourForTeam}
+              letters={letters}
+              now={now}
+            />
+          </div>
         </div>
-        <div className={styles.sidebar}>
-          <ShotFeed shots={shots} thumbnails={thumbnails} />
-          <Roster
-            teams={teams}
-            players={players}
-            scoreById={scoreById}
-            colourForTeam={colourForTeam}
-            now={now}
-          />
-        </div>
-      </div>
+      )}
 
       <Ticker lines={ticker} />
+
+      {/* Over whichever face is showing. Reads its shot out of the live feed,
+          so the verdict lands on screen as it lands in the database. */}
+      {takeoverShot ? (
+        <ShotTakeover
+          shot={takeoverShot}
+          stage={takeover.stage}
+          waiting={takeover.waiting}
+          thumbnail={thumbnails[takeoverShot.id]}
+        />
+      ) : null}
     </div>
   );
 }

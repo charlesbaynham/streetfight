@@ -156,12 +156,17 @@ exemplar.
     in a new tab because the picker's wardrobe ticks are unsaved React state.
     `SpectatorView.js` (route `/admin/spectator`) is the big-screen dashboard
     for people who are not playing - a laptop wired to a TV, left alone all
-    evening (roadmap R11). Read-only: map, shot feed with live adjudication,
-    roster, team totals, ticker. **It is deliberately exempt from the admin
-    house style below** - see that section. Its visual design is going to a
-    separate Claude design session; `docs/spectator_view/design_brief.md` is
-    the brief, and all of its layout and colour live in one
-    `.module.css` behind a token block so that restyle stays a one-file change.
+    evening (roadmap R11). Read-only, and it has **three faces**: the map face
+    (map, shot feed with live adjudication, roster, team totals, ticker), a
+    **gallery** face showing recent shots large, and a **shot takeover** that
+    overlays either when a shot lands. The screen alternates map and gallery on
+    a timer. **It is deliberately exempt from the admin house style below** -
+    see that section. Its look came from a separate Claude design session
+    (`docs/spectator_view/design_brief.md`, which records what was asked for
+    and what came back), so `SpectatorView.module.css` is a delivered artefact:
+    prefer re-briefing over editing it by hand. Note the integration shim at
+    its top - `index.css`'s global `* { font-size: 12px }` beats inheritance and
+    would otherwise flatten the whole type scale.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the

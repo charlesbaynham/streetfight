@@ -6,7 +6,9 @@ from uuid import uuid4
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend import admin_interface
 from backend.admin_interface import AdminInterface
+from backend.image_processing import load_image
 from backend.model import Shot
 from backend.model import TickerEntry
 from backend.model import User
@@ -675,9 +677,15 @@ def test_recent_shots_respects_its_limit(admin_api_client, old_shot_prep, db_ses
     assert [row["id"] for row in response.json()] == [str(shot_b)]
 
 
-def test_a_thumbnail_is_much_smaller_than_the_stored_photograph(
+def test_a_thumbnail_is_bounded_by_the_thumbnail_dimension(
     admin_api_client, old_shot_prep
 ):
+    """The contract is the pixel size, not the byte count.
+
+    A phone photo is thousands of pixels across; the spectator screen's biggest
+    frame is 600x900. Asserting on encoded length instead would pass or fail
+    on whether the fixture image happened to be larger than the cap.
+    """
     _user_a, _user_b, shot_a, _shot_b = old_shot_prep
 
     response = admin_api_client.get(
@@ -686,10 +694,10 @@ def test_a_thumbnail_is_much_smaller_than_the_stored_photograph(
     assert response.is_success
 
     thumbnail = response.json()["image_base64"]
-    original = AdminInterface().get_shot_image_base64(shot_a)
-
     assert thumbnail.startswith("data:image/")
-    assert len(thumbnail) < len(original)
+
+    image, _ = load_image(thumbnail)
+    assert max(image.size) <= admin_interface.THUMBNAIL_MAX_DIMENSION
 
 
 def test_the_admin_scoreboard_answers_without_a_player_session(
