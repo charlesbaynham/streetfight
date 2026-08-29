@@ -95,6 +95,7 @@ HARD_FEATURE_COUNTS: Dict[str, int] = {
     "hood_bunched_at_neck": 3,
 }
 
+
 # Phone classes, per player. The accuracy range is what the browser reports as
 # `coords.accuracy`; the staleness is how old the newest fix tends to be by the
 # time somebody photographs this player.
@@ -114,9 +115,9 @@ HARD_FEATURE_COUNTS: Dict[str, int] = {
 class PhoneClass(NamedTuple):
     name: str
     count: int
-    accuracy_m: tuple            # (low, high) metres
-    windows: tuple               # (low, high) app-open windows across the hour
-    window_length_s: tuple       # (low, high) seconds per window
+    accuracy_m: tuple  # (low, high) metres
+    windows: tuple  # (low, high) app-open windows across the hour
+    window_length_s: tuple  # (low, high) seconds per window
     note: str
 
 

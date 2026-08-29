@@ -72,9 +72,7 @@ def _narrow_wardrobe(scheme, rng: random.Random) -> Dict[str, List[str]]:
     exactly the case worth having in the fixture.
     """
     return {
-        channel: sorted(
-            rng.sample(list(scheme.channels.by_name(channel).labels), 2)
-        )
+        channel: sorted(rng.sample(list(scheme.channels.by_name(channel).labels), 2))
         for channel in _wardrobe_channels(scheme)
     }
 

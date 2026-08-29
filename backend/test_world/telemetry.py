@@ -50,9 +50,7 @@ def _windows_for(phone, rng: np.random.Generator) -> List[tuple]:
         return [(start, min(start + length, spec.N_TICKS))]
 
     # Otherwise scatter the windows across the hour without overlapping.
-    starts = sorted(
-        int(s) for s in rng.choice(spec.N_TICKS, n, replace=False)
-    )
+    starts = sorted(int(s) for s in rng.choice(spec.N_TICKS, n, replace=False))
     windows = []
     for start in starts:
         length = int(rng.integers(*phone.window_length_s))
@@ -94,9 +92,7 @@ def fix_timelines(
             for tick in range(start, end, spec.READING_INTERVAL_S):
                 true_east, true_north = positions[tick, index]
                 error = rng.normal(0.0, accuracy, size=2)
-                lat, long = geo.to_latlong(
-                    true_east + error[0], true_north + error[1]
-                )
+                lat, long = geo.to_latlong(true_east + error[0], true_north + error[1])
                 fixes.append(
                     {
                         "t": int(tick),

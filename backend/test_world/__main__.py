@@ -69,7 +69,11 @@ def cmd_check(args) -> int:
         import json
 
         a, b = (json.loads(d) for d in digests)
-        differing = [k for k in a if json.dumps(a[k], sort_keys=True) != json.dumps(b[k], sort_keys=True)]
+        differing = [
+            k
+            for k in a
+            if json.dumps(a[k], sort_keys=True) != json.dumps(b[k], sort_keys=True)
+        ]
         print(f"NOT reproducible - differing keys: {differing}", file=sys.stderr)
         return 1
 
@@ -88,11 +92,15 @@ def cmd_gate(args) -> int:
     print("\n-- teams --")
     colours = world.get("identity", {}).get("team_colours", {})
     for team in world["teams"]:
-        print(f"  {team['name']:14s} {colours.get(team['name'],'?'):10s} from {team['start_landmark']}")
+        print(
+            f"  {team['name']:14s} {colours.get(team['name'],'?'):10s} from {team['start_landmark']}"
+        )
     print("\n-- telemetry, as it actually came out --")
     for name, row in world["telemetry_summary"].items():
-        print(f"  {name:16s} median age {row['median_age_s']:>6.0f}s  "
-              f"p90 {row['p90_age_s']:>6.0f}s  median error {row['median_position_error_m']:>5.0f}m")
+        print(
+            f"  {name:16s} median age {row['median_age_s']:>6.0f}s  "
+            f"p90 {row['p90_age_s']:>6.0f}s  median error {row['median_position_error_m']:>5.0f}m"
+        )
         print(f"  {'':16s} {row['note']}")
     print("\n-- encounter pool --")
     print(json.dumps(world["encounter_summary"], indent=1))
@@ -109,7 +117,9 @@ def main(argv=None) -> int:
     sub.add_parser("gate", help="print the Gate A review summary")
 
     args = parser.parse_args(argv)
-    return {"world": cmd_world, "check": cmd_check, "gate": cmd_gate}[args.command](args)
+    return {"world": cmd_world, "check": cmd_check, "gate": cmd_gate}[args.command](
+        args
+    )
 
 
 if __name__ == "__main__":
