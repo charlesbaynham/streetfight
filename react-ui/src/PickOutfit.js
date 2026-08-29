@@ -89,8 +89,7 @@ function Header({ joinData, showWardrobePrompt }) {
       <Swatch hex={hex} label={joinData.team_colour} size="large" />
       <p>
         We'll bring your {joinData.team_colour}{" "}
-        {channelLabel(joinData.team_channel).toLowerCase()} and your{" "}
-        {channelLabel(joinData.provided_channel).toLowerCase()} on the night.
+        {channelLabel(joinData.team_channel).toLowerCase()} on the night.
         {showWardrobePrompt ? " Tell us what else you'll be wearing." : null}
       </p>
     </div>
@@ -200,7 +199,7 @@ function OptionRow({
       onClick={() => onPick(option)}
     >
       {recommended ? (
-        <span className={styles.recommendedBadge}>recommended</span>
+        <span className={styles.recommendedBadge}>preferred</span>
       ) : null}
       {option.is_canonical ? null : (
         <span className={styles.notIdealBadge}>not ideal</span>
@@ -301,7 +300,7 @@ function ConfirmScreen({
       </label>
       {hasName ? null : (
         <p className={styles.nameRequired}>
-          Enter your name above first - an outfit has to belong to somebody.
+          Enter your name above first.
         </p>
       )}
       <button
@@ -345,7 +344,8 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
           );
         })}
       </div>
-      <p className={styles.finalNote}>This is final. Screenshot it.</p>
+      <p className={styles.finalNote}>Locked in - please screenshot this page!</p>
+      <p>Ask the admin if you need to change</p>
     </div>
   );
 }
