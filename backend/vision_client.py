@@ -21,6 +21,7 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
+OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
 
 # A placeholder while the prompt is developed. The intended workflow is to trial
 # several models against real shot photos and pick on measured abstention
@@ -409,3 +410,45 @@ def get_escalation_client(
             reasoning_effort or os.getenv("OPENROUTER_ESCALATION_REASONING_EFFORT")
         ),
     )
+
+
+async def fetch_openrouter_key_balance(
+    api_key: str, timeout: Optional[float] = None
+) -> dict:
+    """The remaining credit balance for ``api_key``, for the admin footer readout.
+
+    Hits OpenRouter's ``/key`` endpoint, which reports on whichever key
+    authenticates the request -- the same regular API key used for
+    completions, no management key required. Returns ``limit`` (the key's
+    spending cap in USD, or None if uncapped), ``limit_remaining`` and
+    ``usage``. Raises :class:`VisionError` if the key is rejected or the
+    endpoint can't be reached.
+    """
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=timeout or DEFAULT_TIMEOUT_SECONDS
+        ) as client:
+            response = await client.get(
+                OPENROUTER_KEY_URL, headers={"Authorization": f"Bearer {api_key}"}
+            )
+    except Exception as e:
+        raise VisionError(f"could not reach OpenRouter: {e}")
+
+    if response.status_code >= 400:
+        raise VisionError(
+            f"OpenRouter rejected the request ({response.status_code}): "
+            f"{response.text[:200]}"
+        )
+
+    try:
+        data = response.json()["data"]
+    except (KeyError, TypeError, ValueError):
+        raise VisionError(f"unexpected response shape: {response.text[:200]}")
+
+    return {
+        "limit": data.get("limit"),
+        "limit_remaining": data.get("limit_remaining"),
+        "usage": data.get("usage"),
+    }

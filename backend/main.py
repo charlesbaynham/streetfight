@@ -107,6 +107,8 @@ from .model import ShotModel
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
+from .vision_client import VisionError
+from .vision_client import fetch_openrouter_key_balance
 from .vision_client import get_escalation_client
 from .vision_client import get_vision_client
 
@@ -682,6 +684,24 @@ async def admin_set_ai_resolve_everything(game_id: UUID, enabled: bool):
     if enabled:
         shot_auto_actions.process_queue_head(game_id)
     return {"enabled": enabled}
+
+
+@admin_method(path="/admin_get_openrouter_balance", method="GET")
+async def admin_get_openrouter_balance() -> dict:
+    """The remaining credit balance on the configured OpenRouter key, for the
+    admin footer readout (CharlesBot's fuel gauge). ``configured: False`` when
+    no key is set at all; a failed lookup still returns 200 with an ``error``
+    so a flaky OpenRouter call doesn't blow up the whole admin page."""
+    api_key = os.getenv("OPENROUTER_API_KEY")
+    if not api_key:
+        return {"configured": False}
+
+    try:
+        balance = await fetch_openrouter_key_balance(api_key)
+    except VisionError as e:
+        return {"configured": True, "error": str(e)}
+
+    return {"configured": True, **balance}
 
 
 @admin_method("/admin_get_shot_ai_review", method="GET")
