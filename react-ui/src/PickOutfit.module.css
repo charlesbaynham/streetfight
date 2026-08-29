@@ -28,6 +28,14 @@
   margin: 0 0 3mm;
 }
 
+/* Written against .header p, which would otherwise dim and space it as the
+   explanatory line below the swatch rather than the heading above it. */
+.header .alreadyJoinedNote {
+  margin: 0 0 2mm;
+  font-weight: bold;
+  opacity: 1;
+}
+
 .header p {
   margin-top: 3mm;
   opacity: 0.85;

@@ -39,6 +39,7 @@ function makeJoinData(overrides = {}) {
       },
     ],
     you: makeYou(),
+    joined_other_team: false,
     ...overrides,
   };
 }
@@ -178,7 +179,7 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
     page: 0,
   });
 
-  expect(screen.getByText("recommended")).toBeInTheDocument();
+  expect(screen.getByText("preferred")).toBeInTheDocument();
   expect(screen.getByText("Exact match")).toBeInTheDocument();
   expect(screen.queryByText("1 colour different")).not.toBeInTheDocument();
 
@@ -278,7 +279,7 @@ test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches 
   );
 
   expect(getLastAPICall("outfit_options").body.relaxed).toBe(true);
-  expect(screen.getByText("recommended")).toBeInTheDocument();
+  expect(screen.getByText("preferred")).toBeInTheDocument();
 });
 
 test("tapping an option shows the confirmation screen without claiming it, and Lock in my choice is disabled until ticked", async () => {
@@ -434,7 +435,9 @@ test("ticking the confirm box and pressing Lock in my choice claims the outfit a
     userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
   );
 
-  expect(screen.getByText("This is final. Screenshot it.")).toBeInTheDocument();
+  expect(
+    screen.getByText("Locked in - please screenshot this page!"),
+  ).toBeInTheDocument();
   expect(getLastAPICall("pick_outfit").body).toEqual({
     data: "CODE1",
     wardrobe: {},
@@ -487,9 +490,39 @@ test("a returning visitor whose slot is already set sees the result, not the for
   renderPickOutfit();
 
   expect(
-    await screen.findByText("This is final. Screenshot it."),
+    await screen.findByText("Locked in - please screenshot this page!"),
   ).toBeInTheDocument();
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("You already joined a team:"),
+  ).not.toBeInTheDocument();
+});
+
+test("another team's link, tapped after picking, names the team already joined", async () => {
+  // join_options has already swapped the team block to the one the caller is
+  // in (backend/identity_admin.py's joined_other_team), so the page's job is
+  // only to say why it is showing a team the player did not just scan.
+  installFetchMock({
+    join_options: makeJoinData({
+      team_name: "Blues",
+      joined_other_team: true,
+      you: makeYou({
+        slot: 3,
+        team_name: "Blues",
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+  });
+
+  renderPickOutfit();
+
+  expect(
+    await screen.findByText("You already joined a team:"),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("heading", { name: "Team Blues" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Team Reds/)).not.toBeInTheDocument();
 });
 
 test("a 409 from pick_outfit shows the choose-again message, returns to the options and refetches them", async () => {
@@ -616,7 +649,7 @@ test("the recommended badge marks only the top of the list, ties included", asyn
 
   // The two rarest canonical outfits tie at the top, so both are badged;
   // the third is canonical but simply goes unbadged.
-  expect(screen.getAllByText("recommended")).toHaveLength(2);
+  expect(screen.getAllByText("preferred")).toHaveLength(2);
   expect(screen.queryByText("not ideal")).not.toBeInTheDocument();
 
   const rows = screen.getAllByRole("button", { name: /Choose:/ });
@@ -647,7 +680,7 @@ test("a later page badges nothing as recommended - only the first page holds the
   renderPickOutfit();
   await goPastHeader();
   await showOutfits();
-  expect(screen.getByText("recommended")).toBeInTheDocument();
+  expect(screen.getByText("preferred")).toBeInTheDocument();
 
   await showOtherOutfits();
   await actAndFlush(() =>

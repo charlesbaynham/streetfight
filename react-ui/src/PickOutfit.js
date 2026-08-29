@@ -85,6 +85,11 @@ function Header({ joinData, showWardrobePrompt }) {
   );
   return (
     <div className={styles.header}>
+      {/* The backend has already swapped this whole block to the team the
+          player is actually in, so the link they tapped is never named. */}
+      {joinData.joined_other_team ? (
+        <p className={styles.alreadyJoinedNote}>You already joined a team:</p>
+      ) : null}
       <h1>Team {joinData.team_name}</h1>
       <Swatch hex={hex} label={joinData.team_colour} size="large" />
       <p>
@@ -299,9 +304,7 @@ function ConfirmScreen({
         I will wear this on the night.
       </label>
       {hasName ? null : (
-        <p className={styles.nameRequired}>
-          Enter your name above first.
-        </p>
+        <p className={styles.nameRequired}>Enter your name above first.</p>
       )}
       <button
         type="button"
@@ -344,8 +347,10 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
           );
         })}
       </div>
-      <p className={styles.finalNote}>Locked in - please screenshot this page!</p>
-      <p>Ask the admin if you need to change</p>
+      <p className={styles.finalNote}>
+        Locked in - please screenshot this page!
+      </p>
+      <p>Ask the admin if you need to change your outfit</p>
     </div>
   );
 }
