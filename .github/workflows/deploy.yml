@@ -15,11 +15,11 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "Branch, tag or SHA to put live"
+        description: Branch, tag or SHA to put live
         required: true
         default: master
       skip_build_check:
-        description: "Deploy even if the cloud closure is not in Cachix (the droplet will build it itself, slowly)"
+        description: Deploy even if the cloud closure is not in Cachix (the droplet will build it itself, slowly)
         type: boolean
         default: false
 
