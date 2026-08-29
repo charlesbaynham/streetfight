@@ -71,9 +71,14 @@ step "Capturing the droplet's network configuration"
 # it boots with no addresses and is unreachable - which is exactly how the
 # first two installs died. Read them off the stock droplet rather than
 # trusting whatever the last install left in the repo.
+if ! probe=$(ssh -o StrictHostKeyChecking=accept-new "$target" \
+  "ip -j -4 route show default && echo --- && ip -j -4 addr show"); then
+  echo "could not reach $target over SSH - is the key authorised on it?" >&2
+  exit 1
+fi
+
 read -r iface addr prefix gw < <(
-  ssh -o StrictHostKeyChecking=accept-new "$target" \
-    "ip -j -4 route show default && echo --- && ip -j -4 addr show" |
+  printf '%s\n' "$probe" |
   python3 -c '
 import ipaddress, json, sys
 routes, addrs = sys.stdin.read().split("---")
@@ -89,6 +94,10 @@ for link in json.loads(addrs):
 sys.exit(f"no public IPv4 found on {iface}")
 '
 )
+if [ -z "${addr:-}" ]; then
+  echo "could not read a public IPv4 address off $target" >&2
+  exit 1
+fi
 echo "$iface: $addr/$prefix via $gw"
 
 python3 - "$NET_FILE" "$iface" "$addr" "$prefix" "$gw" "${target#*@}" <<'PY'
