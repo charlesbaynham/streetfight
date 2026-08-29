@@ -148,6 +148,28 @@ class CircleTypes(str, Enum):
     DROP = "DROP"
 
 
+# What the ticker says for each circle type, keyed by whether the circle was
+# cleared (True) or placed (False)
+CIRCLE_TICKER_MESSAGES = {
+    CircleTypes.EXCLUSION: {
+        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION,
+        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_EXCLUSION,
+    },
+    CircleTypes.NEXT: {
+        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT,
+        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_NEXT,
+    },
+    CircleTypes.BOTH: {
+        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH,
+        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_BOTH,
+    },
+    CircleTypes.DROP: {
+        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_DROP,
+        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP,
+    },
+}
+
+
 class AdminInterface:
     def __init__(self, session=None) -> None:
         self._session: Session = session
@@ -309,16 +331,18 @@ class AdminInterface:
         logger.info("AdminInterface - set_circles")
         game: Game = self._get_game_orm(game_id)
 
+        # Clearing a circle passes no coordinates, so it needs the opposite
+        # announcement to placing one
+        cleared = lat is None or long is None or radius is None
+
         if name == CircleTypes.EXCLUSION:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
             game.exclusion_circle_radius = radius
-            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION
         elif name == CircleTypes.NEXT:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
-            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT
         elif name == CircleTypes.BOTH:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
@@ -326,15 +350,14 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
-            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH
         elif name == CircleTypes.DROP:
             game.drop_circle_lat = lat
             game.drop_circle_long = long
             game.drop_circle_radius = radius
-
-            message_type = tk.TickerMessageType.ADMIN_SET_CIRCLE_DROP
         else:
             raise HTTPException(400, f"Invalid circle name {name}")
+
+        message_type = CIRCLE_TICKER_MESSAGES[CircleTypes(name)][cleared]
 
         self._session.commit()
 
