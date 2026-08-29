@@ -176,6 +176,12 @@ def build_cast(seed: int) -> List[dict]:
         first = (male_names if sex == "male" else female_names).pop()
         age_band = ages[index]
         low, high = (int(part) for part in age_band.split("-"))
+        age = rng.randint(low, high)
+        hair_colours = [
+            colour
+            for colour in HAIR_COLOURS
+            if colour != "grey" or age >= spec.GREY_HAIR_MIN_AGE
+        ]
         cast.append(
             {
                 "slug": f"{team_slug}-{member_no}",
@@ -184,12 +190,12 @@ def build_cast(seed: int) -> List[dict]:
                 "name": f"{first} {surnames[index]}",
                 "sex": sex,
                 "age_band": age_band,
-                "age": rng.randint(low, high),
+                "age": age,
                 "ethnicity": ethnicities[index],
                 "picking": pickings[index],
                 "phone_class": phones[index],
                 "build": rng.choice(BUILDS),
-                "hair_colour": rng.choice(HAIR_COLOURS),
+                "hair_colour": rng.choice(hair_colours),
                 "distinguishing": distinguishing[index],
                 "hard_features": [],
             }
@@ -197,9 +203,13 @@ def build_cast(seed: int) -> List[dict]:
 
     # Hard features are dealt per feature, not per person: each is given to
     # exactly its locked number of distinct players, drawn independently of
-    # every other feature, so overlaps happen naturally.
+    # every other feature, so overlaps happen naturally. A feature with an
+    # eligibility rule is dealt from that pool alone -- the count is locked
+    # either way.
     for feature, n in spec.HARD_FEATURE_COUNTS.items():
-        for person in rng.sample(cast, n):
+        eligible = spec.HARD_FEATURE_ELIGIBILITY.get(feature)
+        pool = [person for person in cast if eligible(person)] if eligible else cast
+        for person in rng.sample(pool, n):
             person["hard_features"].append(feature)
 
     # Hair style has to agree with the features: whoever was dealt hair falling

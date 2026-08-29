@@ -140,8 +140,8 @@
    "hair_colour": "brown",
    "hair_style": "short and tousled",
    "hard_features": [
-    "beard",
-    "glasses"
+    "glasses",
+    "hood_bunched_at_neck"
    ],
    "name": "Kate Frost",
    "phone_class": "good",
@@ -210,7 +210,7 @@
    "build": "average",
    "distinguishing": "a camera slung across the body",
    "ethnicity": "white",
-   "hair_colour": "grey",
+   "hair_colour": "black",
    "hair_style": "tied back",
    "hard_features": [
     "hood_bunched_at_neck",
@@ -225,16 +225,14 @@
    "team_slug": "horseferry"
   },
   {
-   "age": 35,
+   "age": 26,
    "age_band": "25-40",
-   "build": "slight",
+   "build": "stocky",
    "distinguishing": "a laptop bag worn crossbody",
    "ethnicity": "white",
    "hair_colour": "blonde",
    "hair_style": "tied back",
-   "hard_features": [
-    "beard"
-   ],
+   "hard_features": [],
    "name": "Fran Doran",
    "phone_class": "ordinary",
    "picking": "canonical",
@@ -288,6 +286,7 @@
    "hair_colour": "auburn",
    "hair_style": "tied back",
    "hard_features": [
+    "beard",
     "glasses",
     "open_jacket_over_tshirt"
    ],
@@ -345,9 +344,7 @@
    "ethnicity": "white",
    "hair_colour": "auburn",
    "hair_style": "long wavy",
-   "hard_features": [
-    "beard"
-   ],
+   "hard_features": [],
    "name": "Chris Chase",
    "phone_class": "good",
    "picking": "canonical",
@@ -362,7 +359,7 @@
    "build": "slim",
    "distinguishing": "a pint glass still in hand",
    "ethnicity": "white",
-   "hair_colour": "grey",
+   "hair_colour": "blonde",
    "hair_style": "tied back",
    "hard_features": [],
    "name": "Laura Rand",
@@ -381,7 +378,9 @@
    "ethnicity": "white",
    "hair_colour": "dark brown",
    "hair_style": "long straight",
-   "hard_features": [],
+   "hard_features": [
+    "beard"
+   ],
    "name": "Sam Ward",
    "phone_class": "urban_canyon",
    "picking": "canonical",
@@ -473,7 +472,9 @@
    "ethnicity": "white",
    "hair_colour": "brown",
    "hair_style": "short",
-   "hard_features": [],
+   "hard_features": [
+    "beard"
+   ],
    "name": "Luke Zane",
    "phone_class": "urban_canyon",
    "picking": "constrained",
@@ -507,9 +508,7 @@
    "ethnicity": "other",
    "hair_colour": "light brown",
    "hair_style": "cropped",
-   "hard_features": [
-    "hood_bunched_at_neck"
-   ],
+   "hard_features": [],
    "name": "Hannah Sayer",
    "phone_class": "good",
    "picking": "canonical",
@@ -49519,8 +49518,8 @@
      "trousers": "olive",
      "tshirt": "yellow"
     },
-    "persona": "28-year-old white female, slight build, short and tousled brown hair, a hair clip holding a fringe back, wearing glasses, with a short beard",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 28-year-old white female, slight build, short and tousled brown hair, a hair clip holding a fringe back, wearing glasses, with a short beard. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain olive trousers in exactly #6B7A3A (olive, khaki or army green); a plain rust baseball cap in exactly #BF4227 (burnt orange or terracotta -- orange, not pink); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "28-year-old white female, slight build, short and tousled brown hair, a hair clip holding a fringe back, wearing glasses, a hood pushed back and bunched at the neck",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 28-year-old white female, slight build, short and tousled brown hair, a hair clip holding a fringe back, wearing glasses, a hood pushed back and bunched at the neck. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain olive trousers in exactly #6B7A3A (olive, khaki or army green); a plain rust baseball cap in exactly #BF4227 (burnt orange or terracotta -- orange, not pink); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "millbank-3",
     "team": "Millbank"
    },
@@ -49567,8 +49566,8 @@
      "trousers": "off-white",
      "tshirt": "orange"
     },
-    "persona": "26-year-old white male, average build, tied back grey hair, a camera slung across the body, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges, a hood pushed back and bunched at the neck",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 26-year-old white male, average build, tied back grey hair, a camera slung across the body, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges, a hood pushed back and bunched at the neck. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain orange t-shirt in exactly #FF8200; plain off-white trousers in exactly #F0EFEA (white, cream, beige or stone -- most chinos); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "26-year-old white male, average build, tied back black hair, a camera slung across the body, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges, a hood pushed back and bunched at the neck",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 26-year-old white male, average build, tied back black hair, a camera slung across the body, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges, a hood pushed back and bunched at the neck. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain orange t-shirt in exactly #FF8200; plain off-white trousers in exactly #F0EFEA (white, cream, beige or stone -- most chinos); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "horseferry-2",
     "team": "Horseferry"
    },
@@ -49579,8 +49578,8 @@
      "trousers": "red",
      "tshirt": "red"
     },
-    "persona": "35-year-old white female, slight build, tied back blonde hair, a laptop bag worn crossbody, with a short beard",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 35-year-old white female, slight build, tied back blonde hair, a laptop bag worn crossbody, with a short beard. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain red trousers in exactly #C1272D (includes burgundy and rust); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a blue elasticated armband on each upper arm in exactly #0F61A6 (any blue -- royal, mid or navy).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "26-year-old white female, stocky build, tied back blonde hair, a laptop bag worn crossbody",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 26-year-old white female, stocky build, tied back blonde hair, a laptop bag worn crossbody. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain red trousers in exactly #C1272D (includes burgundy and rust); a plain salmon baseball cap in exactly #DA7B70 (pale coral pink -- much lighter than burgundy or rust); a blue elasticated armband on each upper arm in exactly #0F61A6 (any blue -- royal, mid or navy).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "horseferry-3",
     "team": "Horseferry"
    },
@@ -49615,8 +49614,8 @@
      "trousers": "red",
      "tshirt": "yellow"
     },
-    "persona": "38-year-old white male, slight build, tied back auburn hair, muddy boots, wearing glasses, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 38-year-old white male, slight build, tied back auburn hair, muddy boots, wearing glasses, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain red trousers in exactly #C1272D (includes burgundy and rust); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "38-year-old white male, slight build, tied back auburn hair, muddy boots, wearing glasses, with a short beard, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 38-year-old white male, slight build, tied back auburn hair, muddy boots, wearing glasses, with a short beard, an unzipped jacket hanging open, with a clear vertical strip of the t-shirt visible between its front edges. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain red trousers in exactly #C1272D (includes burgundy and rust); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "victoria-1",
     "team": "Victoria"
    },
@@ -49651,8 +49650,8 @@
      "trousers": "off-white",
      "tshirt": "red"
     },
-    "persona": "40-year-old white male, broad build, long wavy auburn hair, a club wristband from the weekend, with a short beard",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 40-year-old white male, broad build, long wavy auburn hair, a club wristband from the weekend, with a short beard. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain off-white trousers in exactly #F0EFEA (white, cream, beige or stone -- most chinos); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); a purple elasticated armband on each upper arm in exactly #964F7E (purple, plum or violet).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "40-year-old white male, broad build, long wavy auburn hair, a club wristband from the weekend",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 40-year-old white male, broad build, long wavy auburn hair, a club wristband from the weekend. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain off-white trousers in exactly #F0EFEA (white, cream, beige or stone -- most chinos); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); a purple elasticated armband on each upper arm in exactly #964F7E (purple, plum or violet).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "victoria-4",
     "team": "Victoria"
    },
@@ -49663,8 +49662,8 @@
      "trousers": "black",
      "tshirt": "orange"
     },
-    "persona": "18-year-old white female, slim build, tied back grey hair, a pint glass still in hand",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 18-year-old white female, slim build, tied back grey hair, a pint glass still in hand. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain orange t-shirt in exactly #FF8200; plain black trousers in exactly #1A1A1A (black or charcoal); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); an orange elasticated armband on each upper arm in exactly #FA7A08 (bright orange -- lighter and brighter than brown).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "18-year-old white female, slim build, tied back blonde hair, a pint glass still in hand",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 18-year-old white female, slim build, tied back blonde hair, a pint glass still in hand. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain orange t-shirt in exactly #FF8200; plain black trousers in exactly #1A1A1A (black or charcoal); a plain green baseball cap in exactly #4F7468 (dark bottle or pine green); an orange elasticated armband on each upper arm in exactly #FA7A08 (bright orange -- lighter and brighter than brown).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "victoria-5",
     "team": "Victoria"
    },
@@ -49675,8 +49674,8 @@
      "trousers": "mustard",
      "tshirt": "green"
     },
-    "persona": "36-year-old white male, slim build, long straight dark brown hair, a gym bag at their feet",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 36-year-old white male, slim build, long straight dark brown hair, a gym bag at their feet. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain mustard trousers in exactly #C9962B (mustard, ochre, tan or camel); a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "36-year-old white male, slim build, long straight dark brown hair, a gym bag at their feet, with a short beard",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 36-year-old white male, slim build, long straight dark brown hair, a gym bag at their feet, with a short beard. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain green t-shirt in exactly #00A651 (includes olive and khaki); plain mustard trousers in exactly #C9962B (mustard, ochre, tan or camel); a plain navy baseball cap in exactly #2D5170 (dark blue, navy or petrol); a lime elasticated armband on each upper arm in exactly #AAC634 (yellow-green, and the only green here).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "vauxhall-1",
     "team": "Vauxhall"
    },
@@ -49735,8 +49734,8 @@
      "trousers": "mustard",
      "tshirt": "red"
     },
-    "persona": "52-year-old white male, average build, short brown hair, a watch with a chunky metal strap",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 52-year-old white male, average build, short brown hair, a watch with a chunky metal strap. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain mustard trousers in exactly #C9962B (mustard, ochre, tan or camel); a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "52-year-old white male, average build, short brown hair, a watch with a chunky metal strap, with a short beard",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 52-year-old white male, average build, short brown hair, a watch with a chunky metal strap, with a short beard. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain red t-shirt in exactly #B00020; plain mustard trousers in exactly #C9962B (mustard, ochre, tan or camel); a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "smith-square-1",
     "team": "Smith Square"
    },
@@ -49759,8 +49758,8 @@
      "trousers": "grey",
      "tshirt": "yellow"
     },
-    "persona": "32-year-old of another ethnic background female, slight build, cropped light brown hair, a canvas bucket hat in one hand, a hood pushed back and bunched at the neck",
-    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 32-year-old of another ethnic background female, slight build, cropped light brown hair, a canvas bucket hat in one hand, a hood pushed back and bunched at the neck. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain grey trousers in exactly #808080 (mid grey -- lighter than charcoal, darker than stone); a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); an orange elasticated armband on each upper arm in exactly #FA7A08 (bright orange -- lighter and brighter than brown).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
+    "persona": "32-year-old of another ethnic background female, slight build, cropped light brown hair, a canvas bucket hat in one hand",
+    "prompt": "A full-length reference photograph of one person, taken on a mobile phone indoors by an organiser before a game begins.\n\nSETTING: the attached photograph of a living room. Place the person standing in THAT room, in front of the bookcase and the doorway, on the wooden floor. Do not invent a different room: use the room in the attached image, with its furniture, plants and lighting as they are.\n\nSUBJECT: 32-year-old of another ethnic background female, slight build, cropped light brown hair, a canvas bucket hat in one hand. Standing squarely facing the camera, arms relaxed at their sides so both upper arms are clearly visible, a neutral expression.\nWEARING: a plain yellow t-shirt in exactly #FFF200; plain grey trousers in exactly #808080 (mid grey -- lighter than charcoal, darker than stone); a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); an orange elasticated armband on each upper arm in exactly #FA7A08 (bright orange -- lighter and brighter than brown).\n\nSTYLE: an ordinary indoor phone snapshot, full length with the whole body from cap to shoes in frame, natural indoor lighting, no filter, no text or watermark. The colours of the cap, armbands, t-shirt and trousers must match the named hex values exactly. Refer to the attached colour swatch card.",
     "slug": "smith-square-3",
     "team": "Smith Square"
    },
@@ -50230,7 +50229,7 @@
     "occlusion": "a parked car",
     "other_kitted_in_frame": [],
     "probes": "the weak model should be unconfident here and escalate rather than guess",
-    "prompt": "A candid photograph taken on a mobile phone by someone playing a street game, held up quickly and not carefully composed.\n\nSETTING: St John's Gardens, Westminster, London - a small enclosed churchyard garden, benches and dense shrubs.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry and clear, a light breeze.\nCAMERA: 3-5 metres from the subject, chest height, phone held up in both hands. Frame it wide, with room around the subject on all sides - the picture will be cropped afterwards.\n\nSUBJECT: 52-year-old white male, average build, short brown hair, a watch with a chunky metal strap. Turned three-quarters away from the camera, looking off to one side.\nWEARING: a plain red t-shirt in exactly #B00020; a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\nNOT VISIBLE: the subject's trousers must not be visible in the photograph at all.\nIN THE WAY: a parked car partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
+    "prompt": "A candid photograph taken on a mobile phone by someone playing a street game, held up quickly and not carefully composed.\n\nSETTING: St John's Gardens, Westminster, London - a small enclosed churchyard garden, benches and dense shrubs.\nTIME AND LIGHT: 19:06, after sunset, the sky still pale blue-grey but the ground in soft shadow, street lights just coming on and not yet dominant. Weather: dry and clear, a light breeze.\nCAMERA: 3-5 metres from the subject, chest height, phone held up in both hands. Frame it wide, with room around the subject on all sides - the picture will be cropped afterwards.\n\nSUBJECT: 52-year-old white male, average build, short brown hair, a watch with a chunky metal strap, with a short beard. Turned three-quarters away from the camera, looking off to one side.\nWEARING: a plain red t-shirt in exactly #B00020; a plain burgundy baseball cap in exactly #A62C3E (dark wine red, no orange in it); a brown elasticated armband on each upper arm in exactly #8E6453 (mid brown, like a plaster -- duller than orange).\nNOT VISIBLE: the subject's trousers must not be visible in the photograph at all.\nIN THE WAY: a parked car partly obscures the subject.\n\nSTYLE: an ordinary phone snapshot - slightly noisy in low light, natural colours, no filter, no artistic grading, no text or watermark. The colours of the t-shirt, cap and armbands must match the named hex values exactly; they are the point of the photograph. Refer to the attached colour swatch card.",
     "scenario": "S7",
     "separation_m": 4.1,
     "setting": "a small enclosed churchyard garden, benches and dense shrubs",
@@ -50252,7 +50251,7 @@
       "hat",
       "armbands"
      ],
-     "persona": "52-year-old white male, average build, short brown hair, a watch with a chunky metal strap",
+     "persona": "52-year-old white male, average build, short brown hair, a watch with a chunky metal strap, with a short beard",
      "slug": "smith-square-1",
      "team": "Smith Square"
     },
