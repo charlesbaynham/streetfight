@@ -135,6 +135,19 @@ def test_prompt_names_the_wide_colour_buckets():
     assert "includes navy and denim" in prompt
 
 
+def test_prompt_says_where_the_armbands_are_and_how_big():
+    """A model told to look at the upper arms scores a bare forearm band as
+    "not visible", which is an erasure on the one garment the game hands out.
+    Their size is worth saying too: 5-10 cm of colour is easy to dismiss as a
+    watch strap or a fold in a sleeve.
+    """
+    section = sv.build_prompt().split("armbands (")[1].split("Can you clearly")[0]
+
+    assert "forearms" in section
+    assert "upper arms" in section
+    assert "5-10 cm" in section
+
+
 # -- parsing ----------------------------------------------------------------
 
 

@@ -215,7 +215,9 @@ def build_escalation_prompt(candidates: List[dict], has_more_photos: bool) -> st
             "this photograph -- who was near the shooter, and who is on the "
             "shooter's own team -- so treat it as a starting point that the "
             "photograph can and should overrule. A garment given as "
-            f'"{shot_vision.UNKNOWN}" is one nobody recorded.\n\n'
+            f'"{shot_vision.UNKNOWN}" is one nobody recorded. The '
+            f"{shot_vision.ARMBANDS_CHANNEL} are "
+            f"{shot_vision.ARMBANDS_PLACEMENT}.\n\n"
             + "\n".join(_candidate_line(candidate) for candidate in candidates)
         )
     else:
