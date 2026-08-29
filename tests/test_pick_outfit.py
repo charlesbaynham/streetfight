@@ -513,3 +513,49 @@ def test_pick_outfit_rejects_per_slot_code(api_client_factory, one_game, one_tea
         pick_outfit_call(player, per_slot_url, wardrobe={}, appearance={}).status_code
         == 400
     )
+
+
+def test_every_offered_option_can_actually_be_picked(
+    api_client_factory, admin_api_client, one_game, team_factory
+):
+    """An outfit the page offered must still be claimable when it is clicked.
+
+    ``outfit_options`` returns one survivor per tshirt+trousers combination,
+    and the distance gate is applied *before* that collapse - so which
+    armband colour survives depends on the gate. ``_revalidate_appearance``
+    re-enumerates with no gate at all, believing that to be the widest
+    possible set, and then demands an exact appearance match. It is not the
+    widest set: ungated, a different member of the same armband group can win
+    the collapse, and the outfit the player was actually offered is nowhere in
+    it. The player is then told "someone may have just taken it" when nobody
+    took anything, deterministically, on a pick that was legitimate when it
+    was offered.
+
+    Narrow wardrobes across two teams reproduce it, because they are what
+    make a whole armband group collapse to one survivor and what pushes the
+    lower-ranked members of that group below the gate.
+    """
+    teams = [team_factory() for _ in range(2)]
+    wardrobes = [
+        {"tshirt": [a], "trousers": [b]}
+        for a in SCHEME.channels.by_name("tshirt").labels[:3]
+        for b in palette_for_channel("trousers")[:3]
+    ]
+
+    refused = []
+    for team_id in teams:
+        url, _colour = team_join_url_and_colour(admin_api_client, one_game, team_id)
+        for wardrobe in wardrobes:
+            player = fresh_player(api_client_factory)
+            body = outfit_options_call(player, url, wardrobe, relaxed=True).json()
+            if not body["options"]:
+                continue
+            offered = body["options"][0]["appearance"]
+            response = pick_outfit_call(player, url, wardrobe, appearance=offered)
+            if not response.is_success:
+                refused.append((offered, response.json()))
+
+    assert not refused, (
+        f"{len(refused)} outfit(s) were offered by the page and then refused when "
+        f"picked, with nothing having changed in between: {refused[:3]}"
+    )
