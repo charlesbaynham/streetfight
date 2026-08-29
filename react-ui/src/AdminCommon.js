@@ -186,7 +186,7 @@ export function AdminNav() {
 
 // The git hash the backend reports for itself, shown small at the bottom of
 // every admin page so a screenshot of a problem says which code produced it.
-function VersionFooter() {
+function VersionReadout() {
   const [version, setVersion] = useState(null);
 
   useEffect(() => {
@@ -198,8 +198,56 @@ function VersionFooter() {
   if (!version) return null;
 
   return (
-    <footer className={styles.versionFooter}>
+    <span>
       version <code>{version}</code>
+    </span>
+  );
+}
+
+// How much credit is left on the OpenRouter key CharlesBot spends against -
+// nothing to show if the key isn't configured (the feature is simply off),
+// and re-fetched every minute since usage moves while the admin is working
+// the shot queue.
+const OPENROUTER_BALANCE_POLL_MS = 60 * 1000;
+
+function formatUSD(amount) {
+  return `$${amount.toFixed(2)}`;
+}
+
+function OpenRouterBalanceReadout() {
+  const [balance, setBalance] = useState(null);
+
+  const update = useCallback(() => {
+    sendAPIRequest("admin_get_openrouter_balance", {}, "GET", setBalance);
+  }, []);
+
+  useEffect(() => {
+    update();
+    const interval = setInterval(update, OPENROUTER_BALANCE_POLL_MS);
+    return () => clearInterval(interval);
+  }, [update]);
+
+  if (!balance || !balance.configured) return null;
+
+  if (balance.error) return <span>OpenRouter balance unavailable</span>;
+
+  const { limit, limit_remaining, usage } = balance;
+
+  return (
+    <span>
+      OpenRouter:{" "}
+      {limit === null || limit === undefined
+        ? `${formatUSD(usage)} used (no key limit set)`
+        : `${formatUSD(limit_remaining)} remaining of ${formatUSD(limit)}`}
+    </span>
+  );
+}
+
+function AdminFooter() {
+  return (
+    <footer className={styles.versionFooter}>
+      <VersionReadout />
+      <OpenRouterBalanceReadout />
     </footer>
   );
 }
@@ -238,7 +286,7 @@ export function AdminPage({ children }) {
       <AdminNav />
       <AdminErrorLog />
       {children}
-      <VersionFooter />
+      <AdminFooter />
     </Container>
   );
 }

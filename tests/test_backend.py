@@ -9,6 +9,7 @@ from backend.model import APPEALS_PER_GAME
 from backend.model import Team
 from backend.model import UserModel
 from backend.user_interface import UserInterface
+from backend.vision_client import VisionError
 
 
 def test_read_main(api_client):
@@ -42,6 +43,54 @@ def test_auth_can_login(api_client):
     assert response.status_code == 200
     response = api_client.get("/api/admin_list_games")
     assert response.status_code == 200
+
+
+def test_admin_openrouter_balance_reports_unconfigured_with_no_key(
+    monkeypatch, admin_api_client
+):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+
+    response = admin_api_client.get("/api/admin_get_openrouter_balance")
+
+    assert response.status_code == 200
+    assert response.json() == {"configured": False}
+
+
+def test_admin_openrouter_balance_returns_the_key_balance(
+    mocker, monkeypatch, admin_api_client
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    mocker.patch(
+        "backend.main.fetch_openrouter_key_balance",
+        return_value={"limit": 100, "limit_remaining": 74.5, "usage": 25.5},
+    )
+
+    response = admin_api_client.get("/api/admin_get_openrouter_balance")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "configured": True,
+        "limit": 100,
+        "limit_remaining": 74.5,
+        "usage": 25.5,
+    }
+
+
+def test_admin_openrouter_balance_reports_a_lookup_failure_without_erroring(
+    mocker, monkeypatch, admin_api_client
+):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    mocker.patch(
+        "backend.main.fetch_openrouter_key_balance",
+        side_effect=VisionError("OpenRouter rejected the request (401): bad key"),
+    )
+
+    response = admin_api_client.get("/api/admin_get_openrouter_balance")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["configured"] is True
+    assert "bad key" in body["error"]
 
 
 def test_user_info(api_client):

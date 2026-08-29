@@ -11,6 +11,7 @@ from backend.vision_client import VisionError
 from backend.vision_client import _as_message
 from backend.vision_client import _content_of
 from backend.vision_client import _normalize_reasoning_effort
+from backend.vision_client import fetch_openrouter_key_balance
 from backend.vision_client import get_vision_client
 
 
@@ -170,3 +171,68 @@ async def test_complete_sends_the_effort_as_a_reasoning_request_parameter(
     await client.complete([{"role": "user", "text": "hi"}], schema={})
 
     assert _FakeHTTPXClient.sent_payloads[0]["reasoning"] == {"effort": "high"}
+
+
+# -- fetch_openrouter_key_balance ---------------------------------------------
+
+
+class _FakeKeyResponse:
+    def __init__(self, status_code=200, body=None, text="error"):
+        self.status_code = status_code
+        self._body = body
+        self.text = text
+
+    def json(self):
+        return self._body
+
+
+class _FakeHTTPXGetClient:
+    """Captures the request it expects and hands back a canned response,
+    without touching the network."""
+
+    response = None
+    sent_headers = None
+
+    def __init__(self, *args, **kwargs):
+        pass
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    async def get(self, url, headers):
+        _FakeHTTPXGetClient.sent_headers = headers
+        return _FakeHTTPXGetClient.response
+
+
+@pytest.mark.asyncio
+async def test_fetch_openrouter_key_balance_returns_the_limit_fields(mocker):
+    _FakeHTTPXGetClient.response = _FakeKeyResponse(
+        body={"data": {"limit": 100, "limit_remaining": 74.5, "usage": 25.5}}
+    )
+    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
+
+    balance = await fetch_openrouter_key_balance("k")
+
+    assert balance == {"limit": 100, "limit_remaining": 74.5, "usage": 25.5}
+    assert _FakeHTTPXGetClient.sent_headers == {"Authorization": "Bearer k"}
+
+
+@pytest.mark.asyncio
+async def test_fetch_openrouter_key_balance_raises_on_a_rejected_key(mocker):
+    _FakeHTTPXGetClient.response = _FakeKeyResponse(status_code=401, text="bad key")
+    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
+
+    with pytest.raises(VisionError):
+        await fetch_openrouter_key_balance("k")
+
+
+@pytest.mark.asyncio
+async def test_fetch_openrouter_key_balance_raises_on_an_unexpected_body(mocker):
+    _FakeHTTPXGetClient.response = _FakeKeyResponse(body={"unexpected": "shape"})
+    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
+
+    with pytest.raises(VisionError):
+        await fetch_openrouter_key_balance("k")
