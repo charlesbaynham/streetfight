@@ -1,0 +1,45 @@
+/* Same dark, mobile-first frame as PickOutfit.module.css - this page is only
+   ever reached from there, so it should not look like a different site. The
+   measure is narrower than the picker's, because this one is read rather
+   than tapped. */
+
+.outerContainer {
+  background-color: black;
+  color: white;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.innerContainer {
+  max-width: 130mm;
+  margin: 0 auto;
+  padding: 8mm 5mm 14mm;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.innerContainer h1 {
+  margin: 0 0 6mm;
+}
+
+.innerContainer h2 {
+  margin: 8mm 0 2mm;
+  font-size: larger;
+}
+
+.innerContainer a {
+  color: white;
+}
+
+/* Marks text as scaffolding rather than the essay: italic and dimmed, so a
+   player who arrives early can see at a glance that it isn't finished.
+   Delete this class along with the placeholder copy. */
+.holdingNote {
+  opacity: 0.75;
+  font-style: italic;
+}
+
+.backNote {
+  margin-top: 10mm;
+  opacity: 0.75;
+}

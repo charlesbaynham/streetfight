@@ -19,7 +19,9 @@ function ItemDisplay({ item }) {
 
   return (
     <>
-      <QRCode value={encoded_url} />
+      <a href={encoded_url} target="_blank" rel="noreferrer">
+        <QRCode value={encoded_url} />
+      </a>
       <p>Type: {item_type}</p>
       <p>item_data: {JSON.stringify(item_data)}</p>
       {/* <p>Code: {encoded_item}</p> */}

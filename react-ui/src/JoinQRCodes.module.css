@@ -19,6 +19,11 @@
   gap: 0.4em;
 }
 
+/* The QR itself is the link: no underline or colour, just the code */
+.qrLink {
+  display: inline-block;
+}
+
 .capacityLine {
   color: #555;
 }
