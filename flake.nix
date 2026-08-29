@@ -12,6 +12,13 @@
     url = "git+https://github.com/nix-community/disko";
     inputs.nixpkgs.follows = "nixpkgs";
   };
+  # The installer itself, so `nix run .#install-cloud` pins the version it
+  # runs rather than depending on what the operator happens to have.
+  inputs.nixos-anywhere = {
+    url = "git+https://github.com/nix-community/nixos-anywhere";
+    inputs.nixpkgs.follows = "nixpkgs";
+    inputs.disko.follows = "disko";
+  };
 
   # Python dependencies are resolved by uv into ./uv.lock and built from it by
   # uv2nix, so the LXC container, the dev shell, CI and a bare `uv sync` in a
@@ -34,7 +41,7 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, flake-utils, cattle, disko, pyproject-nix, uv2nix, pyproject-build-systems }:
+  outputs = { self, nixpkgs, flake-utils, cattle, disko, nixos-anywhere, pyproject-nix, uv2nix, pyproject-build-systems }:
     let
       inherit (nixpkgs) lib;
 
@@ -166,6 +173,23 @@
               '');
             };
 
+        # `nix run .#install-cloud` - the one-time destructive install of a
+        # stock droplet, replacing the hand-run runbook in
+        # docs/deployment_droplet.md. It captures the droplet's networking
+        # first, because DigitalOcean gives no DHCP and a config carrying the
+        # previous droplet's address installs a machine that boots dark.
+        installCloudScript = pkgs.writeShellApplication {
+          name = "install-cloud";
+          runtimeInputs = [
+            pkgs.openssh
+            pkgs.python3
+            pkgs.git
+            nixos-anywhere.packages.${system}.default
+          ];
+          text = builtins.readFile ./nix/install-cloud.sh;
+        };
+        installCloud = flake-utils.lib.mkApp { drv = installCloudScript; };
+
         loadDocker = flake-utils.lib.mkApp
           {
             drv = (pkgs.writeShellScriptBin "script" ''
@@ -207,10 +231,14 @@
           default = loadDocker;
           frontend = frontendApp;
           backend = backendApp;
+          install-cloud = installCloud;
         };
 
         packages = {
           inherit backendEnv devEnv frontendBuild frontendBuildWithCaddy;
+          # Exposed as a package as well as an app so CI builds it, which is
+          # what runs ShellCheck over nix/install-cloud.sh.
+          installCloud = installCloudScript;
           backendPackage = pythonSet.streetfight;
           default = frontendBuild;
           dockerFrontend = pkgs.dockerTools.buildLayeredImage {
