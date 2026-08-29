@@ -31,8 +31,8 @@ HARD_CEILING_USD = 8.00
 
 
 class Job(NamedTuple):
-    kind: str          # reference | shot | background | ab
-    name: str          # player slug, scenario id, or a label
+    kind: str  # reference | shot | background | ab
+    name: str  # player slug, scenario id, or a label
     prompt: str
     inputs: List[Path]
     model: str
@@ -93,8 +93,20 @@ def plan(
         # and the kit survive the trip. Plus the one-image A/B against the
         # cheap model, since it is a quarter of the price and worth knowing.
         probe = shots["S1"]["target"]["slug"]
-        add("reference", probe, references[probe]["prompt"], [background, card], PRIMARY_MODEL)
-        add("ab", f"{probe}-mini", references[probe]["prompt"], [background, card], CHEAP_MODEL)
+        add(
+            "reference",
+            probe,
+            references[probe]["prompt"],
+            [background, card],
+            PRIMARY_MODEL,
+        )
+        add(
+            "ab",
+            f"{probe}-mini",
+            references[probe]["prompt"],
+            [background, card],
+            CHEAP_MODEL,
+        )
         add("shot", "S1", shots["S1"]["prompt"], [card], PRIMARY_MODEL)
         return jobs
 
@@ -102,12 +114,24 @@ def plan(
         # Deliberately awkward: the extremes of the palette and the scene
         # whose whole point is that two garments are missing.
         for slug in _awkward_players(world)[:3]:
-            add("reference", slug, references[slug]["prompt"], [background, card], PRIMARY_MODEL)
+            add(
+                "reference",
+                slug,
+                references[slug]["prompt"],
+                [background, card],
+                PRIMARY_MODEL,
+            )
         add("shot", "S8", shots["S8"]["prompt"], [card], PRIMARY_MODEL)
         return jobs
 
     for reference in scenes["references"]:
-        add("reference", reference["slug"], reference["prompt"], [background, card], PRIMARY_MODEL)
+        add(
+            "reference",
+            reference["slug"],
+            reference["prompt"],
+            [background, card],
+            PRIMARY_MODEL,
+        )
     for shot in scenes["shots"]:
         add("shot", shot["scenario"], shot["prompt"], [card], PRIMARY_MODEL)
     return jobs
@@ -153,7 +177,9 @@ def summarise(jobs: List[Job], store: store_mod.ImageStore) -> Dict:
     }
 
 
-async def run(jobs: List[Job], store: store_mod.ImageStore, dry_run: bool = True) -> Dict:
+async def run(
+    jobs: List[Job], store: store_mod.ImageStore, dry_run: bool = True
+) -> Dict:
     """Generate whatever is missing. ``dry_run`` spends nothing."""
     from backend.vision_client import OpenRouterImageClient
 

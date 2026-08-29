@@ -44,8 +44,13 @@ def test_scenarios_satisfy_the_required_distribution():
 
 
 def test_locked_mixes_all_account_for_every_player():
-    for mix in (spec.SEX_MIX, spec.AGE_MIX, spec.ETHNICITY_MIX,
-                spec.PICKING_MIX, spec.PHONE_MIX):
+    for mix in (
+        spec.SEX_MIX,
+        spec.AGE_MIX,
+        spec.ETHNICITY_MIX,
+        spec.PICKING_MIX,
+        spec.PHONE_MIX,
+    ):
         assert sum(mix.values()) == spec.N_PLAYERS
 
 
