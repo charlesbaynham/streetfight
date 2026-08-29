@@ -220,28 +220,29 @@ def test_get_messages_excludes_others_private_messages(ticker, user_factory):
     assert ticker.get_messages(2) == [("public", "Public message", None)]
 
 
-@pytest.mark.parametrize(
-    "circle_name, expected",
-    [
-        ("DROP", "claimed"),
-        ("EXCLUSION", "no longer"),
-        ("NEXT", "no longer"),
-        ("BOTH", "no longer"),
-    ],
-)
-def test_ticker_announces_cleared_circle(
-    api_client, ticker_for_user_in_game, circle_name, expected
+def test_ticker_announces_claimed_drop(api_client, ticker_for_user_in_game):
+    game_id = ticker_for_user_in_game.game_id
+    AdminInterface().set_circles(game_id, name="DROP", lat=51.0, long=0.0, radius=1.0)
+    AdminInterface().set_circles(game_id, name="DROP", lat=None, long=None, radius=None)
+
+    messages = api_client.get("/api/ticker_messages").json()
+
+    assert "claimed" in messages[0][1]
+    assert "appeared" not in messages[0][1]
+
+
+@pytest.mark.parametrize("circle_name", ["EXCLUSION", "NEXT", "BOTH"])
+def test_ticker_silent_when_other_circles_cleared(
+    api_client, ticker_for_user_in_game, circle_name
 ):
     game_id = ticker_for_user_in_game.game_id
     AdminInterface().set_circles(
         game_id, name=circle_name, lat=51.0, long=0.0, radius=1.0
     )
+    before = api_client.get("/api/ticker_messages").json()
+
     AdminInterface().set_circles(
         game_id, name=circle_name, lat=None, long=None, radius=None
     )
 
-    messages = api_client.get("/api/ticker_messages").json()
-
-    assert expected in messages[0][1]
-    assert "appeared" not in messages[0][1]
-    assert "announced" not in messages[0][1]
+    assert api_client.get("/api/ticker_messages").json() == before

@@ -44,9 +44,6 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_EXCLUSION = auto()
     ADMIN_SET_CIRCLE_BOTH = auto()
     ADMIN_SET_CIRCLE_DROP = auto()
-    ADMIN_CLEARED_CIRCLE_NEXT = auto()
-    ADMIN_CLEARED_CIRCLE_EXCLUSION = auto()
-    ADMIN_CLEARED_CIRCLE_BOTH = auto()
     ADMIN_CLEARED_CIRCLE_DROP = auto()
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
@@ -155,18 +152,6 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_SET_CIRCLE_DROP: (
         TickerTarget.PUBLIC,
         "A supply drop has appeared! It's marked in blue",
-    ),
-    TickerMessageType.ADMIN_CLEARED_CIRCLE_NEXT: (
-        TickerTarget.PUBLIC,
-        "The next circle is no longer marked - watch this space...",
-    ),
-    TickerMessageType.ADMIN_CLEARED_CIRCLE_EXCLUSION: (
-        TickerTarget.PUBLIC,
-        "The circle is no longer in play - roam where you like!",
-    ),
-    TickerMessageType.ADMIN_CLEARED_CIRCLE_BOTH: (
-        TickerTarget.PUBLIC,
-        "The circles are no longer in play - roam where you like!",
     ),
     TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP: (
         TickerTarget.PUBLIC,

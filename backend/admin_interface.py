@@ -149,19 +149,20 @@ class CircleTypes(str, Enum):
 
 
 # What the ticker says for each circle type, keyed by whether the circle was
-# cleared (True) or placed (False)
+# cleared (True) or placed (False). None says nothing at all: only a claimed
+# supply drop is worth announcing when a circle goes away
 CIRCLE_TICKER_MESSAGES = {
     CircleTypes.EXCLUSION: {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION,
-        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_EXCLUSION,
+        True: None,
     },
     CircleTypes.NEXT: {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT,
-        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_NEXT,
+        True: None,
     },
     CircleTypes.BOTH: {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_BOTH,
-        True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_BOTH,
+        True: None,
     },
     CircleTypes.DROP: {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_DROP,
@@ -331,8 +332,8 @@ class AdminInterface:
         logger.info("AdminInterface - set_circles")
         game: Game = self._get_game_orm(game_id)
 
-        # Clearing a circle passes no coordinates, so it needs the opposite
-        # announcement to placing one
+        # Clearing a circle passes no coordinates, so it gets a different
+        # announcement to placing one - or none at all
         cleared = lat is None or long is None or radius is None
 
         if name == CircleTypes.EXCLUSION:
@@ -361,13 +362,14 @@ class AdminInterface:
 
         self._session.commit()
 
-        # Announce the circle change
-        tk.send_ticker_message(
-            message_type,
-            {},
-            game_id=game_id,
-            session=self._session,
-        )
+        # Announce the circle change, if this one is worth announcing
+        if message_type is not None:
+            tk.send_ticker_message(
+                message_type,
+                {},
+                game_id=game_id,
+                session=self._session,
+            )
 
         # Trigger a circle update
         trigger_circle_update(game_id)
