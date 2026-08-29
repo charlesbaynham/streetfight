@@ -33,6 +33,10 @@ against a hidden item or a misread colour.
   its own, chosen for legs and sharing no hex with the main palette but black:
   three achromatics spread across the lightness range plus four chromatics
   spread around the hue circle (§9.1).
+- **Three of the four channels now carry a palette of their own.** The trousers
+  by design, and the **hat and armbands because the kit has been bought** and
+  its colours are measured off the objects rather than optimised (§9.1a). Only
+  the t-shirt still wears the main palette.
 - The number of colours, the number of channels, *and* the kind of channel
   (a channel could be shapes instead of colours) must **all be reconfigurable
   without touching the decode logic.** This extensibility is the single most
@@ -235,8 +239,10 @@ question rather than in one shared list, which could not state both.
 |---|---|---|
 | Channels | `tshirt`, `trousers`, `hat`, `armbands` (4) | **Yes** — add/remove/reorder channels |
 | `q` (field size / max alphabet) | 7 | **Yes** — must stay prime (see below) |
-| Full palette (t-shirt, hat, armbands) | 7 colours, §9.1 | **Yes** |
+| Main palette (t-shirt) | 7 colours, §9.1 | **Yes** |
 | Trousers palette | 7 colours, §9.1 — a **wholly different physical set**, simulated for legs; 5 until the guest list outgrew it | **Yes** — `s` is a free parameter |
+| Hat palette | 7 colours, §9.1a — **measured off the bought caps** | **Yes** |
+| Armband palette | 7 colours, §9.1a — **measured off the bought bandages** | **Yes** |
 | Code | `[4,2,3]` Reed–Solomon over GF(7) | **Yes** — swap per §2.5 |
 | Player capacity | `q × s` = 49 (35 while trousers were restricted to 5) | derived |
 | Guarantee | correct 2 erasures / 1 misread / 1 erasure + detect 1 misread | derived from `d = 3` |
@@ -381,11 +387,14 @@ all integration code are untouched. That is the extensibility guarantee.
 ### 5.7 `config.py`
 - Declarative config + a `default_scheme()` factory:
   - `q = 7`,
-  - `MAIN_PALETTE = ["black","purple","red","blue","green","orange","yellow"]`,
+  - `MAIN_PALETTE = ["black","purple","red","blue","green","orange","yellow"]`
+    (the t-shirt's, and the fallback for a channel with no set of its own),
   - `TROUSER_PALETTE = ["black","grey","off-white","blue","red","olive","mustard"]`
     (7 — deliberately a different physical set, see §9.1; it was the 5-colour
     `["black","blue","green","red","white"]` until §2.6's restriction was
     lifted),
+  - `HAT_PALETTE` and `ARMBANDS_PALETTE` (7 each, §9.1a — measured off the kit
+    that was bought, so these two supersede the simulation),
   - channels = `tshirt`, `trousers`, `hat`, `armbands` **in that order** (the order
     fixes the RS evaluation points and therefore the codeword layout — changing it
     changes what everyone wears),
@@ -602,7 +611,8 @@ Selected by optimising the **worst-case minimum CIEDE2000 distance across three
 illuminants** — D65 daylight, 3000 K warm-white LED, and a high-pressure sodium
 model, each with 50% camera white-balance correction. Rationale in §12.4.
 
-**Main palette — t-shirt, hat, armbands (`q = 7`):**
+**Main palette — t-shirt (`q = 7`):** *(when this was written it also covered
+the hat and armbands; both now have measured palettes of their own — see §9.1a.)*
 
 | Symbol | Colour | Hex | L* |
 |---|---|---|---|
@@ -682,6 +692,119 @@ includes navy and denim; black is black, not charcoal.*
   sodium-weak pairs, and swapping it for black raised the worst case from 26.5 to
   30.8 *and* made the palette far easier to source.
 
+
+### 9.1a Correction (2026-08-29): the hat and armband palettes are measured, not simulated
+
+Everything above stands as the record of how the palettes were *derived*. It is
+superseded for two of the four channels by a fact the simulation could not
+anticipate: **Charles bought the hats and the armbands**, and they are not the
+colours §9.1 chose. The kit is the ground truth — those two garments are handed
+out, not selected — so `backend/identity/config.py` now carries the measured
+sets. The t-shirt keeps the main palette above, and the trousers palette is
+untouched; both are still descriptions of what a guest may turn up in.
+
+**Where the numbers come from.** Two phone photographs of the kit, shot under the
+same light — a phone torch on white paper — and each corrected against the paper
+*in its own frame*. Paper was found by scanning each frame for low-chroma,
+high-luminance, low-variance patches (which excludes ink, shadow and the kit
+itself), their median chromaticity taken as the illuminant, and a von Kries gain
+applied in linear sRGB. Exposure was then normalised **per object** against a
+distance-weighted interpolation of the *local* paper luminance, because the
+torch is a close point source and falls off across the frame: 1.46× corner to
+corner in the hats photograph and 2.38× in the armbands one, which is far too
+much to treat as one exposure. Each result was checked by rendering the whole
+photograph through the correction and laying the recorded swatch on top of the
+garment it claims to be.
+
+**Cross-check: do the two frames agree about the light?** They should, and they
+do not quite. Estimated independently, the hats frame's paper sits at
+`a* +4.2, b* +7.2` and the armbands frame's at `a* +0.4, b* +2.9` — a
+disagreement of **ΔE2000 5.8** for what is physically one torch. The cause is
+not a different light. It is the phone's per-frame auto white balance reacting
+to a frame full of warm suede, plus real inter-reflection: across the 85 paper
+patches in the hats photograph, warmth correlates with **proximity to a warm cap
+at r = −0.58** and with paper luminance at **r = −0.00**. Warm caps bouncing
+onto the paper, in other words, and nothing to do with distance from the torch.
+
+Two consequences. First, correcting each frame against its own paper is right,
+and cross-correcting would have been wrong: pushing the armband palette through
+the hats' white balance moves every colour by ΔE 0.9–3.8, a systematic offset
+between the two sets that would be invisible and permanent. Second, in the hats
+frame the white reference has to be the **median over all the paper**, not the
+paper nearest the kit: the printed leaflet at the top right, which is the
+largest single white area but is surrounded by the tan and salmon caps, reads
+`R/G 1.42` against the frame median's `1.20`. The tie-break is the black cap,
+the one object in the frame known to be neutral — under the frame-median white
+it lands at chroma 3.3, and under the leaflet-only white at chroma 8.0, clearly
+cyan. The frame median is also stable: restricting it to the paper farthest from
+any warm cap moves it only from `R/G 1.200` to `1.175`.
+
+**What this cannot fix.** A phone torch LED is roughly daylight-temperature but
+low-CRI, with a spiky spectrum. Normalising the paper to neutral removes the
+cast; it cannot undo what a spiky illuminant does to a highly saturated dye,
+which shows up worst in deep reds. So the confidence is not uniform: the
+neutrals, the mid-tones and the desaturated colours (black, navy, green, tan,
+brown, grey-ish plum) are solid, and the saturated reds — **the burgundy cap
+above all**, then rust, salmon and the armband red — are good to a few ΔE rather
+than exact. **If those specific shades need to be certain, re-photograph both
+sets in daylight before game night**; nothing else about the scheme depends on
+it.
+
+**Hat palette (`q = 7`) — measured:**
+
+| Symbol | Colour | Hex | L\* | Hue | What it is |
+|---|---|---|---|---|---|
+| 0 | black | `#1A1A1A` | ~18 | — | plain black suede (shares the main palette's hex) |
+| 1 | navy | `#2D5170` | 33 | 263° | dark blue suede |
+| 2 | green | `#4F7468` | 46 | 171° | bottle/pine green, slightly blue |
+| 3 | burgundy | `#A62C3E` | 38 | 21° | corduroy; dark wine red |
+| 4 | rust | `#BF4227` | 46 | 41° | burnt orange / terracotta |
+| 5 | tan | `#C48E5B` | 63 | 67° | camel |
+| 6 | salmon | `#DA7B70` | 62 | 32° | dusty coral pink |
+
+No purple, no yellow, no primary red, no bright blue: a muted, earthy set, and
+three of its seven are warm reds. They are pulled apart on two axes at once —
+salmon is ~20 `L*` lighter than burgundy or rust, and burgundy has no orange in
+it where rust is nothing but — and `COLOUR_BUCKETS["hat"]` says exactly that in
+words, because the model and the player have to agree on which one they mean.
+
+**Armband palette (`q = 7`) — measured:**
+
+| Symbol | Colour | Hex | L\* | Hue | What it is |
+|---|---|---|---|---|---|
+| 0 | brown | `#8E6453` | 46 | 49° | mid brown, the colour of a plaster |
+| 1 | blue | `#0F61A6` | 40 | 275° | strong mid blue |
+| 2 | purple | `#964F7E` | 44 | 340° | plum |
+| 3 | lime | `#AAC634` | 76 | 113° | yellow-green |
+| 4 | red | `#F5252F` | 54 | 33° | pillar-box red |
+| 5 | orange | `#FA7A08` | 66 | 57° | bright orange |
+| 6 | yellow | `#FCC221` | 82 | 84° | golden yellow |
+
+No black — which matters for §11.1, because slot 0 can no longer be black in
+every channel. Brown takes symbol 0 instead, so slot 0 is still the drabbest
+outfit the scheme can name, and a passer-by wears no armband at all.
+
+**What it costs in separation.** Minimum ΔE2000 between any two colours of a
+channel, under D65, computed the same way for all four so they can be compared:
+
+| Channel | min ΔE2000 (D65) | Closest pair |
+|---|---|---|
+| t-shirt (main) | 31.4 | black / purple |
+| trousers | 21.4 | grey / olive |
+| armbands | 21.4 | brown / red |
+| **hat** | **14.2** | **burgundy / rust** |
+
+The hat is now the weakest channel in the scheme, and burgundy/rust is the pair
+to watch: ~14 ΔE is still six times a just-noticeable difference, but it is half
+the margin the main palette was optimised to. Under a warm or sodium cast the
+ordering does not change — the hat and the trousers come out roughly level, and
+both below the armbands. Two things make that survivable rather than a problem:
+`d = 3` corrects a single misread outright, so one confused cap is not a
+misidentification; and the hat is the *team* channel, so within a team every hat
+is the same colour and the confusion is between teams, where a human can also
+see it. It is nonetheless the thing to look at first if identification
+underperforms in the field.
+
 ---
 
 ## 10. Concrete file list & suggested commit sequence
@@ -741,76 +864,78 @@ armbands = (3·trousers - 2·t-shirt) mod 7
 
 Verified against all 49 codewords. Symbol indices:
 
-| Index | Main palette (t-shirt, hat, armbands) | Trousers palette |
-|---|---|---|
-| 0 | black | black |
-| 1 | purple | grey |
-| 2 | red | off-white |
-| 3 | blue | blue |
-| 4 | green | red |
-| 5 | orange | olive |
-| 6 | yellow | mustard |
+| Index | T-shirt (main) | Trousers | Hat | Armbands |
+|---|---|---|---|---|
+| 0 | black | black | black | brown |
+| 1 | purple | grey | navy | blue |
+| 2 | red | off-white | green | purple |
+| 3 | blue | blue | burgundy | lime |
+| 4 | green | red | rust | red |
+| 5 | orange | olive | tan | orange |
+| 6 | yellow | mustard | salmon | yellow |
 
 ### 11.1 The 49 assignments
 
 Player slots are numbered by `(t-shirt, trousers)`. Read across for what that
 player wears. Every channel now carries seven symbols, so every combination is
 wearable — the 35-row version of this table, from when trousers were restricted
-to five, went with the restriction (§2.6). The trousers column uses that
-channel's own palette (§9.1), which is not the main one: symbol 1 is `grey`
-there and `purple` everywhere else, and so on down.
+to five, went with the restriction (§2.6). Every column but the t-shirt's uses a
+palette of its own — trousers by design (§9.1), hat and armbands because that
+kit was bought (§9.1a) — so the same symbol index means a different colour in
+each: symbol 1 is `purple` on a t-shirt, `grey` on the legs, `navy` on the head
+and `blue` on the arm.
 
 | Slot | T-shirt | Trousers | Hat | Armbands |
 |---|---|---|---|---|
-| 0 | black | black | black | black |
-| 1 | black | grey | red | blue |
-| 2 | black | off-white | green | yellow |
-| 3 | black | blue | yellow | red |
-| 4 | black | red | purple | orange |
-| 5 | black | olive | blue | purple |
-| 6 | black | mustard | orange | green |
-| 7 | purple | black | yellow | orange |
-| 8 | purple | grey | purple | purple |
-| 9 | purple | off-white | blue | green |
-| 10 | purple | blue | orange | black |
-| 11 | purple | red | black | blue |
-| 12 | purple | olive | red | yellow |
-| 13 | purple | mustard | green | red |
-| 14 | red | black | orange | blue |
+| 0 | black | black | black | brown |
+| 1 | black | grey | green | lime |
+| 2 | black | off-white | rust | yellow |
+| 3 | black | blue | salmon | purple |
+| 4 | black | red | navy | orange |
+| 5 | black | olive | burgundy | blue |
+| 6 | black | mustard | tan | red |
+| 7 | purple | black | salmon | orange |
+| 8 | purple | grey | navy | blue |
+| 9 | purple | off-white | burgundy | red |
+| 10 | purple | blue | tan | brown |
+| 11 | purple | red | black | lime |
+| 12 | purple | olive | green | yellow |
+| 13 | purple | mustard | rust | purple |
+| 14 | red | black | tan | lime |
 | 15 | red | grey | black | yellow |
-| 16 | red | off-white | red | red |
-| 17 | red | blue | green | orange |
-| 18 | red | red | yellow | purple |
-| 19 | red | olive | purple | green |
-| 20 | red | mustard | blue | black |
-| 21 | blue | black | green | purple |
-| 22 | blue | grey | yellow | green |
-| 23 | blue | off-white | purple | black |
-| 24 | blue | blue | blue | blue |
-| 25 | blue | red | orange | yellow |
-| 26 | blue | olive | black | red |
-| 27 | blue | mustard | red | orange |
-| 28 | green | black | blue | yellow |
-| 29 | green | grey | orange | red |
+| 16 | red | off-white | green | purple |
+| 17 | red | blue | rust | orange |
+| 18 | red | red | salmon | blue |
+| 19 | red | olive | navy | red |
+| 20 | red | mustard | burgundy | brown |
+| 21 | blue | black | rust | blue |
+| 22 | blue | grey | salmon | red |
+| 23 | blue | off-white | navy | brown |
+| 24 | blue | blue | burgundy | lime |
+| 25 | blue | red | tan | yellow |
+| 26 | blue | olive | black | purple |
+| 27 | blue | mustard | green | orange |
+| 28 | green | black | burgundy | yellow |
+| 29 | green | grey | tan | purple |
 | 30 | green | off-white | black | orange |
-| 31 | green | blue | red | purple |
-| 32 | green | red | green | green |
-| 33 | green | olive | yellow | black |
-| 34 | green | mustard | purple | blue |
-| 35 | orange | black | red | green |
-| 36 | orange | grey | green | black |
-| 37 | orange | off-white | yellow | blue |
-| 38 | orange | blue | purple | yellow |
-| 39 | orange | red | blue | red |
-| 40 | orange | olive | orange | orange |
-| 41 | orange | mustard | black | purple |
-| 42 | yellow | black | purple | red |
-| 43 | yellow | grey | blue | orange |
-| 44 | yellow | off-white | orange | purple |
-| 45 | yellow | blue | black | green |
-| 46 | yellow | red | red | black |
-| 47 | yellow | olive | green | blue |
-| 48 | yellow | mustard | yellow | yellow |
+| 31 | green | blue | green | blue |
+| 32 | green | red | rust | red |
+| 33 | green | olive | salmon | brown |
+| 34 | green | mustard | navy | lime |
+| 35 | orange | black | green | red |
+| 36 | orange | grey | rust | brown |
+| 37 | orange | off-white | salmon | lime |
+| 38 | orange | blue | navy | yellow |
+| 39 | orange | red | burgundy | purple |
+| 40 | orange | olive | tan | orange |
+| 41 | orange | mustard | black | blue |
+| 42 | yellow | black | navy | purple |
+| 43 | yellow | grey | burgundy | orange |
+| 44 | yellow | off-white | tan | blue |
+| 45 | yellow | blue | black | red |
+| 46 | yellow | red | green | brown |
+| 47 | yellow | olive | rust | lime |
+| 48 | yellow | mustard | salmon | yellow |
 
 > This numbering is the table's own, `t-shirt × 7 + trousers`, and it is *not*
 > the slot number the code stores against a player — `IdentityScheme` derives a
@@ -819,7 +944,8 @@ there and `purple` everywhere else, and so on down.
 > scheme for a specific player's outfit.
 
 > **Do not assign slot 0.** It is the all-zero codeword — black t-shirt, black
-> trousers, black hat, black armbands — which is both indistinguishable from an
+> trousers, black hat, and (since the bought armbands have no black, §9.1a) the
+> brown armband that stands in for one — which is both indistinguishable from an
 > ordinary member of the public and the single most likely outfit for someone to
 > be wearing by accident. The vision model's failure mode on unclear targets is
 > also to report "black" (§12.1), so the all-black codeword is exactly where
@@ -1011,9 +1137,10 @@ and are robust to reasonable changes; the absolute percentages are not.
 #### Which channel should carry the team
 
 Pinning any channel to the team leaves the same number of slots — seven per
-colour, six for black (five and four while trousers were restricted) — because
-the code is MDS with `k = 2`. Confirmed for hat, t-shirt
-and armbands alike. **The team-channel choice does not change capacity.** What it
+colour, six for whichever colour sits at symbol 0 (five and four while trousers
+were restricted) — because the code is MDS with `k = 2` and slot 0 is withheld.
+That is black on the hat and t-shirt, and brown on the bought armbands (§9.1a).
+Confirmed for hat, t-shirt and armbands alike. **The team-channel choice does not change capacity.** What it
 changes is which garments a player has to source:
 
 | | team on armbands | team on hat (bulk-bought) |

@@ -80,9 +80,8 @@ checklist with someone other than an agent driving. Decisions taken for it:
   escalation, resolve-everything. The admin flow is already proven from
   previous games; the AI adjudication path is the thing this test exists to
   exercise, so it does not hide behind the safety valve on the day.
-- **Kit**: the armbands should have arrived by then; if they haven't, the
-  identification test is badly weakened (one of four channels gone, and the
-  bystander/player signal with it). R6's check-on-arrival still applies.
+- **Kit**: the armbands and hats have arrived and their colours are measured
+  into `config.py` (R6, 29 Aug), so all four channels are live for the test.
 - **Pre-Sunday QA, in two passes**: first an agent click-through of the
   player and admin flows at a mobile viewport (the `run-mobile-app` skill),
   run against the merged deployment code; then Charles's own end-to-end pass
@@ -199,7 +198,7 @@ next commit lands.
 | Order | Item                                        | Deadline                     | Why here                                                                                                       |
 | ----- | ------------------------------------------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
-| 1b    | **R6** Check the armband hexes on arrival   | On delivery, before the 19th | The armbands are ordered but not delivered; the palette is only as good as what actually turns up.            |
+| 1b    | **R6** Check the kit hexes on arrival       | Shipped 29 Aug               | Delivered, photographed and measured. The hat and armband palettes in `config.py` are now the real colours, not the simulated ones. |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
 | 3     | **#12** Redraw the Westminster map          | Shipped 28 Aug               | Play area fixed, drawn map active, resort venue retired. #7 unblocked. A hand-drawn replacement is still wanted but no longer blocks anything. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
@@ -277,7 +276,10 @@ Recorded here so they are not re-litigated:
   neutrals are told apart by lightness alone, which survives the colour cast
   that would wreck a hue judgement. See plan §9.1 for the table and the
   reasoning.
-- **Colour definitions are per channel** (`COLOUR_BUCKETS`), because the two
+- **Three of the four channels carry a palette of their own** — trousers by
+  design, hat and armbands because that kit was bought and measured (R6, plan
+  §9.1a). Only the t-shirt still wears the main palette.
+- **Colour definitions are per channel** (`COLOUR_BUCKETS`), because the
   vocabularies genuinely disagree: charcoal is `black` on the legs, where grey
   is two stops away, and explicitly not black on a top, where there is no grey
   to catch it. The picking page and the vision prompt both render each channel's
@@ -304,11 +306,19 @@ whole scheme rests on. Buy against the hex values, and where a real product
 misses, **record what was actually bought** so the palette can be re-checked
 rather than silently drifting.
 
-**Bought: 7 armband colours (the main palette), plus one hat per team in that
-team's colour.** The original plan here was to supply the armbands only and
-leave hats to each team to bulk-buy; that changed before ordering, and we
-bought the hats ourselves too. Only the t-shirt and trousers remain the
-player's own.
+**Bought: 7 armband colours plus 7 hat colours.** The original plan here was to
+supply the armbands only and leave hats to each team to bulk-buy; that changed
+before ordering, and we bought the hats ourselves too. Only the t-shirt and
+trousers remain the player's own.
+
+**What arrived is not what was specified**, and the config now says so. Neither
+set matches the simulated main palette: the hats are muted and earthy (black,
+navy, green, burgundy, rust, tan, salmon — no purple, no yellow, no bright
+primary red) and the armbands are a rainbow with a brown and a lime in it and
+no black at all. Both are seven, which is what the arithmetic needs, so nothing
+downstream had to change. The colours were measured off photographs of the kit
+and written into `CHANNEL_PALETTES` / `PALETTE_HEX` on 29 Aug — see R6 and plan
+§9.1a.
 
 **Why the hat channel matters.** `backend/identity/allocation.py` spends the
 hat channel (`TEAM_CHANNEL`) on telling teams apart by eye: every member of a
@@ -328,8 +338,8 @@ support it:
 
 - **It does not buy more outfits.** The code is MDS with `k = 2`, so any two
   garments determine the other two. Pinning *any* channel to the team leaves
-  exactly one bucket of seven slots (six for black) — identical for hat, t-shirt
-  and armbands. The team-channel choice does not change capacity at all.
+  exactly one bucket of seven slots (six for whichever colour is symbol 0, since
+  slot 0 is never handed out) — identical for hat, t-shirt and armbands. The team-channel choice does not change capacity at all.
 - **It decides which garments a player has to source.** With the team on the
   armbands, the slots in a team each need a *different* hat colour, and
   almost nobody owns a coloured hat. With the team on the hat, the hat is ours
@@ -362,25 +372,49 @@ that it worked.
 
 ---
 
-### R6 — Check the armband colours against the palette when they arrive *(proposed)*
+### R6 — Check the kit colours against the palette when they arrive *(done, 29 Aug)*
 
-**Status: ordered, not yet delivered.** The armbands were bought against the hex
-values in `PALETTE_HEX["main"]` (`backend/identity/config.py`), but nobody has
-seen them yet, so nobody knows how close the dye actually is.
+**Status: delivered, photographed, measured, and written into the config.** The
+worry was right: the dye is nowhere near the hex values the kit was bought
+against, and neither set is the main palette any more.
 
-**On delivery:** photograph the seven armbands together under the lighting they
-will be used in, compare against the hex values, and **update `PALETTE_HEX` to
-what was actually bought** rather than leaving the aspirational values in place.
-The palette was chosen by optimising worst-case CIEDE2000 separation across three
-illuminants (plan §9.1, §12.4); a silent substitution erodes exactly the property
-the scheme rests on, and a recorded one can at least be re-checked.
+`hat` and `armbands` now have palettes of their own in `CHANNEL_PALETTES`,
+alongside the trousers, with hexes measured off the objects — each photograph
+white-balanced against the paper in its own frame, exposure-normalised per
+object against the local paper luminance (the phone torch falls off by 1.5–2.4×
+across a frame), and validated by laying each recorded swatch back over the
+corrected photograph. Names were chosen for what a stranger would
+call the thing, since a player and the vision model have to mean the same by
+them, and `COLOUR_BUCKETS` gained an entry for each channel — the hat's earns
+its keep, because burgundy, rust and salmon are three warm reds that a loose
+definition would let collapse into one another.
 
-If two of the delivered colours turn out to be closer than the design assumed,
-that is a palette problem to solve before the night, not a decoder problem.
+**What is still uncertain.** Both photographs were lit by a phone torch, which
+is a low-CRI LED: white-balancing on the paper removes the cast but not the
+spectral distortion, which bites hardest on saturated dyes. The neutrals and
+mid-tones are solid; **the burgundy cap especially, then rust, salmon and the
+armband red, are good to a few ΔE rather than exact.** A daylight re-photograph
+of both sets would settle it — worth doing before the 19th if the swatches on
+`/pick` are going to be trusted at a glance, not worth blocking anything on.
+(The other thing the analysis turned up: in the hats photograph the paper around
+the pile carries measurable bounce from the warm caps — warmth tracks proximity
+to a warm cap at r = −0.58 and paper brightness at r = 0.00 — so the white
+reference is the median over all the paper in the frame, not the leaflet next to
+the kit, which would have over-corrected the whole frame cyan. Plan §9.1a has
+the numbers.)
 
-**Lands in:** `backend/identity/config.py` (`PALETTE_HEX`).
-**Blocks:** nothing hard, but it should be true before #8 prints anything that
-shows a colour swatch.
+**What it cost.** Minimum ΔE2000 within a channel under D65: t-shirt 31.4,
+trousers 21.4, armbands 21.4, **hat 14.2** (burgundy/rust). The hat is now the
+weakest channel in the scheme — half the margin the main palette was optimised
+to, and roughly level with the trousers once a warm or sodium cast is applied.
+`d = 3` corrects a single misread outright and the hat is the *team* channel, so
+a confusion is between teams rather than within one; it is survivable, but it is
+the first place to look if identification underperforms on the night.
+
+**Landed in:** `backend/identity/config.py` (`HAT_PALETTE`, `ARMBANDS_PALETTE`,
+`CHANNEL_PALETTES`, `PALETTE_HEX`, `COLOUR_BUCKETS`, `COLOUR_COMMONNESS`), plus
+plan §9.1a, §11.1's codebook table, and the tests and frontend fixtures that
+spelled an old colour name.
 
 ---
 

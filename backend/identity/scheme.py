@@ -96,10 +96,12 @@ class IdentityScheme:
 
         * its codeword is not wearable, because a restricted channel has no
           label for the symbol it asks for (plan §2.6), and
-        * it is slot 0, the all-zero codeword. Plan §11.1: that is black in
-          every channel, which is both the single most likely outfit for a
-          passer-by to be wearing by accident and where the vision model's
-          failure mode piles up (it says "black" when it cannot tell).
+        * it is slot 0, the all-zero codeword. Plan §11.1: that is the
+          drabbest outfit the scheme can name -- black t-shirt, black trousers,
+          black hat, and the brown armband that stands in for a black one the
+          bought kit does not contain -- which is both the single most likely
+          outfit for a passer-by to be wearing by accident and where the vision
+          model's failure mode piles up (it says "black" when it cannot tell).
 
         Only the second bites in the configured scheme, where every channel
         wears the whole palette, so this is 48 of the 49 codewords. The first is

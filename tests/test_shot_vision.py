@@ -56,6 +56,12 @@ def outcome_of(raw):
     return sv.classify(sv.parse_result(raw), SCHEME)
 
 
+def _other_hat_colour(colour):
+    """Any hat colour but ``colour`` -- has to come from the hat's own palette,
+    which shares nothing with the t-shirt's since the caps were bought."""
+    return next(c for c in palette_for_channel("hat") if c != colour)
+
+
 # -- the prompt -------------------------------------------------------------
 
 
@@ -156,7 +162,7 @@ def test_parses_a_well_formed_reply():
 
     assert result.shot_hit_a_person
     assert result.channels["tshirt"].colour == "black"
-    assert result.channels["armbands"].colour == "blue"
+    assert result.channels["armbands"].colour == appearance_of(7)["armbands"]
     assert result.channels["tshirt"].confidence == 0.9
 
 
@@ -376,9 +382,7 @@ def test_slot_candidates_of_an_invalid_code_are_empty():
     # codeword, so "several candidates" cannot occur here; zero candidates is
     # the ambiguous case.)
     raw = reply_for(appearance_of(7), hidden=("armbands",))
-    appearance = appearance_of(7)
-    wrong = "green" if appearance["hat"] != "green" else "orange"
-    raw["channels"]["hat"]["colour"] = wrong
+    raw["channels"]["hat"]["colour"] = _other_hat_colour(appearance_of(7)["hat"])
 
     assert sv.slot_candidates_from_review(stored_review(raw), SCHEME) == []
 
@@ -440,9 +444,7 @@ def test_hidden_armbands_still_count_as_a_hit():
 def test_hidden_armbands_and_an_invalid_code_is_still_a_hit():
     raw = reply_for(appearance_of(7), hidden=("armbands",))
     # Break the code: change the hat to a colour no codeword pairs with these
-    appearance = appearance_of(7)
-    wrong = "green" if appearance["hat"] != "green" else "orange"
-    raw["channels"]["hat"]["colour"] = wrong
+    raw["channels"]["hat"]["colour"] = _other_hat_colour(appearance_of(7)["hat"])
 
     result = outcome_of(raw)
 

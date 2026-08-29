@@ -8,20 +8,20 @@ const REPORT = {
   team_channel: "hat",
   teams: [
     {
-      team_id: "team-red",
-      team_name: "Red",
-      team_colour: "red",
-      team_colour_hex: "#B00020",
+      team_id: "team-burgundy",
+      team_name: "Burgundy",
+      team_colour: "burgundy",
+      team_colour_hex: "#A62C3E",
       capacity: 5,
-      encoded_url: "https://example.com?j=red",
+      encoded_url: "https://example.com?j=burgundy",
     },
     {
-      team_id: "team-blue",
-      team_name: "Blue",
-      team_colour: "blue",
-      team_colour_hex: "#0000FF",
+      team_id: "team-navy",
+      team_name: "Navy",
+      team_colour: "navy",
+      team_colour_hex: "#2D5170",
       capacity: 4,
-      encoded_url: "https://example.com?j=blue",
+      encoded_url: "https://example.com?j=navy",
     },
   ],
 };
@@ -34,7 +34,7 @@ test("Generate fetches admin_join_qr_codes with game_id only and renders one QR 
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
 
-  await screen.findByText("Team Red");
+  await screen.findByText("Team Burgundy");
 
   expect(getLastAPICall("admin_join_qr_codes").method).toBe("GET");
   expect(getLastAPICall("admin_join_qr_codes").query).toEqual({
@@ -43,7 +43,7 @@ test("Generate fetches admin_join_qr_codes with game_id only and renders one QR 
 
   // One QR (react-qr-code renders an svg) per team, not per outfit slot.
   expect(container.querySelectorAll("svg")).toHaveLength(2);
-  expect(screen.getByText("Team Blue")).toBeInTheDocument();
+  expect(screen.getByText("Team Navy")).toBeInTheDocument();
 });
 
 test("each team card names its colour and full-accuracy capacity", async () => {
@@ -54,8 +54,8 @@ test("each team card names its colour and full-accuracy capacity", async () => {
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
 
-  await screen.findByText(/red hats/);
-  expect(screen.getByText(/blue hats/)).toBeInTheDocument();
+  await screen.findByText(/burgundy hats/);
+  expect(screen.getByText(/navy hats/)).toBeInTheDocument();
   expect(
     screen.getByText("holds 5 players at full accuracy"),
   ).toBeInTheDocument();
@@ -75,7 +75,7 @@ test("Print appears once codes are generated and calls window.print", async () =
   await actAndFlush(() =>
     userEvent.click(screen.getByRole("button", { name: "Generate" })),
   );
-  await screen.findByText("Team Red");
+  await screen.findByText("Team Burgundy");
 
   window.print = jest.fn();
   userEvent.click(screen.getByRole("button", { name: "Print" }));

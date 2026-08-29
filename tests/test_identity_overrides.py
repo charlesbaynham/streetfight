@@ -139,13 +139,24 @@ def _scheme():
     return default_scheme()  # tshirt, trousers, hat, armbands; q=7
 
 
+def _label(channel_name, index):
+    """A colour of ``channel_name`` by symbol, not by name. The hat and armband
+    palettes are the bought kit, so they share no vocabulary with the t-shirt's
+    -- a test that spells "red" into a hat picks a colour that does not exist.
+    """
+    return palette_for_channel(channel_name)[index]
+
+
 def test_suggest_free_channels_maximises_distance_to_others():
     scheme = _scheme()
     channels = scheme.channels
     # Everyone visible is wearing the same tshirt/trousers/hat; only armbands
     # (the free channel) is still up to the admin.
-    fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
-    other_word = effective_word((0, 0, 0, 0), {**fixed, "armbands": "black"}, channels)
+    fixed = {"tshirt": "black", "trousers": "blue", "hat": _label("hat", 2)}
+    rival_armband = _label("armbands", 0)
+    other_word = effective_word(
+        (0, 0, 0, 0), {**fixed, "armbands": rival_armband}, channels
+    )
     others = {"rival": other_word}
 
     suggestions = suggest_free_channels(fixed, ["armbands"], others, channels, limit=5)
@@ -154,18 +165,22 @@ def test_suggest_free_channels_maximises_distance_to_others():
     top = suggestions[0]
     assert top.min_distance == 1  # only armbands can ever differ here
     assert top.closest == ["rival"]
-    assert top.assignment["armbands"] != "black"  # must not repeat the rival
+    assert top.assignment["armbands"] != rival_armband  # must not repeat the rival
     # Final deterministic tie-break is ascending symbol order: among the six
-    # non-black armband options, the lowest-index one wins.
+    # armband options the rival is not wearing, the lowest-index one wins.
     assert top.assignment["armbands"] == channels.by_name("armbands").index_to_label(1)
-    # Every one of the (up to 5) suggestions actually beats "black".
-    assert all(s.assignment["armbands"] != "black" for s in suggestions)
+    # Every one of the (up to 5) suggestions actually beats the rival's colour.
+    assert all(s.assignment["armbands"] != rival_armband for s in suggestions)
 
 
 def test_suggest_free_channels_offers_the_whole_trousers_palette():
     scheme = _scheme()
     channels = scheme.channels
-    fixed = {"tshirt": "black", "hat": "red", "armbands": "black"}
+    fixed = {
+        "tshirt": "black",
+        "hat": _label("hat", 2),
+        "armbands": _label("armbands", 0),
+    }
     palette = palette_for_channel("trousers")
 
     suggestions = suggest_free_channels(
@@ -204,7 +219,7 @@ def test_suggest_free_channels_respects_a_narrowed_palette():
 def test_suggest_free_channels_empty_others_uses_documented_sentinel():
     scheme = _scheme()
     channels = scheme.channels
-    fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
+    fixed = {"tshirt": "black", "trousers": "blue", "hat": _label("hat", 2)}
 
     suggestions = suggest_free_channels(fixed, ["armbands"], {}, channels, limit=3)
 
@@ -214,12 +229,12 @@ def test_suggest_free_channels_empty_others_uses_documented_sentinel():
         assert s.closest == []
 
 
-def test_suggest_free_channels_avoids_avoid_words_and_all_black():
+def test_suggest_free_channels_avoids_avoid_words_and_the_all_zero_word():
     scheme = _scheme()
     channels = scheme.channels
-    fixed = {"tshirt": "black", "trousers": "blue", "hat": "red"}
+    fixed = {"tshirt": "black", "trousers": "blue", "hat": _label("hat", 2)}
     # An unassigned slot whose outfit is otherwise identical to `fixed` +
-    # armbands=blue (index 3): squatting on it should be avoided even though
+    # armband symbol 3: squatting on it should be avoided even though
     # there are no other in-play players to conflict with.
     avoid_word = (0, 1, 2, 3)
 
@@ -235,7 +250,7 @@ def test_suggest_free_channels_avoids_avoid_words_and_all_black():
     # The avoid word's own armband colour (3) is dead last: it is the only
     # option with zero overlap distance to `avoid`.
     assert ordered_indices[-1] == 3
-    # All-black (0) is also disfavoured, ranked below every other non-avoided
+    # Symbol 0 is also disfavoured, ranked below every other non-avoided
     # colour (it's closer to the all-zero passer-by word).
     assert ordered_indices.index(0) == len(ordered_indices) - 2
     # The winner is neither of those.
