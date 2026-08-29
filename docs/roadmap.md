@@ -354,14 +354,19 @@ ourselves removes even the residual risk that model priced in — there is no
 was the shopping list: seven wristband colours and one hat colour per team, all
 bought by us rather than left to the teams.
 
-**Worn at the wrist, not the upper arm.** The band moved down the limb after
-the kit was bought: it is now put on the wrist or the forearm. Everything in
+**Position on the arm is free: forearm or upper arm.** Wristbands and armbands
+are both fine, and so is a wristband pushed up the forearm — what the scheme
+needs is a clear band of colour on the arm, not a fixed height on it. Put it
+wherever it shows best on the player in front of you at handout. Everything in
 the code follows the channel name, which is `wristbands` throughout, and the
-scheme is unchanged — one symbol worn on both limbs, the fourth channel of the
-`[4,2,3]` code. What it does change is physical: a forearm shows less colour
-than an upper arm at the same distance, and a hand is easier to hide, so the
-per-limb visibility estimate the simulation used (plan §12.3) is now the
-shakiest number in the model. R6 is where that gets checked against the real
+scheme is unchanged — one symbol worn on both arms, the fourth channel of the
+`[4,2,3]` code; the only place the position is stated is the vision prompt
+(`shot_vision.CHANNEL_DESCRIPTIONS`), which now asks for both. The physics
+still differ between the two, though: a forearm band is smaller at the same
+distance and a hand hides more easily than a shoulder, while an upper-arm band
+is bigger but vanishes under a sleeve. The simulation's per-limb visibility
+estimate (plan §12.3) was fitted for the upper arm, so it is the shakiest
+number in the model either way. R6 is where that gets checked against the real
 bands.
 
 **Risk to name out loud:** two of the four channels remain bring-your-own —
@@ -382,14 +387,17 @@ seen them yet, so nobody knows how close the dye actually is.
 will be used in, compare against the hex values, and **update `PALETTE_HEX` to
 what was actually bought** rather than leaving the aspirational values in place.
 
-**Photograph one on a wrist, too.** Now that the band is worn on the wrist or
-forearm rather than the upper arm (#9), the second thing to check is size, not
-just colour: shoot a worn band at the ranges a shot is actually taken from and
-put it through `/admin/replay`, because plan §12.1 measured the models failing
-outright on a watch-sized target. If a worn band does not read at those ranges,
-that is worth knowing before the night — the escalation ladder already assumes
-this is the channel most often missing, but it assumes it is *sometimes*
-readable.
+**Photograph a worn one, at both heights.** The position on the arm is left
+free (#9), so the second thing to check is size and placement rather than
+colour alone: shoot a band worn on the forearm *and* one worn on the upper arm,
+at the ranges a shot is actually taken from, and put both through
+`/admin/replay`. Plan §12.1 measured the models failing outright on a
+watch-sized target, so the question is whether a real band at a real range
+clears that bar, and whether one height clears it more reliably than the other.
+If it turns out to matter, the answer is guidance at handout time — no code
+change — and a re-fit of the §12.3 visibility estimate. Worth knowing before
+the night: the escalation ladder already assumes this is the channel most often
+missing, but it assumes it is *sometimes* readable.
 The palette was chosen by optimising worst-case CIEDE2000 separation across three
 illuminants (plan §9.1, §12.4); a silent substitution erodes exactly the property
 the scheme rests on, and a recorded one can at least be re-checked.

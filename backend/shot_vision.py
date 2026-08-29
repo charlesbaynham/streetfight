@@ -114,7 +114,8 @@ CHANNEL_DESCRIPTIONS = {
     "tshirt": "the t-shirt or top on their torso",
     "trousers": "the trousers, jeans or shorts on their legs",
     "hat": "the hat or headwear on their head",
-    "wristbands": "the coloured wristbands worn around the wrists or forearms",
+    "wristbands": "the coloured bands worn on their arms -- either around the"
+    " forearms or around the upper arms",
 }
 
 

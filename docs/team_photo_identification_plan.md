@@ -130,23 +130,31 @@ every channel added buys one more tolerated erasure, for free.
 **The channels are: t-shirt, trousers, hat, wristbands.** These were chosen because
 they are observable from *any* angle, which wristbands alone are not.
 
-**The wristbands are one symbol worn on both wrists**, not two independent
+**The wristbands are one symbol worn on both arms**, not two independent
 channels. This is deliberate: duplicating the symbol attacks the *erasure
 probability* (roughly 55% → 80% visible, since the two limbs fail independently)
 rather than the code distance. Splitting them into two distinct channels was
 simulated and gains only ~1 percentage point of correct identification while
 requiring every guest to source two wristband colours — see §12.3.
 
-**The band is worn at the wrist or on the forearm, not the upper arm.** That is
-a later decision than the numbers below, and it cuts against them in two ways
-that are not yet measured: a forearm is a smaller patch of colour than an upper
-arm at the same distance (§12.1's warning about accessory size), and a hand goes
-into a pocket, behind a back or around a phone far more readily than a shoulder
-does, so the 55%-per-limb visibility estimate in §12.3 is more likely optimistic
-than pessimistic. Nothing in the code depends on the figure — the escalation
-ladder already treats this channel as the one whose absence sends a shot up to
-the stronger model — but it is the first number to re-fit once real shot photos
-exist.
+**Position on the arm is not fixed: forearm or upper arm, either is valid.**
+A wristband pushed up the forearm and an armband worn high are the same channel
+and the same symbol; what the scheme needs is a *clear band of colour on the
+arm*, not a particular height on it. So the kit does not have to be uniform —
+whatever reads best on the player in front of you is the right call at handout
+time — and the vision prompt asks for both positions rather than one
+(`shot_vision.CHANNEL_DESCRIPTIONS`).
+
+That freedom is worth having, because the two positions fail differently and
+neither has been measured. A forearm band is a smaller patch of colour at the
+same distance and a hand goes into a pocket or around a phone far more readily
+than a shoulder does; an upper-arm band is bigger and steadier but disappears
+under any sleeve. The 55%-per-limb visibility estimate in §12.3 was fitted for
+the upper arm, so it does not straightforwardly carry to a band worn lower.
+Nothing in the code depends on the figure — the escalation ladder already
+treats this channel as the one whose absence sends a shot up to the stronger
+model — but it is the first number to re-fit once real shot photos exist, and
+the answer may well be "wear it wherever it shows".
 
 Guarantees at `d = 3`, from `d ≥ 2t + e + 1`:
 
@@ -873,14 +881,16 @@ one is unsalvageable at any model tier. This is why the channels are t-shirt /
 trousers / hat / wristbands and not, say, a badge or a logo.
 
 This is the measurement the wristband channel has to answer to. A coloured band
-around the wrist or forearm is much larger than the watch face tested here — it
-is a ring of one colour around the whole limb, not a dial — but it is the
-smallest of the four channels and the one closest to the size at which the
-models stop being reliable. Two things follow. Buy the band wide, in a
-saturated palette colour, so it reads as a band of colour rather than a detail;
-and treat a confident wristband read from the weak model with the suspicion
-§12.1 earned — which is what the escalation ladder already does by refusing to
-auto-act when it is the channel that went missing.
+around the arm is much larger than the watch face tested here — it is a ring of
+one colour around the whole limb, not a dial — but it is the smallest of the
+four channels and the one closest to the size at which the models stop being
+reliable. Three things follow. Buy the band wide, in a saturated palette
+colour, so it reads as a band of colour rather than a detail; put it where it
+shows on the player wearing it, which is why the position is left free above
+rather than pinned to the wrist; and treat a confident wristband read from the
+weak model with the suspicion §12.1 earned — which is what the escalation
+ladder already does by refusing to auto-act when it is the channel that went
+missing.
 
 A secondary result: repeated runs on the *same* image gave four different answers
 out of five attempts on the hard task, so a single confident-looking answer is not

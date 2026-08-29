@@ -1,6 +1,6 @@
 {
   "source": "sqlite:///data.db",
-  "note": "The fourth channel is named 'wristbands' throughout, but these photos were taken while the band was still worn on the upper arm. Only the channel keys were renamed: the admin notes and the stored model prose are left verbatim as the record of what was actually said about these images.",
+  "note": "The fourth channel is named 'wristbands' throughout; in these photos the band is worn on the upper arm, which is one of the two valid positions (see plan section 5). Only the channel keys were renamed: the admin notes and the stored model prose are left verbatim as the record of what was actually said about these images.",
   "shots": [
     {
       "shot_id": "d91548d3-80b9-49a8-8c1c-166dab877a9a",

@@ -405,14 +405,17 @@ Three deployment targets share one service definition:
   colour. That is an allocation policy only — the decoder is unaffected. A hat
   colour covers seven slots (six for black), so a bigger team picks up a whole
   second colour rather than sharing a part-used one.
-- The other channel we hand out (`PROVIDED_CHANNEL`, the **wristbands**) is
-  worn **around the wrist or forearm**, not on the upper arm — the band moved
-  down the limb after the kit was bought (roadmap #9). Only the wearing
-  position changed: the channel is one symbol worn on both limbs, as it always
-  was. What it does affect is legibility, so `shot_vision.CHANNEL_DESCRIPTIONS`
-  tells the model where to look, and the visibility estimate the capacity
-  simulation used (plan §12.3) is now the shakiest number in that model — see
-  roadmap R6 for the check to run on the real bands.
+- The other channel we hand out (`PROVIDED_CHANNEL`, the **wristbands**) is a
+  **clear band of colour on the arm, worn on the forearm or the upper arm —
+  either is valid**. Wristbands and armbands both count, as does a wristband
+  pushed up the forearm; the scheme needs the band to *read*, not to sit at a
+  fixed height (roadmap #9, plan §5). The channel is one symbol worn on both
+  arms, as it always was, and the only place the position is stated is
+  `shot_vision.CHANNEL_DESCRIPTIONS`, which asks the model for both — do not
+  narrow it to one. Legibility is the open question: the per-limb visibility
+  estimate behind the capacity simulation (plan §12.3) was fitted for the upper
+  arm, so see roadmap R6 for the check to run on the real bands at both
+  heights.
 - `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
   for a game, and left untouched on every later call (even after a new team is
   added) — so a team that has already started picking outfits never gets
