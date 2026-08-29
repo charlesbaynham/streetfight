@@ -83,6 +83,21 @@ def partly_read_reply(hidden, confidence=0.9):
     return reply
 
 
+def misread_hit_reply(garment, confidence=0.9):
+    """A confident hit whose ``garment`` is read confidently but wrongly.
+
+    One substitution with no erasures is the single misread [4,2,3] corrects,
+    so the reading still identifies the slot's wearer.
+    """
+    reply = confident_hit_reply(confidence=confidence)
+    channel = next(c for c in SCHEME.channels if c.name == garment)
+    worn = reply["channels"][garment]["colour"]
+    reply["channels"][garment]["colour"] = next(
+        label for label in channel.labels if label != worn
+    )
+    return reply
+
+
 def escalation_payload(verdict, confidence=0.9, target_user_id=None):
     """The payload a completed escalation would have stored."""
     return {
@@ -566,6 +581,25 @@ def test_a_hit_on_a_dead_holder_is_acted_on_for_no_damage(
     assert shot.result == "hit"
     assert shot.target_user_id == target_with_slot
     assert UserInterface(target_with_slot).get_user_model().hit_points == 0
+
+
+def test_a_misread_garment_is_still_a_confident_hit(
+    db_session, shot_from_user_in_team, target_with_slot
+):
+    """A test-sized game -- one shooter, one target -- leaves the ranking a
+    single candidate, and so no pair to measure the candidates' own separation
+    over. The correction radius falls back to the code's own d there, or the
+    misread d = 3 exists to correct would block the queue instead.
+    """
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, misread_hit_reply("hat"))
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
 
 
 def test_a_hit_identifying_the_shooter_stays_queued(

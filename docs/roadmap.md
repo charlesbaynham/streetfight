@@ -1167,6 +1167,18 @@ in `backend/shot_auto_actions.py` rewired onto it. The admin-facing surface,
 #3, has since shipped too (28 Aug): the queue UI now shows the ranking and
 the runners-up, not just the old tags.
 
+**Fixed 29 Aug — a lone candidate was the strictest case, not the loosest.**
+`_rank` passes the candidates' *own* effective minimum distance as the
+correction radius, because a freely-chosen outfit is not a codeword. With one
+candidate there are no pairs, and it passed `None` — which `decode()` reads as
+"flag anything that is not an exact match". So in a two-player test game a
+single misread garment, exactly the error `d = 3` exists to correct, came back
+`inconsistent`, the shot showed "The reading fits nobody cleanly", and the
+auto-action gate refused it in both modes (an inconsistent reading is one of
+the three "resolve everything" never forces). The empty minimum is now the
+code's nominal `d`: with nobody to confuse the candidate with, that is the
+radius that applies. Two misreads still read as inconsistent.
+
 
 **Symptom.** A distant shot read two of the four channels correctly. Two erasures
 is exactly what the `[4,2,3]` code is meant to survive, but CharlesBot said it

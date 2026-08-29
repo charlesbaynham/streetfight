@@ -319,9 +319,14 @@ def _rank(
 
     # The candidates' own separation, not the code's nominal d: an overridden
     # or freely-chosen outfit is not a codeword, so d no longer bounds how far
-    # apart these particular players actually are.
+    # apart these particular players actually are. With a lone candidate there
+    # are no pairs, and the empty minimum is the code's own d rather than
+    # nothing: decode()'s no-argument fallback is an exact-match test, which
+    # would make the loosest candidate set the strictest one to satisfy.
     distances = pairwise_distances(words)
-    effective_min_distance = distances[0][2] if distances else None
+    effective_min_distance = (
+        distances[0][2] if distances else scheme.code.min_distance()
+    )
 
     return decode(
         reading=reading_from_review(review, scheme),
