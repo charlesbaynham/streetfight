@@ -269,8 +269,9 @@ Three deployment targets share one service definition:
   (disk layout) and `nix/cloud-host.nix` (machine config). Installed once,
   destructively, with `nixos-anywhere`; updated with
   `nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
-  — an explicit push for now (pull-based auto-deploy on master pushes is
-  specced as roadmap R10, not yet built). Caddy terminates TLS
+  — though a master push now deploys itself within a few minutes, pulled by
+  a timer on the droplet (`nix/auto-deploy.nix`, roadmap R10), so that line
+  is the manual override rather than the routine path. Caddy terminates TLS
   itself there (`services.streetfight.hostname`); secrets live in
   `/data/secrets/streetfight.env` (`nix/streetfight.env.example` documents
   the format). See `docs/deployment_droplet.md` for the full runbook,

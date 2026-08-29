@@ -94,6 +94,27 @@ jobs:
         echo "Pushing Docker image to GitHub Container Registry"
         docker push $REGISTRY/${IMAGE_NAME_PREFIX}-backend:latest
 
+  # Push the droplet's whole system closure to Cachix so the droplet
+  # substitutes it rather than building it: nix/auto-deploy.nix runs
+  # `nixos-rebuild switch` on a 1-vCPU box, where only evaluation is
+  # affordable. It runs on branches too, deliberately: it is the only check
+  # that the cloud configuration still evaluates, and evaluation is exactly
+  # what broke unnoticed before auto-deploy existed.
+  build_cloud_system:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+    - uses: actions/checkout@v2
+    - name: Install Nix
+      uses: cachix/install-nix-action@v31
+    - uses: cachix/cachix-action@v17
+      with:
+        name: streetfight
+        authToken: ${{ secrets.CACHIX_AUTH_TOKEN }}
+    - name: Build the cloud system closure
+      run: nix build .#nixosConfigurations.streetfight-cloud.config.system.build.toplevel
+
   # Build the Proxmox LXC rootfs template and publish it as a release asset.
   # Deployment is pull-based — CI has no route to a hypervisor behind domestic
   # NAT — so the hypervisor fetches the asset itself. The pattern, and the

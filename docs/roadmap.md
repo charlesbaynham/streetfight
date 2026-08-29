@@ -90,7 +90,31 @@ checklist with someone other than an agent driving. Decisions taken for it:
   anything broken is fixed or written down rather than worked around
   silently. Findings land on the R9 checklist.
 
-### R10 — Auto-deploy for the droplet *(specced, not built)*
+### R10 — Auto-deploy for the droplet *(shipped 2026-08-29)*
+
+**Shipped** as `nix/auto-deploy.nix`, imported by `streetfight-cloud`, with
+the closure pre-built into Cachix by `build_images.yml`. The spec below is
+what was built, bar three corrections found on the live droplet:
+
+- **`git` is not optional and not only for `ls-remote`.** The flake takes
+  `cattle` as a `git+https` input, and nix cannot fetch it without a git
+  binary — even evaluating the cloud configuration, which never uses it. The
+  droplet had no `git` at all, so any on-box flake rebuild failed at
+  evaluation.
+- **Flakes were not enabled on the droplet** (`experimental-features` unset),
+  because nixos-anywhere builds elsewhere and pushes a closure — nothing had
+  ever needed them there. `nixos-rebuild --flake` fails immediately without
+  them.
+- **The health-check URL was wrong.** With `services.streetfight.hostname`
+  set, Caddy serves exactly one vhost, for that name, so
+  `http://127.0.0.1/api/get_version` matches nothing. It checks the backend
+  port directly.
+
+Worth recording alongside: `/api/get_version` read `unknown` on the live box
+because the install-time evaluation saw a source with no git revision.
+Deploying from a `github:` ref, as this does, stamps it correctly.
+
+---
 
 **The decision.** Auto-deploy on master pushes is a property every
 deployment of this game has had (watchtower on compose, the pull-based
