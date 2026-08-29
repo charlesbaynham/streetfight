@@ -70,24 +70,52 @@ def make_debug_entries(seed: int = SAMPLE_SEED) -> dict:
     return {"players": len(cast), "located": placed, "identity": identity}
 
 
+def debug_entries_wanted() -> bool:
+    return "MAKE_DEBUG_ENTRIES" in os.environ
+
+
+def make_debug_entries_if_wanted() -> None:
+    """Build the sample game, unless it is already there.
+
+    Deliberately *not* called from :func:`reset_database`. That runs inside
+    ``database.load()``, which itself runs while ``backend.database`` is being
+    imported -- and the sample game is built through ``AdminInterface``, whose
+    own import is what pulled ``database`` in. Provisioning there is a
+    circular import: the app cannot build a game while it is still being
+    assembled. So the schema is created during import and the game is made
+    afterwards, by whoever starts the process.
+    """
+    if not debug_entries_wanted():
+        return
+
+    from . import database
+    from .model import Game
+
+    game_id = sample_game_id()
+    session = database.Session()
+    if session.query(Game).filter_by(id=game_id).first() is not None:
+        return
+
+    logger.warning("Making debug entries in database")
+    made = make_debug_entries()
+    logger.warning(
+        "Sample game %s: %d players, %d with a location",
+        game_id,
+        made["players"],
+        made["located"],
+    )
+
+
 def reset_database(engine):
+    """The schema, and nothing else -- see make_debug_entries_if_wanted."""
     target_metadata = Base.metadata
     target_metadata.drop_all(bind=engine)
     target_metadata.create_all(bind=engine)
 
     logger.warning("Resetting database")
 
-    if "MAKE_DEBUG_ENTRIES" in os.environ:
-        logger.warning("Making debug entries in database")
-        made = make_debug_entries()
-        logger.warning(
-            "Sample game %s: %d players, %d with a location",
-            sample_game_id(),
-            made["players"],
-            made["located"],
-        )
-
 
 if __name__ == "__main__":
     load_env_vars()
     reset_database(engine=db_engine)
+    make_debug_entries_if_wanted()
