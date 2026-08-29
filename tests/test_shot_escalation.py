@@ -138,6 +138,9 @@ async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
     # The three attached photos are announced as such, the fourth as askable
     assert prompt.count("Reference photo attached below.") == 3
     assert "Reference photo available on request." in prompt
+    # The listed armband colour is only useful to somebody who knows where to
+    # look for it, and that it is not always the upper arm.
+    assert shot_vision.ARMBANDS_PLACEMENT in prompt
 
 
 @pytest.mark.asyncio

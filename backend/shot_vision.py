@@ -108,13 +108,22 @@ HIT_PLAYER = "hit_player"
 HIT_BYSTANDER = "hit_bystander"
 MISS = "miss"
 
+# The armbands are the one garment the game hands out, and the one a model has
+# to be told where to look for: they are small, and a player who finds one
+# tight on the bicep wears it on the forearm instead. Named separately so the
+# escalation prompt (backend.shot_escalation) says the same thing.
+ARMBANDS_PLACEMENT = (
+    "small bands of about 5-10 cm, usually worn on the upper arms but "
+    "sometimes pushed down onto the forearms"
+)
+
 # Human-readable channel names for the prompt. The keys must stay in step with
 # identity.config.DEFAULT_CHANNEL_NAMES.
 CHANNEL_DESCRIPTIONS = {
     "tshirt": "the t-shirt or top on their torso",
     "trousers": "the trousers, jeans or shorts on their legs",
     "hat": "the hat or headwear on their head",
-    "armbands": "the coloured armbands worn on the upper arms",
+    "armbands": f"the coloured armbands -- {ARMBANDS_PLACEMENT}",
 }
 
 
