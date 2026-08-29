@@ -1,5 +1,7 @@
 # NixOS module for the Street Fight game server.
 #
+# (deploy mechanism bump)
+#
 # This describes the service only; it knows nothing about Proxmox or LXC, so it
 # can equally be imported into a VM or a bare-metal host. The LXC-specific parts
 # live in ./lxc.nix.
