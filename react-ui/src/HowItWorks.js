@@ -20,7 +20,9 @@ function HowItWorks() {
         <h1>Clothes, colours, and error correction</h1>
 
         <p className={styles.holdingNote}>
-          I haven't written this yet! So you'll have to ask me. Though if you want, you could google Hamming distances and Reed-Solomon codes. And then ask me why I don't get a proper job. 
+          I haven't written this yet! So you'll have to ask me. Though if you
+          want, you could google Hamming distances and Reed-Solomon codes. And
+          then ask me why I don't get a proper job.
         </p>
 
         <p className={styles.backNote}>

@@ -129,7 +129,9 @@ describe("/how-it-works (HowItWorks)", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Clothes, colours, and error correction" }),
+      screen.getByRole("heading", {
+        name: "Clothes, colours, and error correction",
+      }),
     ).toBeInTheDocument();
   });
 });
