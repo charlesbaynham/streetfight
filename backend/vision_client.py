@@ -452,3 +452,122 @@ async def fetch_openrouter_key_balance(
         "limit_remaining": data.get("limit_remaining"),
         "usage": data.get("usage"),
     }
+
+
+# ---------------------------------------------------------------------------
+# Image generation
+# ---------------------------------------------------------------------------
+
+# The generation path must never reach a Google model. The recogniser under
+# test is Gemini, so generating its exam paper with Gemini would make the
+# benchmark circular -- and a stray OPENROUTER_MODEL in somebody's .env is
+# exactly how that would happen silently. This is an explicit guard rather
+# than a convention, because a convention cannot fail loudly.
+FORBIDDEN_GENERATION_PREFIXES = ("google/",)
+
+DEFAULT_IMAGE_MODEL = "openai/gpt-5.4-image-2"
+
+
+class ImageGenerationError(RuntimeError):
+    pass
+
+
+class OpenRouterImageClient:
+    """Generate an image from a prompt and zero or more input images.
+
+    Posts to the same ``/chat/completions`` endpoint as
+    :class:`OpenRouterVisionClient`, with ``modalities`` asking for an image
+    back, and reads it out of ``choices[0].message.images``. That arrives as a
+    ``data:image/...;base64,...`` URL, which is the form the rest of this
+    codebase already consumes.
+
+    ``complete()`` cannot serve this: it hard-codes a ``json_schema`` response
+    format and would demand text back.
+    """
+
+    def __init__(
+        self,
+        api_key: Optional[str] = None,
+        model: Optional[str] = None,
+        timeout: Optional[float] = None,
+    ):
+        self.api_key = api_key or os.getenv("OPENROUTER_API_KEY")
+        if not self.api_key:
+            raise ImageGenerationError("OPENROUTER_API_KEY is not set")
+        self.model = model or os.getenv("OPENROUTER_IMAGE_MODEL") or DEFAULT_IMAGE_MODEL
+        self.timeout = timeout if timeout is not None else _timeout_from_env()
+
+        lowered = self.model.lower()
+        for prefix in FORBIDDEN_GENERATION_PREFIXES:
+            if lowered.startswith(prefix):
+                raise ImageGenerationError(
+                    f"refusing to generate images with {self.model!r}: the "
+                    "recogniser being tested is a Google model, so generating "
+                    "its inputs with one would make the benchmark circular"
+                )
+
+    async def generate(
+        self, prompt: str, input_image_urls: Optional[List[str]] = None, **params
+    ) -> str:
+        """Return a ``data:image/...;base64,...`` URL for the generated image."""
+        content: List[dict] = [{"type": "text", "text": prompt}]
+        for url in input_image_urls or []:
+            content.append({"type": "image_url", "image_url": {"url": url}})
+
+        payload = {
+            "model": self.model,
+            "modalities": ["image", "text"],
+            "messages": [{"role": "user", "content": content}],
+        }
+        payload.update(params)
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+
+        last_error = None
+        for attempt in range(1, MAX_ATTEMPTS + 1):
+            try:
+                async with httpx.AsyncClient(timeout=self.timeout) as client:
+                    response = await client.post(
+                        OPENROUTER_URL, json=payload, headers=headers
+                    )
+                if response.status_code == 429 or response.status_code >= 500:
+                    last_error = ImageGenerationError(
+                        f"OpenRouter returned {response.status_code}: "
+                        f"{response.text[:200]}"
+                    )
+                elif response.status_code >= 400:
+                    raise ImageGenerationError(
+                        f"OpenRouter rejected the request ({response.status_code}): "
+                        f"{response.text[:200]}"
+                    )
+                else:
+                    return _image_url_of(response.json())
+            except httpx.HTTPError as e:
+                last_error = ImageGenerationError(f"OpenRouter request failed: {e}")
+
+            if attempt < MAX_ATTEMPTS:
+                # Same escalating backoff as the vision path above.
+                await asyncio.sleep(2.0 * attempt)
+
+        raise last_error or ImageGenerationError("image generation failed")
+
+
+def _image_url_of(body: dict) -> str:
+    """Pull the generated image out of a chat-completions response."""
+    try:
+        message = body["choices"][0]["message"]
+    except (KeyError, IndexError) as e:
+        raise ImageGenerationError(f"unexpected response shape: {e}")
+
+    images = message.get("images") or []
+    for image in images:
+        url = (image.get("image_url") or {}).get("url")
+        if url:
+            return url
+    raise ImageGenerationError(
+        "the model returned no image; it replied: "
+        + repr(str(message.get("content"))[:200])
+    )

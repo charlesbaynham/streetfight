@@ -457,3 +457,6 @@ TSWLatexianTemp*
 # The test world truth track: 2.4MB of binary, regenerated identically
 # from the seed by `python -m backend.test_world world`.
 tests/fixtures/test_game/*.truth.npz
+
+# Generated test-world images are content-addressed; committed deliberately
+# once approved at a gate, but never left lying around from a failed run.

@@ -216,6 +216,48 @@ def cmd_gate_b(args) -> int:
     return 0
 
 
+def cmd_generate(args) -> int:
+    from backend.test_world import generate as generate_mod
+    from backend.test_world import store as store_mod
+
+    world, _ = _load(args)
+    if "scenes" not in world:
+        print("no scenes yet - run `scenes` first", file=sys.stderr)
+        return 1
+
+    out = Path(args.out)
+    store = store_mod.ImageStore(out.parent / "images")
+    gate = args.gate if args.gate != "e" else None
+    jobs = generate_mod.plan(world, out, gate=gate)
+    report = generate_mod.run_sync(jobs, store, dry_run=not args.execute)
+
+    print(
+        f"planned {report['total']} image(s); "
+        f"{report['already_present']} already in the store, "
+        f"{report['to_generate']} to generate"
+    )
+    print(
+        f"estimated cost ${report['estimated_usd']:.2f} "
+        f"(ceiling ${generate_mod.HARD_CEILING_USD:.2f})"
+    )
+    for job in report["missing"]:
+        print(
+            f"  {job.kind:10s} {job.name:16s} {job.model:24s} "
+            f"${job.price:.4f}  -> {job.image_id}.jpg"
+        )
+    if not report.get("ran"):
+        print("\nnothing was sent. Re-run with --execute to spend.")
+        return 0
+
+    print(
+        f"\ngenerated {len(report['generated'])}, "
+        f"failed {len(report['failed'])}, spent ${report['spent_usd']:.2f}"
+    )
+    for kind, name, err in report["failed"]:
+        print(f"  FAILED {kind} {name}: {err}", file=sys.stderr)
+    return 1 if report["failed"] else 0
+
+
 def cmd_gate(args) -> int:
     import json
 
@@ -254,6 +296,13 @@ def main(argv=None) -> int:
     sub.add_parser("availability", help="which (locale, light, distance) cells exist")
     gate_b = sub.add_parser("gateb", help="print every prompt for review")
     gate_b.add_argument("--only", help="one scenario id, or 'references'")
+    gen = sub.add_parser("generate", help="generate missing images (costs money)")
+    gen.add_argument("--gate", choices=["c", "d", "e"], help="which subset")
+    gen.add_argument(
+        "--execute",
+        action="store_true",
+        help="actually spend; without this it only says what it would do",
+    )
 
     args = parser.parse_args(argv)
     return {
@@ -263,6 +312,7 @@ def main(argv=None) -> int:
         "scenes": cmd_scenes,
         "availability": cmd_availability,
         "gateb": cmd_gate_b,
+        "generate": cmd_generate,
     }[args.command](args)
 
 
