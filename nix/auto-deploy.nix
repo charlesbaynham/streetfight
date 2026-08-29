@@ -1,7 +1,12 @@
-# Pull-based auto-deploy for the cloud droplet: the host reaches out on a
+# Pull-based deployment for the cloud droplet: the host reaches out on a
 # timer, so nothing on the internet holds credentials into it. Imported only
 # by `streetfight-cloud` - the LXC has its own redeploy path in
 # nix-proxmox-cattle.
+#
+# The branch polled is `live`, not `master`, and that is the whole manual
+# gate: merging to master deploys nothing, and the `live` ref only moves when
+# somebody runs .github/workflows/deploy.yml. Now that there is a game running
+# on this box, a merge is not a deploy.
 { config, lib, pkgs, ... }:
 
 let
@@ -20,9 +25,12 @@ let
     text = ''
       target=$(git ls-remote ${lib.escapeShellArg cfg.repository} \
         "refs/heads/${cfg.branch}" | cut -f1)
+      # No such branch is the ordinary state before the first manual deploy,
+      # so it is a warning rather than a permanently failed unit - but it is
+      # also what a mistyped `branch` looks like, hence the loud wording.
       if [ -z "$target" ]; then
-        echo "could not resolve ${cfg.branch} at ${cfg.repository}" >&2
-        exit 1
+        echo "no ${cfg.branch} branch at ${cfg.repository}: nothing to deploy" >&2
+        exit 0
       fi
 
       # Remembering the last failure as well as the last success is what stops
@@ -63,7 +71,7 @@ let
 in
 {
   options.services.streetfight-autodeploy = {
-    enable = lib.mkEnableOption "polling GitHub for new Street Fight commits and deploying them";
+    enable = lib.mkEnableOption "polling GitHub for the Street Fight revision marked for deployment";
 
     repository = lib.mkOption {
       type = lib.types.str;
@@ -83,8 +91,11 @@ in
 
     branch = lib.mkOption {
       type = lib.types.str;
-      default = "master";
-      description = "Branch whose head is deployed.";
+      default = "live";
+      description = ''
+        Branch whose head is deployed. Deliberately not `master`: it is moved
+        by hand (.github/workflows/deploy.yml), so merging does not deploy.
+      '';
     };
 
     configuration = lib.mkOption {

@@ -67,8 +67,9 @@ checklist with someone other than an agent driving. Decisions taken for it:
   of the runbook is the procedure. **Installed onto the live droplet
   28 Aug; cutover in progress** - DNS repointing and the home LXC's
   stand-down (hold file in place, `services.yaml` removal pending merge)
-  still await verification. Updates are an explicit `nixos-rebuild`
-  push, not a master-push auto-deploy. (The docker-compose path with
+  still await verification. Updates go through the manual **Deploy to
+  droplet** workflow, which moves the `live` branch the droplet polls;
+  merging to master does not deploy. (The docker-compose path with
   `SITE_ADDRESS`/`compose.ghcr.yml`/watchtower, also fixed up 28 Aug,
   remains as the fallback.)
 - **QR codes go out on WhatsApp**, not paper - #8's print run is not pulled
@@ -89,11 +90,22 @@ checklist with someone other than an agent driving. Decisions taken for it:
   anything broken is fixed or written down rather than worked around
   silently. Findings land on the R9 checklist.
 
-### R10 — Auto-deploy for the droplet *(shipped 2026-08-29)*
+### R10 — Auto-deploy for the droplet *(shipped 2026-08-29; gated behind a manual step the same day)*
 
 **Shipped** as `nix/auto-deploy.nix`, imported by `streetfight-cloud`, with
-the closure pre-built into Cachix by `build_images.yml`. The spec below is
-what was built, bar three corrections found on the live droplet:
+the closure pre-built into Cachix by `build_images.yml`.
+
+**Then gated**, once the join links went out and the game became live: the
+droplet polls **`live`**, not `master`, and that branch only moves when
+somebody runs `.github/workflows/deploy.yml` (a `workflow_dispatch` button -
+GitHub's manual pipeline step). The machinery below is unchanged; what changed
+is which ref it watches, so merging to master is now free of consequence while
+the deploy remains one click. The decision paragraph below ("auto-deploy on
+master pushes is a property every deployment of this game has had") stands as
+the reasoning for the mechanism, not for its trigger.
+
+The spec below is what was built, bar three corrections found on the live
+droplet:
 
 - **`git` is not optional and not only for `ls-remote`.** The flake takes
   `cattle` as a `git+https` input, and nix cannot fetch it without a git

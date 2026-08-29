@@ -290,9 +290,11 @@
       # DigitalOcean droplet): same deployment-agnostic service module, but
       # installed as a whole NixOS host by nixos-anywhere, with Caddy
       # terminating TLS itself (`hostname`) since there is no border router in
-      # front of it. Thereafter it redeploys itself from master on a timer
-      # (./nix/auto-deploy.nix); `nixos-rebuild --target-host` remains the
-      # manual override. See docs/deployment_droplet.md.
+      # front of it. Thereafter it redeploys itself on a timer from the `live`
+      # branch (./nix/auto-deploy.nix) - which only moves when somebody runs
+      # the deploy workflow, so merging to master deploys nothing;
+      # `nixos-rebuild --target-host` remains the manual override. See
+      # docs/deployment_droplet.md.
       cloudHost = {
         nixosConfigurations.streetfight-cloud = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";

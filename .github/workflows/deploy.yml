@@ -1,0 +1,97 @@
+name: Deploy to droplet
+
+# The droplet deploys itself by polling a git ref (nix/auto-deploy.nix); it
+# holds no credentials for anything on the internet and nothing on the
+# internet holds credentials for it. So a manual deploy gate is just a manual
+# gate on *that ref moving*: this workflow has no route to the host, it only
+# advances `refs/heads/live` to the revision you chose. The droplet notices
+# within a couple of minutes and switches to it.
+#
+# `workflow_dispatch` is GitHub's manual job: a "Run workflow" button in the
+# Actions tab, or `gh workflow run deploy.yml -f ref=<branch-or-sha>`. Merging
+# to master deploys nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Branch, tag or SHA to put live
+        required: true
+        default: master
+      skip_build_check:
+        description: Deploy even if the cloud closure is not in Cachix (the droplet will build it itself, slowly)
+        type: boolean
+        default: false
+
+env:
+  DEPLOY_BRANCH: live
+  HOSTNAME: streetfight.houseabsolute.co.uk
+
+concurrency:
+  group: deploy-droplet
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      checks: read
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+
+    - name: Resolve the revision
+      env:
+        REF: ${{ inputs.ref }}
+      run: |
+        SHA=$(git rev-parse --verify "origin/$REF^{commit}" 2>/dev/null \
+          || git rev-parse --verify "$REF^{commit}")
+        echo "SHA=$SHA" >> "$GITHUB_ENV"
+        echo "Deploying $REF -> $SHA"
+
+    # The droplet is one vCPU: a revision whose system closure was never
+    # pushed to Cachix is one it has to build itself, which on a game night is
+    # the difference between two minutes and half an hour. build_images.yml's
+    # build_cloud_system job is what puts it there.
+    - name: Check the cloud closure was built
+      if: ${{ !inputs.skip_build_check }}
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
+          --jq '.check_runs[] | select(.name == "build_cloud_system") | .conclusion' \
+          | head -n1)
+        if [ "$CONCLUSION" != "success" ]; then
+          echo "::error::build_cloud_system for $SHA is '${CONCLUSION:-missing}', not success." \
+            "Wait for it, or re-run with skip_build_check to let the droplet build it itself."
+          exit 1
+        fi
+
+    # Force, because rolling back to an earlier commit is the emergency path
+    # and it is not a fast-forward.
+    - name: Move the deploy ref
+      run: |
+        git push --force origin "$SHA:refs/heads/$DEPLOY_BRANCH"
+        echo "### Deploying [\`${SHA:0:8}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/$SHA)" >> "$GITHUB_STEP_SUMMARY"
+
+    # The droplet polls every ~2 minutes and then has to switch; give it a
+    # generous window before calling it a failure.
+    - name: Wait for the droplet to report the new revision
+      run: |
+        for _ in $(seq 1 60); do
+          REPORTED=$(curl -fsS --max-time 20 "https://$HOSTNAME/api/get_version" \
+            | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p') || REPORTED=""
+          if [ -n "$REPORTED" ] && [ "${SHA#"$REPORTED"}" != "$SHA" ]; then
+            echo "Live: $REPORTED"
+            echo "Live and serving \`$REPORTED\`." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          echo "still serving '${REPORTED:-?}', waiting..."
+          sleep 20
+        done
+        echo "::error::$HOSTNAME never reported $SHA." \
+          "The ref has moved, so the droplet will still pick it up:" \
+          "check 'journalctl -u streetfight-autodeploy' on the box."
+        exit 1
