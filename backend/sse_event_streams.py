@@ -26,6 +26,53 @@ def make_sse_update_message(m):
     return out
 
 
+async def _feed_generator_to_queue(
+    generator: AsyncGenerator, label: str, queue: asyncio.Queue, context: str = ""
+) -> None:
+    """Pump one producer into the shared queue, tagged with its label."""
+    async for data in generator:
+        logger.debug(
+            '_feed_generator_to_queue (%s) - Received message "%s" from %s',
+            context,
+            data,
+            label,
+        )
+        await queue.put((label, data))
+
+
+async def _yield_from_queue(queue: asyncio.Queue, context: str = "") -> AsyncGenerator:
+    """Yield (label, data) pairs from the queue as soon as they arrive."""
+    while True:
+        msg = await queue.get()
+        logger.debug("_yield_from_queue (%s) - Yielding message %s", context, msg)
+        yield msg
+
+
+async def _keepalive_timer(timeout=None):
+    """A rising counter, one tick every ``timeout`` seconds, forever.
+
+    Every stream needs one: UpdateListener.js restarts any connection that goes
+    KEEPALIVE_TIMEOUT (20s) without a message, and the client checks the count
+    is consecutive to spot a desync. The timeout is read here rather than bound
+    as a default so it can be monkeypatched.
+    """
+    if timeout is None:
+        timeout = SSE_KEEPALIVE_TIMEOUT
+
+    logger.debug("Starting keepalive timer (every %s s)", timeout)
+
+    i = 0
+    while True:
+        await asyncio.sleep(timeout)
+        logger.debug("Sending keepalive message %s", i)
+        yield i
+        i += 1
+
+
+def _keepalive_message(count) -> str:
+    return make_sse_update_message(json.dumps({"handler": "keepalive", "data": count}))
+
+
 async def updates_generator(user_id):
     """
     Yields SSE update prompts that should be received by a given user
@@ -57,25 +104,11 @@ async def updates_generator(user_id):
     # An asyncio queue to pass to the generators
     queue = asyncio.Queue()
 
-    # A function that logs a message every time an async generator yields
-    async def feed_generator_to_queue(generator: AsyncGenerator, message: str) -> None:
-        async for data in generator:
-            logger.debug(
-                'feed_generator_to_queue (UID %s) - Received message "%s" from %s',
-                user_id,
-                data,
-                message,
-            )
-            await queue.put((message, data))
+    def feed_generator_to_queue(generator: AsyncGenerator, message: str):
+        return _feed_generator_to_queue(generator, message, queue, f"UID {user_id}")
 
-    # A function that yields from the queue as soon as items arrive
-    async def yield_from_queue() -> AsyncGenerator:
-        while True:
-            msg = await asyncio.wait_for(queue.get(), timeout=None)
-            logger.debug(
-                "yield_from_queue (UID %s) - Yielding message %s", user_id, msg
-            )
-            yield msg
+    def yield_from_queue() -> AsyncGenerator:
+        return _yield_from_queue(queue, f"UID {user_id}")
 
     # Keep track of the asyncio tasks we start for producers
     producers = []
@@ -147,19 +180,8 @@ async def updates_generator(user_id):
         )
 
     # Add a keepalive producer
-    async def keepalive_timer(timeout=SSE_KEEPALIVE_TIMEOUT):
-        logger.debug("Starting keepalive timer")
-
-        i = 0
-
-        while True:
-            await asyncio.sleep(timeout)
-            logger.debug("Sending keepalive message %s", i)
-            yield i
-            i += 1
-
     producers.append(
-        asyncio.create_task(feed_generator_to_queue(keepalive_timer(), "keepalive"))
+        asyncio.create_task(feed_generator_to_queue(_keepalive_timer(), "keepalive"))
     )
 
     # Watch for circle updates if the user is in a game
@@ -191,9 +213,7 @@ async def updates_generator(user_id):
                 # Close the connection to force a reload
                 return
             elif target == "keepalive":
-                yield make_sse_update_message(
-                    json.dumps({"handler": "keepalive", "data": data})
-                )
+                yield _keepalive_message(data)
             else:
                 logger.error('Unknown update target "%s"', target)
     finally:
@@ -224,9 +244,35 @@ async def admin_updates_generator():
     yield update_circle
     yield update_shots
 
-    async for _ in AdminInterface().generate_any_game_updates():
-        logger.debug("(admin_updates_generator) Update received - sending")
-        # Lazily update the circle, the admin stats and the shot queue each time
-        yield update_admin
-        yield update_circle
-        yield update_shots
+    # Multiplexed the same way the user stream is, so that a quiet game still
+    # produces keepalives. Without them a spectator screen left running all
+    # night sees nothing for 20s and tears the connection down and back up
+    # (react-ui/src/UpdateListener.js KEEPALIVE_TIMEOUT), over and over.
+    queue = asyncio.Queue()
+
+    producers = [
+        asyncio.create_task(
+            _feed_generator_to_queue(
+                AdminInterface().generate_any_game_updates(), "games", queue, "admin"
+            )
+        ),
+        asyncio.create_task(
+            _feed_generator_to_queue(_keepalive_timer(), "keepalive", queue, "admin")
+        ),
+    ]
+
+    try:
+        async for target, data in _yield_from_queue(queue, "admin"):
+            if target == "games":
+                logger.debug("(admin_updates_generator) Update received - sending")
+                # Lazily update the circle, the admin stats and the shot queue
+                yield update_admin
+                yield update_circle
+                yield update_shots
+            elif target == "keepalive":
+                yield _keepalive_message(data)
+            else:
+                logger.error('Unknown admin update target "%s"', target)
+    finally:
+        for task in producers:
+            task.cancel()

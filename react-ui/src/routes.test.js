@@ -19,6 +19,7 @@ import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
 import ReferencePhotos from "./ReferencePhotos";
+import SpectatorView from "./SpectatorView";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -244,6 +245,53 @@ describe("/admin/reference (ReferencePhotos)", () => {
       screen.getByRole("heading", { name: "Reference photos" }),
     ).toBeInTheDocument();
     expect(screen.getByText("No photo yet")).toBeInTheDocument();
+  });
+});
+
+describe("/admin/spectator (SpectatorView)", () => {
+  test("mounts and shows the roster once authenticated", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_list_games: [
+        {
+          id: "game-1",
+          active: true,
+          teams: [
+            {
+              id: "team-1",
+              name: "Reds",
+              identity_colour: null,
+              users: [
+                {
+                  id: "user-1",
+                  name: "Alice",
+                  team_id: "team-1",
+                  state: "alive",
+                  hit_points: 2,
+                  num_bullets: 4,
+                  shot_damage: 1,
+                  shot_timeout: 6,
+                },
+              ],
+            },
+          ],
+        },
+      ],
+      admin_get_scoreboard: { table: [] },
+      admin_get_recent_shots: [],
+      admin_ticker_messages: [],
+      admin_identity_report: { team_channel: "hat", channels: [] },
+    });
+
+    await renderAndFlush(
+      <MemoryRouter>
+        <SpectatorView />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText("Alice")).toBeInTheDocument();
+    expect(screen.getByText("No shots fired yet.")).toBeInTheDocument();
   });
 });
 

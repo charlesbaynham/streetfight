@@ -335,12 +335,20 @@ export function zoomTag(review) {
 }
 
 // What an adjudicated shot was marked as, for the history view.
-export function verdictText(shot) {
+// `targetName`, when the caller already knows it, saves walking the game model
+// - the spectator feed carries the name but deliberately not the whole game.
+export function verdictText(shot, targetName = null) {
   if (shot.result === "hit") {
-    const target = shot.game.teams
-      .flatMap((team) => team.users)
-      .find((user) => user.id === shot.target_user_id);
-    return `Hit${target ? ` on ${target.name}` : ""}`;
+    const target =
+      targetName ||
+      (shot.game
+        ? (
+            shot.game.teams
+              .flatMap((team) => team.users)
+              .find((user) => user.id === shot.target_user_id) || {}
+          ).name
+        : null);
+    return `Hit${target ? ` on ${target}` : ""}`;
   }
   return (
     {
