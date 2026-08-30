@@ -444,8 +444,24 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
 // outright if anybody in a team is not one of the simulated players.
 const DEMO_GAME_POLL_MS = 2000;
 
+// Shots the run did not fire, and why. A skipped one is usually a shooter the
+// queue has already killed - the demo working rather than the demo broken -
+// but it is still a shot the dashboard never showed, so say so.
+function demoGameOmissions(status) {
+  const skipped = status.skipped || [];
+  const missing = status.missing || [];
+  const parts = [];
+  if (skipped.length)
+    parts.push(
+      "skipped " + skipped.map((s) => `${s.scenario} (${s.reason})`).join(", "),
+    );
+  if (missing.length) parts.push(`no photograph for ${missing.join(", ")}`);
+  return parts.length ? ` - ${parts.join("; ")}` : "";
+}
+
 function demoGameSummary(status) {
   if (!status) return "checking...";
+  const omitted = demoGameOmissions(status);
   switch (status.state) {
     case "idle":
       return "not started";
@@ -456,17 +472,21 @@ function demoGameSummary(status) {
     case "firing":
       return (
         `firing: ${status.fired} of ${status.total} shots` +
-        (status.next_in_s === null ? "" : `, next in ${status.next_in_s}s`)
+        (status.next_in_s === null ? "" : `, next in ${status.next_in_s}s`) +
+        omitted
       );
     case "cancelling":
       return "stopping after the shot in flight";
     case "cancelled":
       return (
         `stopped after ${status.fired} of ${status.total} shots - ` +
-        "starting again wipes the database and replays from the first shot"
+        "starting again wipes the database and replays from the first shot" +
+        omitted
       );
     case "done":
-      return `all ${status.fired} shots fired`;
+      return omitted
+        ? `${status.fired} of ${status.total} shots fired${omitted}`
+        : `all ${status.fired} shots fired`;
     case "error":
       return `failed: ${status.error}`;
     default:

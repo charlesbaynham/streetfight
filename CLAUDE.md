@@ -273,6 +273,13 @@ exemplar.
     twice — once before the task is created, once with nothing between it and
     the drop. **It is the only thing between this button and a real evening's
     database, so treat it as load-bearing.**
+  - **A shot it cannot fire is skipped, not fatal.** The cast have one hit
+    point, so a shot the queue judges a hit kills its target — and a later
+    scenario may have that player shooting back, which `submit_shot` refuses
+    with "User is dead". The scenario goes into the status's `skipped` list
+    with its reason (shown on the admin page beside the progress) and the run
+    carries on; the first casualty must not leave the rest of the demo
+    unfired.
   Pressing it again *while it runs* still changes nothing, and it is
   cancellable between shots.
 - `scripts/` — standalone tools, not part of the app.

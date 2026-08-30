@@ -297,3 +297,43 @@ def test_the_admin_endpoints_report_idle_and_refuse_a_real_game(
     refused = admin_api_client.post("/api/admin_start_demo_game")
     assert refused.status_code == 409
     assert "demo cast" in refused.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_a_dead_shooter_is_skipped_rather_than_stopping_the_run(
+    db_session, mocker
+):
+    """A demo player has one hit point, so the queue can kill a later shooter.
+
+    Ten shots at thirty players who have no armour: adjudicate one of them as
+    a hit -- which is what the auto-actions the demo exists to show off do --
+    and the target is dead. If a later scenario has them shooting back,
+    ``submit_shot`` refuses with "User is dead", and that used to end the run
+    on the spot with the whole rest of the demo unfired.
+    """
+    world = replay_mod.load_world()
+    doomed = replay_mod.demo_shots(world)[1]
+    victim = ids.user_id(SAMPLE_SEED, doomed["shooter"]["slug"])
+
+    real_fire = replay_mod.fire_shot
+
+    def kill_the_next_shooter(*args, **kwargs):
+        row = real_fire(*args, **kwargs)
+        with UserInterface(victim) as ui:
+            ui.hit(demo_game.DEMO_HIT_POINTS)
+        return row
+
+    mocker.patch.object(replay_mod, "fire_shot", side_effect=kill_the_next_shooter)
+
+    demo_game.start(total_s=0.0)
+    await demo_game._current.task
+
+    status = demo_game.status()
+    assert status["state"] == demo_game.STATE_DONE
+    assert status["error"] is None
+    assert status["skipped"] == [
+        {"scenario": doomed["scenario"], "reason": "User is dead"}
+    ]
+    assert status["fired"] == 9
+    assert doomed["scenario"] not in status["scenarios"]
+    assert shots_in_database() == 9
