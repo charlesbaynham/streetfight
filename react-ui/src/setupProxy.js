@@ -1,14 +1,9 @@
 // This file is only used for development: in production, the node server
-// index.js is used instead
-const express = require("express");
-const { createProxyMiddleware } = require("http-proxy-middleware");
+// index.js is used instead. Both share one proxy definition so that the SSE
+// disconnect handling cannot drift between them.
+const { createApiProxy } = require("../../server/apiProxy");
 
-// create the proxy (without context)
-const apiProxy = createProxyMiddleware({
-  target: "http://127.0.0.1:8000", // target host
-  changeOrigin: false,
-  ws: false,
-});
+const apiProxy = createApiProxy();
 
 module.exports = (app) => {
   // mount `apiProxy` in web server

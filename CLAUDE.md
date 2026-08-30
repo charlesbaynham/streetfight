@@ -379,6 +379,20 @@ Three deployment targets share one service definition:
 - Realtime updates flow through `asyncio_triggers` → SSE streams in
   `sse_event_streams.py`. When you change state that clients observe, make sure
   the corresponding update event is triggered.
+- **An SSE stream is only cleaned up when the client's disconnect reaches the
+  backend**, and the two node proxies had to be taught to pass it on.
+  `updates_generator` and `admin_updates_generator` cancel their producer tasks
+  in a `finally`, which runs when Starlette cancels the response — but only if
+  the socket actually closes. node-http-proxy tears the upstream request down
+  on the incoming request's `aborted` event, which a GET that arrived complete
+  never emits, so a closed tab used to leave the backend streaming keepalives
+  into a socket nobody read, forever. Both node servers therefore share one
+  proxy definition (`server/apiProxy.js`, used by `server/index.js` and
+  `react-ui/src/setupProxy.js`) which destroys the upstream request on the
+  response's `close`. The Caddy deployments (`Caddyfile`,
+  `nix/streetfight.nix`) proxy the backend themselves and were never affected.
+  Anything watching several events at once must cancel the losers too — see
+  `AdminInterface.generate_any_game_updates`.
 - No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev — and
   never on the live droplet, which is now carrying a real game.
 - **Venues** (`backend/venues.py`) are the single place where a location is

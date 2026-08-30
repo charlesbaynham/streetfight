@@ -1,5 +1,5 @@
 const express = require("express");
-const { createProxyMiddleware } = require("http-proxy-middleware");
+const { createApiProxy } = require("./apiProxy");
 const path = require("path");
 const cluster = require("cluster");
 const numCPUs = require("os").cpus().length;
@@ -15,14 +15,6 @@ const ssl_credentials = {
   cert: fs.readFileSync("cert.pem"),
 };
 
-// proxy middleware options
-const options = {
-  target: "http://127.0.0.1:8000", // target host
-  changeOrigin: false, // needed for virtual hosted sites
-  ws: false, // don't proxy websockets
-  ssl: ssl_credentials,
-};
-
 // static serving middleware options
 const static_1_year_cache_options = {
   cacheControl: true,
@@ -33,7 +25,7 @@ const static_1_year_cache_options = {
 const static_dirs = ["static", "images"];
 
 // create the proxy (without context)
-const apiProxy = createProxyMiddleware(options);
+const apiProxy = createApiProxy({ ssl: ssl_credentials });
 
 // Multi-process to utilize all CPU cores.
 if (!isDev && cluster.isMaster) {
