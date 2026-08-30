@@ -153,7 +153,19 @@ exemplar.
   - `src/utils.js` — `sendAPIRequest(...)` fetch wrapper (prefixes `/api/`),
     plus geolocation/camera permission helpers.
   - `src/UpdateListener.js` — SSE client; `registerListener`/`deregisterListener`
-    dispatch typed updates ("user", "ticker", ...).
+    dispatch typed updates ("user", "ticker", ...). It rebuilds the connection
+    from scratch rather than trusting the browser's own retry: a `bumpCounter`
+    in state re-runs the effect, and four things ask for that — the keepalive
+    watchdog (nothing heard for `KEEPALIVE_TIMEOUT`), a keepalive counter that
+    skipped (so the browser reconnected underneath us to a fresh backend
+    stream), an `onerror` after `TIMEOUT_ON_ERROR`, and the `online` event,
+    which is the only one that does not make a screen wait out a timer after
+    the wifi comes back. Each connection restarts at most once (`restarted`),
+    because `restartStream` closes the socket and clears its own watchdog
+    *before* asking React for a replacement — so a restart that got dropped
+    would leave nothing running to reconnect. That is also why the counter is
+    bumped functionally: the value the effect closed over is a generation stale
+    the moment anything else has bumped it.
   - `src/setupProxy.js` — dev proxy: forwards `/api`, `/docs`, `/openapi.json` to
     the backend at `http://127.0.0.1:8000`.
   - `src/venue.js` + `src/mapImages.js` — fetches the venue from the backend and
@@ -514,10 +526,11 @@ Three deployment targets share one service definition:
   publishes the template as a release asset only from that branch, and the
   hypervisor at home polls for it. TLS is terminated upstream by traefik
   (gardenfacer), so it answers plain HTTP on :80 and is reachable only inside
-  the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. It sets
-  `services.streetfight.sampleGame`, so its database is the deterministic test
-  world rather than real players, and it carries the *same* secrets as live
-  apart from `WEBSITE_URL`. Full runbook: `docs/deployment_staging.md`. **A
+  the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. Its
+  database **starts empty** — it deliberately does not set
+  `services.streetfight.sampleGame`, so the deterministic test world is made
+  on demand by the admin page's **Fire demo game** button rather than on every
+  boot — and it carries the *same* secrets as live apart from `WEBSITE_URL`. Full runbook: `docs/deployment_staging.md`. **A
   merge to master deploys neither target** — `live` and `staging` are both
   moved by hand.
 - **Docker Compose** (`compose.yml`) runs a **Caddy** frontend, the
@@ -537,7 +550,22 @@ Three deployment targets share one service definition:
   rely on it rather than hand-managing sessions/commits.
 - Realtime updates flow through `asyncio_triggers` → SSE streams in
   `sse_event_streams.py`. When you change state that clients observe, make sure
-  the corresponding update event is triggered.
+  the corresponding update event is triggered — **beside the state change, not
+  in the route**. `trigger_update_event("shots", …)` used to live in
+  `/api/submit_shot`, which is only one of the ways a shot enters a game: the
+  demo drip (`backend/demo_game.py`) and `npm run demoshots` call
+  `UserInterface.submit_shot` directly, so pressing **Fire demo game** put ten
+  shots in the database that no spectator screen, admin queue or nav-bar
+  counter ever heard about — a dashboard that looked frozen while its SSE
+  connection was perfectly healthy. It is announced from `submit_shot` now, via
+  `UserInterface.announce_after_commit`, which queues an event for the
+  `@db_scoped` post-commit hook (`user_interface.announce_updates`) so the
+  announcement lands after the row does. Two traps in there: the hook only runs
+  when the session ends **dirty**, so *anything* that flushes — including an
+  innocent-looking attribute read on an expired ORM object, which autoflushes —
+  silently cancels the announcement (hence `game_id` being read up front, and
+  the shot id being assigned by hand); and a client that reconnects re-syncs
+  because both generators yield a full set of prompts as their first act.
 - **An SSE stream is only cleaned up when the client's disconnect reaches the
   backend**, and the two node proxies had to be taught to pass it on.
   `updates_generator` and `admin_updates_generator` cancel their producer tasks
@@ -664,22 +692,23 @@ Three deployment targets share one service definition:
   what `QueueHead` did, so the auto-action drain was scoring every head as
   "now". Any new projection that will be passed to identification needs
   `time_created` in it.
-- **Firing a shot is what queues its review**, not the route that took it.
-  `UserInterface.submit_shot` triggers the `"shots"` update event and, when
-  the game's recognition toggle is on, calls `ai_shot_review.enqueue_review`
-  itself. Those two lines used to live in `/api/submit_shot`, which is only
-  *one* of the two callers: the demo game and the replay
-  (`backend/test_world/replay.py`) fire straight through the interface, so
-  every shot the demo dripped into a game with CharlesBot on arrived unread
-  and sat at "waiting for admin" until an admin flipped the toggle off and on
-  to sweep it up as backlog. Anything a new shot sets in motion belongs at the
-  writer.
-  A gotcha if you add to it: `AdminInterface.get_locations` runs on the same
-  session part-way through, and a `@db_scoped` call from another interface
-  **commits** — which expires every ORM object, so the next attribute access
-  reloads one and autoflushes the pending shot, clearing the dirty flag
-  `@db_scoped` uses to fire this user's update event. That is why the game id
-  and the toggle are read into locals before anything is written.
+- **Firing a shot is what queues its review**, not the route that took it —
+  the same lesson as the `"shots"` announcement above, one rung further in.
+  With the game's recognition toggle on, `UserInterface.submit_shot` calls
+  `ai_shot_review.enqueue_review` itself; that call used to live in
+  `/api/submit_shot`, which is only *one* of the ways a shot enters a game, so
+  every shot the demo drip put into a game with CharlesBot on arrived
+  **unread** — and with no review there is nothing for the auto-action drain
+  to act on, so the head sat at "waiting for admin" and blocked the queue
+  behind it until an admin flipped the toggle off and on to sweep it up as
+  backlog. Unlike the announcement it is fired inline rather than queued for
+  the post-commit hook: `enqueue_review` only creates a task, and a task
+  cannot start until the event loop regains control, which is after
+  `@db_scoped` has committed. The recognition toggle is read into a local
+  alongside `game_id` and for the same reason — `AdminInterface.get_locations`
+  runs on this session part-way through, and a `@db_scoped` call from another
+  interface **commits**, expiring every ORM object, so a later attribute read
+  reloads one and autoflushes.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

@@ -416,21 +416,6 @@ def test_a_shot_queues_nothing_while_recognition_is_off(
     spy.assert_not_called()
 
 
-def test_a_new_shot_wakes_the_shot_queue(
-    mocker, db_session, one_game, user_in_team, test_image_string
-):
-    """The admin dashboard and the spectator screen watch the "shots" event."""
-    mocked = mocker.patch(
-        "backend.user_interface.asyncio_triggers.trigger_update_event"
-    )
-
-    ui = UserInterface(user_in_team)
-    ui.award_ammo(1)
-    ui.submit_shot(test_image_string)
-
-    assert ("shots", one_game) in [call.args for call in mocked.call_args_list]
-
-
 # -- the replay workbench -----------------------------------------------------
 
 

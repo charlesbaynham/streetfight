@@ -235,6 +235,89 @@ describe("UpdateSSEConnection", () => {
       expect(first.readyState).toBe(2);
     });
 
+    test("a burst of errors schedules one reconnect, not one per error", () => {
+      // The browser fires onerror on every failed attempt while it retries
+      // its own way back, which on a night with bad wifi is a lot of them.
+      // Each one used to arm its own timer over the top of the last handle,
+      // so all but one were left uncancellable and recovery was pushed
+      // further away the worse the network got.
+      render(<UpdateSSEConnection />);
+
+      act(() => emitError());
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      act(() => emitError());
+      act(() => {
+        jest.advanceTimersByTime(1000);
+      });
+      act(() => emitError());
+
+      // The first error's timer still governs, so the rebuild happens on
+      // schedule rather than being pushed back by the later ones...
+      act(() => {
+        jest.advanceTimersByTime(TIMEOUT_ON_ERROR_MS - 2000);
+      });
+      expect(getEventSources()).toHaveLength(2);
+
+      // ...and the later ones left nothing behind to fire afterwards.
+      act(() => {
+        jest.advanceTimersByTime(TIMEOUT_ON_ERROR_MS);
+      });
+      expect(getEventSources()).toHaveLength(2);
+    });
+
+    test("the keepalive watchdog still fires after an error has been ridden out", () => {
+      // The stream that replaces a failed one has to be watched as closely as
+      // the first: a screen left running all evening reconnects many times,
+      // and one generation forgetting to arm its watchdog is a dashboard that
+      // silently stops.
+      render(<UpdateSSEConnection />);
+
+      act(() => emitError());
+      act(() => {
+        jest.advanceTimersByTime(TIMEOUT_ON_ERROR_MS);
+      });
+      expect(getEventSources()).toHaveLength(2);
+
+      act(() => {
+        jest.advanceTimersByTime(KEEPALIVE_TIMEOUT_MS + 1000);
+      });
+      expect(getEventSources()).toHaveLength(3);
+
+      act(() => {
+        jest.advanceTimersByTime(KEEPALIVE_TIMEOUT_MS + 1000);
+      });
+      expect(getEventSources()).toHaveLength(4);
+    });
+
+    test("coming back online reconnects at once rather than waiting out the watchdog", () => {
+      // The tablet's wifi dropping is the case this whole file exists for.
+      // Waiting the full keepalive timeout after the network is demonstrably
+      // back is 20s of a spectator screen showing a stale game.
+      render(<UpdateSSEConnection />);
+      const first = getEventSources()[0];
+
+      act(() => {
+        window.dispatchEvent(new Event("online"));
+      });
+
+      const sources = getEventSources();
+      expect(sources).toHaveLength(2);
+      expect(first.readyState).toBe(2); // closed
+    });
+
+    test("unmounting stops listening for the network coming back", () => {
+      const { unmount } = render(<UpdateSSEConnection />);
+      unmount();
+
+      act(() => {
+        window.dispatchEvent(new Event("online"));
+      });
+
+      expect(getEventSources()).toHaveLength(1);
+    });
+
     test("unmounting closes the EventSource and clears timers, so no reconnect follows", () => {
       const { unmount } = render(<UpdateSSEConnection />);
       const es = getEventSources()[0];

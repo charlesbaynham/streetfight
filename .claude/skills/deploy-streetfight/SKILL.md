@@ -23,7 +23,7 @@ switches itself. Nothing on the internet holds credentials into either host.
 | Picked up by | `nix/auto-deploy.nix` timer, a couple of minutes | cattle-deploy on the hypervisor, 15–25 minutes |
 | TLS | Caddy on the box, its own Let's Encrypt cert | gardenfacer's wildcard |
 | Reachable from | the internet | the house LAN and the tailnet only |
-| Database | **real and irreplaceable** | the sample game, rebuilt from a seed |
+| Database | **real and irreplaceable** | empty on a fresh boot; the sample game is made by the **Fire demo game** button |
 
 ## Deploying
 

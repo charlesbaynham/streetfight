@@ -194,12 +194,31 @@ def touch_user(user_interface: "UserInterface"):
     user.touch()
 
 
+def announce_updates(user_interface):
+    """Fire this scope's update events, now the session has committed.
+
+    Every scope announces the user itself. A call that also changes something
+    the rest of the game watches queues its own event with
+    :meth:`UserInterface.announce_after_commit` instead of firing it inline,
+    so the announcement lands *after* the row exists rather than before it -
+    and, more to the point, so it lands however the call was reached. The
+    ``/api/submit_shot`` route is not the only way a shot enters a game: the
+    demo drip and ``npm run demoshots`` go through the interface directly, and
+    a shot that reaches the database without a "shots" event is a shot no
+    spectator screen, admin queue or nav-bar counter ever hears about.
+    """
+    asyncio_triggers.trigger_update_event("user", user_interface.user_id)
+
+    pending = user_interface._pending_announcements
+    user_interface._pending_announcements = []
+    for event_type, key in pending:
+        asyncio_triggers.trigger_update_event(event_type, key)
+
+
 UserScopeWrapper = DatabaseScopeProvider(
     "users",
     precommit_method=touch_user,
-    postcommit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
-        "user", user_interface.user_id
-    ),
+    postcommit_method=announce_updates,
 )
 db_scoped = UserScopeWrapper.db_scoped
 
@@ -221,6 +240,7 @@ class UserInterface:
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
+        self._pending_announcements: List[tuple] = []
 
     def __enter__(self):
         from . import database
@@ -246,6 +266,10 @@ class UserInterface:
 
     def get_session(self):
         return self._session
+
+    def announce_after_commit(self, event_type: str, key) -> None:
+        """Queue an update event for :func:`announce_updates` to fire."""
+        self._pending_announcements.append((event_type, key))
 
     @db_scoped
     def _make_user(self) -> User:
@@ -505,15 +529,16 @@ class UserInterface:
         if user.num_bullets <= 0:
             raise HTTPException(403, "User has no ammo")
 
-        logger.info("User %s submitting shot to game %s", user.id, game.id)
-
-        # Read off the game *now*, before anything is written. The
-        # AdminInterface call below commits this session, which expires every
-        # ORM object in it, and the attribute access that reloads one
-        # afterwards autoflushes the pending shot -- clearing the dirty flag
-        # @db_scoped watches to decide whether this user's update event fires.
+        # Read before anything below dirties the session: an attribute read
+        # on an expired object autoflushes, and a flush clears the dirty flag
+        # @db_scoped uses to decide whether to announce anything at all (the
+        # same trap the shot id is assigned by hand to avoid, below). The
+        # AdminInterface call just below is what expires them: a @db_scoped
+        # call from another interface sharing this session commits it.
         game_id = game.id
         review_enabled = game.ai_shot_review_enabled
+
+        logger.info("User %s submitting shot to game %s", user.id, game_id)
 
         all_user_locations = AdminInterface(session=self._session).get_locations(
             game_id=game_id
@@ -546,22 +571,22 @@ class UserInterface:
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
 
-        # Everything a new shot sets in motion lives here, at the only thing
-        # that writes one, rather than in `/api/submit_shot`: the route is not
-        # the only caller. The demo game and the replay
-        # (backend/test_world/replay.py) fire straight through this method,
-        # and while the route owned these two lines every shot the demo
-        # dripped into a game with recognition on arrived unannounced and
-        # unread -- sitting at "waiting for admin" until somebody flipped the
-        # toggle off and on to sweep it up as backlog.
+        # Everything watching the queue - the admin's shot list, its nav-bar
+        # counter, the spectator screen's feed - hears about the shot here
+        # rather than in the route, so a shot fired by the demo drip announces
+        # itself exactly like a shot fired by a player.
+        self.announce_after_commit("shots", game_id)
+
+        # The review is queued here for the same reason, and it is the half
+        # that decides whether anybody ever *rules* on the shot: with no
+        # review there is nothing for the auto-action drain to act on, so a
+        # demo-fired shot sat at "waiting for admin" until an admin flipped
+        # the recognition toggle off and on to sweep it up as backlog.
         #
-        # Both are safe with the session still open: `trigger_update_event`
-        # only sets an asyncio.Event, and `enqueue_review` only creates a
-        # task. Neither yields, so @db_scoped has committed this shot before
-        # either the SSE stream or the review coroutine gets to run. The
-        # toggle and the game id are the ones read at the top, for the reason
-        # given there.
-        asyncio_triggers.trigger_update_event("shots", game_id)
+        # Fired inline rather than queued, because it is not an announcement:
+        # `enqueue_review` only creates a task, and a task cannot start until
+        # the event loop regains control - which is after @db_scoped has
+        # committed this shot and run the hook above.
         if review_enabled:
             from . import ai_shot_review
 
