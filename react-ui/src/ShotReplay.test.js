@@ -489,6 +489,196 @@ test("a failed replay is shown against the shot", async () => {
   expect(screen.getByText(/Replay failed: 502/)).toBeInTheDocument();
 });
 
+describe("escalation replay", () => {
+  const escalationPayload = {
+    verdict: "player",
+    candidate: 1,
+    target_user_id: "user-9",
+    target_name: "Bertha Bystander",
+    confidence: 0.82,
+    reasoning: "the burgundy hat matches candidate 1's reference photo",
+    candidates: [
+      {
+        number: 1,
+        user_id: "user-9",
+        name: "Bertha Bystander",
+        probability: 0.6,
+        reference_photo_shown: true,
+      },
+      {
+        number: 2,
+        user_id: "user-8",
+        name: "Colin Candidate",
+        probability: 0.3,
+        reference_photo_shown: false,
+      },
+    ],
+    requested_reference_photos: [],
+    transcript: [
+      { role: "user", text: "The escalation prompt", has_image: true },
+      { role: "user", text: "Here is the zoomed view", has_image: true },
+      {
+        role: "assistant",
+        reply: { verdict: "player", candidate: 1 },
+        reasoning: "Candidate 1's armband is the only lime one in frame.",
+      },
+    ],
+  };
+
+  test("escalating a shot shows the stronger model's verdict and transcript", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      { admin_replay_shot_escalation: escalationPayload },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Escalate 1 selected shot" }),
+      ),
+    );
+
+    const call = getLastAPICall("admin_replay_shot_escalation");
+    expect(call.method).toBe("POST");
+    // None of the contract boxes reach this path: the escalation prompt is
+    // assembled from the ranking, not typed.
+    expect(call.body).toEqual({ shot_id: "shot-1", reasoning_effort: null });
+
+    // Rendered by the queue's own ShotEscalation, so it reads identically
+    expect(screen.getByText("Stronger model")).toBeInTheDocument();
+    expect(
+      screen.getByText("HIT on Bertha Bystander (82%)"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/burgundy hat matches candidate 1/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/Colin Candidate - 30%/)).toBeInTheDocument();
+
+    // ...and the whole point of the item: the escalated exchange, turn by turn
+    expect(
+      screen.getByText("Full model transcript (3 turns)"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("The escalation prompt")).toBeInTheDocument();
+    expect(
+      screen.getByText("Candidate 1's armband is the only lime one in frame."),
+    ).toBeInTheDocument();
+  });
+
+  test("an escalation replay is shown beside the review replay, not instead of it", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      { admin_replay_shot_escalation: escalationPayload },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Replay 1 selected shot" }),
+      ),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Escalate 1 selected shot" }),
+      ),
+    );
+
+    // Reading the second rung against the first is the reason both are kept
+    expect(screen.getByText("HIT")).toBeInTheDocument();
+    expect(
+      screen.getByText("HIT on Bertha Bystander (82%)"),
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/Full model transcript/)).toHaveLength(2);
+  });
+
+  test("the chosen reasoning effort is sent with the escalation too", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      { admin_replay_shot_escalation: escalationPayload },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    fireEvent.change(screen.getByLabelText("Reasoning effort"), {
+      target: { value: "max" },
+    });
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Escalate 1 selected shot" }),
+      ),
+    );
+
+    expect(
+      getLastAPICall("admin_replay_shot_escalation").body.reasoning_effort,
+    ).toBe("max");
+  });
+
+  test("a shot with no stored review says why it cannot be escalated", async () => {
+    installWorkshopMock(
+      { "shot-1": makeShotDetail() },
+      {
+        admin_replay_shot_escalation: {
+          status: 400,
+          body: {
+            detail:
+              "This shot has no completed AI review to escalate from - run " +
+              "the AI review first",
+          },
+        },
+      },
+    );
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("checkbox", { name: "" })),
+    );
+    await actAndFlush(() =>
+      fireEvent.click(
+        screen.getByRole("button", { name: "Escalate 1 selected shot" }),
+      ),
+    );
+
+    expect(
+      screen.getByText(/Escalation replay failed: 400/),
+    ).toBeInTheDocument();
+  });
+});
+
 describe("vision-formatted images", () => {
   test("shows only the full frame before any replay has run", async () => {
     installWorkshopMock({ "shot-1": makeShotDetail() });

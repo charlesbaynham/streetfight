@@ -794,6 +794,43 @@ async def admin_replay_shot_review(request: _ReplayRequest) -> dict:
         raise HTTPException(502, f"Replay failed: {e}")
 
 
+class _EscalationReplayRequest(BaseModel):
+    shot_id: UUID
+    reasoning_effort: Optional[str] = None
+
+
+@admin_method(path="/admin_replay_shot_escalation", method="POST")
+async def admin_replay_shot_escalation(request: _EscalationReplayRequest) -> dict:
+    """Escalate one shot and return the payload, storing nothing.
+
+    The workbench's second rung: what the *stronger* model made of a shot, with
+    its full transcript, without spending a verdict on the shot the way the
+    queue's "Run escalated review" button does. Unlike the review replay above
+    there is no contract to vary -- the escalation prompt is assembled from the
+    candidate ranking, so the page's prompt, schema and zoom controls do not
+    reach this path; ``reasoning_effort`` does, overriding
+    OPENROUTER_ESCALATION_REASONING_EFFORT for this call only.
+
+    The same precondition as admin_escalate_shot: the ranking is built from the
+    cheap pass's stored reading, so a shot nobody has reviewed has nothing to
+    escalate from.
+    """
+    client = get_escalation_client(reasoning_effort=request.reasoning_effort)
+    if client is None:
+        raise HTTPException(503, "No vision model configured - set OPENROUTER_API_KEY")
+    review = AdminInterface().get_shot_ai_review(request.shot_id)
+    if review["state"] != AI_REVIEW_STATE_DONE or not review["review"]:
+        raise HTTPException(
+            400,
+            "This shot has no completed AI review to escalate from - run the AI "
+            "review first",
+        )
+    try:
+        return await shot_escalation.replay_shot_escalation(request.shot_id, client)
+    except Exception as e:
+        raise HTTPException(502, f"Escalation replay failed: {e}")
+
+
 @admin_method("/admin_get_shot_vision_images", method="GET")
 async def admin_get_shot_vision_images(shot_id: UUID) -> dict:
     """Return the shot image formatted exactly as the vision model sees it, at
