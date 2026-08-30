@@ -145,7 +145,13 @@ exemplar.
     turns its reference points into map geometry (`mapGeometry`) and pixel
     positions inside a box (`mapProjection`, shared by `MapView.js` and the
     admin's per-shot `ShotMap.js`); `mapImages.js` is the bundled map images
-    the server's `map.image` key resolves against.
+    the server's `map.image` key resolves against. `ShotMap.js` draws the
+    whole crowd, not just the shooter: everybody else in that shot's
+    `location_context` who fits in the box, nearest first, with a teammate
+    told apart from an opponent and anything that weakens the position - a
+    stale fix, a player who is out - said in words beside the dot. It is a
+    snapshot of the moment, so fix ages are measured against the shot's own
+    `time_created` (`shotEpochSeconds`), never the wall clock.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with

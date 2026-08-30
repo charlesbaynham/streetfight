@@ -2236,6 +2236,15 @@ this file for the same evenings. It supersedes #13 if it happens.
   `mapProjection` in `react-ui/src/venue.js`, which `MapView.js` was rewired
   onto rather than having a second copy. A shot with no fix says so and shows
   nothing, which is what every shot fired before tonight will do.
+- **And who else was there.** The same thumbnail now draws everybody else in
+  that shot's `location_context` who fits inside the 200 m box, nearest first
+  and capped at eight, so the admin can see the crowd the photograph was taken
+  into rather than only the ranked list's metres column. A teammate is hollow
+  (the caption says so), a player who is out is grey and labelled with their
+  state, and a fix too old to place somebody by is faded and labelled with its
+  age - measured against the shot's own `time_created`, like the scoring is.
+  The caption counts who was left off, so a busy corner never quietly
+  under-reports itself.
 
 **Nothing consumes either field yet, and that is deliberate.** The whole point
 was to record what could not be recovered afterwards. Identification
