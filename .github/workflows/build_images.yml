@@ -122,8 +122,16 @@ jobs:
   # Deployment is pull-based — CI has no route to a hypervisor behind domestic
   # NAT — so the hypervisor fetches the asset itself. The pattern, and the
   # contract this repo has to honour in exchange, live in nix-proxmox-cattle.
+  #
+  # The template is the **staging** deployment on the home lab, so it is
+  # released from `staging` rather than master — the counterpart to the
+  # droplet's `live` ref. Every other branch, master included, still builds it:
+  # that build is the check deploy-staging.yml gates on, and it publishes
+  # nothing, so merging to master deploys nowhere.
   build_lxc_template:
     permissions:
       contents: write
     uses: charlesbaynham/nix-proxmox-cattle/.github/workflows/build-template.yml@v1
+    with:
+      release_branch: staging
     secrets: inherit

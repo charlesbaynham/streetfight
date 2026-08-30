@@ -146,6 +146,18 @@ in
       description = "Level for the Python logging module. Note capitals.";
     };
 
+    sampleGame = lib.mkOption {
+      type = lib.types.bool;
+      default = false;
+      description = ''
+        Build the deterministic sample game at start-up if the database does
+        not already hold it (MAKE_DEBUG_ENTRIES). Idempotent, so it is safe to
+        leave on: `reset_db.make_debug_entries_if_wanted` returns early once
+        the game is there. For a staging deployment; never for a host carrying
+        a real game.
+      '';
+    };
+
     environmentFile = lib.mkOption {
       type = lib.types.path;
       default = "${cfg.stateDir}/secrets/streetfight.env";
@@ -197,6 +209,8 @@ in
         PYTHONUNBUFFERED = "1";
       } // lib.optionalAttrs (cfg.websiteUrl != null) {
         WEBSITE_URL = cfg.websiteUrl;
+      } // lib.optionalAttrs cfg.sampleGame {
+        MAKE_DEBUG_ENTRIES = "1";
       };
 
       serviceConfig = {

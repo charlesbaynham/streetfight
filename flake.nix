@@ -269,9 +269,16 @@
       # template. Everything generic about being a cattle container — the LXC
       # fixups, the artifact naming, the "/data must be a mountpoint" guard —
       # comes from nix-proxmox-cattle; only the app wiring is here.
+      #
+      # This is the **staging** deployment, on the home lab, not the live game:
+      # `name` is what the release asset is called, and homelab-infra's
+      # cattle deployer matches assets on `<services.yaml key>-lxc-proxmox-`.
+      # Its template is published only from the `staging` branch
+      # (.github/workflows/build_images.yml), as `live` is the droplet's.
+      # See docs/deployment_staging.md.
       lxcTemplate = cattle.lib.mkTemplate {
         inherit nixpkgs;
-        name = "streetfight";
+        name = "streetfight-staging";
         system = lxcSystem;
         stateDir = "/data";
         modules = [
@@ -281,6 +288,7 @@
               enable = true;
               backend = perSystem.packages.${lxcSystem}.backendEnv;
               frontend = perSystem.packages.${lxcSystem}.frontendBuild;
+              sampleGame = true;
             };
           }
         ];

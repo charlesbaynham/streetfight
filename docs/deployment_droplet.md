@@ -2,7 +2,9 @@
 
 The runbook for running the game from a public cloud VM - written for the dry
 run of 30 Aug 2026, but nothing in it is specific to that day. The droplet
-replaces the home-lab LXC deployment (see the cutover section at the bottom).
+replaces the home-lab LXC deployment (see the cutover section at the bottom);
+that LXC has since come back as **staging**, which is a different runbook -
+[`deployment_staging.md`](deployment_staging.md).
 
 > **Status, 28 Aug 2026**: cutover in progress on the live droplet
 > `167.172.62.186`. The first two installs completed cleanly and then never
@@ -255,5 +257,11 @@ domain pointing at nothing.
 
 This game repo's CI needs no change: it publishes artefacts (images, the LXC
 template) and has no route into the home network, so once the home side stops
-consuming them the deployment is stood down. Removing the
-`build_lxc_template` job is later cleanup, not part of the cutover.
+consuming them the deployment is stood down.
+
+**The LXC template was not retired afterwards - it became staging.** The
+container on the home lab is now `streetfight-staging`, deployed from the
+`staging` branch exactly as the droplet is from `live`, and reachable only
+inside the house at `https://streetfight-staging.i.houseabsolute.co.uk`. So
+`build_lxc_template` stays, now releasing from `staging` rather than master.
+See [`deployment_staging.md`](deployment_staging.md).
