@@ -222,3 +222,69 @@ def test_rebuilding_the_world_keeps_the_boxes_that_were_paid_for(tmp_path):
     fresh = {"seed": 1}
     assert carry_paid_work_forward(fresh, tmp_path / "absent.json") == 0
     assert "boxes" not in fresh
+
+
+# -- replaying the demo shots into a database ----------------------------------
+
+
+def test_a_replayed_shot_carries_the_positions_of_its_own_moment(db_session):
+    """The one thing about the replay that could rot without saying so.
+
+    A shot's `location_context` is a snapshot of where everybody's phone said
+    they were when the photograph was taken, and the cast walk for an hour --
+    so firing all ten against the game's final positions would produce shots
+    whose telemetry contradicts their own pictures. That is the exact
+    confusion R11 exists to test the identification code against, and
+    manufacturing it by accident would quietly make the fixture worthless.
+
+    Checked against the world's own telemetry table rather than a number typed
+    in here: S2 is fired ninety minutes before S9, when most of the cast have
+    not opened the app at all.
+    """
+    import datetime
+    import json
+
+    from backend.model import Shot
+    from backend.reset_db import SAMPLE_SEED
+    from backend.reset_db import make_debug_entries
+    from backend.test_world import world as world_mod
+    from backend.test_world.replay import DEFAULT_WORLD
+    from backend.test_world.replay import load_shots
+
+    make_debug_entries(SAMPLE_SEED)
+
+    early, late = "S2", "S9"
+    made = load_shots(SAMPLE_SEED, only=[early, late])
+    assert [row["scenario"] for row in made["loaded"]] == [early, late]
+
+    scenes = {
+        s["scenario"]: s for s in world_mod.load(DEFAULT_WORLD)["scenes"]["shots"]
+    }
+    known = {}
+    for scenario in (early, late):
+        scene = scenes[scenario]
+        shot = db_session.get(Shot, ids.shot_id(SAMPLE_SEED, scenario))
+        fired_at = shot.time_created.replace(tzinfo=datetime.timezone.utc).timestamp()
+        context = {
+            str(entry["user_id"]): entry for entry in json.loads(shot.location_context)
+        }
+        known[scenario] = [e for e in context.values() if e["latitude"] is not None]
+
+        for role in ("shooter", "target"):
+            entry = context[str(ids.user_id(SAMPLE_SEED, scene[role]["slug"]))]
+            stamp = entry["timestamp"]
+            age = None if stamp is None else round(fired_at - stamp)
+            # None on both sides is the honest case, not a hole: a phone that
+            # has never reported must not inherit a fix from later in the game.
+            assert age == scene["telemetry"][role].get("fix_age_s")
+
+    # Not merely different: the game fills up as phones wake, so the early
+    # shot has to see fewer players than the late one.
+    assert len(known[early]) < len(known[late])
+    assert scenes[early]["tick"] < scenes[late]["tick"]
+
+    # Replaying is a no-op the second time - the ids come from the seed.
+    again = load_shots(SAMPLE_SEED, only=[early, late])
+    assert again["loaded"] == []
+    assert again["skipped"] == [early, late]
+    assert db_session.query(Shot).count() == 2

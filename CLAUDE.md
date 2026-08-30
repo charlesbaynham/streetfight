@@ -182,10 +182,19 @@ exemplar.
     phone-shaped telemetry over the real venue, ten shot scenarios *selected*
     out of the encounter pool rather than invented, and a content-addressed
     image store. Driven by `python -m backend.test_world <world|scenes|
-    generate|observe|gate|gateb|check>`; `world.json` in
+    generate|observe|gate|gateb|check|shots>`; `world.json` in
     `tests/fixtures/test_game/` is its single source of truth and everything
     else is derived from it. `MAKE_DEBUG_ENTRIES` builds this game, so the
     sample database is a real crowd rather than ten empty teams.
+    `shots` (`npm run demoshots`, `test_world/replay.py`) puts the ten cropped
+    photographs into that game as shots somebody fired. It walks the scenarios
+    in tick order, moving the whole cast to the fix each of them had *at that
+    tick* before firing, because a shot's `location_context` is a snapshot of
+    the moment its photograph was taken — firing all ten against the game's
+    final positions would give every shot telemetry that contradicts its own
+    picture. The simulated hour is anchored to end now, so the newest shot is
+    a minute old and the oldest about ninety; shot ids are derived from the
+    seed, so replaying twice is a no-op (`--only S4` re-loads one).
 - `scripts/` — standalone analysis tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
@@ -217,6 +226,9 @@ npm run dev_both
 
 # Reset / initialise the database
 npm run resetdb          # python -m backend.reset_db
+
+# Fill the sample game's shot queue with the ten demo shots (dev only, free)
+npm run demoshots        # python -m backend.test_world shots
 ```
 
 There are **no database migrations** (no Alembic). The schema is created from the
@@ -451,14 +463,26 @@ Three deployment targets share one service definition:
   answer the old schema through the old follow-ups, so the new prompt has no
   effect — that was a real bug (roadmap R1). `build_prompt(zoom_mode=…)` writes
   the zoom wording that matches the shape being run; keep them in step.
-- **`User.location_accuracy` and `Shot.heading` are captured, not consumed.**
-  The fix accuracy that rides each `set_location` (and so lands in every shot's
-  `location_context`) and the compass heading captured in `MyWebcam.js` at the
-  moment of a shot exist because they cannot be recovered after a game night.
-  Nothing in `backend/shot_identification.py` or `backend/identity/` reads
-  them, and that is deliberate until there is real data to fit a model against
-  — the admin's per-shot map (`react-ui/src/ShotMap.js`) only displays them.
-  See `docs/roadmap.md` R5 and #5.
+- **`Shot.heading` is captured, not consumed.** The compass heading
+  `MyWebcam.js` records at the moment of a shot exists because it cannot be
+  recovered after a game night. Nothing in `backend/shot_identification.py` or
+  `backend/identity/` reads it, and that is deliberate until there is real data
+  to fit a model against — the admin's per-shot map
+  (`react-ui/src/ShotMap.js`) only displays it. See `docs/roadmap.md` R5 and
+  #5. The fix accuracy that rides each `set_location` **is** consumed: it is
+  σ_fix in the location term (`_effective_sigma_m`), which is why a phone that
+  honestly reports a bad fix is discounted rather than believed.
+- **A shot is scored as of when it was taken.** `rank_candidates` reads
+  `at_time` from the shot's own `time_created` (`shot_epoch`). Fix age is what
+  turns the location term off, so scoring against the present clock ages every
+  fix by however long the shot sat in the queue — which is worst exactly when
+  the queue is longest. There is no fallback: `shot_epoch` **raises** on a
+  shot with no time, `shots.time_created` is `nullable=False`, and
+  `submit_shot` is the only writer. The way that actually goes wrong is not a
+  corrupt row but a **columns-only query that forgets to select it** — which is
+  what `QueueHead` did, so the auto-action drain was scoring every head as
+  "now". Any new projection that will be passed to identification needs
+  `time_created` in it.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

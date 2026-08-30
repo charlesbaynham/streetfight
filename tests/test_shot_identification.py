@@ -8,7 +8,9 @@ outfits, and about the location term staying evidence rather than becoming a
 prior.
 """
 
+import datetime
 import json
+import time
 from types import SimpleNamespace
 from uuid import uuid4 as get_uuid
 
@@ -64,10 +66,24 @@ def review_of(appearance, confidence=0.9):
     return shot_vision.classify(shot_vision.parse_result(raw), SCHEME).to_dict()
 
 
-def shot_by(shooter, fixes=None):
+_UNSET = object()
+
+
+def shot_by(shooter, fixes=None, taken_at=_UNSET):
     return SimpleNamespace(
         user_id=shooter.id,
         location_context=json.dumps(fixes) if fixes is not None else None,
+        # Naive UTC, as the database stores it. Every real shot has one, so
+        # the default here is a time rather than None; pass `taken_at=None`
+        # for the corrupt row that the column's NOT NULL exists to forbid.
+        time_created=(
+            None
+            if taken_at is None
+            else datetime.datetime.fromtimestamp(
+                time.time() if taken_at is _UNSET else taken_at,
+                datetime.timezone.utc,
+            ).replace(tzinfo=None)
+        ),
     )
 
 
@@ -341,6 +357,53 @@ def test_proximity_breaks_a_tie_between_identical_outfits():
     )
 
     assert ranked.best == near.id
+
+
+def test_a_shot_is_scored_as_of_when_it_was_taken():
+    """A fix's age is measured from the photograph, not from the adjudication.
+
+    The two are minutes apart in a live game, so this went unnoticed. It is
+    ninety minutes on a replayed test-world shot (`npm run demoshots`) and
+    unbounded on any shot an admin comes back to the morning after: every fix
+    reads as stale, every Lambda collapses to 1, and the location term silently
+    stops existing exactly when the queue is longest and the admin most wants
+    the help.
+    """
+    shooter = player()
+    near = player(slot=7)
+    far = player(slot=7)  # deliberately identical: colour cannot separate them
+
+    # Fixes contemporaneous with the shot, and the whole thing long ago.
+    taken = 1_000_000.0
+    fixes = [
+        fix(shooter, 51.5000, -0.1000, taken),
+        fix(near, 51.5001, -0.1000, taken),
+        fix(far, 51.5300, -0.1000, taken),
+    ]
+
+    ranked = si.rank_candidates(
+        shot_by(shooter, fixes, taken_at=taken),
+        [shooter, near, far],
+        review_of(SCHEME.appearance_of_slot(7)),
+    )
+
+    posteriors = dict(ranked.ranked)
+    assert posteriors[near.id] > posteriors[far.id]
+    assert ranked.best == near.id
+
+
+def test_an_unstamped_shot_is_an_error_rather_than_scored_as_now():
+    """There is no such shot: `submit_shot` is the only thing that writes one
+    and the column is NOT NULL. Substituting the wall clock would turn a
+    corrupt row into a plausible-looking ranking, which is the one outcome
+    worse than a traceback."""
+    shooter = player()
+    with pytest.raises(ValueError, match="no time_created"):
+        si.rank_candidates(
+            shot_by(shooter, taken_at=None),
+            [shooter, player(slot=7)],
+            review_of(SCHEME.appearance_of_slot(7)),
+        )
 
 
 def test_a_stale_fix_goes_quiet_rather_than_eliminating_the_candidate():
