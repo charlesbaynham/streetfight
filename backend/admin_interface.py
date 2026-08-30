@@ -1748,25 +1748,35 @@ class AdminInterface:
                 events.append(get_trigger_event("circle", game_id[0]))
                 events.append(get_trigger_event("shots", game_id[0]))
 
-            # No games yet: there are no events to wait on, and
-            # asyncio.as_completed([]) would raise StopIteration and kill this
-            # generator. Poll until a game appears.
+            # No games yet: there is nothing to wait on. Poll until a game
+            # appears.
             if not events:
                 await asyncio.sleep(1)
                 yield
                 continue
 
-            # make futures for waiting for all these events
-            futures = [
-                asyncio.wait_for(event.wait(), timeout=timeout) for event in events
-            ]
+            logger.debug("(Admin Updater) Subscribing to events %s", events)
+            waiters = [asyncio.ensure_future(event.wait()) for event in events]
 
+            # Only one of these can win, and the losers wait on events that
+            # trigger_update_event has already dropped from the registry - so
+            # they can never finish on their own. Cancelling them in a finally
+            # covers the generator being closed mid-wait too, which is how an
+            # admin page that goes away ends.
             try:
-                logger.debug("(Admin Updater) Subscribing to events %s", events)
-                await next(asyncio.as_completed(futures))
+                done, _ = await asyncio.wait(
+                    waiters,
+                    timeout=timeout,
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+            finally:
+                for waiter in waiters:
+                    waiter.cancel()
+                await asyncio.gather(*waiters, return_exceptions=True)
 
+            if done:
                 logger.debug("(Admin Updater) Event received")
-                yield
-            except asyncio.TimeoutError:
+            else:
                 logger.debug("(Admin Updater) Event timeout")
-                yield
+
+            yield
