@@ -1294,17 +1294,36 @@ once is the right shape for a queue and the wrong shape for the spectator
 screen, whose whole job is to react to a shot landing — which it cannot show
 if every shot landed before the page loaded. The admin page's **Fire demo
 game** button (`backend/demo_game.py`, `DemoGamePanel` in `AdminMode.js`)
-provisions the sample game if it is absent and then fires the same ten shots
-one at a time, about thirty seconds apart, from a background asyncio task.
-Ninety minutes of world time in five of wall time, and the compression is done
-by **re-anchoring each shot** rather than scaling the clock: `anchor_epoch`
-takes the shot's own tick, so the shot reads as fired this second while every
-fix behind it keeps the age the world gave it — the property the whole replay
-exists to preserve. Idempotent (a second press changes nothing; a press after
-a cancel resumes, since the shot ids come from the seed), cancellable between
-shots, and it refuses outright if any player in a team is not one of the
-thirty simulated ones — it creates thirty players and shoots at them, and
-there is a live game now.
+clears the database, rebuilds the sample game and then fires the same ten
+shots one at a time, about thirty seconds apart, from a background asyncio
+task. Ninety minutes of world time in five of wall time, and the compression
+is done by **re-anchoring each shot** rather than scaling the clock:
+`anchor_epoch` takes the shot's own tick, so the shot reads as fired this
+second while every fix behind it keeps the age the world gave it — the
+property the whole replay exists to preserve. A press while it runs changes
+nothing; it is cancellable between shots, and the next press starts the whole
+game again from the first shot rather than resuming.
+
+**The press is destructive, so the guard carries the weight.** Resuming was
+the original behaviour and the wrong one for a demo somebody is about to show
+a room: what you want is the evening again, from the top, with the queue and
+the ticker empty. Starting from the top means clearing the database, which
+also disposes of the half-provisioned-cast problem the button used to have to
+repair. So the refusal is now the only thing between this button and a real
+evening's database, and it grew a second half to match: it declines if any
+player in a team is not one of the thirty simulated ones (as before) *and* if
+the database holds any game that is not the demo's own — a game an admin
+created but has not yet handed a join code to has nobody in a team to notice,
+and would be dropped with everything else. It is asked twice, once in `start`
+and once with nothing between it and the drop.
+
+**And it arms the cast.** They are provisioned as they would arrive at the
+door: no ammo, and no weapon at all (`UserInterface.DEFAULT_SHOT_DAMAGE` is
+zero), so a shot confirmed as a hit took nobody's last hit point and the
+dashboard's totals never moved. Each of the thirty now starts with fifty
+bullets, the weakest weapon (one point of damage) and one hit point — no
+armour, so a hit kills — in a game the button also unpauses, since a freshly
+created game is inactive and a paused game demonstrates nothing.
 
 **And a second bug, found by pressing the button on staging.** The demo game
 failed there with `[Errno 2] No such file or directory:

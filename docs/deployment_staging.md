@@ -136,10 +136,17 @@ printed from staging keeps working across a redeploy.
 
 The sample game is thirty players standing still. To watch a game *happen* —
 which is what the spectator screen exists for — use the admin page's **Fire demo
-game** button (`backend/demo_game.py`), which drips the ten demo shots in one at
-a time about thirty seconds apart. Staging is the right place for it: it refuses
-outright if any player who is in a team is not one of the thirty simulated ones,
-so it will not run against the live droplet, and here that check always passes.
+game** button (`backend/demo_game.py`), which clears the database, rebuilds the
+sample game with the cast armed and the game started, and then drips the ten
+demo shots in one at a time about thirty seconds apart. Every press replays the
+whole evening from the first shot. Staging is the right place for it: it
+refuses outright if any player who is in a team is not one of the thirty
+simulated ones, or if the database holds any game that is not the demo's own,
+so it will not run against the live droplet, and here both checks always pass.
+
+That the press is destructive matters less here than anywhere: staging's
+database *is* the sample game, and wiping it back to the seed is what the
+button is for.
 
 Wiping staging back to nothing is free, and is the fix for a model change the
 start-up column-adder cannot absorb (`database.add_missing_columns` adds new

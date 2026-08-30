@@ -449,6 +449,8 @@ function demoGameSummary(status) {
   switch (status.state) {
     case "idle":
       return "not started";
+    case "resetting":
+      return "clearing the database";
     case "provisioning":
       return "creating the thirty players (this takes a few seconds)";
     case "firing":
@@ -461,7 +463,7 @@ function demoGameSummary(status) {
     case "cancelled":
       return (
         `stopped after ${status.fired} of ${status.total} shots - ` +
-        "starting again picks up where it left off"
+        "starting again wipes the database and replays from the first shot"
       );
     case "done":
       return `all ${status.fired} shots fired`;
@@ -520,8 +522,10 @@ function DemoGamePanel() {
       <p>
         Thirty simulated players and their ten shots, dripped in one at a time
         over about five minutes so the spectator screen has something to react
-        to. Pressing it again while it runs changes nothing; after a cancel it
-        carries on from where it stopped.
+        to. Every press <b>clears the database</b> and replays the game from the
+        first shot, with the cast armed and the game started; it refuses to run
+        at all if this database holds anyone else&rsquo;s players or games.
+        Pressing it again while it runs changes nothing.
         <br />
         Demo game: <b>{demoGameSummary(status)}</b>
       </p>

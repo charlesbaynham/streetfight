@@ -18,21 +18,28 @@ reads as just fired, and every fix behind it keeps the exact age the world
 gave it. Between shots the cast jump forward by minutes of world time in
 seconds of wall time, which is what "speed up time" means here.
 
-Three properties the admin button needs:
+Four properties the admin button needs:
 
-* **Idempotent.** Starting a run that is already going returns its status and
-  changes nothing. Even across a cancel, a restart *resumes*: the shot ids are
-  derived from the seed, so the shots already fired are skipped and the drip
-  picks up at the next one. A half-provisioned game -- the cast interrupted
-  part-way through, by a crash, a reload, or a deleted player -- is
-  *completed* rather than fired into: the next press finishes provisioning
-  the missing players before resuming the drip.
+* **Every press starts the game from the beginning.** The button empties the
+  database, rebuilds the thirty players from the seed, arms them, unpauses the
+  game and fires all ten shots from the first. It used to *resume* -- a press
+  after a cancel picked up at the next unfired shot -- which is the wrong
+  thing for a demo somebody is about to show to a room: what you want is the
+  game you have already seen, again, from the top.
+* **It arms the cast.** They are provisioned as they would arrive at the door
+  -- no ammo, no weapon (``UserInterface.DEFAULT_SHOT_DAMAGE`` is zero) -- and
+  a shot from an unarmed player takes nobody's last hit point, so nothing on
+  the dashboard ever changes. So each of them is handed plenty of ammo, the
+  weakest weapon there is, and no armour at all: a hit kills.
 * **Cancellable.** Cancelling stops the task between shots; what has already
-  been fired stays fired.
+  been fired stays fired, until the next press wipes it.
 * **Refuses a real game.** If any player who is in a team is not one of the
-  thirty simulated ones, this does nothing at all. The demo provisions thirty
-  players and fires shots at them, and there is now a live game whose database
-  must never be on the receiving end of that.
+  thirty simulated ones, or the database holds a game that is not the demo's
+  own, this does nothing at all. That guard was always important -- the demo
+  provisions thirty players and fires shots at them -- and now that a press
+  *drops every table*, it is the only thing standing between this button and
+  somebody's real evening. It is asked twice: once before the task is created,
+  and again with nothing in between it and the drop itself.
 """
 
 import asyncio
@@ -45,10 +52,10 @@ from typing import List
 from typing import Optional
 
 from .database import session_scope
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import User
 from .reset_db import SAMPLE_SEED
-from .reset_db import sample_game_id
 from .test_world import ids
 from .test_world import replay as replay_mod
 
@@ -57,7 +64,17 @@ logger = logging.getLogger(__name__)
 # "About five minutes", spread over however many shots the world describes.
 DEFAULT_TOTAL_S = 300.0
 
+# What each simulated player is holding when the demo starts. Ammo they cannot
+# plausibly run out of, the weakest weapon in the lookup table (`Pewster`: one
+# point of damage, the standard fire delay), and one hit point -- no armour --
+# so that a hit that lands kills.
+DEMO_BULLETS = 50
+DEMO_SHOT_DAMAGE = 1
+DEMO_SHOT_TIMEOUT = DEFAULT_SHOT_TIMEOUT
+DEMO_HIT_POINTS = 1
+
 STATE_IDLE = "idle"
+STATE_RESETTING = "resetting"
 STATE_PROVISIONING = "provisioning"
 STATE_FIRING = "firing"
 STATE_DONE = "done"
@@ -78,9 +95,8 @@ class _Run:
     total_s: float
     world_path: Path
     images_dir: Optional[Path]
-    state: str = STATE_PROVISIONING
+    state: str = STATE_RESETTING
     total: int = 0
-    already_fired: int = 0
     fired: List[dict] = field(default_factory=list)
     missing: List[str] = field(default_factory=list)
     interval_s: Optional[float] = None
@@ -117,31 +133,71 @@ def strangers(seed: int = SAMPLE_SEED) -> List[str]:
     return [name or str(user_id) for user_id, name in rows if user_id not in known]
 
 
+def foreign_games(seed: int = SAMPLE_SEED) -> List[str]:
+    """Games in this database that are not the demo's own.
+
+    The second half of the guard, and the half that only matters now the
+    button wipes the database: a game an admin created ten minutes ago and has
+    not yet handed a join code to has no players in a team, so
+    :func:`strangers` sees nothing to complain about. Dropping every table
+    would take it with everything else, and "the teams I set up have gone" is
+    exactly the outcome this button must never produce.
+    """
+    demo_game_id = ids.game_id(seed)
+    with session_scope() as session:
+        rows = session.query(Game.id).filter(Game.id != demo_game_id).all()
+    return [str(game_id) for (game_id,) in rows]
+
+
 def refuse_if_live(seed: int = SAMPLE_SEED) -> None:
     found = strangers(seed)
-    if not found:
-        return
-    shown = ", ".join(sorted(found)[:5])
-    if len(found) > 5:
-        shown += f", and {len(found) - 5} more"
-    raise DemoGameRefused(
-        f"{len(found)} player(s) in this database are not part of the demo cast "
-        f"({shown}). The demo game creates thirty players and shoots at them, so "
-        "it will not run against a game somebody is playing."
-    )
+    if found:
+        shown = ", ".join(sorted(found)[:5])
+        if len(found) > 5:
+            shown += f", and {len(found) - 5} more"
+        raise DemoGameRefused(
+            f"{len(found)} player(s) in this database are not part of the demo cast "
+            f"({shown}). The demo game clears the database, creates thirty players "
+            "and shoots at them, so it will not run against a game somebody is "
+            "playing."
+        )
+
+    others = foreign_games(seed)
+    if others:
+        shown = ", ".join(sorted(others)[:5])
+        if len(others) > 5:
+            shown += f", and {len(others) - 5} more"
+        raise DemoGameRefused(
+            f"{len(others)} game(s) in this database are not the demo's own "
+            f"({shown}). The demo game clears the database, so it will not run "
+            "where somebody else's game would be wiped with it."
+        )
+
+
+def _reset_database(seed: int) -> None:
+    """Empty every table, so the press replays the game from the beginning.
+
+    The guard is asked again here rather than trusted from :func:`start`: this
+    is the line that does the damage, and there is nothing between the
+    question and the answer.
+    """
+    refuse_if_live(seed)
+
+    from .database import engine
+    from .reset_db import reset_database
+
+    logger.warning("Demo game: clearing the database")
+    reset_database(engine)
 
 
 def _provision(seed: int) -> None:
-    """Make the sample game, or finish it, unless the whole cast is there.
+    """Build the sample game from nothing.
 
-    The ``Game`` row existing is not proof the cast is: ``test_world.cast
-    .provision`` commits the game, then the teams, then each of the thirty
-    players in their own transaction, so anything that interrupts it part-way
-    -- the service restarting, a dev-server reload, an exception mid-pick --
-    leaves a game row with a missing or partial cast. Checking for the
-    players themselves, not just the game, is what makes a second press
-    *finish* a half-provisioned game rather than skip straight to firing
-    shots at shooters who were never really there.
+    Unconditional, because :func:`_reset_database` ran a moment ago and there
+    is never anything left to resume from. (This used to have to work out
+    whether a previous press had been interrupted part-way through the cast;
+    wiping first makes that question moot, which is most of why wiping is
+    worth it.)
 
     Synchronous, and therefore blocking the event loop for the few seconds
     thirty players take to pick outfits through the real allocator. That is
@@ -151,57 +207,77 @@ def _provision(seed: int) -> None:
     """
     from .reset_db import make_debug_entries
 
-    game_id = sample_game_id()
-    wanted = demo_user_ids(seed)
-    with session_scope() as session:
-        game_present = session.get(Game, game_id) is not None
-        present = {
-            user_id
-            for (user_id,) in session.query(User.id)
-            .filter(User.id.in_(wanted), User.team_id.isnot(None))
-            .all()
-        }
-    missing = wanted - present
-
-    if game_present and not missing:
-        return
-
-    logger.warning(
-        "Demo game: provisioning the sample game %s (%d of %d cast members missing)",
-        game_id,
-        len(missing),
-        len(wanted),
-    )
+    logger.warning("Demo game: provisioning the sample game %s", ids.game_id(seed))
     made = make_debug_entries(seed)
     logger.warning(
         "Demo game: %d players, %d with a location", made["players"], made["located"]
     )
 
 
+def _kit_out(seed: int) -> int:
+    """Arm the cast: ammo, the weakest weapon, no armour. Returns how many.
+
+    Written straight to the columns in one session, for the reason
+    ``replay.place_players`` gives: this is a game being set up, not thirty
+    players each collecting something, and it must not fire an update event
+    per player.
+    """
+    armed = 0
+    with session_scope() as session:
+        for user_id in demo_user_ids(seed):
+            user = session.get(User, user_id)
+            if user is None:
+                continue
+            user.num_bullets = DEMO_BULLETS
+            user.shot_damage = DEMO_SHOT_DAMAGE
+            user.shot_timeout = DEMO_SHOT_TIMEOUT
+            user.hit_points = DEMO_HIT_POINTS
+            user.time_of_death = None
+            armed += 1
+    return armed
+
+
+def _unpause(seed: int) -> bool:
+    """Start the game if it is paused. Returns whether it had to be started.
+
+    A freshly created game is inactive, and so is one an admin paused before
+    pressing the button. Either way the demo has ten shots to show and a
+    paused game to show them in, so it starts the game itself -- through
+    ``AdminInterface`` rather than the column, so the ticker says "Game
+    started" and every player's client hears about it.
+    """
+    from .admin_interface import AdminInterface
+
+    game_id = ids.game_id(seed)
+    with session_scope() as session:
+        game = session.get(Game, game_id)
+        if game is None or game.active:
+            return False
+
+    logger.warning("Demo game: starting the paused game %s", game_id)
+    AdminInterface().set_game_active(game_id, True)
+    return True
+
+
 async def _drip(run: _Run) -> None:
-    """Provision if needed, then fire the pending shots one at a time."""
+    """Wipe, rebuild, arm, unpause, then fire the shots one at a time."""
     try:
+        _reset_database(run.seed)
+
+        run.state = STATE_PROVISIONING
         _provision(run.seed)
+        _kit_out(run.seed)
+        _unpause(run.seed)
 
         world = replay_mod.load_world(run.world_path)
         shots = replay_mod.demo_shots(world)
         images_dir = run.images_dir or replay_mod.default_images_dir(run.world_path)
 
         run.total = len(shots)
-        # Derived from the whole set, not from what is left, so resuming a
-        # cancelled run keeps the pace it started with.
         run.interval_s = run.total_s / max(1, run.total)
-
-        already = replay_mod.fired_shot_ids(ids.game_id(run.seed))
-        pending = [
-            shot
-            for shot in shots
-            if ids.shot_id(run.seed, shot["scenario"]) not in already
-        ]
-        run.already_fired = run.total - len(pending)
         run.state = STATE_FIRING
 
-        for index, shot in enumerate(pending):
+        for index, shot in enumerate(shots):
             if index:
                 run.next_fire_at = time.time() + run.interval_s
                 await asyncio.sleep(run.interval_s)
@@ -258,6 +334,10 @@ def start(
 ) -> dict:
     """Start the drip, or leave a running one alone. Returns the status.
 
+    A press while a run is going changes nothing -- the run is already showing
+    what the button promises. A press after one has finished or been cancelled
+    wipes the database and plays the whole game again from the first shot.
+
     Raises :class:`DemoGameRefused` if this database is somebody's real game.
     """
     global _current
@@ -295,7 +375,6 @@ def status() -> dict:
             "running": False,
             "fired": 0,
             "total": 0,
-            "already_fired": 0,
             "scenarios": [],
             "missing": [],
             "interval_s": None,
@@ -310,11 +389,8 @@ def status() -> dict:
     return {
         "state": run.state,
         "running": run.running,
-        # Counting what was already there as done: a resumed run's progress
-        # bar is about the game, not about this press of the button.
-        "fired": run.already_fired + len(run.fired),
+        "fired": len(run.fired),
         "total": run.total,
-        "already_fired": run.already_fired,
         "scenarios": [row["scenario"] for row in run.fired],
         "missing": run.missing,
         "interval_s": run.interval_s,

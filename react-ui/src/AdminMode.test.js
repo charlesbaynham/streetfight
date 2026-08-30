@@ -168,7 +168,6 @@ function idleDemoStatus(overrides = {}) {
     running: false,
     fired: 0,
     total: 0,
-    already_fired: 0,
     scenarios: [],
     missing: [],
     interval_s: null,
@@ -972,7 +971,8 @@ describe("DemoGamePanel", () => {
     expect(getAPICalls("admin_cancel_demo_game")).toHaveLength(1);
     expect(
       screen.getByText(
-        "stopped after 3 of 10 shots - starting again picks up where it left off",
+        "stopped after 3 of 10 shots - starting again wipes the database " +
+          "and replays from the first shot",
       ),
     ).toBeInTheDocument();
     expect(cancel).toBeDisabled();
