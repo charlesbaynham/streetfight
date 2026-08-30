@@ -6,8 +6,8 @@ lab, at <https://streetfight-staging.i.houseabsolute.co.uk>.
 It exists because the droplet does not have room for mistakes. That box carries a
 real game whose join links are already in people's WhatsApp, so `master` cannot be
 put on it casually. Staging is the same application from the same repository, on a
-container that costs nothing to break, with a sample game in it instead of real
-players.
+container that costs nothing to break, with no real players on it: its
+database starts empty, and the sample game is made on demand from a seed.
 
 > Live 30 Aug 2026. It is CT 101 on `homeserver` at `10.0.1.30`, reusing the
 > container and the state volume that ran the game before the droplet cutover.
@@ -23,7 +23,7 @@ players.
 | What moves | the `live` ref; the host polls it | the `staging` ref; CI publishes a template release, the hypervisor polls that |
 | TLS | Caddy on the box, its own certificate | gardenfacer, on its `*.i.houseabsolute.co.uk` wildcard |
 | Reachable from | the internet | the house LAN and the tailnet, and nowhere else |
-| Database | real, irreplaceable | the sample game, rebuilt from a seed |
+| Database | real, irreplaceable | empty until somebody presses **Fire demo game** |
 
 **Merging to master deploys neither.** Both are a deliberate act, and the two
 branches are the whole gate.
@@ -122,42 +122,49 @@ Roll back on `homeserver` instead, naming the generation you want:
 
 Three generations are kept per service, so recent ones are still downloadable.
 
-## The sample game
+## The sample game — made by hand, not on boot
 
-Staging sets `services.streetfight.sampleGame`, which puts `MAKE_DEBUG_ENTRIES` in
-the backend's environment. On start-up the app builds the deterministic test world
-- six teams of five, each having picked an outfit through the real picking code -
-if the database does not already hold it, and does nothing if it does. So the
-first boot after a wipe populates it and every redeploy afterwards leaves it
-alone.
+**Staging starts empty.** It no longer sets
+`services.streetfight.sampleGame`, so `MAKE_DEBUG_ENTRIES` is not in the
+backend's environment and a fresh database stays a fresh database: a boot
+creates the schema and nothing else. Populating it is a deliberate press, not
+something the box does to itself every time it restarts.
 
-Everything is derived from one seed (`reset_db.SAMPLE_SEED`), so a join code
-printed from staging keeps working across a redeploy.
+The press is the admin page's **Fire demo game** button
+(`backend/demo_game.py`), which clears the database, rebuilds the deterministic
+test world - six teams of five, each having picked an outfit through the real
+picking code - arms the cast, starts the game, and then drips the ten demo
+shots in one at a time about thirty seconds apart. That is also what makes it
+worth watching: the sample game on its own is thirty players standing still,
+and the spectator screen exists to react to a shot landing.
 
-The sample game is thirty players standing still. To watch a game *happen* —
-which is what the spectator screen exists for — use the admin page's **Fire demo
-game** button (`backend/demo_game.py`), which clears the database, rebuilds the
-sample game with the cast armed and the game started, and then drips the ten
-demo shots in one at a time about thirty seconds apart. Every press replays the
-whole evening from the first shot. Staging is the right place for it: it
-refuses outright if any player who is in a team is not one of the thirty
-simulated ones, or if the database holds any game that is not the demo's own,
-so it will not run against the live droplet, and here both checks always pass.
+Everything is derived from one seed (`reset_db.SAMPLE_SEED`), so the game, its
+teams and its join codes are the same every press and a printed join code keeps
+working across a redeploy.
 
-That the press is destructive matters less here than anywhere: staging's
-database *is* the sample game, and wiping it back to the seed is what the
-button is for.
+Staging is the right place for that button: it refuses outright if any player
+who is in a team is not one of the thirty simulated ones, or if the database
+holds any game that is not the demo's own - so it will not run against the live
+droplet, and here both checks pass as long as nobody has created a game of
+their own on the box. If one has been created and is no longer wanted, delete
+it from the admin page (or wipe the database, below) before pressing.
 
-Wiping staging back to nothing is free, and is the fix for a model change the
-start-up column-adder cannot absorb (`database.add_missing_columns` adds new
-columns to an existing database at start-up, but cannot drop or retype one). On
-`homeserver`:
+An existing staging container carries whatever its state volume already holds,
+so a box that was populated by the old start-up behaviour keeps that sample
+game until the next press or wipe. A leftover sample game is the demo's own to
+wipe, so it does not block the button.
+
+Wiping staging back to nothing is free, and is also the fix for a model change
+the start-up column-adder cannot absorb (`database.add_missing_columns` adds
+new columns to an existing database at start-up, but cannot drop or retype
+one). On `homeserver`:
 
 ```bash
 rm -f "$(pvesm path usb-zfs:subvol-9101-disk-0)"/db/data.db
 ```
 
-The next deploy - or a restart - rebuilds the schema and the sample game.
+The next deploy - or a restart - rebuilds the schema, and leaves it empty for
+the button.
 
 ## Secrets
 
