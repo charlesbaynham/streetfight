@@ -114,10 +114,13 @@ exemplar.
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
   - `shot_escalation.py` — the hard cases (roadmap #11): too few readable
-    garments sends the queue head to a second, stronger vision model
+    garments sends the queue head to a second vision pass
     (`OPENROUTER_ESCALATION_MODEL`) with the GPS-ranked candidates and their
-    reference photos; its verdict re-enters the auto-action gate, with
-    "unsure" landing the shot back with the admin.
+    reference photos. That model is free to be stronger than the cheap
+    pass's, but doesn't have to be — unset, it mirrors `OPENROUTER_MODEL`, so
+    the extra context (candidates, reference photos) is what earns the
+    escalation its keep, not being a bigger model. Its verdict re-enters the
+    auto-action gate, with "unsure" landing the shot back with the admin.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who
@@ -465,7 +468,7 @@ Three deployment targets share one service definition:
   (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an unsettled head blocks the
-  shots behind it. **The stronger model stands in for the admin**
+  shots behind it. **The escalation pass stands in for the admin**
   (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL`): unset, it
   mirrors `OPENROUTER_MODEL` (`vision_client.get_escalation_client`), so with
   recognition configured and the per-game `ai_escalation_enabled` toggle on
@@ -480,7 +483,7 @@ Three deployment targets share one service definition:
   somebody on its own. A stored escalation is consulted *before* the weak
   reading is retried — its verdict outranks the reading that prompted it,
   including one an admin fired by hand (`admin_escalate_shot`, "Run escalated
-  review"). The admin sees a shot only when the stronger model handed it back
+  review"). The admin sees a shot only when the escalation model handed it back
   ("unsure", or below its own thresholds: 0.75 to name a player, 0.6 for a
   miss/bystander), when the escalation errored, or when there is no vision at
   all to ask (`OPENROUTER_API_KEY` unset) — that toggle is a kill switch
@@ -491,7 +494,7 @@ Three deployment targets share one service definition:
   toggle, `ai_resolve_everything_enabled` (default off), relaxes only the
   confidence gate: an unconfident verdict resolves to the best call so the
   players can appeal it (see appeals, below) rather than waiting on the admin
-  — but only once the stronger model is out of the picture, since a second
+  — but only once escalation is out of the picture, since a second
   opinion that is actually coming beats a forced guess. It never forces a
   resolution with nothing to resolve *from* — no usable review, an
   inconsistent reading, no ranking at all, an errored escalation — since with
