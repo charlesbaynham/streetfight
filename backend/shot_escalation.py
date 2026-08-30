@@ -114,15 +114,16 @@ class EscalationError(ValueError):
 def enqueue_escalation(shot_id: UUID, client=None) -> Optional[asyncio.Task]:
     """Schedule an escalation of one shot. None if the feature is not set up.
 
-    Returning None is the safety valve: with no escalation model configured
-    (or no event loop) the shot simply waits for the admin, exactly as it did
-    before this rung existed.
+    Returning None is the safety valve: with no vision at all (or no event
+    loop) the shot simply waits for the admin, exactly as it did before this
+    rung existed. ``OPENROUTER_ESCALATION_MODEL`` defaults to the recognition
+    model, so ``OPENROUTER_API_KEY`` is the only thing that can make this None.
     """
     client = client or get_escalation_client()
     if client is None:
         logger.info(
             "Not escalating shot %s: no escalation client configured "
-            "(set OPENROUTER_API_KEY and OPENROUTER_ESCALATION_MODEL)",
+            "(set OPENROUTER_API_KEY)",
             shot_id,
         )
         return None

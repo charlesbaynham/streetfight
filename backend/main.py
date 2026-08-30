@@ -737,9 +737,7 @@ async def admin_escalate_shot(shot_id: UUID):
     """
     client = get_escalation_client()
     if client is None:
-        raise HTTPException(
-            400, "No escalation model configured - set OPENROUTER_ESCALATION_MODEL"
-        )
+        raise HTTPException(400, "No vision model configured - set OPENROUTER_API_KEY")
     review = AdminInterface().get_shot_ai_review(shot_id)
     if review["state"] != AI_REVIEW_STATE_DONE or not review["review"]:
         # The candidate ranking the stronger model is given is built from that

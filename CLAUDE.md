@@ -354,7 +354,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
-| `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = escalation off) |
+| `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = mirrors `OPENROUTER_MODEL`, so escalation is on wherever recognition is) |
 | `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort override for the escalation model |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
@@ -466,9 +466,13 @@ Three deployment targets share one service definition:
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an unsettled head blocks the
   shots behind it. **The stronger model stands in for the admin**
-  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL`): with it
-  configured and the per-game `ai_escalation_enabled` toggle on, *nothing
-  reaches a human until it has looked*. Every way the weak reading fails to
+  (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL`): unset, it
+  mirrors `OPENROUTER_MODEL` (`vision_client.get_escalation_client`), so with
+  recognition configured and the per-game `ai_escalation_enabled` toggle on
+  (its default), *nothing reaches a human until it has looked*, with no second
+  model to set up. Point `OPENROUTER_ESCALATION_MODEL` at a genuinely stronger
+  model to make escalation a real second opinion rather than the same model
+  asked twice. Every way the weak reading fails to
   settle a shot — unconfident, fits nobody (`inconsistent`), a tie, an
   unrecognised outcome, or too little read to name anybody — escalates. So
   the readable-channel test (4, or 3 including armbands) no longer picks who
@@ -478,9 +482,10 @@ Three deployment targets share one service definition:
   including one an admin fired by hand (`admin_escalate_shot`, "Run escalated
   review"). The admin sees a shot only when the stronger model handed it back
   ("unsure", or below its own thresholds: 0.75 to name a player, 0.6 for a
-  miss/bystander), when the escalation errored, or when there is no stronger
-  model to ask — that toggle is a kill switch inside an opted-in feature, not
-  a third opt-in, which is why it defaults **on**. A pending escalation blocks
+  miss/bystander), when the escalation errored, or when there is no vision at
+  all to ask (`OPENROUTER_API_KEY` unset) — that toggle is a kill switch
+  inside an opted-in feature, not a third opt-in, which is why it defaults
+  **on**. A pending escalation blocks
   the queue the same way. "Too few channels" is never a bystander verdict on
   its own — `classify()`'s old mapping to that is retired. A fourth per-game
   toggle, `ai_resolve_everything_enabled` (default off), relaxes only the

@@ -83,11 +83,13 @@ class Game(Base):
 
     # When off, the ladder's escalate rungs go straight to the admin instead of
     # to the stronger model (backend/shot_escalation.py) -- exactly what happens
-    # with no OPENROUTER_ESCALATION_MODEL configured. Defaults *on*, unlike the
-    # two above: those are the opt-in for the AI features, while escalation only
-    # ever runs when auto-actions are on and an escalation model is configured,
-    # so this is a kill switch inside a feature already opted into rather than a
-    # third opt-in.
+    # with no OPENROUTER_API_KEY configured. OPENROUTER_ESCALATION_MODEL itself
+    # defaults to whatever OPENROUTER_MODEL is, so escalation needs no separate
+    # opt-in once recognition is set up. Defaults *on*, unlike the two above:
+    # those are the opt-in for the AI features, while escalation only ever runs
+    # when auto-actions are on and a vision model is configured, so this is a
+    # kill switch inside a feature already opted into rather than a third
+    # opt-in.
     ai_escalation_enabled = Column(Boolean, nullable=False, default=True)
 
     # When on, the auto-action drain resolves the head of the queue as best it
