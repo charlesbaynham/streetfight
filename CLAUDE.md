@@ -27,11 +27,15 @@ its licence is withdrawn.
 What that changes, in practice:
 
 - **Wiping the database now costs something real.** `resetdb`,
-  `RESET_DATABASE`, and anything else that runs `create_all()` over a fresh
-  file are dev-only. Never suggest one as a way past a problem on the live
-  box, and say so plainly if a change would need one — every join QR already
-  sent dies with the game it was minted for
-  (`docs/r9_agent_walkthrough_2026-08-29.md` B2).
+  `RESET_DATABASE`, the admin's **Fire demo game** button, and anything else
+  that runs `create_all()` over a fresh file are dev-only. Never suggest one
+  as a way past a problem on the live box, and say so plainly if a change
+  would need one — every join QR already sent dies with the game it was
+  minted for (`docs/r9_agent_walkthrough_2026-08-29.md` B2). The demo button
+  is the one of those that an admin can reach from a phone, which is why its
+  refusal check (`demo_game.refuse_if_live`) is load-bearing: it declines to
+  run if the database holds any player in a team, or any game, that is not the
+  demo's own.
 - **There are still no migrations**, so a change to `backend/model.py` and a
   live database are now in genuine tension. A column addition is not free:
   it needs a hand-written `ALTER TABLE` against `/data`, or a considered
@@ -213,20 +217,37 @@ exemplar.
     seed, so replaying twice is a no-op (`--only S4` re-loads one).
 - `backend/demo_game.py` — the same ten shots, but **dripped in live**: the
   admin's **Fire demo game** button (`AdminMode.js`'s `DemoGamePanel`,
-  `/api/admin_start_demo_game`) provisions the sample game if it is not there
-  and then fires one shot every thirty seconds or so from a background asyncio
-  task. `npm run demoshots` fills a queue to adjudicate; this fills a dashboard
-  to *watch*, which cannot show the spectator screen reacting to a shot if
-  every shot landed before the page loaded. Time is sped up by **re-anchoring
-  each shot**, not by scaling the clock: `anchor_epoch(tick)` puts that shot's
-  tick at this instant, so the shot reads as just fired while every fix behind
-  it keeps the exact age the world gave it. Idempotent (pressing it again while
-  it runs changes nothing, and after a cancel it resumes — the shot ids come
-  from the seed; a half-provisioned game, cast interrupted mid-way by a crash,
-  a reload, or a deleted player, is completed rather than fired into),
-  cancellable, and it **refuses to run at all** if anybody in a team is not
-  one of the thirty simulated players, since it creates thirty players and
-  shoots at them.
+  `/api/admin_start_demo_game`) **wipes the database**, rebuilds the sample
+  game from the seed, arms the cast, unpauses the game and then fires one shot
+  every thirty seconds or so from a background asyncio task. `npm run
+  demoshots` fills a queue to adjudicate; this fills a dashboard to *watch*,
+  which cannot show the spectator screen reacting to a shot if every shot
+  landed before the page loaded. Time is sped up by **re-anchoring each
+  shot**, not by scaling the clock: `anchor_epoch(tick)` puts that shot's tick
+  at this instant, so the shot reads as just fired while every fix behind it
+  keeps the exact age the world gave it. Four things it guarantees:
+  - **Every press replays from the first shot.** It used to resume after a
+    cancel; a demo you are about to show a room wants the whole game again,
+    from the top. Wiping first is also what lets `_provision` be
+    unconditional — there is no half-provisioned cast left to repair.
+  - **It arms the cast**, because they are provisioned as they would arrive at
+    the door: no ammo and *no weapon at all* (`DEFAULT_SHOT_DAMAGE` is zero),
+    so a confirmed hit would take nobody's last hit point and nothing on the
+    dashboard would ever change. Each of the thirty gets `DEMO_BULLETS` (50),
+    the weakest weapon (damage 1, the standard delay) and one hit point — no
+    armour, so a hit kills.
+  - **It unpauses the game**, through `AdminInterface.set_game_active` so the
+    ticker and the players' clients hear about it.
+  - **It refuses to run at all** if any player in a team is not one of the
+    thirty simulated ones, *or* if the database holds any game that is not the
+    demo's own (`strangers`, `foreign_games`). That second half exists because
+    the button now drops every table: a game an admin created but has not yet
+    handed a join code to has nobody in a team to notice. The guard is asked
+    twice — once before the task is created, once with nothing between it and
+    the drop. **It is the only thing between this button and a real evening's
+    database, so treat it as load-bearing.**
+  Pressing it again *while it runs* still changes nothing, and it is
+  cancellable between shots.
 - `scripts/` — standalone tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
@@ -301,8 +322,10 @@ npm run demoshots        # python -m backend.test_world shots
 ```
 
 To watch a dashboard fill up instead of finding it already full, use the admin
-page's **Fire demo game** button (`backend/demo_game.py`), which drips the same
-ten shots in one at a time over about five minutes.
+page's **Fire demo game** button (`backend/demo_game.py`), which clears the
+database, rebuilds the sample game and drips the same ten shots in one at a
+time over about five minutes. It refuses to run against a database holding
+anybody else's players or games.
 
 There are **no database migrations** (no Alembic). The schema is created from the
 ORM models in `backend/model.py` via `create_all()`. After changing a model,
