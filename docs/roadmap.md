@@ -1264,6 +1264,48 @@ every crosshair sits within 0.0002 of its aim point. The boxes live in
 them away and an edited scene simply gets a new image with no stale box
 attached. See R12 for doing this part without an API.
 
+**The shots can now be replayed into a database.** `npm run demoshots`
+(`python -m backend.test_world shots` → `backend/test_world/replay.py`) fires
+the ten cropped photographs into the sample game as shots somebody took, so a
+dev's queue, admin map and spectator screen have a real evening in them
+instead of nothing. It walks the scenarios in tick order and moves the whole
+cast to the fix each of them had *at that tick* before firing, so each shot's
+`location_context` is the snapshot its own moment had: the queue head sees 4
+of 30 players (most phones have not opened the app yet at tick 114) and the
+last sees all 30, and every fix age in the database matches the world's own
+telemetry table to the second. The simulated hour is anchored to end now, and
+the shot ids are derived from the seed, so replaying is idempotent. Costs
+nothing and needs no key. `UserInterface.submit_shot` grew optional
+`shot_id`/`time_created` arguments for this; `/api/submit_shot` passes
+neither, and a real shot is still stamped by the database.
+
+**One bug that pass turned up, now fixed.** `rank_candidates` defaulted
+`at_time` to *now*, so a fix's age was measured from the adjudication rather
+than from the photograph. In a live game the two are minutes apart and it
+never showed; on a shot replayed from ninety minutes ago every fix read as
+stale, Λ collapsed to 1 and the location term stopped existing — and the same
+would happen to any real shot an admin came back to the morning after, which
+is precisely when the queue is longest. It now defaults to the shot's own
+`time_created` (`shot_identification.shot_epoch`, naive UTC as both engines
+write it), which fixes all five call sites at once. Measured on the replayed
+world: S1's target scored Λ = 1.00 against the present clock and Λ = 20.2
+against its own moment, where the world's own telemetry table predicted 19.2.
+
+There is deliberately **no fallback** — `shot_epoch` raises, and
+`shots.time_created` is now `nullable=False` — because substituting the wall
+clock is how this hid for so long. Insisting on it immediately turned up a
+second instance of the same bug: `AdminInterface.get_queue_head` selects
+columns rather than a whole row, and `time_created` was not among them, so the
+auto-action drain had *no* time to score by and was silently using "now" on
+every head it looked at. The projection carries it now. The lesson generalises
+to any future columns-only query that will be handed to identification.
+
+The `nullable=False` is a constraint, not a data change: `create_all()` does
+not alter an existing table and `add_missing_columns` only adds columns, so
+the droplet keeps its nullable column and nothing there breaks either way.
+Enforcing it on the live box, if wanted, is one statement and no downtime:
+`ALTER TABLE shots ALTER COLUMN time_created SET NOT NULL;`
+
 **What the first measurement pass found**, recorded rather than corrected:
 the hat is the worst-rendered channel (median ΔE2000 14.3, with the greens
 coming out near-black), salmon hats vary hugely between wearers (mean ΔE 16.3,

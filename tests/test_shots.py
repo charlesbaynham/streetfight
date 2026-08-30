@@ -17,6 +17,25 @@ def test_submit_shot(user_in_team, test_image_string):
     ui.submit_shot(test_image_string)
 
 
+def test_a_real_shot_is_stamped_by_the_database(
+    db_session, user_in_team, test_image_string
+):
+    """`submit_shot` takes an optional time for replaying a simulated game
+    (backend/test_world/replay.py). Passing it through to the constructor as
+    None would write a null over the column's server default, so a live shot
+    would land with no time at all - and the queue is ordered by that column."""
+    import datetime
+
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    shot_id = ui.submit_shot(test_image_string)
+
+    now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+    stamped = db_session.get(Shot, shot_id).time_created
+    assert stamped is not None
+    assert abs(stamped - now) < datetime.timedelta(minutes=5)
+
+
 def test_submit_shot_no_ammo(user_in_team, test_image_string):
     ui = UserInterface(user_in_team)
     with pytest.raises(HTTPException):

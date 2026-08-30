@@ -262,7 +262,7 @@ async def run(
         nonlocal actual
         async with semaphore:
             client = OpenRouterImageClient(model=job.model)
-            urls = [_data_url(path) for path in job.inputs]
+            urls = [data_url(path) for path in job.inputs]
             try:
                 data_url = await client.generate(job.prompt, urls, **job.params)
             except Exception as e:  # noqa: BLE001 - reported, not swallowed
@@ -286,7 +286,7 @@ async def run(
     return report
 
 
-def _data_url(path: Path) -> str:
+def data_url(path: Path) -> str:
     import base64
     import mimetypes
 

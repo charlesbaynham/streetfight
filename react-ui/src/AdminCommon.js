@@ -211,8 +211,14 @@ function VersionReadout() {
 // the shot queue.
 const OPENROUTER_BALANCE_POLL_MS = 60 * 1000;
 
-function formatUSD(amount) {
-  return `$${amount.toFixed(2)}`;
+// A shot review costs a fraction of a penny, so a gauge rounded to whole
+// cents sits on the same number for a dozen shots at a time and reads as
+// broken. Four places is enough for a single review to show up. Configured
+// figures - a purchased total, a key's cap - are round numbers a human typed,
+// so they keep the usual two.
+function formatUSD(amount, decimals = 4) {
+  if (amount === null || amount === undefined) return "unknown";
+  return `$${amount.toFixed(decimals)}`;
 }
 
 function OpenRouterBalanceReadout() {
@@ -232,16 +238,26 @@ function OpenRouterBalanceReadout() {
 
   if (balance.error) return <span>OpenRouter balance unavailable</span>;
 
-  const { limit, limit_remaining, usage } = balance;
+  // Three different numbers, in decreasing order of what the admin actually
+  // wants to know. The account's remaining credit is the real fuel gauge, but
+  // it comes from an endpoint a plain API key may be refused; a per-key
+  // spending cap is the next best thing; and with neither, all OpenRouter
+  // will tell us about an uncapped key is what it has spent so far.
+  const { limit, limit_remaining, usage, credits_remaining } = balance;
 
-  return (
-    <span>
-      OpenRouter:{" "}
-      {limit === null || limit === undefined
-        ? `${formatUSD(usage)} used (no key limit set)`
-        : `${formatUSD(limit_remaining)} remaining of ${formatUSD(limit)}`}
-    </span>
-  );
+  let readout;
+  if (credits_remaining !== null && credits_remaining !== undefined) {
+    readout = `${formatUSD(credits_remaining)} credit left`;
+  } else if (limit !== null && limit !== undefined) {
+    readout = `${formatUSD(limit_remaining)} left of the ${formatUSD(
+      limit,
+      2,
+    )} key limit`;
+  } else {
+    readout = `${formatUSD(usage)} used (no key limit set)`;
+  }
+
+  return <span>OpenRouter: {readout}</span>;
 }
 
 function AdminFooter() {

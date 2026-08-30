@@ -136,7 +136,11 @@ class Shot(Base):
     __tablename__ = "shots"
 
     id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
-    time_created = Column(DateTime, server_default=func.now())
+    # NOT NULL because a shot's own moment is what its telemetry is read
+    # against (backend/shot_identification.shot_epoch) and what the queue is
+    # ordered by. Nothing writes a null - submit_shot is the only writer, and
+    # it leaves the server default alone unless a replay hands it a time.
+    time_created = Column(DateTime, server_default=func.now(), nullable=False)
 
     game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
     game = relationship(

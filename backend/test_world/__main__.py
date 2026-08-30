@@ -3,6 +3,7 @@
     world   build world.json from a seed (free, no network)
     check   rebuild and confirm the output is byte-identical
     gate    print the human review summary for Gate A
+    shots   replay the cropped demo shots into the sample game
 
 Later phases (scene selection, image generation, observation) add their own
 subcommands here and read the world file rather than rebuilding it.
@@ -377,7 +378,7 @@ def cmd_observe(args) -> int:
                     # request, and with retries that is minutes of upload for
                     # a box a 1024px copy locates just as well. The boxes are
                     # normalised, so nothing is lost by sending less.
-                    url = prepare_for_vision(generate_mod._data_url(path))
+                    url = prepare_for_vision(generate_mod.data_url(path))
                     try:
                         boxes[job.image_id] = await localise_mod.locate(url, size)
                     except Exception as e:  # noqa: BLE001 - reported
@@ -469,6 +470,44 @@ def _print_observations(observations) -> None:
         )
 
 
+def cmd_shots(args) -> int:
+    """Put the cropped demo shots into the sample game (`npm run demoshots`)."""
+    from backend.test_world import replay as replay_mod
+
+    try:
+        made = replay_mod.load_shots(
+            args.seed,
+            Path(args.out),
+            images_dir=args.images,
+            only=args.only.split(",") if args.only else None,
+        )
+    except RuntimeError as problem:
+        print(problem, file=sys.stderr)
+        return 1
+
+    print(f"game {made['game_id']}")
+    for row in made["loaded"]:
+        print(
+            f"  {row['scenario']:4s} {row['seconds_ago'] // 60:3d} min ago  "
+            f"{row['shooter']:15s} -> {row['target']:15s} "
+            f"({row['intended_result']})"
+        )
+    print(
+        f"loaded {len(made['loaded'])}, "
+        f"{len(made['skipped'])} already there, "
+        f"{len(made['missing'])} with no cropped image"
+    )
+    if made["missing"]:
+        print(
+            "  missing: "
+            + ", ".join(made["missing"])
+            + " - run `observe --execute` to crop them",
+            file=sys.stderr,
+        )
+    print(f"put {made['located']} players back where the game left them")
+    return 0
+
+
 def cmd_gate(args) -> int:
     import json
 
@@ -520,6 +559,11 @@ def main(argv=None) -> int:
         action="store_true",
         help="actually spend on localisation; crops and measurements are free",
     )
+    shots = sub.add_parser("shots", help="replay the demo shots into the sample game")
+    shots.add_argument(
+        "--images", help="where the cropped shots are (default: next to world.json)"
+    )
+    shots.add_argument("--only", help="comma-separated scenario ids, e.g. S4,S9")
 
     args = parser.parse_args(argv)
     return {
@@ -531,6 +575,7 @@ def main(argv=None) -> int:
         "gateb": cmd_gate_b,
         "generate": cmd_generate,
         "observe": cmd_observe,
+        "shots": cmd_shots,
     }[args.command](args)
 
 

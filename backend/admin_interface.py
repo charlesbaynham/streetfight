@@ -62,10 +62,15 @@ db_scoped = AdminScopeWrapper.db_scoped
 
 # What the auto-action drain needs to know about the head of a game's shot
 # queue -- deliberately not a ShotModel, so image_base64 is never loaded.
+# ``time_created`` is here because identification scores a shot as of the
+# moment it was taken (backend.shot_identification.shot_epoch): leaving it out
+# of the projection is how a perfectly good row arrives here with no time on
+# it, and the drain re-runs on shots that have sat in the queue for hours.
 QueueHead = namedtuple(
     "QueueHead",
     [
         "id",
+        "time_created",
         "user_id",
         "ai_review_state",
         "ai_review",
@@ -304,6 +309,7 @@ class AdminInterface:
         row = (
             self._session.query(
                 Shot.id,
+                Shot.time_created,
                 Shot.user_id,
                 Shot.ai_review_state,
                 Shot.ai_review,
