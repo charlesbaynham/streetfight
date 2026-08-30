@@ -54,6 +54,38 @@ staging moves
      unhealthy: the last-known-good template is redeployed, and Charles is notified
 ```
 
+### Why that first arrow is a workflow_dispatch
+
+⚠️ **The push does not set the build off by itself.** `deploy-staging.yml` moves
+the ref with the default `GITHUB_TOKEN`, and GitHub does not fire
+`push`-triggered workflows for `GITHUB_TOKEN` pushes - its anti-recursion
+protection. So the workflow ends by dispatching `build_images.yml` against
+`staging` explicitly. **Do not remove that step**: without it the ref moves, every
+check in the deploy run goes green, and no release is ever published - staging
+just quietly stays where it was. That is exactly how it failed on 30 Aug 2026.
+
+This is the one place staging is *not* the droplet's mirror image. Both gates are
+a hand-moved branch, but the two boxes watch different things:
+
+| | Live (droplet) | Staging (LXC) |
+| --- | --- | --- |
+| What the box polls | the git ref, `git ls-remote refs/heads/live` | the releases API, for a new asset |
+| So a deploy is due when | the ref moved | a new release asset appeared |
+| Where the build comes from | Cachix - content-addressed, so branch-agnostic | a release asset, published only from `staging` |
+| Needs a workflow to run on the deploy branch | no | **yes** |
+
+The droplet's gate is at the *consumer*: `nix/auto-deploy.nix` decides which ref
+to pull, and the closure is in Cachix whichever branch built it, so a swallowed
+push event costs it nothing. Staging's gate is at the *producer*:
+`build-template.yml` publishes a release only when `github.ref` is `staging`, so
+if that run never happens the artifact never exists at all.
+
+The asymmetry is forced rather than chosen. A cattle container is replaced
+wholesale by template filename - there is no in-place `switch` - so the artifact
+has to be a *file* the hypervisor can fetch; and `resolve_release` takes the
+newest release by publication time, so publishing from every branch and letting
+the consumer choose would just deploy master.
+
 The template filename *is* the deploy mechanism: Proxmox treats a container's
 template as ForceNew, so a new filename replaces the container. The mechanics live
 in `homelab-infra` (`bin/cattle-deploy.sh`, `services.yaml`) and are documented in
