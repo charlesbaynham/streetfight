@@ -43,6 +43,7 @@ jobs:
     permissions:
       contents: write
       checks: read
+      actions: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -92,3 +93,16 @@ jobs:
           echo "- \`journalctl -u cattle-deploy -f\` on homeserver, which picks it up"
           echo "- \`curl -s https://${HOSTNAME}/api/get_version\` from the LAN or the tailnet"
         } >> "$GITHUB_STEP_SUMMARY"
+
+    # `git push` just above authenticates as the default GITHUB_TOKEN (via
+    # actions/checkout's persisted credentials). GitHub does not fire
+    # `push`-triggered workflows for GITHUB_TOKEN pushes — anti-recursion
+    # protection — so build_images.yml, the workflow that actually builds and
+    # releases the LXC template cattle-deploy.timer polls for, never runs off
+    # the back of that push on its own. Dispatch it explicitly instead: a
+    # workflow_dispatch triggered by GITHUB_TOKEN is exempt from that
+    # restriction.
+    - name: Trigger the staging build
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh workflow run build_images.yml --ref "$DEPLOY_BRANCH"
