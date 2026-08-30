@@ -179,7 +179,12 @@ exemplar.
     and what came back), so `SpectatorView.module.css` is a delivered artefact:
     prefer re-briefing over editing it by hand. Note the integration shim at
     its top - `index.css`'s global `* { font-size: 12px }` beats inheritance and
-    would otherwise flatten the whole type scale.
+    would otherwise flatten the whole type scale. Because it is left running on
+    a device nobody touches, it holds a screen wake lock (`useWakeLock.js`,
+    shared with user mode) and *says so in the headline when it has not got
+    one* - the tablet locking itself is how the dashboard disappears, and a
+    browser too old for the Wake Lock API is the one case nothing can be done
+    about from here.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the

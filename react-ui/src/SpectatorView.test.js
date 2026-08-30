@@ -270,6 +270,44 @@ describe("empty states", () => {
   });
 });
 
+// -- keeping the tablet awake ------------------------------------------------
+//
+// The screen is left propped up all evening, so a device that locks itself
+// takes the dashboard with it. The retrying lives in useWakeLock; what the
+// page owes is saying, in words, when it is not holding one.
+
+describe("the sleep warning", () => {
+  afterEach(() => {
+    delete window.navigator.wakeLock;
+  });
+
+  test("warns when the screen is not being held awake", async () => {
+    // No Wake Lock API at all, which is how an older tablet arrives.
+    delete window.navigator.wakeLock;
+
+    await renderScreen();
+
+    expect(screen.getByText("Screen may sleep")).toBeInTheDocument();
+  });
+
+  test("says nothing once the lock is held", async () => {
+    Object.defineProperty(window.navigator, "wakeLock", {
+      configurable: true,
+      value: {
+        request: () =>
+          Promise.resolve({
+            released: false,
+            release: () => Promise.resolve(),
+          }),
+      },
+    });
+
+    await renderScreen();
+
+    expect(screen.queryByText("Screen may sleep")).toBeNull();
+  });
+});
+
 // -- the team letter, which is what separates two near-identical hat colours --
 
 describe("team letters", () => {
@@ -474,7 +512,7 @@ describe("the face cycle", () => {
     expect(screen.getByTestId("map-view-admin")).toBeInTheDocument();
 
     await act(async () => {
-      jest.advanceTimersByTime(90 * 1000 + 50);
+      jest.advanceTimersByTime(40 * 1000 + 50);
       for (let i = 0; i < 8; i++) await Promise.resolve();
     });
 
@@ -486,7 +524,7 @@ describe("the face cycle", () => {
     await mount([]);
 
     await act(async () => {
-      jest.advanceTimersByTime(90 * 1000 + 50);
+      jest.advanceTimersByTime(40 * 1000 + 50);
       for (let i = 0; i < 8; i++) await Promise.resolve();
     });
 
