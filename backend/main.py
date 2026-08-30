@@ -22,6 +22,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
+from . import demo_game
 from . import identity_admin
 from . import identity_demo
 from .admin_interface import CircleTypes
@@ -1084,6 +1085,35 @@ async def admin_dump_images():
         media_type="application/zip",
         headers={"Content-Disposition": 'attachment; filename="shot_images.zip"'},
     )
+
+
+######## DEMO GAME ###########
+#
+# The sample game, provisioned and then fired one shot at a time so a
+# dashboard can be watched reacting rather than found already full. Refuses
+# outright if anybody in a team is not one of the thirty simulated players -
+# see backend/demo_game.py.
+
+
+@admin_method(path="/admin_start_demo_game", method="POST")
+async def admin_start_demo_game() -> dict:
+    """Start the drip, or report the run already going. Idempotent."""
+    logger.info("admin_start_demo_game")
+    try:
+        return demo_game.start()
+    except demo_game.DemoGameRefused as refusal:
+        raise HTTPException(409, str(refusal))
+
+
+@admin_method(path="/admin_cancel_demo_game", method="POST")
+async def admin_cancel_demo_game() -> dict:
+    logger.info("admin_cancel_demo_game")
+    return demo_game.cancel()
+
+
+@admin_method("/admin_demo_game_status", method="GET")
+async def admin_demo_game_status() -> dict:
+    return demo_game.status()
 
 
 ######## IDENTITY (colour code) DEMO ###########

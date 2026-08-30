@@ -1279,6 +1279,23 @@ nothing and needs no key. `UserInterface.submit_shot` grew optional
 `shot_id`/`time_created` arguments for this; `/api/submit_shot` passes
 neither, and a real shot is still stamped by the database.
 
+**And dripped in live, for watching rather than adjudicating.** All ten at
+once is the right shape for a queue and the wrong shape for the spectator
+screen, whose whole job is to react to a shot landing — which it cannot show
+if every shot landed before the page loaded. The admin page's **Fire demo
+game** button (`backend/demo_game.py`, `DemoGamePanel` in `AdminMode.js`)
+provisions the sample game if it is absent and then fires the same ten shots
+one at a time, about thirty seconds apart, from a background asyncio task.
+Ninety minutes of world time in five of wall time, and the compression is done
+by **re-anchoring each shot** rather than scaling the clock: `anchor_epoch`
+takes the shot's own tick, so the shot reads as fired this second while every
+fix behind it keeps the age the world gave it — the property the whole replay
+exists to preserve. Idempotent (a second press changes nothing; a press after
+a cancel resumes, since the shot ids come from the seed), cancellable between
+shots, and it refuses outright if any player in a team is not one of the
+thirty simulated ones — it creates thirty players and shoots at them, and
+there is a live game now.
+
 **One bug that pass turned up, now fixed.** `rank_candidates` defaulted
 `at_time` to *now*, so a fix's age was measured from the adjudication rather
 than from the photograph. In a live game the two are minutes apart and it

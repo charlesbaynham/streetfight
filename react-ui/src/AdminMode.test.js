@@ -160,6 +160,24 @@ function buildFixtures() {
   return { pewsterUser, customUser, noteamUser, redTeam, blueTeam, game1 };
 }
 
+// The demo-game status payload (backend/demo_game.py status()). Idle is what
+// a dev's admin page shows until somebody presses the button.
+function idleDemoStatus(overrides = {}) {
+  return {
+    state: "idle",
+    running: false,
+    fired: 0,
+    total: 0,
+    already_fired: 0,
+    scenarios: [],
+    missing: [],
+    interval_s: null,
+    next_in_s: null,
+    error: null,
+    ...overrides,
+  };
+}
+
 function defaultRoutes(fixtures) {
   return {
     admin_is_authed: true,
@@ -185,6 +203,7 @@ function defaultRoutes(fixtures) {
     admin_delete_user: {},
     admin_create_game: {},
     admin_dump_images: {},
+    admin_demo_game_status: idleDemoStatus(),
     // Only free_slots is read by AdminMode (PlayerRow's slot picker); the
     // real report carries more fields but they'd be dead weight here.
     admin_identity_report: { free_slots: [3, 5, 9] },
@@ -882,5 +901,80 @@ describe("AdminPanel", () => {
     );
     await waitFor(() => expect(URL.createObjectURL).toHaveBeenCalledTimes(1));
     expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:mock-url");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Demo game
+// ---------------------------------------------------------------------------
+
+describe("DemoGamePanel", () => {
+  test("Fire demo game starts the drip and shows how far it has got", async () => {
+    await renderAdmin({
+      admin_start_demo_game: idleDemoStatus({
+        state: "firing",
+        running: true,
+        fired: 1,
+        total: 10,
+        interval_s: 30,
+        next_in_s: 29.4,
+      }),
+    });
+
+    expect(screen.getByText("not started")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Fire demo game" })),
+    );
+
+    expect(getAPICalls("admin_start_demo_game")).toHaveLength(1);
+    expect(
+      screen.getByText("firing: 1 of 10 shots, next in 29.4s"),
+    ).toBeInTheDocument();
+  });
+
+  test("the refusal to touch a real game is shown beside the button", async () => {
+    const refusal =
+      "2 player(s) in this database are not part of the demo cast (Alice, Bob).";
+    await renderAdmin({
+      admin_start_demo_game: { status: 409, body: { detail: refusal } },
+    });
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Fire demo game" })),
+    );
+
+    expect(screen.getByText(refusal)).toBeInTheDocument();
+  });
+
+  test("Cancel is only offered while a run is going, and stops it", async () => {
+    await renderAdmin({
+      admin_demo_game_status: idleDemoStatus({
+        state: "firing",
+        running: true,
+        fired: 3,
+        total: 10,
+        interval_s: 30,
+        next_in_s: 12,
+      }),
+      admin_cancel_demo_game: idleDemoStatus({
+        state: "cancelled",
+        fired: 3,
+        total: 10,
+      }),
+    });
+
+    const cancel = screen.getByRole("button", { name: "Cancel demo game" });
+    await waitFor(() => expect(cancel).toBeEnabled());
+
+    await actAndFlush(() => userEvent.click(cancel));
+
+    expect(getAPICalls("admin_cancel_demo_game")).toHaveLength(1);
+    expect(
+      screen.getByText(
+        "stopped after 3 of 10 shots - starting again picks up where it left off",
+      ),
+    ).toBeInTheDocument();
+    expect(cancel).toBeDisabled();
   });
 });

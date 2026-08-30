@@ -15,6 +15,12 @@ fix each of them had *at that tick* before firing, and stamps the shot with
 the moment it was taken. The simulated hour is anchored to end now: the newest
 shot is a minute old, the oldest about ninety, and every fix age in the
 database is the one the world said it would be.
+
+The pieces are separated from :func:`load_shots` because there are two ways to
+want them. This module's own way dumps all ten in at once, which is what a
+queue to adjudicate wants. :mod:`backend.demo_game` fires the same ten one at
+a time over five minutes, which is what a dashboard to *watch* wants, and it
+re-anchors each shot as it goes (see there).
 """
 
 import datetime
@@ -24,6 +30,7 @@ from typing import Dict
 from typing import Iterable
 from typing import List
 from typing import Optional
+from uuid import UUID
 
 from backend.database import session_scope
 from backend.model import Game
@@ -40,8 +47,8 @@ logger = logging.getLogger(__name__)
 DEFAULT_WORLD = Path("tests/fixtures/test_game/world.json")
 
 
-def anchor_epoch(duration_s: int, now: Optional[float] = None) -> float:
-    """Epoch seconds for tick 0, so that a game of ``duration_s`` ends *now*.
+def anchor_epoch(seconds_before_now: int, now: Optional[float] = None) -> float:
+    """Epoch seconds for tick 0, if tick ``seconds_before_now`` is *now*.
 
     The world is set on a date in September; anchoring to it literally would
     put every shot in the future, where ``shot_identification`` reads each fix
@@ -50,13 +57,54 @@ def anchor_epoch(duration_s: int, now: Optional[float] = None) -> float:
     -- which are the ones that matter -- and puts them where a dev's clock can
     see them.
 
+    Pass the world's whole duration to end the game now (what a replay of the
+    finished evening wants); pass one shot's tick to make *that* shot now
+    (what firing them live wants).
+
     Whole seconds, because a shot's time is stored to the second: a fractional
     anchor rounds the shot down and leaves every fix age in its context up to
     a second short of what the world says it is.
     """
     import time
 
-    return float(int((now if now is not None else time.time()) - duration_s))
+    return float(int((now if now is not None else time.time()) - seconds_before_now))
+
+
+def load_world(world_path: Path = DEFAULT_WORLD) -> dict:
+    """The world file, with the scenes the demo shots are described by."""
+    world_path = Path(world_path)
+    world = world_mod.load(world_path)
+    scenes = world.get("scenes") or {}
+    if not scenes.get("shots"):
+        raise RuntimeError(
+            f"{world_path} has no scenes in it - run `python -m backend.test_world "
+            "scenes` first"
+        )
+    return world
+
+
+def demo_shots(world: dict) -> List[dict]:
+    """Every demo shot in the world, in the order they were taken."""
+    return sorted(world["scenes"]["shots"], key=lambda shot: shot["tick"])
+
+
+def default_images_dir(world_path: Path = DEFAULT_WORLD) -> Path:
+    return Path(world_path).parent / "shots"
+
+
+def fired_shot_ids(game_id: UUID) -> set:
+    """The ids of the shots the sample game already holds.
+
+    Raises if the game itself is not there: everything downstream would
+    otherwise fail one player at a time with a much less useful message.
+    """
+    with session_scope() as session:
+        if session.get(Game, game_id) is None:
+            raise RuntimeError(
+                f"the sample game ({game_id}) is not in this database - reset it "
+                "with MAKE_DEBUG_ENTRIES set first"
+            )
+        return {row[0] for row in session.query(Shot.id).filter_by(game_id=game_id)}
 
 
 def place_players(
@@ -105,6 +153,45 @@ def _stamp(anchor: float, tick: int) -> datetime.datetime:
     return moment.replace(tzinfo=None, microsecond=0)
 
 
+def fire_shot(
+    seed: int,
+    world: dict,
+    shot: dict,
+    images_dir: Path,
+    anchor: float,
+) -> Optional[dict]:
+    """Fire one demo shot, with the cast standing where its moment found them.
+
+    Returns a row describing what was fired, or ``None`` if the cropped
+    photograph is not on disk (``observe --execute`` makes those).
+    """
+    image = Path(images_dir) / f"{shot['scenario']}.jpg"
+    if not image.exists():
+        return None
+
+    place_players(seed, world["fixes"], shot["tick"], anchor)
+
+    with UserInterface(ids.user_id(seed, shot["shooter"]["slug"])) as ui:
+        # The cast start the sample game with no ammo, and firing costs a
+        # bullet. Handed over one at a time rather than in a lump, so a
+        # player who fires twice ends the replay where they started.
+        ui.award_ammo()
+        ui.submit_shot(
+            generate_mod.data_url(image),
+            heading=shot["heading"],
+            shot_id=ids.shot_id(seed, shot["scenario"]),
+            time_created=_stamp(anchor, shot["tick"]),
+        )
+
+    return {
+        "scenario": shot["scenario"],
+        "shooter": shot["shooter"]["slug"],
+        "target": shot["target"]["slug"],
+        "intended_result": shot["intended_result"],
+        "seconds_ago": world["clock"]["ticks"] - shot["tick"],
+    }
+
+
 def load_shots(
     seed: int,
     world_path: Path = DEFAULT_WORLD,
@@ -119,68 +206,30 @@ def load_shots(
     replay to named scenarios ("S4"), which is how you get one shot back after
     adjudicating it into the wrong answer.
     """
-    world_path = Path(world_path)
-    world = world_mod.load(world_path)
-    scenes = world.get("scenes") or {}
-    if not scenes.get("shots"):
-        raise RuntimeError(
-            f"{world_path} has no scenes in it - run `python -m backend.test_world "
-            "scenes` first"
-        )
-    images_dir = Path(images_dir) if images_dir else world_path.parent / "shots"
+    world = load_world(world_path)
+    images_dir = Path(images_dir) if images_dir else default_images_dir(world_path)
 
     game_id = ids.game_id(seed)
-    with session_scope() as session:
-        if session.get(Game, game_id) is None:
-            raise RuntimeError(
-                f"the sample game ({game_id}) is not in this database - reset it "
-                "with MAKE_DEBUG_ENTRIES set first"
-            )
-        already_there = {
-            row[0] for row in session.query(Shot.id).filter_by(game_id=game_id)
-        }
+    already_there = fired_shot_ids(game_id)
 
     anchor = anchor_epoch(world["clock"]["ticks"], now)
     loaded, skipped, missing = [], [], []
 
     wanted = set(only) if only is not None else None
 
-    for shot in sorted(scenes["shots"], key=lambda s: s["tick"]):
+    for shot in demo_shots(world):
         scenario = shot["scenario"]
         if wanted is not None and scenario not in wanted:
             continue
-        shot_id = ids.shot_id(seed, scenario)
-        if shot_id in already_there:
+        if ids.shot_id(seed, scenario) in already_there:
             skipped.append(scenario)
             continue
 
-        image = images_dir / f"{scenario}.jpg"
-        if not image.exists():
+        row = fire_shot(seed, world, shot, images_dir, anchor)
+        if row is None:
             missing.append(scenario)
             continue
-
-        place_players(seed, world["fixes"], shot["tick"], anchor)
-
-        with UserInterface(ids.user_id(seed, shot["shooter"]["slug"])) as ui:
-            # The cast start the sample game with no ammo, and firing costs a
-            # bullet. Handed over one at a time rather than in a lump, so a
-            # player who fires twice ends the replay where they started.
-            ui.award_ammo()
-            ui.submit_shot(
-                generate_mod.data_url(image),
-                heading=shot["heading"],
-                shot_id=shot_id,
-                time_created=_stamp(anchor, shot["tick"]),
-            )
-        loaded.append(
-            {
-                "scenario": scenario,
-                "shooter": shot["shooter"]["slug"],
-                "target": shot["target"]["slug"],
-                "intended_result": shot["intended_result"],
-                "seconds_ago": world["clock"]["ticks"] - shot["tick"],
-            }
-        )
+        loaded.append(row)
 
     # Leave everybody where the game left them, not where the last shot found
     # them: the admin map and the spectator screen show the present.

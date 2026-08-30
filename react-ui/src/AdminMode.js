@@ -437,6 +437,99 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
   );
 }
 
+// Fires the thirty-player sample game one shot at a time (backend/demo_game.py)
+// so a dashboard - the spectator screen above all - can be watched reacting to
+// shots landing, rather than found already full the way `npm run demoshots`
+// leaves it. Safe to leave on the page during a real game: the backend refuses
+// outright if anybody in a team is not one of the simulated players.
+const DEMO_GAME_POLL_MS = 2000;
+
+function demoGameSummary(status) {
+  if (!status) return "checking...";
+  switch (status.state) {
+    case "idle":
+      return "not started";
+    case "provisioning":
+      return "creating the thirty players (this takes a few seconds)";
+    case "firing":
+      return (
+        `firing: ${status.fired} of ${status.total} shots` +
+        (status.next_in_s === null ? "" : `, next in ${status.next_in_s}s`)
+      );
+    case "cancelling":
+      return "stopping after the shot in flight";
+    case "cancelled":
+      return (
+        `stopped after ${status.fired} of ${status.total} shots - ` +
+        "starting again picks up where it left off"
+      );
+    case "done":
+      return `all ${status.fired} shots fired`;
+    case "error":
+      return `failed: ${status.error}`;
+    default:
+      return status.state;
+  }
+}
+
+function DemoGamePanel() {
+  const [status, setStatus] = useState(null);
+  // The refusal is the message worth reading twice: it is the answer to "why
+  // did nothing happen?", so it goes beside the button as well as into the
+  // error log at the top of the page.
+  const [refusal, setRefusal] = useState(null);
+  const running = status ? status.running : false;
+
+  const update = useCallback(() => {
+    sendAPIRequest("admin_demo_game_status", {}, "GET", setStatus);
+  }, []);
+
+  useEffect(update, [update]);
+
+  // Only while something is happening - a finished run has nothing more to
+  // say. Keyed on `running` rather than on the whole status, so a poll that
+  // changes nothing but the countdown doesn't restart the timer.
+  useEffect(() => {
+    if (!running) return undefined;
+    const interval = setInterval(update, DEMO_GAME_POLL_MS);
+    return () => clearInterval(interval);
+  }, [running, update]);
+
+  const send = useCallback((endpoint) => {
+    setRefusal(null);
+    adminPost(endpoint, null, setStatus).then(async (response) => {
+      if (response.ok) return;
+      const body = await response.json().catch(() => null);
+      setRefusal(
+        (body && body.detail) || `Request failed (${response.status})`,
+      );
+    });
+  }, []);
+
+  return (
+    <>
+      <button onClick={() => send("admin_start_demo_game")}>
+        Fire demo game
+      </button>{" "}
+      <button
+        onClick={() => send("admin_cancel_demo_game")}
+        disabled={!running}
+      >
+        Cancel demo game
+      </button>
+      <p>
+        Thirty simulated players and their ten shots, dripped in one at a time
+        over about five minutes so the spectator screen has something to react
+        to. Pressing it again while it runs changes nothing; after a cancel it
+        carries on from where it stopped.
+        <br />
+        Demo game: <b>{demoGameSummary(status)}</b>
+      </p>
+      {refusal ? <p style={{ color: "red" }}>{refusal}</p> : null}
+    </>
+  );
+}
+
 function AdminPanel() {
   const [games, setGames] = useState(null);
   const [users, setUsers] = useState([]);
@@ -553,6 +646,8 @@ function AdminPanel() {
           >
             Download shot images (zip)
           </button>
+          <h3>Demo game</h3>
+          <DemoGamePanel />
         </Col>
       </Row>
 
