@@ -147,15 +147,10 @@ def draw_aim_marker(base64_image: str) -> str:
     return out
 
 
-def prepare_for_vision(
+def downscale_jpeg(
     base64_image: str, max_dimension: int = 1024, quality: int = 85
 ) -> str:
-    """Downsize and re-encode a shot photo for sending to a vision model.
-
-    Phone photos are far larger than any model needs, and image tokens are the
-    dominant cost of reviewing a queue. 1024px is a floor rather than an
-    aggressive shrink: the measured failure mode (plan §12.1) is that small
-    targets get invented answers, so there is nothing to gain by going lower.
+    """Shrink an image to fit ``max_dimension`` and re-encode it as JPEG.
 
     Images already within ``max_dimension`` are re-encoded but not upscaled.
     """
@@ -180,6 +175,19 @@ def prepare_for_vision(
 
     encoded = base64.b64encode(buffer.getvalue()).decode()
     return f"data:image/jpeg;base64,{encoded}"
+
+
+def prepare_for_vision(
+    base64_image: str, max_dimension: int = 1024, quality: int = 85
+) -> str:
+    """Downsize and re-encode a shot photo for sending to a vision model.
+
+    Phone photos are far larger than any model needs, and image tokens are the
+    dominant cost of reviewing a queue. 1024px is a floor rather than an
+    aggressive shrink: the measured failure mode (plan §12.1) is that small
+    targets get invented answers, so there is nothing to gain by going lower.
+    """
+    return downscale_jpeg(base64_image, max_dimension=max_dimension, quality=quality)
 
 
 def zoom_image(
