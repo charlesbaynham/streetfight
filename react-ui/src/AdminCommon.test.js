@@ -397,7 +397,23 @@ describe("OpenRouterBalanceReadout (part of the admin footer)", () => {
     expect(screen.queryByText(/OpenRouter/)).not.toBeInTheDocument();
   });
 
-  test("shows the remaining balance out of the key's spending limit", async () => {
+  test("shows the account credit balance when OpenRouter reports one", async () => {
+    await renderFooterWith({
+      configured: true,
+      limit: null,
+      limit_remaining: null,
+      usage: 25.5,
+      total_credits: 40,
+      total_usage: 25.5,
+      credits_remaining: 14.5,
+    });
+
+    expect(
+      screen.getByText("OpenRouter: $14.5000 credit left"),
+    ).toBeInTheDocument();
+  });
+
+  test("falls back to the key's spending limit when there is no account balance", async () => {
     await renderFooterWith({
       configured: true,
       limit: 100,
@@ -406,11 +422,11 @@ describe("OpenRouterBalanceReadout (part of the admin footer)", () => {
     });
 
     expect(
-      screen.getByText("OpenRouter: $74.50 remaining of $100.00"),
+      screen.getByText("OpenRouter: $74.5000 left of the $100.00 key limit"),
     ).toBeInTheDocument();
   });
 
-  test("shows total usage instead when the key has no spending limit set", async () => {
+  test("shows total usage instead when there is neither a balance nor a limit", async () => {
     await renderFooterWith({
       configured: true,
       limit: null,
@@ -419,7 +435,23 @@ describe("OpenRouterBalanceReadout (part of the admin footer)", () => {
     });
 
     expect(
-      screen.getByText("OpenRouter: $25.50 used (no key limit set)"),
+      screen.getByText("OpenRouter: $25.5000 used (no key limit set)"),
+    ).toBeInTheDocument();
+  });
+
+  // The whole point of the readout is to be seen moving. A shot review costs
+  // a fraction of a penny, so rounding to whole cents made it sit on the same
+  // number for a dozen shots at a time and read as broken.
+  test("shows enough decimal places for a single shot review to move the number", async () => {
+    await renderFooterWith({
+      configured: true,
+      credits_remaining: 14.5017,
+      total_credits: 40,
+      total_usage: 25.4983,
+    });
+
+    expect(
+      screen.getByText("OpenRouter: $14.5017 credit left"),
     ).toBeInTheDocument();
   });
 

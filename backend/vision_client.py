@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images"
 OPENROUTER_KEY_URL = "https://openrouter.ai/api/v1/key"
+OPENROUTER_CREDITS_URL = "https://openrouter.ai/api/v1/credits"
 
 # A placeholder while the prompt is developed. The intended workflow is to trial
 # several models against real shot photos and pick on measured abstention
@@ -414,29 +415,9 @@ def get_escalation_client(
     )
 
 
-async def fetch_openrouter_key_balance(
-    api_key: str, timeout: Optional[float] = None
-) -> dict:
-    """The remaining credit balance for ``api_key``, for the admin footer readout.
-
-    Hits OpenRouter's ``/key`` endpoint, which reports on whichever key
-    authenticates the request -- the same regular API key used for
-    completions, no management key required. Returns ``limit`` (the key's
-    spending cap in USD, or None if uncapped), ``limit_remaining`` and
-    ``usage``. Raises :class:`VisionError` if the key is rejected or the
-    endpoint can't be reached.
-    """
-    import httpx
-
-    try:
-        async with httpx.AsyncClient(
-            timeout=timeout or DEFAULT_TIMEOUT_SECONDS
-        ) as client:
-            response = await client.get(
-                OPENROUTER_KEY_URL, headers={"Authorization": f"Bearer {api_key}"}
-            )
-    except Exception as e:
-        raise VisionError(f"could not reach OpenRouter: {e}")
+async def _fetch_openrouter_data(client, url: str, api_key: str) -> dict:
+    """The ``data`` object from one OpenRouter GET, or :class:`VisionError`."""
+    response = await client.get(url, headers={"Authorization": f"Bearer {api_key}"})
 
     if response.status_code >= 400:
         raise VisionError(
@@ -445,15 +426,64 @@ async def fetch_openrouter_key_balance(
         )
 
     try:
-        data = response.json()["data"]
+        return response.json()["data"]
     except (KeyError, TypeError, ValueError):
         raise VisionError(f"unexpected response shape: {response.text[:200]}")
 
-    return {
-        "limit": data.get("limit"),
-        "limit_remaining": data.get("limit_remaining"),
-        "usage": data.get("usage"),
+
+async def fetch_openrouter_key_balance(
+    api_key: str, timeout: Optional[float] = None
+) -> dict:
+    """What CharlesBot has left to spend, for the admin footer readout.
+
+    Two endpoints, because they answer different questions and the useful one
+    is not always available. ``/key`` reports on whichever key authenticates
+    the request -- the same regular API key used for completions, no
+    management key required -- and gives ``limit`` (that *key's* own spending
+    cap in USD, or None if uncapped), ``limit_remaining`` and ``usage`` (that
+    key's lifetime spend). A key with no cap of its own, which is the default
+    and the usual case, therefore reports no remaining balance at all.
+
+    The balance the admin actually watches drain is the *account's*, and that
+    lives on ``/credits``: ``total_credits`` purchased against ``total_usage``
+    spent. It is documented as wanting a management key, so it is fetched
+    best-effort -- a refusal there leaves the per-key fields alone rather than
+    taking the whole readout down. Raises :class:`VisionError` only if
+    ``/key`` itself fails.
+    """
+    import httpx
+
+    try:
+        async with httpx.AsyncClient(
+            timeout=timeout or DEFAULT_TIMEOUT_SECONDS
+        ) as client:
+            key_data = await _fetch_openrouter_data(client, OPENROUTER_KEY_URL, api_key)
+            try:
+                credits_data = await _fetch_openrouter_data(
+                    client, OPENROUTER_CREDITS_URL, api_key
+                )
+            except VisionError:
+                credits_data = None
+    except VisionError:
+        raise
+    except Exception as e:
+        raise VisionError(f"could not reach OpenRouter: {e}")
+
+    balance = {
+        "limit": key_data.get("limit"),
+        "limit_remaining": key_data.get("limit_remaining"),
+        "usage": key_data.get("usage"),
     }
+
+    if credits_data is not None:
+        total_credits = credits_data.get("total_credits")
+        total_usage = credits_data.get("total_usage")
+        balance["total_credits"] = total_credits
+        balance["total_usage"] = total_usage
+        if total_credits is not None and total_usage is not None:
+            balance["credits_remaining"] = total_credits - total_usage
+
+    return balance
 
 
 # ---------------------------------------------------------------------------
