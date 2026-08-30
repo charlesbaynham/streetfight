@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import json
 import logging
 import time
@@ -470,10 +471,24 @@ class UserInterface:
         user.identity_wardrobe = wardrobe_json
 
     @db_scoped
-    def submit_shot(self, image_base64: str, heading: Optional[float] = None):
+    def submit_shot(
+        self,
+        image_base64: str,
+        heading: Optional[float] = None,
+        shot_id: Optional[UUID] = None,
+        time_created: Optional[datetime.datetime] = None,
+    ):
         """Record a shot. ``heading`` is where the phone was pointing in
         degrees clockwise from north, and is None whenever the device could
-        not say - telemetry must never stop somebody firing."""
+        not say - telemetry must never stop somebody firing.
+
+        ``shot_id`` and ``time_created`` exist for replaying a simulated game
+        into a development database (``backend/test_world/replay.py``), where
+        a photograph is of a moment an hour ago and the location context has
+        to be the one that moment had. A real shot mints its own id and is
+        stamped with the wall clock, which is the only honest answer when a
+        player fires: ``/api/submit_shot`` passes neither, and must not.
+        """
         from .admin_interface import AdminInterface
 
         user: User = self.get_user()
@@ -500,7 +515,7 @@ class UserInterface:
         # flush time, so it can be returned without flushing. Flushing would
         # clear the session's dirty flag and rob @db_scoped of the signal it
         # uses to fire the post-commit update event.
-        shot_id = get_uuid()
+        shot_id = shot_id or get_uuid()
 
         shot_entry = Shot(
             id=shot_id,
@@ -512,6 +527,10 @@ class UserInterface:
             location_context=json.dumps(all_user_locations, default=str),
             heading=heading,
         )
+        # Only when asked: the column has a server default, and setting the
+        # attribute to None explicitly would insert a null over the top of it.
+        if time_created is not None:
+            shot_entry.time_created = time_created
         self._session.add(shot_entry)
 
         user.num_bullets -= 1

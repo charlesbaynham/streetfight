@@ -42,6 +42,7 @@ overconfident posteriors, which is the failure mode that matters when a
 threshold gates an automatic action.
 """
 
+import datetime
 import json
 import logging
 import math
@@ -147,6 +148,30 @@ def parse_location_context(raw: Optional[str]) -> Dict[UUID, dict]:
             continue
         fixes[user_id] = entry
     return fixes
+
+
+def shot_epoch(shot) -> float:
+    """When the photograph was taken, in epoch seconds.
+
+    ``Shot.time_created`` is naive UTC -- that is what ``func.now()`` writes on
+    both SQLite and Postgres -- so it is read back as UTC rather than as local
+    time, which would move every fix age by the server's offset.
+
+    Raises rather than substituting the wall clock, because there is no such
+    shot: ``UserInterface.submit_shot`` is the only thing in the codebase that
+    writes one, and the column is NOT NULL. A shot that reaches here without a
+    time is a corrupt row or an unflushed object, and quietly scoring it as
+    "now" would turn either into a ranking that looks like an answer.
+    """
+    stamp = getattr(shot, "time_created", None)
+    if stamp is None:
+        raise ValueError(
+            f"Shot {getattr(shot, 'id', '?')} has no time_created, so there is "
+            "no moment to score it as of"
+        )
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+    return stamp.timestamp()
 
 
 def _effective_sigma_m(fix: dict, at_time: float) -> float:
@@ -356,7 +381,12 @@ def rank_candidates(
     if not candidates:
         return None
 
-    at_time = at_time if at_time is not None else time.time()
+    # As of the moment of the photograph, not the moment somebody got round to
+    # looking at it. A fix's age is what turns the location term off, so
+    # scoring an hour-old shot against the present clock ages every fix by an
+    # hour of nothing happening and drops the term entirely - which is worst
+    # exactly when the queue is longest.
+    at_time = at_time if at_time is not None else shot_epoch(shot)
     fixes = parse_location_context(shot.location_context)
     shooter = next((u for u in users if u.id == shot.user_id), None)
 

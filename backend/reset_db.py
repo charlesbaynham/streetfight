@@ -42,12 +42,13 @@ SAMPLE_GAME_ID = sample_game_id()
 
 def make_debug_entries(seed: int = SAMPLE_SEED) -> dict:
     """Provision the sample game. Returns what was made, for logging."""
-    from .test_world import ids
+    from .test_world import spec
     from .test_world import telemetry as telemetry_mod
     from .test_world.cast import provision
     from .test_world.movement import truth_track
     from .test_world.personas import build_cast
-    from .user_interface import UserInterface
+    from .test_world.replay import anchor_epoch
+    from .test_world.replay import place_players
 
     cast = build_cast(seed)
     identity = provision(seed, cast)
@@ -55,17 +56,17 @@ def make_debug_entries(seed: int = SAMPLE_SEED) -> dict:
     # Put each player where their phone last said they were -- not where they
     # really are. The difference is the whole point of the simulated
     # telemetry, and an admin map with nobody on it teaches nothing.
+    #
+    # Timestamped as the world says rather than as now: a fix that went stale
+    # forty minutes before the game ended has to *look* forty minutes stale,
+    # or the one thing the telemetry was built to exercise is thrown away at
+    # the last step. The simulated hour is anchored to end now, the same
+    # bargain `npm run demoshots` strikes when it replays the shots.
     positions = truth_track(seed, cast)["positions"]
     fixes = telemetry_mod.fix_timelines(seed, cast, positions)
-    placed = 0
-    for person in cast:
-        timeline = fixes.get(person["slug"]) or []
-        if not timeline:
-            continue
-        last = timeline[-1]
-        with UserInterface(ids.user_id(seed, person["slug"])) as ui:
-            ui.set_location(last["lat"], last["long"], last.get("accuracy"))
-        placed += 1
+    placed = place_players(
+        seed, fixes, spec.N_TICKS, anchor=anchor_epoch(spec.DURATION_S)
+    )
 
     return {"players": len(cast), "located": placed, "identity": identity}
 

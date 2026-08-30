@@ -1,0 +1,196 @@
+"""Put the ten demo shots into the sample game, as shots somebody fired.
+
+``observe`` crops each generated photograph to the 1080x2048 a phone really
+produces; this is what turns those crops into rows in a database. The part
+that needs care is *when*. A shot's ``location_context`` is a snapshot of
+where every phone said its owner was at the moment of the photograph, and the
+world's thirty players walk around for an hour -- so firing all ten against
+the positions the game ended at would produce shots whose telemetry
+contradicts their own pictures. That contradiction is precisely what R11
+exists to give the identification code a fair test of, so manufacturing it by
+accident would be worse than useless.
+
+So the replay walks the scenarios in tick order, moves the whole cast to the
+fix each of them had *at that tick* before firing, and stamps the shot with
+the moment it was taken. The simulated hour is anchored to end now: the newest
+shot is a minute old, the oldest about ninety, and every fix age in the
+database is the one the world said it would be.
+"""
+
+import datetime
+import logging
+from pathlib import Path
+from typing import Dict
+from typing import Iterable
+from typing import List
+from typing import Optional
+
+from backend.database import session_scope
+from backend.model import Game
+from backend.model import Shot
+from backend.model import User
+from backend.test_world import generate as generate_mod
+from backend.test_world import ids
+from backend.test_world import telemetry as telemetry_mod
+from backend.test_world import world as world_mod
+from backend.user_interface import UserInterface
+
+logger = logging.getLogger(__name__)
+
+DEFAULT_WORLD = Path("tests/fixtures/test_game/world.json")
+
+
+def anchor_epoch(duration_s: int, now: Optional[float] = None) -> float:
+    """Epoch seconds for tick 0, so that a game of ``duration_s`` ends *now*.
+
+    The world is set on a date in September; anchoring to it literally would
+    put every shot in the future, where ``shot_identification`` reads each fix
+    as newer than the shot it belongs to and so perfectly fresh. Ending the
+    hour at the present moment keeps the *relative* times the world computed
+    -- which are the ones that matter -- and puts them where a dev's clock can
+    see them.
+
+    Whole seconds, because a shot's time is stored to the second: a fractional
+    anchor rounds the shot down and leaves every fix age in its context up to
+    a second short of what the world says it is.
+    """
+    import time
+
+    return float(int((now if now is not None else time.time()) - duration_s))
+
+
+def place_players(
+    seed: int, fixes: Dict[str, List[dict]], tick: int, anchor: float
+) -> int:
+    """Move the cast to the fix each of them had at ``tick``. Returns how many.
+
+    A player whose phone had not reported by ``tick`` has their location
+    *cleared* rather than left alone: "we don't know where they were" is a
+    real state, and leaving a later fix in place would quietly answer an
+    earlier shot's question with information that did not exist yet.
+
+    Writes the columns directly, in one session, for the same reason
+    :func:`UserInterface.set_location` uses a detached one: this is a position
+    being restored, not a player moving, and it must not fire an update event
+    per player per shot.
+    """
+    placed = 0
+    with session_scope() as session:
+        for slug, timeline in fixes.items():
+            user = session.get(User, ids.user_id(seed, slug))
+            if user is None:
+                continue
+            fix = telemetry_mod.newest_fix_at(timeline, tick)
+            if fix is None:
+                user.latitude = None
+                user.longitude = None
+                user.location_timestamp = None
+                user.location_accuracy = None
+                continue
+            user.latitude = fix["lat"]
+            user.longitude = fix["long"]
+            user.location_accuracy = fix["accuracy"]
+            user.location_timestamp = anchor + fix["t"]
+            placed += 1
+    return placed
+
+
+def _stamp(anchor: float, tick: int) -> datetime.datetime:
+    """The wall-clock moment of ``tick``, as the database writes times.
+
+    Naive UTC, because that is what ``func.now()`` stores on both SQLite and
+    Postgres -- a demo shot has to sort against a real one.
+    """
+    moment = datetime.datetime.fromtimestamp(anchor + tick, datetime.timezone.utc)
+    return moment.replace(tzinfo=None, microsecond=0)
+
+
+def load_shots(
+    seed: int,
+    world_path: Path = DEFAULT_WORLD,
+    images_dir: Optional[Path] = None,
+    now: Optional[float] = None,
+    only: Optional[Iterable[str]] = None,
+) -> dict:
+    """Replay every demo shot that is not in the sample game already.
+
+    Idempotent: the shot ids are derived from the seed and the scenario, so a
+    second run finds all ten present and does nothing. ``only`` narrows the
+    replay to named scenarios ("S4"), which is how you get one shot back after
+    adjudicating it into the wrong answer.
+    """
+    world_path = Path(world_path)
+    world = world_mod.load(world_path)
+    scenes = world.get("scenes") or {}
+    if not scenes.get("shots"):
+        raise RuntimeError(
+            f"{world_path} has no scenes in it - run `python -m backend.test_world "
+            "scenes` first"
+        )
+    images_dir = Path(images_dir) if images_dir else world_path.parent / "shots"
+
+    game_id = ids.game_id(seed)
+    with session_scope() as session:
+        if session.get(Game, game_id) is None:
+            raise RuntimeError(
+                f"the sample game ({game_id}) is not in this database - reset it "
+                "with MAKE_DEBUG_ENTRIES set first"
+            )
+        already_there = {
+            row[0] for row in session.query(Shot.id).filter_by(game_id=game_id)
+        }
+
+    anchor = anchor_epoch(world["clock"]["ticks"], now)
+    loaded, skipped, missing = [], [], []
+
+    wanted = set(only) if only is not None else None
+
+    for shot in sorted(scenes["shots"], key=lambda s: s["tick"]):
+        scenario = shot["scenario"]
+        if wanted is not None and scenario not in wanted:
+            continue
+        shot_id = ids.shot_id(seed, scenario)
+        if shot_id in already_there:
+            skipped.append(scenario)
+            continue
+
+        image = images_dir / f"{scenario}.jpg"
+        if not image.exists():
+            missing.append(scenario)
+            continue
+
+        place_players(seed, world["fixes"], shot["tick"], anchor)
+
+        with UserInterface(ids.user_id(seed, shot["shooter"]["slug"])) as ui:
+            # The cast start the sample game with no ammo, and firing costs a
+            # bullet. Handed over one at a time rather than in a lump, so a
+            # player who fires twice ends the replay where they started.
+            ui.award_ammo()
+            ui.submit_shot(
+                generate_mod.data_url(image),
+                heading=shot["heading"],
+                shot_id=shot_id,
+                time_created=_stamp(anchor, shot["tick"]),
+            )
+        loaded.append(
+            {
+                "scenario": scenario,
+                "shooter": shot["shooter"]["slug"],
+                "target": shot["target"]["slug"],
+                "intended_result": shot["intended_result"],
+                "seconds_ago": world["clock"]["ticks"] - shot["tick"],
+            }
+        )
+
+    # Leave everybody where the game left them, not where the last shot found
+    # them: the admin map and the spectator screen show the present.
+    placed = place_players(seed, world["fixes"], world["clock"]["ticks"], anchor)
+
+    return {
+        "game_id": game_id,
+        "loaded": loaded,
+        "skipped": skipped,
+        "missing": missing,
+        "located": placed,
+        "anchor": anchor,
+    }

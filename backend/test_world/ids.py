@@ -35,3 +35,13 @@ def team_id(seed: int, team_slug: str) -> uuid.UUID:
 
 def user_id(seed: int, player_slug: str) -> uuid.UUID:
     return derive(seed, "user", player_slug)
+
+
+def shot_id(seed: int, scenario: str) -> uuid.UUID:
+    """The id a replayed demo shot gets, so replaying twice is a no-op.
+
+    A real shot's id is minted at random, as it should be. These ten are
+    derived so that ``replay`` can ask the database whether S4 is already
+    there rather than counting rows and hoping.
+    """
+    return derive(seed, "shot", scenario)
