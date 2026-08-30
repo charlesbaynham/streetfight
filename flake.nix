@@ -288,7 +288,11 @@
               enable = true;
               backend = perSystem.packages.${lxcSystem}.backendEnv;
               frontend = perSystem.packages.${lxcSystem}.frontendBuild;
-              sampleGame = true;
+              # Deliberately *not* `sampleGame`. Staging boots with an empty
+              # database and the thirty players are made on demand, by the
+              # admin page's "Fire demo game" button, so a demo is something
+              # somebody chose to start rather than something the box did to
+              # itself on every restart. See docs/deployment_staging.md.
             };
           }
         ];

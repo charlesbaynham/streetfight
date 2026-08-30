@@ -526,10 +526,11 @@ Three deployment targets share one service definition:
   publishes the template as a release asset only from that branch, and the
   hypervisor at home polls for it. TLS is terminated upstream by traefik
   (gardenfacer), so it answers plain HTTP on :80 and is reachable only inside
-  the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. It sets
-  `services.streetfight.sampleGame`, so its database is the deterministic test
-  world rather than real players, and it carries the *same* secrets as live
-  apart from `WEBSITE_URL`. Full runbook: `docs/deployment_staging.md`. **A
+  the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. Its
+  database **starts empty** — it deliberately does not set
+  `services.streetfight.sampleGame`, so the deterministic test world is made
+  on demand by the admin page's **Fire demo game** button rather than on every
+  boot — and it carries the *same* secrets as live apart from `WEBSITE_URL`. Full runbook: `docs/deployment_staging.md`. **A
   merge to master deploys neither target** — `live` and `staging` are both
   moved by hand.
 - **Docker Compose** (`compose.yml`) runs a **Caddy** frontend, the
