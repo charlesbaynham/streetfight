@@ -37,12 +37,12 @@ const TICKER_LINES = 6;
 // The headline clock only has to look live, so a slow tick is plenty.
 const CLOCK_TICK_MS = 1000;
 
-// How long each face holds before the screen swaps. The gallery's 45s is not
+// How long each face holds before the screen swaps. The gallery's 10s is not
 // arbitrary: .screenProgress's countdown animation runs for exactly that, so
-// the hairline finishes as the face changes. The map gets twice the airtime
-// because it is the main event and the gallery is the interstitial.
-const DASHBOARD_MS = 90 * 1000;
-const GALLERY_MS = 45 * 1000;
+// the hairline finishes as the face changes. The map gets four times the
+// airtime because it is the main event and the gallery is the interstitial.
+const DASHBOARD_MS = 40 * 1000;
+const GALLERY_MS = 10 * 1000;
 
 // The takeover: a new shot's photograph gets the room, holds while CharlesBot
 // works, and leaves a few seconds after the first conclusion - "escalating"
@@ -347,6 +347,7 @@ function Headline({
   game,
   players,
   now,
+  screenAwake,
   fullscreenActive,
   onToggleFullscreen,
 }) {
@@ -369,6 +370,13 @@ function Headline({
       <span className={styles.headlineAlive}>
         {alive} of {players.length} alive
       </span>
+      {/* Only when there is something to say: the screen is not being held
+          awake, so the tablet this is propped up on will lock itself and take
+          the dashboard with it. Amber, because it is a doubt rather than a
+          verdict, and it says which way round it is in words. */}
+      {screenAwake ? null : (
+        <span className={styles.headlineSleep}>Screen may sleep</span>
+      )}
       {/* The one clickable thing on an otherwise hands-off screen: set once
           when the laptop is wired to the TV, then left alone. */}
       <button
@@ -662,7 +670,7 @@ function useFaceCycle(hasGallery) {
 }
 
 function SpectatorScreen() {
-  useWakeLock();
+  const screenAwake = useWakeLock();
 
   const fullscreenHandle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -760,6 +768,7 @@ function SpectatorScreen() {
         game={game}
         players={players}
         now={now}
+        screenAwake={screenAwake}
         fullscreenActive={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
       />

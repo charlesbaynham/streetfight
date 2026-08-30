@@ -166,6 +166,20 @@
   }
 }
 
+/* Said only when it is true, and never animated: it is a note for whoever
+   set the screen up, not news for the room. */
+.headlineSleep {
+  align-self: center;
+  padding: 6px 16px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: var(--size-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* The one clickable element on the screen, so it gets a real cursor even
    though .screen turns the cursor off everywhere else. */
 .fullscreenToggle {
@@ -1127,7 +1141,7 @@
 
 /* ===============================================================
    B. GALLERY SCREEN
-   The page's second face. Every couple of minutes it swaps from
+   The page's second face. Every 40 seconds it swaps from
    the map to the last six photographs at proper size, then swaps
    back. Headline and ticker stay put across both so the room never
    loses the clock, the alive count, or the announcements — only
@@ -1150,7 +1164,7 @@
   width: 100%;
   background: var(--ink-faint);
   transform-origin: left center;
-  animation: screenCountdown 45s linear infinite;
+  animation: screenCountdown 10s linear infinite;
 }
 @keyframes screenCountdown {
   from {

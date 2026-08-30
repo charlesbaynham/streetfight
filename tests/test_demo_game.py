@@ -2,21 +2,27 @@
 
 The expensive part of every test here is provisioning: thirty players picking
 outfits through the real allocator takes a few seconds, and each test gets a
-fresh database. So the drip's behaviour -- firing, cancelling, resuming, being
-idempotent, and recovering from an interrupted provisioning -- is exercised
-once each, in one test apiece, rather than paid for repeatedly.
+fresh database. So the drip's behaviour -- wiping, firing, cancelling,
+restarting from the beginning, and being idempotent while it runs -- is
+exercised once each, in one test apiece, rather than paid for repeatedly.
+
+The guard gets more tests than anything else, and cheaper ones, because a
+press now *drops every table*: it is the only thing between this button and a
+real evening's database.
 """
 
 import asyncio
 import datetime
 import json
 import time
+from uuid import uuid4 as get_uuid
 
 import pytest
 
 from backend import demo_game
 from backend.admin_interface import AdminInterface
 from backend.database import session_scope
+from backend.model import Game
 from backend.model import Shot
 from backend.model import User
 from backend.reset_db import SAMPLE_SEED
@@ -44,10 +50,33 @@ def test_a_player_in_a_team_stops_the_demo_dead(db_session, user_in_team):
     with pytest.raises(demo_game.DemoGameRefused):
         demo_game.start()
 
-    from backend.model import Game
-
     assert db_session.get(Game, sample_game_id()) is None
     assert demo_game.status()["state"] == demo_game.STATE_IDLE
+    # Refused before anything was created *and* before anything was dropped:
+    # the player who caused the refusal is still there.
+    assert db_session.get(User, user_in_team) is not None
+
+
+def test_a_game_with_no_players_yet_stops_the_demo_dead(db_session, one_game):
+    """An admin's freshly created game has nobody in a team to notice.
+
+    Which is fine while the button only *adds* to a database, and not fine at
+    all now that it empties one: the teams somebody set up ten minutes ago
+    would go with everything else.
+    """
+    with pytest.raises(demo_game.DemoGameRefused) as refusal:
+        demo_game.start()
+
+    assert str(one_game) in str(refusal.value)
+    assert db_session.get(Game, one_game) is not None
+    assert demo_game.status()["state"] == demo_game.STATE_IDLE
+
+
+def test_the_demos_own_game_is_not_a_foreign_one(db_session):
+    """A leftover sample game is the demo's to wipe, not somebody else's."""
+    AdminInterface().create_game(sample_game_id())
+
+    assert demo_game.foreign_games() == []
 
 
 def test_a_browser_that_never_joined_is_not_a_real_game(db_session, user_factory):
@@ -67,24 +96,31 @@ def test_the_demo_cast_are_not_strangers_to_themselves(db_session, one_team):
 
 
 @pytest.mark.asyncio
-async def test_an_interrupted_provisioning_is_completed_not_fired_into(db_session):
-    """Two shapes of interrupted provisioning, both repaired rather than
-    fired into.
+async def test_a_press_wipes_whatever_is_there_and_starts_a_fresh_armed_game(
+    db_session,
+):
+    """The button's whole contract, on two databases it has to cope with.
 
-    Before the fix, ``_provision`` treated the mere existence of the ``Game``
-    row as proof the whole cast was there. Anything that interrupted
-    provisioning part-way -- a crash, a reload, an exception -- left a game
-    row with a missing or partial cast, and every later press *skipped*
-    provisioning and fired shots at shooters who don't exist:
-    ``UserInterface`` mints them a fresh, teamless row, and ``submit_shot``
-    then 405s with "User is not in a team yet".
+    Whatever state a previous press (or a crash part-way through one) left
+    behind, a press empties every table and rebuilds the game from the seed.
+    That is what makes "stop it and start it again" replay the evening from
+    the top rather than carry on from shot four, and it is why ``_provision``
+    no longer has to work out how much of the cast survived.
+
+    And the game it rebuilds is one the shots can actually change: the cast
+    arrive with no ammo and no weapon at all (``DEFAULT_SHOT_DAMAGE`` is zero,
+    so a shot from one of them could be confirmed as a hit and still take
+    nobody's last hit point), in a game that is created paused.
     """
     admin = AdminInterface()
 
-    # Shape 1: only the Game row exists - provisioning stopped at the very
-    # first commit `test_world.cast.provision` makes, before a single team or
-    # player was created.
+    # Shape 1: a game row and a stray browser user, with no cast behind either
+    # - provisioning stopped at the first commit `test_world.cast.provision`
+    # makes. Neither blocks the demo, and neither survives it.
     admin.create_game(sample_game_id())
+    stray = get_uuid()
+    with UserInterface(stray) as ui:
+        ui.get_user()
 
     demo_game.start(total_s=0.0)
     await demo_game._current.task
@@ -93,14 +129,31 @@ async def test_an_interrupted_provisioning_is_completed_not_fired_into(db_sessio
     assert status["state"] == demo_game.STATE_DONE
     assert status["error"] is None
     assert status["fired"] == 10
+
     with session_scope() as session:
         assert session.query(User).count() == 30
+        assert session.get(User, stray) is None
 
-    # Shape 2: a full cast and all ten shots (a "successful run"), then two
-    # players interrupted out of existence - one a bystander who never fired,
-    # one a shooter. Deleting a user deletes their fired shots too, so the
-    # shooter's shot (S2) vanishes with them and has to be re-fired on the
-    # next press, with a shooter who has to be there to receive it.
+        # Unpaused: a game created by the demo starts inactive, and a paused
+        # game is a demo of nothing.
+        assert session.get(Game, sample_game_id()).active is True
+
+        # Armed: plenty of ammo, the weakest weapon, no armour. Ten of them
+        # fired a shot, which costs a bullet and is handed one back.
+        for user in session.query(User).all():
+            assert user.num_bullets == demo_game.DEMO_BULLETS
+            assert user.shot_damage == demo_game.DEMO_SHOT_DAMAGE
+            assert user.shot_timeout == demo_game.DEMO_SHOT_TIMEOUT
+            assert user.hit_points == demo_game.DEMO_HIT_POINTS
+
+        # The damage is copied onto the shot when it is fired, so an unarmed
+        # cast would leave ten shots that kill nobody however they are judged.
+        for shot in session.query(Shot).all():
+            assert shot.shot_damage == demo_game.DEMO_SHOT_DAMAGE
+
+    # Shape 2: that finished game, with two players deleted out from under it
+    # - one a bystander, one a shooter, whose shot goes with them. The next
+    # press does not repair this; it replaces it.
     bystander = ids.user_id(SAMPLE_SEED, "horseferry-2")
     shooter = ids.user_id(SAMPLE_SEED, "victoria-3")  # fired S2
     admin.delete_user(bystander)
@@ -151,7 +204,7 @@ def shots_in_database():
 
 @pytest.mark.asyncio
 async def test_the_shots_arrive_one_at_a_time_and_can_be_stopped(db_session):
-    """Fire, pause mid-run, cancel, resume, finish - all on one provisioning."""
+    """Fire, watch it mid-run, cancel, start again from the top."""
     # Ten seconds between shots: slow enough that the run is definitely still
     # going, and still going by a wide margin, when we look at it.
     demo_game.start(total_s=100.0)
@@ -179,11 +232,11 @@ async def test_the_shots_arrive_one_at_a_time_and_can_be_stopped(db_session):
     with pytest.raises(asyncio.CancelledError):
         await first_run.task
     assert demo_game.status()["state"] == demo_game.STATE_CANCELLED
-    # What was fired stays fired; nothing else joins it.
+    # What was fired stays fired, until somebody presses the button again.
     assert shots_in_database() == 1
 
-    # Restarting resumes rather than replaying: the shot ids come from the
-    # seed, so the one already in the game is counted and skipped.
+    # Restarting replays rather than resuming: the one shot that got out is
+    # wiped with everything else, and all ten are fired afresh.
     demo_game.start(total_s=0.0)
     assert demo_game._current is not first_run
     await demo_game._current.task
@@ -191,7 +244,6 @@ async def test_the_shots_arrive_one_at_a_time_and_can_be_stopped(db_session):
     status = demo_game.status()
     assert status["state"] == demo_game.STATE_DONE
     assert status["error"] is None
-    assert status["already_fired"] == 1
     assert status["fired"] == 10
     assert status["missing"] == []
     assert shots_in_database() == 10

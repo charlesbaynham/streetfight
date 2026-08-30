@@ -114,7 +114,10 @@ cropped photographs into the sample game as shots somebody fired, walking the
 scenarios in tick order and moving the whole cast to the fix each had *at that
 tick*. Shot ids come from the seed, so replaying twice is a no-op; `--only S4`
 re-loads one. To watch the shots arrive one at a time instead of finding them
-all there, use the admin page's **Fire demo game** button (`backend/demo_game.py`).
+all there, use the admin page's **Fire demo game** button
+(`backend/demo_game.py`) — note that it clears the database and rebuilds the
+sample game from the seed before it fires anything, so it undoes any hand
+edits you made to the game first.
 
 ## The rules that are not negotiable
 
