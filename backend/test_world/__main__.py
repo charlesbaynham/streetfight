@@ -32,6 +32,26 @@ def _scratch_db(path: Path):
     Base.metadata.create_all(bind=database.engine)
 
 
+def carry_paid_work_forward(world: dict, out: Path) -> int:
+    """Move anything that cost money from the old world file into the new one.
+
+    `build` makes the world from the seed alone and knows nothing about the
+    localisation boxes, which are bought one at a time and keyed by image id
+    -- so they stay true however the world around them is rebuilt. Without
+    this they go every time `world` runs, and they went twice before it
+    existed. Everything else derived (scenes, crops, measurements) is free to
+    recompute and is deliberately left to be.
+    """
+    from backend.test_world import world as world_mod
+
+    if not Path(out).exists():
+        return 0
+    previous = world_mod.load(Path(out)).get("boxes") or {}
+    if previous:
+        world["boxes"] = previous
+    return len(previous)
+
+
 def cmd_world(args) -> int:
     import tempfile
 
@@ -43,9 +63,14 @@ def cmd_world(args) -> int:
         _scratch_db(Path(tmp) / "world.db")
         world = world_mod.build(args.seed)
 
+    out = Path(args.out)
+    carried = carry_paid_work_forward(world, out)
+    if carried:
+        print(f"  carried {carried} localisation boxes across")
+
     track = truth_track(args.seed, build_cast(args.seed))
-    world_mod.save(world, Path(args.out), track=track)
-    print(f"wrote {args.out} (seed {args.seed})")
+    world_mod.save(world, out, track=track)
+    print(f"wrote {out} (seed {args.seed})")
     print(f"  {len(world['cast'])} players, {len(world['teams'])} teams")
     print(f"  {sum(len(v) for v in world['fixes'].values())} fixes")
     print(f"  {len(world['encounters'])} encounters")

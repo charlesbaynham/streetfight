@@ -197,3 +197,28 @@ def test_ciede2000_agrees_with_the_figure_the_palette_was_chosen_against():
         14.2, abs=0.05
     )
     assert ciede2000((0, 0, 0), (255, 255, 255)) == pytest.approx(100.0, abs=0.05)
+
+
+def test_rebuilding_the_world_keeps_the_boxes_that_were_paid_for(tmp_path):
+    """`world` builds from the seed alone, so it knows nothing about them.
+
+    The localisation boxes are bought one API call at a time and keyed by
+    image id, which makes them true regardless of how the world around them is
+    rebuilt. They were thrown away twice -- once by `scenes`, once by `world`
+    -- before anything carried them across, and only git had them.
+    """
+    import json
+
+    from backend.test_world.__main__ import carry_paid_work_forward
+
+    out = tmp_path / "world.json"
+    out.write_text(json.dumps({"seed": 1, "boxes": {"abc123": {"subject": {}}}}))
+
+    rebuilt = {"seed": 1}
+    assert carry_paid_work_forward(rebuilt, out) == 1
+    assert rebuilt["boxes"] == {"abc123": {"subject": {}}}
+
+    # Nothing to carry, and nothing invented: a first run has no old file.
+    fresh = {"seed": 1}
+    assert carry_paid_work_forward(fresh, tmp_path / "absent.json") == 0
+    assert "boxes" not in fresh
