@@ -166,6 +166,20 @@
   }
 }
 
+/* Said only when it is true, and never animated: it is a note for whoever
+   set the screen up, not news for the room. */
+.headlineSleep {
+  align-self: center;
+  padding: 6px 16px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--warn);
+  color: var(--warn);
+  font-size: var(--size-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 /* The one clickable element on the screen, so it gets a real cursor even
    though .screen turns the cursor off everywhere else. */
 .fullscreenToggle {
