@@ -2,7 +2,10 @@
 
 This app is not ready for people other than me to use. If you are reading this readme, you're probably not me. So good luck!
 
-It builds itself as a Proxmox LXC container for easy deployment (for me).
+The live game runs on a cloud droplet; a staging copy of it builds itself as a
+Proxmox LXC container on my home lab. Both are deployed by moving a branch
+(`live` and `staging` respectively) — see `docs/deployment_droplet.md` and
+`docs/deployment_staging.md`.
 
 Dev mode:
 

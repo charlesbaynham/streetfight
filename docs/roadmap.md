@@ -90,7 +90,17 @@ checklist with someone other than an agent driving. Decisions taken for it:
   anything broken is fixed or written down rather than worked around
   silently. Findings land on the R9 checklist.
 
-### R10 — Auto-deploy for the droplet *(shipped 2026-08-29; gated behind a manual step the same day)*
+### R10 — Auto-deploy for the droplet *(shipped 2026-08-29; gated behind a manual step the same day; a staging twin added 2026-08-30)*
+
+> **Staging, 2026-08-30.** The same gate now exists twice. The home-lab LXC that
+> the droplet replaced came back as `streetfight-staging`, deployed by moving a
+> branch called **`staging`** exactly as the droplet is by `live` — a **Deploy to
+> staging** workflow, and a pull-based deployer at the far end (the hypervisor's
+> `cattle-deploy.timer`, watching for a template release published only from that
+> branch). It serves the deterministic sample game at
+> `https://streetfight-staging.i.houseabsolute.co.uk`, inside the house only.
+> Runbook: `docs/deployment_staging.md`.
+
 
 **Shipped** as `nix/auto-deploy.nix`, imported by `streetfight-cloud`, with
 the closure pre-built into Cachix by `build_images.yml`.

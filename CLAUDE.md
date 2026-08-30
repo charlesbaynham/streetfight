@@ -377,8 +377,19 @@ Three deployment targets share one service definition:
   including the cutover that stands down the old home-network LXC
   deployment.
 - **The Proxmox LXC** (`.#proxmoxLxcTemplate`, via `nix-proxmox-cattle`) is
-  that old home-network deployment: TLS terminated upstream by traefik,
-  pull-based auto-redeploy. Being stood down; do not change its behaviour.
+  **staging**, on the home lab: the container that used to run the game, kept
+  after the cutover as somewhere to try things. Same shape as the droplet's
+  gate, one branch along — the **Deploy to staging** workflow
+  (`.github/workflows/deploy-staging.yml`) moves the `staging` branch, CI
+  publishes the template as a release asset only from that branch, and the
+  hypervisor at home polls for it. TLS is terminated upstream by traefik
+  (gardenfacer), so it answers plain HTTP on :80 and is reachable only inside
+  the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. It sets
+  `services.streetfight.sampleGame`, so its database is the deterministic test
+  world rather than real players, and it carries the *same* secrets as live
+  apart from `WEBSITE_URL`. Full runbook: `docs/deployment_staging.md`. **A
+  merge to master deploys neither target** — `live` and `staging` are both
+  moved by hand.
 - **Docker Compose** (`compose.yml`) runs a **Caddy** frontend, the
   **FastAPI** backend and a **Cloudflare DDNS** sidecar on any Docker host.
   Overlays: Traefik (`compose.traefik.yml`), auto-update via Watchtower
