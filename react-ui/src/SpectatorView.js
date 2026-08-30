@@ -43,7 +43,7 @@ const DASHBOARD_MS = 90 * 1000;
 const GALLERY_MS = 45 * 1000;
 
 // The takeover: a new shot's photograph gets the room, holds while CharlesBot
-// works, and leaves two seconds after the first conclusion - "escalating"
+// works, and leaves a few seconds after the first conclusion - "escalating"
 // counts as a conclusion.
 //
 // TAKEOVER_MAX_WAIT_MS is the part the design could not know about. CharlesBot
@@ -51,8 +51,11 @@ const GALLERY_MS = 45 * 1000;
 // that the game runs with the admin adjudicating by hand. With it off no
 // conclusion ever arrives, so without a cap the first shot of the night would
 // park on screen for the rest of the evening.
-const TAKEOVER_MAX_WAIT_MS = 8 * 1000;
-const TAKEOVER_RESOLVED_MS = 2 * 1000; // matches takeoverCountdown
+const TAKEOVER_MAX_WAIT_MS = 15 * 1000;
+// Must stay in step with the takeoverCountdown animation in the stylesheet,
+// which drains the bar over exactly this long. Change one and change the other,
+// or the bar empties early and then sits there.
+const TAKEOVER_RESOLVED_MS = 3 * 1000;
 const TAKEOVER_LEAVING_MS = 300; // matches takeoverOut
 // A busy minute must not hide the map. Older ones are dropped rather than
 // queued forever; they still reach the feed and the gallery seconds later.

@@ -14,7 +14,7 @@
 >   `teamLetters()` is not simply `name[0]`: with Blue holding "B", Burgundy
 >   takes something else.
 > - **Two new faces.** A **shot takeover** — a new shot's photograph gets the
->   room, holds while CharlesBot works, and leaves two seconds after the first
+>   room, holds while CharlesBot works, and leaves three seconds after the first
 >   conclusion ("escalating" counts) — and a **gallery** of the recent shots
 >   large. The screen alternates map (90s) and gallery (45s); the takeover
 >   overlays either.

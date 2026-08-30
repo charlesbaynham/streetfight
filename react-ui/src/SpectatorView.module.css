@@ -804,7 +804,7 @@
    A. SHOT TAKEOVER
    A new shot lands and the photograph gets the room immediately —
    before anyone has adjudicated anything. It holds while CharlesBot
-   works, then leaves two seconds after the first conclusion arrives,
+   works, then leaves three seconds after the first conclusion arrives,
    whatever that conclusion is ("escalating" counts). Shots landing
    during that window queue behind it.
 
@@ -1024,7 +1024,7 @@
 /* Waiting on CharlesBot: indeterminate, because there is no honest
    number to show. It shuttles, so a frozen page is obvious.
    Once a conclusion lands, JS adds .resolving and the same rule
-   becomes a two-second drain — the bar stops asking and starts
+   becomes a three-second drain — the bar stops asking and starts
    counting. */
 .takeoverTimer {
   position: relative;
@@ -1061,7 +1061,7 @@
   width: 100%;
   background: var(--ink-dim);
   transform-origin: left center;
-  animation: takeoverCountdown 2s linear both;
+  animation: takeoverCountdown 3s linear both;
 }
 @keyframes takeoverCountdown {
   from {

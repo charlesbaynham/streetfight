@@ -2220,11 +2220,11 @@ the page grew two more faces to match it:
   paper knocked back a stop and vignetted. That is the answer to the brief's
   first hazard — black-on-white artwork over 60% of a dark screen.
 - **A shot takeover.** A new shot's photograph takes the room, holds while
-  CharlesBot works, and leaves two seconds after the first conclusion —
+  CharlesBot works, and leaves three seconds after the first conclusion —
   "escalating" counts. It overlays *either* face, scrimming rather than
   replacing, so the map never disappears. Shots landing during that window
   queue behind it, at most three, with the rest dropped (they are still in the
-  feed seconds later). A shot that never concludes is let go after 8s: the
+  feed seconds later). A shot that never concludes is let go after 15s: the
   design assumed a conclusion was always coming, but CharlesBot is off unless
   its per-game toggle is on, so without a cap the first shot of the night would
   park on screen all evening.

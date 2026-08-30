@@ -417,8 +417,8 @@ describe("the takeover", () => {
 
     // A stage at a time: each timeout is only scheduled once the previous
     // state change has re-rendered, so one bulk advance would not chain.
-    await screenApi.tick(8050); // the cap, waiting -> resolving
-    await screenApi.tick(2050); // the 2s hold
+    await screenApi.tick(15050); // the cap, waiting -> resolving
+    await screenApi.tick(3050); // the hold once resolved
     await screenApi.tick(350); // the exit
 
     expect(takeover()).toBeNull();
