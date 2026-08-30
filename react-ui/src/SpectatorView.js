@@ -17,6 +17,8 @@ import React, {
   useState,
 } from "react";
 
+import { FullScreen, useFullScreenHandle } from "react-full-screen";
+
 import { AdminPage } from "./AdminCommon";
 import { MapViewAdmin } from "./MapView";
 import { fallbackTeamColour } from "./teamColours";
@@ -341,7 +343,13 @@ function countdown(seconds) {
 // recorded start time (backend/model.py GameModel), so "2:14 into the game"
 // would be invented. Adding a started_at is a schema change - see the design
 // brief.
-function Headline({ game, players, now }) {
+function Headline({
+  game,
+  players,
+  now,
+  fullscreenActive,
+  onToggleFullscreen,
+}) {
   const alive = players.filter((p) => p.state === "alive").length;
 
   return (
@@ -361,6 +369,15 @@ function Headline({ game, players, now }) {
       <span className={styles.headlineAlive}>
         {alive} of {players.length} alive
       </span>
+      {/* The one clickable thing on an otherwise hands-off screen: set once
+          when the laptop is wired to the TV, then left alone. */}
+      <button
+        type="button"
+        className={styles.fullscreenToggle}
+        onClick={onToggleFullscreen}
+      >
+        {fullscreenActive ? "Exit full screen" : "Full screen"}
+      </button>
     </header>
   );
 }
@@ -647,6 +664,16 @@ function useFaceCycle(hasGallery) {
 function SpectatorScreen() {
   useWakeLock();
 
+  const fullscreenHandle = useFullScreenHandle();
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const reportFullscreenChange = useCallback((state) => {
+    setIsFullscreen(state);
+  }, []);
+  const toggleFullscreen = useCallback(() => {
+    if (isFullscreen) fullscreenHandle.exit();
+    else fullscreenHandle.enter();
+  }, [fullscreenHandle, isFullscreen]);
+
   const {
     game,
     games,
@@ -721,11 +748,21 @@ function SpectatorScreen() {
     return <p className={styles.empty}>No games yet.</p>;
 
   return (
-    <div className={styles.screen}>
+    <FullScreen
+      handle={fullscreenHandle}
+      onChange={reportFullscreenChange}
+      className={styles.screen}
+    >
       <UpdateListener update_type="admin" callback={refreshAll} />
       <UpdateListener update_type="shots" callback={refreshShots} />
 
-      <Headline game={game} players={players} now={now} />
+      <Headline
+        game={game}
+        players={players}
+        now={now}
+        fullscreenActive={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
+      />
 
       {face === "gallery" ? (
         <>
@@ -770,7 +807,7 @@ function SpectatorScreen() {
           thumbnail={thumbnails[takeoverShot.id]}
         />
       ) : null}
-    </div>
+    </FullScreen>
   );
 }
 
