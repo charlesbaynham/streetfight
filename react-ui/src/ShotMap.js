@@ -14,27 +14,143 @@ const SPAN_KM = 0.2;
 // that good, and neither is the way a phone is held.
 const CONE_HALF_ANGLE_DEG = 22;
 const CONE_LENGTH_PX = 0.38 * BOX_PX;
+// How many other players to draw. Everybody who was in the box is usually a
+// handful; the cap is there so a crowd cannot turn the thumbnail into a smear.
+const MAX_OTHERS = 8;
+// A fix this much older than the photograph is drawn faded and labelled with
+// its age: it says where somebody was, not where they were when the shutter
+// went. The same staleness the location term discounts
+// (backend/shot_identification.py, _effective_sigma_m), said in the crude way a
+// thumbnail can say it.
+const STALE_AFTER_S = 120;
 
-// The shooter's own fix out of a shot's location_context, or null when there
-// isn't one - a shot from before locations were recorded, or a shooter whose
-// phone had never reported a position.
-export function shooterFix(shot) {
-  if (!shot || !shot.location_context) return null;
+const EARTH_RADIUS_M = 6371e3;
+
+// Great-circle distance, matching backend/shot_identification.haversine_m.
+export function haversineMetres(lat1, long1, lat2, long2) {
+  const phi1 = (lat1 * Math.PI) / 180;
+  const phi2 = (lat2 * Math.PI) / 180;
+  const dPhi = ((lat2 - lat1) * Math.PI) / 180;
+  const dLambda = ((long2 - long1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dPhi / 2) * Math.sin(dPhi / 2) +
+    Math.cos(phi1) *
+      Math.cos(phi2) *
+      Math.sin(dLambda / 2) *
+      Math.sin(dLambda / 2);
+
+  return 2 * EARTH_RADIUS_M * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// The fixes stored with a shot, or an empty list when there are none to be
+// had. Entries without a position are dropped rather than defaulted, exactly
+// as backend/shot_identification.parse_location_context does it.
+function locationFixes(shot) {
+  if (!shot || !shot.location_context) return [];
 
   let context;
   try {
     context = JSON.parse(shot.location_context);
   } catch (err) {
-    return null;
+    return [];
   }
-  if (!Array.isArray(context)) return null;
+  if (!Array.isArray(context)) return [];
 
-  const fix = context.find((entry) => entry && entry.user_id === shot.user_id);
-  if (!fix) return null;
-  if (typeof fix.latitude !== "number" || typeof fix.longitude !== "number")
-    return null;
+  return context.filter(
+    (entry) =>
+      entry &&
+      typeof entry.latitude === "number" &&
+      typeof entry.longitude === "number",
+  );
+}
 
-  return fix;
+// The shooter's own fix out of a shot's location_context, or null when there
+// isn't one - a shot from before locations were recorded, or a shooter whose
+// phone had never reported a position.
+export function shooterFix(shot) {
+  if (!shot) return null;
+
+  return (
+    locationFixes(shot).find((entry) => entry.user_id === shot.user_id) || null
+  );
+}
+
+// When the photograph was taken, in epoch seconds, or null when the shot does
+// not carry a time. The backend stores naive UTC and serialises it without a
+// zone, which JS would otherwise read as local time - an hour of imaginary fix
+// age for anybody east or west of Greenwich.
+export function shotEpochSeconds(shot) {
+  if (!shot || !shot.time_created) return null;
+
+  const raw = String(shot.time_created);
+  const stamped = /(Z|[+-]\d{2}:?\d{2})$/.test(raw) ? raw : `${raw}Z`;
+  const millis = new Date(stamped).getTime();
+
+  return Number.isNaN(millis) ? null : millis / 1000;
+}
+
+// Everybody but the shooter who had a position when the shot was taken,
+// nearest first, with how far away they were and how old their fix already was
+// by then. This is the same evidence identification scores against - who else
+// was actually about - shown rather than only summarised as a metres column.
+export function otherFixes(shot) {
+  const shooter = shooterFix(shot);
+  if (!shooter) return [];
+
+  const epoch = shotEpochSeconds(shot);
+
+  return locationFixes(shot)
+    .filter((fix) => fix.user_id !== shot.user_id)
+    .map((fix) => ({
+      fix,
+      distance: haversineMetres(
+        shooter.latitude,
+        shooter.longitude,
+        fix.latitude,
+        fix.longitude,
+      ),
+      // Null rather than zero when either end of the subtraction is missing:
+      // an unknown age must not read as a fresh fix.
+      ageSeconds:
+        epoch === null || typeof fix.timestamp !== "number"
+          ? null
+          : Math.max(0, epoch - fix.timestamp),
+      teammate: fix.team_id === shooter.team_id,
+      down: fix.state !== "alive",
+    }))
+    .sort((a, b) => a.distance - b.distance);
+}
+
+// What a dot is called on the map. Anything that makes the position less than
+// a plain "they were here" is said in words rather than left to the styling:
+// a player who is out, and a fix too old to place them by.
+function otherLabel(other) {
+  const caveats = [
+    other.down ? other.fix.state : null,
+    other.ageSeconds === null
+      ? "fix age unknown"
+      : other.ageSeconds > STALE_AFTER_S
+        ? `${formatAge(other.ageSeconds)} old`
+        : null,
+  ].filter(Boolean);
+
+  const name = other.fix.user || "unnamed";
+  return caveats.length ? `${name} (${caveats.join(", ")})` : name;
+}
+
+// "43 m, fix 4 m old" - the facts behind one dot, for the title attribute.
+function otherTitle(other) {
+  const facts = [`${Math.round(other.distance)} m away`];
+  if (other.ageSeconds === null) facts.push("fix age unknown");
+  else facts.push(`fix ${formatAge(other.ageSeconds)} old`);
+  if (other.down) facts.push(other.fix.state);
+  return `${other.fix.user || "unnamed"} (${other.fix.team || "no team"}) - ${facts.join(", ")}`;
+}
+
+function formatAge(seconds) {
+  if (seconds < 90) return `${Math.round(seconds)}s`;
+  return `${Math.round(seconds / 60)}m`;
 }
 
 // A wedge centred on (cx, cy) - SVG coordinates, so y grows downwards -
@@ -107,12 +223,39 @@ export default function ShotMap({ shot }) {
   const accuracyRadiusPx =
     accuracy === null ? null : kmToPixels(accuracy / 1000, 0)[0];
 
+  // Who else was about, projected the same way and kept to what fits in the
+  // box: a player 400 m away is not "in that area", and pinning them to the
+  // edge would say they were when they weren't. The count says how many were
+  // dropped, so the map never quietly under-reports the crowd.
+  const others = otherFixes(shot);
+  const inView = others
+    .map((other) => ({
+      ...other,
+      pixels: coordsToPixels(other.fix.latitude, other.fix.longitude),
+    }))
+    .filter(
+      ({ pixels: [x, y] }) => x >= 0 && x <= BOX_PX && y >= 0 && y <= BOX_PX,
+    );
+  const drawn = inView.slice(0, MAX_OTHERS);
+
   const caption = [
     accuracy === null ? "accuracy unknown" : `±${Math.round(accuracy)} m`,
     heading === null
       ? "no heading"
       : `facing ${String(Math.round(heading)).padStart(3, "0")}°`,
   ].join(" · ");
+
+  const crowdCaption = [
+    inView.length === 0
+      ? "nobody else in view"
+      : `${inView.length} other${inView.length === 1 ? "" : "s"} in view`,
+    drawn.length < inView.length ? `nearest ${MAX_OTHERS} drawn` : null,
+    others.length > inView.length
+      ? `${others.length - inView.length} off the map`
+      : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <>
@@ -155,9 +298,48 @@ export default function ShotMap({ shot }) {
           </svg>
         )}
 
+        {/* Furthest first, so the nearest dots - the ones the adjudication
+            turns on - are painted over the top rather than under. */}
+        {[...drawn].reverse().map((other) => (
+          <div
+            key={other.fix.user_id}
+            className={[
+              styles.other,
+              // A name hung off a dot in the right-hand half would run out of
+              // the box and be cut in half, so it goes on the inside.
+              other.pixels[0] > BOX_PX / 2 ? styles.otherFlipped : null,
+              other.teammate ? styles.otherTeammate : null,
+              other.down ? styles.otherDown : null,
+              other.ageSeconds === null || other.ageSeconds > STALE_AFTER_S
+                ? styles.otherStale
+                : null,
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            style={
+              other.pixels[0] > BOX_PX / 2
+                ? {
+                    right: BOX_PX - other.pixels[0],
+                    bottom: other.pixels[1],
+                  }
+                : { left: other.pixels[0], bottom: other.pixels[1] }
+            }
+            title={otherTitle(other)}
+          >
+            <span className={styles.otherDot} />
+            <span className={styles.otherName}>{otherLabel(other)}</span>
+          </div>
+        ))}
+
         <div className={styles.dot} style={{ left: dotX, bottom: dotY }} />
       </div>
       <p className={styles.caption}>{caption}</p>
+      <p className={styles.caption}>
+        {crowdCaption}
+        {drawn.some((other) => other.teammate)
+          ? " · hollow dots are the shooter's own team"
+          : null}
+      </p>
     </>
   );
 }

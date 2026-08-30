@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage, adminPost } from "./AdminCommon";
 import { getShotFromCache, evictShotFromCache } from "./ShotCache";
-import ShotMap from "./ShotMap";
+import ShotMap, { haversineMetres } from "./ShotMap";
 import UpdateListener from "./UpdateListener";
 import { Row, Col } from "react-bootstrap";
 
@@ -501,19 +501,12 @@ export function rankShotCandidates(shot_data) {
       state,
       timestamp,
     }) => {
-      // Calculate distance between two points
-      const R = 6371e3; // metres
-      const φ1 = (shooting_user_latitude * Math.PI) / 180; // φ, λ in radians
-      const φ2 = (latitude * Math.PI) / 180;
-      const Δφ = ((latitude - shooting_user_latitude) * Math.PI) / 180;
-      const Δλ = ((longitude - shooting_user_longitude) * Math.PI) / 180;
-
-      const a =
-        Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-        Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-      const distance = R * c; // in metres
+      const distance = haversineMetres(
+        shooting_user_latitude,
+        shooting_user_longitude,
+        latitude,
+        longitude,
+      );
 
       return {
         distance,
