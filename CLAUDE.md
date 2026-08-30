@@ -201,6 +201,20 @@ exemplar.
     picture. The simulated hour is anchored to end now, so the newest shot is
     a minute old and the oldest about ninety; shot ids are derived from the
     seed, so replaying twice is a no-op (`--only S4` re-loads one).
+- `backend/demo_game.py` — the same ten shots, but **dripped in live**: the
+  admin's **Fire demo game** button (`AdminMode.js`'s `DemoGamePanel`,
+  `/api/admin_start_demo_game`) provisions the sample game if it is not there
+  and then fires one shot every thirty seconds or so from a background asyncio
+  task. `npm run demoshots` fills a queue to adjudicate; this fills a dashboard
+  to *watch*, which cannot show the spectator screen reacting to a shot if
+  every shot landed before the page loaded. Time is sped up by **re-anchoring
+  each shot**, not by scaling the clock: `anchor_epoch(tick)` puts that shot's
+  tick at this instant, so the shot reads as just fired while every fix behind
+  it keeps the exact age the world gave it. Idempotent (pressing it again while
+  it runs changes nothing, and after a cancel it resumes — the shot ids come
+  from the seed), cancellable, and it **refuses to run at all** if anybody in a
+  team is not one of the thirty simulated players, since it creates thirty
+  players and shoots at them.
 - `scripts/` — standalone analysis tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
@@ -236,6 +250,10 @@ npm run resetdb          # python -m backend.reset_db
 # Fill the sample game's shot queue with the ten demo shots (dev only, free)
 npm run demoshots        # python -m backend.test_world shots
 ```
+
+To watch a dashboard fill up instead of finding it already full, use the admin
+page's **Fire demo game** button (`backend/demo_game.py`), which drips the same
+ten shots in one at a time over about five minutes.
 
 There are **no database migrations** (no Alembic). The schema is created from the
 ORM models in `backend/model.py` via `create_all()`. After changing a model,
