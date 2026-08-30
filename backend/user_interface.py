@@ -532,13 +532,16 @@ class UserInterface:
         # Read before anything below dirties the session: an attribute read
         # on an expired object autoflushes, and a flush clears the dirty flag
         # @db_scoped uses to decide whether to announce anything at all (the
-        # same trap the shot id is assigned by hand to avoid, below).
+        # same trap the shot id is assigned by hand to avoid, below). The
+        # AdminInterface call just below is what expires them: a @db_scoped
+        # call from another interface sharing this session commits it.
         game_id = game.id
+        review_enabled = game.ai_shot_review_enabled
 
         logger.info("User %s submitting shot to game %s", user.id, game_id)
 
         all_user_locations = AdminInterface(session=self._session).get_locations(
-            game_id=game.id
+            game_id=game_id
         )
 
         # Assign the id here rather than letting the column default do it at
@@ -573,6 +576,21 @@ class UserInterface:
         # rather than in the route, so a shot fired by the demo drip announces
         # itself exactly like a shot fired by a player.
         self.announce_after_commit("shots", game_id)
+
+        # The review is queued here for the same reason, and it is the half
+        # that decides whether anybody ever *rules* on the shot: with no
+        # review there is nothing for the auto-action drain to act on, so a
+        # demo-fired shot sat at "waiting for admin" until an admin flipped
+        # the recognition toggle off and on to sweep it up as backlog.
+        #
+        # Fired inline rather than queued, because it is not an announcement:
+        # `enqueue_review` only creates a task, and a task cannot start until
+        # the event loop regains control - which is after @db_scoped has
+        # committed this shot and run the hook above.
+        if review_enabled:
+            from . import ai_shot_review
+
+            ai_shot_review.enqueue_review(shot_id)
 
         return shot_id
 

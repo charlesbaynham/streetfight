@@ -692,6 +692,23 @@ Three deployment targets share one service definition:
   what `QueueHead` did, so the auto-action drain was scoring every head as
   "now". Any new projection that will be passed to identification needs
   `time_created` in it.
+- **Firing a shot is what queues its review**, not the route that took it —
+  the same lesson as the `"shots"` announcement above, one rung further in.
+  With the game's recognition toggle on, `UserInterface.submit_shot` calls
+  `ai_shot_review.enqueue_review` itself; that call used to live in
+  `/api/submit_shot`, which is only *one* of the ways a shot enters a game, so
+  every shot the demo drip put into a game with CharlesBot on arrived
+  **unread** — and with no review there is nothing for the auto-action drain
+  to act on, so the head sat at "waiting for admin" and blocked the queue
+  behind it until an admin flipped the toggle off and on to sweep it up as
+  backlog. Unlike the announcement it is fired inline rather than queued for
+  the post-commit hook: `enqueue_review` only creates a task, and a task
+  cannot start until the event loop regains control, which is after
+  `@db_scoped` has committed. The recognition toggle is read into a local
+  alongside `game_id` and for the same reason — `AdminInterface.get_locations`
+  runs on this session part-way through, and a `@db_scoped` call from another
+  interface **commits**, expiring every ORM object, so a later attribute read
+  reloads one and autoflushes.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

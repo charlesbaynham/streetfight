@@ -370,6 +370,52 @@ def test_disabling_the_toggle_returns_no_backlog(db_session, shot_from_user_in_t
     assert AdminInterface().is_ai_shot_review_enabled(game_id) is False
 
 
+# -- a shot queues its own review ---------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_a_shot_queues_its_own_review_whoever_fired_it(
+    mocker, db_session, one_game, user_in_team, test_image_string
+):
+    """Firing a shot is what queues its review, not the route that took it.
+
+    `/api/submit_shot` is one of two callers: the demo game and the replay
+    both fire through `UserInterface.submit_shot` directly, and a review
+    queued by the route alone left every shot the demo dripped in sitting
+    unread until an admin flipped the toggle off and on again.
+    """
+    mocker.patch(
+        "backend.ai_shot_review.get_vision_client",
+        return_value=FakeVisionClient(reply=hit_reply()),
+    )
+    spy = mocker.spy(ai_shot_review, "enqueue_review")
+
+    AdminInterface().set_ai_shot_review_enabled(one_game, True)
+
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    shot_id = ui.submit_shot(test_image_string)
+
+    spy.assert_called_once_with(shot_id)
+    await spy.spy_return
+
+    stored = AdminInterface().get_shot_ai_review(shot_id)
+    assert stored["state"] == ai_shot_review.STATE_DONE
+    assert stored["review"]["outcome"] == shot_vision.HIT_PLAYER
+
+
+def test_a_shot_queues_nothing_while_recognition_is_off(
+    mocker, db_session, user_in_team, test_image_string
+):
+    spy = mocker.spy(ai_shot_review, "enqueue_review")
+
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    ui.submit_shot(test_image_string)
+
+    spy.assert_not_called()
+
+
 # -- the replay workbench -----------------------------------------------------
 
 
