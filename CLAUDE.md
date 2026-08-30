@@ -128,7 +128,11 @@ exemplar.
     player is *supposed* to be wearing rides on the roster instead
     (`identity_admin.expected_outfit`, in each
     `admin_get_reference_photo_status` row), shaped like a review's `channels`
-    so the page renders expectation and reading through one component.
+    so the page renders expectation and reading through one component. That
+    shape is `identity_admin.appearance_payload`, and the shot queue's
+    candidate list uses it too (`identification_payload`'s per-candidate
+    `outfit`) — one function decides what "what somebody is wearing" looks
+    like, so the door check and the queue can't drift apart.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
   - `items.py` / `item_actions.py` — collectible items and their effects.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
@@ -156,6 +160,20 @@ exemplar.
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
+    `ShotQueue.js`'s `RankedCandidates` shows each candidate's own colours
+    beside the ranking, in the scheme's channel order — which is the review's
+    channel order, so a candidate reads garment-for-garment against
+    CharlesBot's tags under the photograph. Each garment is tinted by the
+    backend's per-garment `agrees`: green agrees with the reading, red
+    contradicts it, grey was never read — grey and not amber, because an
+    unread channel is the absence of evidence rather than the machine being
+    unsure. The reds on a row always sum to the code distance printed above
+    them; `agrees` is null exactly where `_hamming_distance` skips a position,
+    which is what keeps that true. Ruling on one there is
+    deliberately **two taps**: the row selects, and a separate "Hit *name*"
+    button rules, so a stray thumb on a name cannot decide a shot. The
+    per-team roster of small "Hit" buttons below it is unchanged, and is
+    still how you name somebody the ranking never offered.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`). Its

@@ -551,11 +551,18 @@ function metresByUser(shot) {
 // Fetched here rather than passed down from ShotAiTags: the ranking is scored
 // against the current outfits every time it is asked for, so it arrives (and
 // changes) with the review rather than with the shot.
-function RankedCandidates({ shot }) {
+function RankedCandidates({ shot, canAdjudicate, onHit }) {
   const [state, setState] = useState(null);
   const [identification, setIdentification] = useState(null);
+  // Two steps on purpose: a stray tap on a name must not decide the shot, so
+  // picking a candidate only highlights them and the ruling is a separate,
+  // deliberate press below the list.
+  const [selected, setSelected] = useState(null);
 
   const shot_id = shot ? shot.id : null;
+
+  // Whoever was picked was picked about the shot on screen a moment ago.
+  useEffect(() => setSelected(null), [shot_id]);
 
   const update = useCallback(() => {
     if (!shot_id) return;
@@ -578,6 +585,11 @@ function RankedCandidates({ shot }) {
   const metres = metresByUser(shot);
   const unreadable = identification.readable_channels === 0;
   const ranked = unreadable ? [] : (identification.ranked || []).slice(0, 6);
+  // An adjudicated shot still shows its ranking - it is why the verdict is
+  // what it is - but there is nothing left to rule on, so it is a list to read
+  // rather than a set of buttons.
+  const selectable = !!canAdjudicate;
+  const chosen = ranked.find((candidate) => candidate.user_id === selected);
 
   return (
     <>
@@ -596,23 +608,109 @@ function RankedCandidates({ shot }) {
       {identification.inconsistent ? (
         <p className={styles.candidateFlag}>The reading fits nobody cleanly</p>
       ) : null}
+      {ranked.length ? <OutfitKey outfit={ranked[0].outfit} /> : null}
       <ul className={styles.candidateList}>
-        {ranked.map((candidate) => (
-          <li key={candidate.user_id} className={styles.candidateRow}>
-            <span className={styles.candidateName}>
-              {candidate.name || candidate.user_id}
-            </span>
-            <span className={styles.candidateTeam}>
-              {candidate.team_name || "no team"}
-            </span>
-            <span className={styles.candidateFacts}>
-              {candidateFacts(candidate, metres[candidate.user_id])}
-            </span>
-          </li>
-        ))}
+        {ranked.map((candidate) => {
+          const picked = candidate.user_id === selected;
+          const Row = selectable ? "button" : "div";
+          const rowProps = selectable
+            ? {
+                type: "button",
+                "aria-pressed": picked,
+                onClick: () => setSelected(picked ? null : candidate.user_id),
+              }
+            : {};
+          return (
+            <li key={candidate.user_id}>
+              <Row
+                className={`${styles.candidateRow} ${
+                  selectable ? styles.candidatePickable : ""
+                } ${picked ? styles.candidatePicked : ""}`}
+                {...rowProps}
+              >
+                <span className={styles.candidateName}>
+                  {candidate.name || candidate.user_id}
+                </span>
+                <span className={styles.candidateTeam}>
+                  {candidate.team_name || "no team"}
+                </span>
+                <span className={styles.candidateFacts}>
+                  {candidateFacts(candidate, metres[candidate.user_id])}
+                </span>
+                <CandidateOutfit outfit={candidate.outfit} />
+              </Row>
+            </li>
+          );
+        })}
       </ul>
+      {selectable && ranked.length ? (
+        <button
+          className={styles.hitCandidate}
+          disabled={!chosen}
+          onClick={() => onHit(chosen.user_id)}
+        >
+          {chosen
+            ? `Hit ${chosen.name || chosen.user_id}`
+            : "Hit candidate - tap one above first"}
+        </button>
+      ) : null}
     </>
   );
+}
+
+// Which garment each swatch below is, said once for the whole list rather than
+// on every row. The outfits come in the scheme's channel order, which is the
+// order the review's own tags are in, so the admin reads a candidate's colours
+// straight down against what CharlesBot called; repeating "tshirt:" six times
+// would say nothing the column position doesn't. The tints need no key -
+// green against red says which garments fit and which don't on sight.
+function OutfitKey({ outfit }) {
+  const names = Object.keys(outfit || {});
+  if (!names.length) return null;
+  return <p className={styles.outfitKey}>{names.join(" - ")}</p>;
+}
+
+// What one candidate is actually wearing, as swatches and colour names in
+// channel order. The same {colour, hex} shape a review's channels have, so
+// this reads as a row against the tags under the photograph, with each garment
+// tinted by whether the reading agrees with it (backend's `agrees`: null where
+// there is nothing to compare, which is exactly what the code distance skips).
+function CandidateOutfit({ outfit }) {
+  if (!outfit) return null;
+  return (
+    <span className={styles.candidateOutfit}>
+      {Object.entries(outfit).map(([name, garment]) => (
+        <span
+          key={name}
+          className={`${styles.garment} ${agreementStyle(garment.agrees)}`}
+          title={`${name}: ${garment.colour || "not in palette"} - ${agreementWords(
+            garment.agrees,
+          )}`}
+        >
+          <span
+            className={`${styles.swatch} ${garment.hex ? "" : styles.swatchUnknown}`}
+            style={garment.hex ? { background: garment.hex } : undefined}
+          />
+          {garment.colour || "?"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+// Green and red are answers, grey is the absence of one - the house rule that
+// colour means certainty (see CLAUDE.md's admin exemplar), which is why an
+// unread garment is not amber: nobody is unsure, nobody looked.
+function agreementStyle(agrees) {
+  if (agrees === true) return styles.garmentAgrees;
+  if (agrees === false) return styles.garmentDisagrees;
+  return styles.garmentUnread;
+}
+
+function agreementWords(agrees) {
+  if (agrees === true) return "agrees with the reading";
+  if (agrees === false) return "contradicts the reading";
+  return "not read in this photo";
 }
 
 // The numbers behind one candidate's place in the ranking. An em dash for the
@@ -832,7 +930,11 @@ function ShotQueuePanel() {
             <Col>
               <h3>Where it was fired from:</h3>
               <ShotMap shot={shot} />
-              <RankedCandidates shot={shot} />
+              <RankedCandidates
+                shot={shot}
+                canAdjudicate={canAdjudicate}
+                onHit={(target_user_id) => hitUser(shot.id, target_user_id)}
+              />
               {canAdjudicate ? (
                 <>
                   {shot.game.teams.map((team, idx_team) => (

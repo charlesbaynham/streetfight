@@ -420,7 +420,11 @@ def identification_payload(
 
     ``code_distance`` is per candidate rather than the decoder's single
     minimum: it says which candidates the reading actually contradicts, which
-    is what the admin is looking at the list to decide.
+    is what the admin is looking at the list to decide. ``outfit`` is the same
+    thing shown rather than counted: the candidate's effective word in the
+    review's own ``channels`` shape and channel order, each garment carrying
+    an ``agrees`` flag against the reading, so the admin sees *which* garments
+    the distance is counting and not merely how many.
     """
     if not isinstance(review, dict):
         return None
@@ -440,9 +444,30 @@ def identification_payload(
             "inconsistent": False,
         }
 
+    # Imported here, not at module scope: identity_admin reaches back into
+    # admin_interface, which imports this module (see candidate_words).
+    from .identity_admin import appearance_payload
+
     reading = reading_from_review(review, scheme)
     words = candidate_words(eligible_candidates(users, shot.user_id), scheme)
     by_id = {user.id: user for user in users}
+
+    def outfit(word) -> Optional[dict]:
+        """What a candidate is wearing, each garment marked against the
+        reading: ``True`` agrees, ``False`` contradicts, ``None`` where the
+        question does not arise. The ``None``s are exactly the positions
+        :func:`_hamming_distance` skips -- an erased observation, or a symbol
+        this candidate's overrides leave unknown -- so the contradicting garments
+        on a row always come to the code distance printed with them."""
+        if word is None:
+            return None
+        payload = appearance_payload(word, scheme)
+        for obs, channel, expected in zip(reading, scheme.channels, word):
+            best = obs.best_symbol(channel)
+            payload[channel.name]["agrees"] = (
+                None if expected is None or best is None else best == expected
+            )
+        return payload
 
     def entry(candidate_id, probability: float) -> dict:
         user = by_id.get(candidate_id)
@@ -457,6 +482,7 @@ def identification_payload(
                 if word is None
                 else _hamming_distance(reading, word, scheme.channels)
             ),
+            "outfit": outfit(word),
         }
 
     return {

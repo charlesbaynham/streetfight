@@ -136,11 +136,46 @@
   align-items: baseline;
   gap: 0.5em;
   min-height: 3em;
+  width: 100%;
   padding: 0.6em 0.8em;
   margin-bottom: 0.4em;
   border: 1px solid #adb5bd;
   border-radius: 0.5em;
   background: #f8f9fa;
+  text-align: left;
+  color: inherit;
+  font: inherit;
+}
+
+/* Picking a candidate is two taps, not one: this row only selects, and the
+   ruling is the separate button below the list. So the row is a target, but
+   it never looks like the thing that ends the shot. */
+.candidatePickable {
+  cursor: pointer;
+}
+
+.candidatePicked {
+  background: #e3ecfb;
+  border-color: #4a76c9;
+  border-width: 2px;
+  font-weight: 600;
+}
+
+/* The ruling itself: as big as the other verdict buttons, and it says who it
+   is about rather than "confirm", because that name is the whole decision. */
+.hitCandidate {
+  display: block;
+  width: 100%;
+  /* 3.5em at 1.1em, as ReferencePhotos.js sizes its primary action: this is
+     driven one-handed on a phone, so it has to clear the 44px touch minimum. */
+  min-height: 3.5em;
+  font-size: 1.1em;
+  margin: 0.2em 0 0.8em 0;
+  border-radius: 0.5em;
+}
+
+.hitCandidate:disabled {
+  opacity: 0.55;
 }
 
 .candidateName {
@@ -154,6 +189,72 @@
 .candidateFacts {
   color: #555;
   font-size: 0.9em;
+}
+
+/* What each candidate is actually wearing, so the admin can compare it with
+   the reading under the photograph without walking the roster. Colours only,
+   in channel order, with the garment names said once in .outfitKey above the
+   list: six candidates x four garments is a lot of column to spend saying
+   "tshirt" over and over. The key is the order and nothing else - the tints
+   explain themselves. */
+.outfitKey {
+  color: #6c757d;
+  font-size: 0.8em;
+  margin: 0 0 0.3em 0;
+}
+
+.candidateOutfit {
+  flex-basis: 100%;
+  /* A grid, not a wrapping row: every candidate breaks at the same garment, so
+     the colours line up in columns down the list and the admin can compare two
+     candidates' trousers without hunting for them. */
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7em, 1fr));
+  gap: 0.2em 0.5em;
+  font-size: 0.85em;
+  color: #333;
+}
+
+.garment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  white-space: nowrap;
+  padding: 0.05em 0.4em;
+  border-radius: 1em;
+  border: 1px solid transparent;
+}
+
+/* Green and red are answers, grey is the absence of one: the reading either
+   agrees with this garment or contradicts it, or the model never read that
+   channel. Not amber, which this page keeps for "the machine is unsure". The
+   reds always come to the code distance printed on the row above. */
+.garmentAgrees {
+  background: #d6f5df;
+  border-color: #37a05a;
+}
+
+.garmentDisagrees {
+  background: #fadbd8;
+  border-color: #c0392b;
+}
+
+.garmentUnread {
+  background: #eceff1;
+  border-color: #ccd1d4;
+  color: #6c757d;
+}
+
+/* A colour the player is wearing that isn't in the palette - shown as a gap
+   rather than dropped, since a missing garment is itself worth seeing. */
+.swatchUnknown {
+  background: repeating-linear-gradient(
+    45deg,
+    #fff,
+    #fff 2px,
+    #bbb 2px,
+    #bbb 4px
+  );
 }
 
 /* Amber, because every one of these says the ranking is not an answer. */

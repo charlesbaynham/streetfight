@@ -160,15 +160,36 @@ def provided_channels(scheme: IdentityScheme) -> List[str]:
     ]
 
 
+def appearance_payload(word: Word, scheme: IdentityScheme) -> Dict[str, dict]:
+    """An effective word shaped like a vision review's ``channels``.
+
+    ``{name: {"colour", "hex", "provided"}}``, in the scheme's channel order --
+    which is the order a review's channels come in too, so a reading and an
+    outfit can be laid out garment for garment and read down the same column.
+    Every page that shows what somebody is wearing goes through here: the kit
+    check's expectation (:func:`expected_outfit`) and the shot queue's
+    candidate list (``backend.shot_identification.identification_payload``).
+    """
+    provided = set(provided_channels(scheme))
+    return {
+        name: {
+            "colour": colour,
+            "hex": None if colour is None else hex_for(name, colour),
+            "provided": name in provided,
+        }
+        for name, colour in _word_to_appearance(word, scheme).items()
+    }
+
+
 def expected_outfit(
     slot: Optional[int], overrides_raw: Optional[str], scheme: IdentityScheme
 ) -> Optional[Dict[str, dict]]:
     """What a player is supposed to turn up in, per channel.
 
-    Shaped like a vision review's ``channels`` -- ``{name: {"colour", "hex"}}``
-    -- so the kit-check page can render the expectation and the reading with
-    one component and put them side by side, which is the only way to see
-    *which* garment is wrong rather than merely that something is.
+    Shaped like a vision review's ``channels`` (:func:`appearance_payload`), so
+    the kit-check page can render the expectation and the reading with one
+    component and put them side by side, which is the only way to see *which*
+    garment is wrong rather than merely that something is.
 
     The **effective** word, not the canonical codeword: an override is what the
     player actually agreed to wear, and it is what the decoder scores the
@@ -179,17 +200,9 @@ def expected_outfit(
     if slot is None:
         return None
 
-    provided = set(provided_channels(scheme))
     overrides = _parse_json_column(overrides_raw) or {}
     word = effective_word(scheme.codeword_of_slot(slot), overrides, scheme.channels)
-    return {
-        name: {
-            "colour": colour,
-            "hex": None if colour is None else hex_for(name, colour),
-            "provided": name in provided,
-        }
-        for name, colour in _word_to_appearance(word, scheme).items()
-    }
+    return appearance_payload(word, scheme)
 
 
 def _player_row(user: UserModel, scheme: IdentityScheme) -> dict:
