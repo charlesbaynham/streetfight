@@ -724,6 +724,31 @@ function candidateFacts(candidate, distance) {
   return facts.join(" - ");
 }
 
+// The shot on screen, with the queue - not the cache - the authority on
+// whether it has been ruled on.
+//
+// ShotCache keeps a shot's model for ever, which is right for the photograph
+// and wrong for `checked`: that flips when an admin rules, when CharlesBot's
+// auto-actions resolve the head of the queue with nobody watching, and - the
+// way it actually bit - when the database is rebuilt underneath the same shot
+// id. The test world and the demo game mint their ids from a seed, so wiping
+// and replaying hands the same ids back as brand new, unadjudicated shots
+// while the browser still holds last run's adjudicated copy. `canAdjudicate`
+// then hid every ruling control on a shot the queue was actively asking
+// about: the admin could see the photograph and had no way to call it.
+//
+// So when the id came from the unadjudicated queue, the shot is unruled by
+// construction, and a cached copy that disagrees is stale: throw it away and
+// ask again. Once, deliberately - if the server really does say checked, that
+// is the truth and the controls stay away.
+async function loadQueuedShot(shot_id, mustBeUnadjudicated) {
+  const shot = await getShotFromCache(shot_id);
+  if (!shot || !mustBeUnadjudicated || !shot.checked) return shot;
+  console.log("Cached shot says adjudicated, queue says pending", shot_id);
+  await evictShotFromCache(shot_id);
+  return getShotFromCache(shot_id);
+}
+
 function ShotQueuePanel() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
@@ -774,11 +799,14 @@ function ShotQueuePanel() {
   useEffect(() => {
     // Whatever AppealDetails knew was about the shot we are leaving
     setAppealState(null);
-    getShotFromCache(shotsInQueue[currentShotIdx]).then((shot) => {
+    loadQueuedShot(
+      shotsInQueue[currentShotIdx],
+      !showChecked && !contested,
+    ).then((shot) => {
       console.log("Setting shot", shot);
       setShot(shot);
     });
-  }, [currentShotIdx, shotsInQueue]);
+  }, [currentShotIdx, shotsInQueue, showChecked, contested]);
 
   const hitUser = useCallback(
     (shot_id, target_user_id) => {

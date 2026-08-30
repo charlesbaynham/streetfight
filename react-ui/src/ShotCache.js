@@ -1,8 +1,9 @@
 import { sendAPIRequest } from "./utils";
 
 const CACHE_VERSION = 1;
+export const SHOT_CACHE_NAME = `shot-cache-v${CACHE_VERSION}`;
 const CURRENT_CACHES = {
-  shots: `shot-cache-v${CACHE_VERSION}`,
+  shots: SHOT_CACHE_NAME,
 };
 
 window.addEventListener("activate", (event) => {

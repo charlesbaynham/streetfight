@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 
 import ShotQueue, { charlesBotVerdict, rankShotCandidates } from "./ShotQueue";
+import { SHOT_CACHE_NAME } from "./ShotCache";
 import {
   installFetchMock,
   getAPICalls,
@@ -296,6 +297,29 @@ describe("ShotQueuePanel", () => {
     await screen.findByAltText("The next shot in the queue");
     await flushEffects();
   }
+
+  // A shot's model is cached permanently by id, but `checked` is not
+  // immutable and shot ids are not unique across time: the test world and the
+  // demo game mint theirs from a seed, so wiping the database and replaying
+  // hands the same ids back as fresh, unadjudicated shots while the browser
+  // still holds last run's adjudicated copy. That stale verdict hid every
+  // ruling control on a shot the queue was actively asking about - the admin
+  // could see the photograph and had no way to call it.
+  test("a cached shot the unadjudicated queue lists is refetched, not believed", async () => {
+    const cache = await caches.open(SHOT_CACHE_NAME);
+    await cache.put("shot-1", {
+      json: async () =>
+        makeShotDetail("shot-1", { checked: true, result: "miss" }),
+    });
+
+    await renderQueue();
+
+    expect(screen.queryByText("Adjudicated: Miss")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Missed" })).toBeInTheDocument();
+    expect(
+      screen.getAllByRole("button", { name: "Hit" }).length,
+    ).toBeGreaterThan(0);
+  });
 
   test("the header shows Shot <n> of <total>", async () => {
     await renderQueue();
