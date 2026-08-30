@@ -39,6 +39,7 @@ allowed to become a blocker for the night — it is all upside.
 | **~12 Sept**   | Picks closed. Everything printed.                                                                                                          | #8           |
 | **Before setup** | Accuracy and heading capture in, so the schema change rides the game's own `resetdb` and the night's telemetry is recorded. **Shipped.**  | R5           |
 | **~7–17 Sept** | Manual human pass through every feature shipped this year, on a real phone. Bugs found either fixed or written down as accepted.           | R9           |
+| **Before the 19th** | Every issue real guests hit on the 30 Aug dry run fixed, not just written down — several block joining outright.                     | R13          |
 | **15–19 Sept** | Drops placed, pub packs delivered, go/no-go on auto-actions.                                                                               | #7, #8       |
 | **After**      | Everything in tracks A and C that did not fit.                                                                                             | the rest     |
 
@@ -89,6 +90,13 @@ checklist with someone other than an agent driving. Decisions taken for it:
   on his phone - planned, not yet done. Bugs found are the *point*, and
   anything broken is fixed or written down rather than worked around
   silently. Findings land on the R9 checklist.
+
+**It happened, and it found things (30 Aug).** ~10 real guests joined and
+played on their own phones — the first pass at R9's checklist run by someone
+other than an agent. Twelve issues came out of it, several serious enough to
+have stopped a guest joining outright. Full write-up, code citations and fix
+directions per item: `docs/dry_run_feedback_2026-08-30.md`. Tracked to done
+as **R13**, below.
 
 ### R10 — Auto-deploy for the droplet *(shipped 2026-08-29; gated behind a manual step the same day; a staging twin added 2026-08-30)*
 
@@ -234,6 +242,7 @@ next commit lands.
 | 10    | **R3** Screen Wake Lock                     | Shipped 28 Aug               | Mounted unconditionally in user mode, no toggle — the phone's own button is the off switch.                    |
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | 10c   | **R9** Manual pass through every feature    | **~7–17 Sept**                | Everything above this line has agent tests, not a human's thumbs. Last gate before the print run and the night. |
+| 10d   | **R13** Fix the dry-run feedback (30 Aug)   | **Before the 19th**          | Twelve issues real guests hit on the 30 Aug dry run, several serious enough to block joining outright. See `docs/dry_run_feedback_2026-08-30.md`. |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -837,6 +846,106 @@ silently skipped under the logistics deadlines above it.
 **Depends on:** effectively everything shipped above; best done once #10 is
 live to real players (~7 Sept) and again closer to the 19th if anything
 changes.
+
+---
+
+### R13 — Fix the dry-run feedback (30 Aug 2026) *(proposed)*
+
+**What.** Charles ran the 30 Aug dry run (see "The dry run: Sunday 30
+August", above) with ~10 real guests on their own phones, then wrote up
+everything they hit against the app. Full detail, code citations and fix
+directions for every item live in `docs/dry_run_feedback_2026-08-30.md`;
+this entry tracks them to done.
+
+**Why this is its own item rather than folded into R9.** R9 is Charles's own
+single-handed click-through; this is what happens once people who have never
+seen the app before are let loose on it at once, over a real evening, on
+phones an agent never gets to test against. Different bugs surface —
+several of these are *silent* failures (a player believes they have joined
+when they have not) that a solo walkthrough is unlikely to hit, because the
+person doing it already knows what "done" is supposed to look like.
+
+**Status: all twelve open.** None fixed yet as of this write-up.
+
+- [ ] **1. Join links, not just QR codes** — `JoinQRCodes.js` only exposes
+  the join URL as the QR image's `href`; add a visible, copyable plain-text
+  link so it can be pasted into a WhatsApp message from a single phone.
+- [ ] **2. "Tick everything, tick as many as you can" isn't landing** —
+  `PickOutfit.js`'s wardrobe step reads as a single-choice colour picker
+  (swatch highlight, no checkbox affordance) despite the multi-select copy;
+  strengthen both the copy and the visual multi-select cue.
+- [ ] **3. Name entry silently fails to save** — `NameEntry`
+  (`OnboardingView.js`) only submits on Enter/button-tap, nothing on blur;
+  add submit-on-blur and a much more visible "saved" state.
+- [ ] **4. "Screenshot this page" → a real save/share button** —
+  `PickOutfit.js`'s `ResultScreen` needs a DOM-rasterization step (e.g.
+  `html2canvas`, a new dependency) and the Web Share API for a native
+  save/forward, with a download link as fallback.
+- [ ] **5. Safari: some users can't tap the location-permission button** —
+  hard to reproduce; leading suspect is framer-motion's `layout`/
+  `AnimatePresence` reflow on `OnboardingView.js`'s action-item list fighting
+  Safari's touch hit-testing mid-animation. Needs more repro info (dead-to-
+  touch vs. registers-but-nothing-happens, standalone PWA vs. Safari tab) or
+  a defensive fix (drop the `layout` animation from the gating rows)
+  regardless.
+- [ ] **6. No route from `/pick` to the actual game** — `PickOutfit.js` and
+  `UserMode.js` (`/`) are disconnected; a player who locks in an outfit and
+  leaves the tab open has no way into the game when it starts. Add a
+  lightweight poll on `/pick` (no full SSE, by the page's own design) that
+  redirects to `/` once the game goes active — `/` already handles
+  everything else live from there.
+- [ ] **7. Weapon loot items: pick from the same enum admin already has** —
+  `NewItems.js`'s weapon item type is two raw number inputs (`shot_damage`,
+  `shot_timeout`); reuse `AdminMode.js`'s `WEAPONS` lookup instead of
+  retyping damage/timeout by hand.
+- [ ] **8. Shots should say which weapon fired them** — needs a new
+  `Shot.shot_timeout` column (damage alone can't disambiguate weapons that
+  share a damage value, e.g. Pewster vs. Eat-a-bullet) — **a live-DB schema
+  change; needs Charles's sign-off before it's written, per the "game is
+  live" section of `CLAUDE.md`** — then render the weapon name in
+  `ShotQueue.js`/`ShotHistory.js` via the same `WEAPONS` lookup as #7. Cheap
+  stopgap without a schema change: derive it from damage alone, accepting
+  the ambiguity between same-damage weapons.
+- [ ] **9. Escalation transcript in the replay workbench** —
+  `ShotReplay.js` already has `TranscriptView` for the primary model; add a
+  no-store "replay escalation" path (mirroring
+  `shot_escalation._run_escalation`'s existing transcript-building) so the
+  escalated model's reasoning can be inspected the same way.
+- [ ] **10. Map zoom is broken, not just clunky** — found the likely root
+  cause: `VenueMapView`'s `clickCatcher` (`MapView.js`) sits inside the
+  zoomable `TransformComponent` and its tap handler isn't gated on
+  `poppedOut`, so any tap once popped out — including the tap a pinch-zoom
+  gesture ends with — collapses the map back to its corner and resets the
+  zoom. Gate the toggle-and-reset behaviour to the unexpanded corner state
+  only.
+- [ ] **11. Shot browser needs to jump, not just step** — `ShotQueue.js`'s
+  admin queue view only has one-at-a-time Next/Previous
+  (`currentShotIdx +/- 1`); add a +10/-10 jump and a dropdown to go straight
+  to a shot index.
+- [ ] **12. Outfit-picking flow is genuinely confusing, and some guests
+  never actually joined** — ties #2 and #3 together and adds a third:
+  tapping an outfit option (`OptionRow`) is pure local state, no API call —
+  only the separate confirm screen's "Lock in my choice" actually claims the
+  slot (`claimOption` → `pick_outfit`). Several guests stopped after the
+  first tap believing they'd joined; they hadn't. Needs: (a) unambiguous
+  "what you're wearing, not what you'd like" copy on the wardrobe step; (b)
+  the tap-option and confirm-and-lock-in steps to read as one continuous
+  action rather than two, with no silent stopping point.
+
+**One item dropped.** A reported backend typo in "parliament" could not be
+located anywhere in the checked-out code (`venues.py`, `test_world/
+locales.py` both spell it correctly) and was withdrawn by Charles as a false
+alarm.
+
+**Lands in:** across the frontend (`JoinQRCodes.js`, `PickOutfit.js`,
+`OnboardingView.js`, `NewItems.js`, `MapView.js`, `ShotQueue.js`,
+`ShotReplay.js`) and a couple of backend spots (`model.py`, `main.py`,
+`shot_escalation.py`); see `docs/dry_run_feedback_2026-08-30.md` for exact
+file:line citations and reasoning per item.
+**Depends on:** nothing blocking — twelve independent fixes.
+**Feeds:** R9's manual pass — several of these are exactly the kind of thing
+R9 exists to catch, just surfaced a session early, by real guests, instead of
+by Charles alone.
 
 ---
 
