@@ -270,7 +270,11 @@ async def run(
                 return
             store.save_data_url(job.image_id, data_url)
             generated.append(job)
-            actual += client.last_cost_usd or job.price
+            # `or` would read a genuine zero as "no figure came back" and
+            # substitute the estimate, which is the one case where the
+            # estimate is certainly wrong.
+            billed = client.last_cost_usd
+            actual += job.price if billed is None else billed
 
     await asyncio.gather(*(attempt(job) for job in report["missing"]))
 

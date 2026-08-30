@@ -88,12 +88,13 @@ def make_debug_entries_if_wanted() -> None:
     if not debug_entries_wanted():
         return
 
-    from . import database
+    from .database import session_scope
     from .model import Game
 
     game_id = sample_game_id()
-    session = database.Session()
-    if session.query(Game).filter_by(id=game_id).first() is not None:
+    with session_scope() as session:
+        already_there = session.query(Game).filter_by(id=game_id).first() is not None
+    if already_there:
         return
 
     logger.warning("Making debug entries in database")
