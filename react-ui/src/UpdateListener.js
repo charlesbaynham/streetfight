@@ -76,12 +76,25 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     var retry_timeout_handle = 0;
     var keepalive_interval_handle = 0;
     var keepaliveCount = null;
+    // One restart per connection. restartStream tears the stream down before
+    // it asks React for a replacement, so a second caller would be tidying up
+    // an already-closed socket - and every path into it (a keepalive desync,
+    // the watchdog, a retry timer, the network coming back) can fire while
+    // another is already in flight.
+    var restarted = false;
 
     lastTimestamp = getTimestamp();
 
     function restartStream() {
+      if (restarted) return;
+      restarted = true;
       cleanup();
-      setBumpCounter(bumpCounter + 1);
+      // Functional, not `bumpCounter + 1`: the value this effect closed over
+      // is a generation old the moment anything else has bumped it, and a
+      // state update that lands on the value already there is dropped - which
+      // here would mean a stream closed by the line above with nothing left
+      // running to reopen it.
+      setBumpCounter((counter) => counter + 1);
     }
 
     function restartIfTimeout() {
@@ -111,9 +124,19 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
       }
     }
 
+    // A screen nobody touches - the spectator TV above all - has no way back
+    // from a wifi drop except a timer, and waiting out the keepalive watchdog
+    // is 20s of showing a game that has moved on. The browser knows the
+    // moment the network is back, so take its word for it.
+    function handleOnline() {
+      console.log("Network back - restarting SSE stream");
+      restartStream();
+    }
+
     // Cleanup: close the SSE connection and deregister the timers
     function cleanup() {
       eventSource.close();
+      window.removeEventListener("online", handleOnline);
       if (retry_timeout_handle !== 0) {
         clearTimeout(retry_timeout_handle);
       }
@@ -130,13 +153,18 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
       processMessage(parsed_event);
     };
 
-    // Retry after a timeout if the stream fails
+    // Retry after a timeout if the stream fails. The browser fires this on
+    // every failed attempt while it retries its own way back, so a rebuild
+    // that is already scheduled is left to run: re-arming the timer on each
+    // error would push recovery further away the worse the network is, and
+    // overwriting the handle would leave the previous timer uncancellable.
     eventSource.onerror = (_) => {
+      if (restarted || retry_timeout_handle !== 0) return;
       console.log("SSE stream closed - retrying");
-      retry_timeout_handle = setTimeout(() => {
-        setBumpCounter(bumpCounter + 1);
-      }, TIMEOUT_ON_ERROR);
+      retry_timeout_handle = setTimeout(restartStream, TIMEOUT_ON_ERROR);
     };
+
+    window.addEventListener("online", handleOnline);
 
     // Register a watcher to restart the connection if we haven't heard anything in x seconds
     keepalive_interval_handle = setInterval(
@@ -145,7 +173,7 @@ export function UpdateSSEConnection({ endpoint = "sse_updates" }) {
     );
 
     return cleanup;
-  }, [bumpCounter, setBumpCounter, endpoint]);
+  }, [bumpCounter, endpoint]);
 
   return null;
 }

@@ -101,7 +101,6 @@ from .admin_auth import require_admin_auth
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
-from .asyncio_triggers import trigger_update_event
 from .model import AI_REVIEW_STATE_DONE
 from .model import GameModel
 from .model import ShotModel
@@ -211,10 +210,12 @@ async def submit_shot(
         shot_id = ui.submit_shot(shot.photo, heading=shot.heading)
         game_id = ui.get_user().team.game_id
 
+    # The "shots" update event is fired by `submit_shot` itself, so that a
+    # shot the demo drip fires announces itself like a shot a player fires.
+    #
     # Outside the session: queueing the review must not slow down the player
     # who fired, and the review itself must not hold a database session while
     # it waits on the network.
-    trigger_update_event("shots", game_id)
     if AdminInterface().is_ai_shot_review_enabled(game_id):
         ai_shot_review.enqueue_review(shot_id)
 
