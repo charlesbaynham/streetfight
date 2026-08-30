@@ -6,7 +6,9 @@ reasoning across turns without depending on any one provider's format.
 
 import pytest
 
+from backend.vision_client import OPENROUTER_CREDITS_URL
 from backend.vision_client import OPENROUTER_IMAGE_URL
+from backend.vision_client import OPENROUTER_KEY_URL
 from backend.vision_client import OpenRouterImageClient
 from backend.vision_client import OpenRouterVisionClient
 from backend.vision_client import VisionError
@@ -189,11 +191,12 @@ class _FakeKeyResponse:
 
 
 class _FakeHTTPXGetClient:
-    """Captures the request it expects and hands back a canned response,
+    """Captures the requests it expects and hands back canned responses,
     without touching the network."""
 
-    response = None
+    responses = {}
     sent_headers = None
+    requested_urls = []
 
     def __init__(self, *args, **kwargs):
         pass
@@ -206,15 +209,28 @@ class _FakeHTTPXGetClient:
 
     async def get(self, url, headers):
         _FakeHTTPXGetClient.sent_headers = headers
-        return _FakeHTTPXGetClient.response
+        _FakeHTTPXGetClient.requested_urls.append(url)
+        return _FakeHTTPXGetClient.responses[url]
+
+
+def _install_openrouter_responses(mocker, key=None, credits=None):
+    _FakeHTTPXGetClient.responses = {
+        OPENROUTER_KEY_URL: key or _FakeKeyResponse(body={"data": {}}),
+        OPENROUTER_CREDITS_URL: credits or _FakeKeyResponse(body={"data": {}}),
+    }
+    _FakeHTTPXGetClient.requested_urls = []
+    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
 
 
 @pytest.mark.asyncio
 async def test_fetch_openrouter_key_balance_returns_the_limit_fields(mocker):
-    _FakeHTTPXGetClient.response = _FakeKeyResponse(
-        body={"data": {"limit": 100, "limit_remaining": 74.5, "usage": 25.5}}
+    _install_openrouter_responses(
+        mocker,
+        key=_FakeKeyResponse(
+            body={"data": {"limit": 100, "limit_remaining": 74.5, "usage": 25.5}}
+        ),
+        credits=_FakeKeyResponse(status_code=401, text="needs a management key"),
     )
-    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
 
     balance = await fetch_openrouter_key_balance("k")
 
@@ -223,9 +239,48 @@ async def test_fetch_openrouter_key_balance_returns_the_limit_fields(mocker):
 
 
 @pytest.mark.asyncio
+async def test_fetch_openrouter_key_balance_reports_the_account_credit_balance(mocker):
+    """The number the admin actually watches drain is the account's, not the
+    key's lifetime usage -- an uncapped key reports no remaining balance at
+    all, which is the common case."""
+    _install_openrouter_responses(
+        mocker,
+        key=_FakeKeyResponse(
+            body={"data": {"limit": None, "limit_remaining": None, "usage": 25.5}}
+        ),
+        credits=_FakeKeyResponse(
+            body={"data": {"total_credits": 40.0, "total_usage": 25.5}}
+        ),
+    )
+
+    balance = await fetch_openrouter_key_balance("k")
+
+    assert balance["total_credits"] == 40.0
+    assert balance["total_usage"] == 25.5
+    assert balance["credits_remaining"] == pytest.approx(14.5)
+
+
+@pytest.mark.asyncio
+async def test_fetch_openrouter_key_balance_survives_a_refused_credits_lookup(mocker):
+    """/credits wants a management key, so a plain API key may be refused it.
+    That must not take the per-key readout down with it."""
+    _install_openrouter_responses(
+        mocker,
+        key=_FakeKeyResponse(body={"data": {"limit": None, "usage": 3.0}}),
+        credits=_FakeKeyResponse(status_code=403, text="forbidden"),
+    )
+
+    balance = await fetch_openrouter_key_balance("k")
+
+    assert balance["usage"] == 3.0
+    assert "credits_remaining" not in balance
+
+
+@pytest.mark.asyncio
 async def test_fetch_openrouter_key_balance_raises_on_a_rejected_key(mocker):
-    _FakeHTTPXGetClient.response = _FakeKeyResponse(status_code=401, text="bad key")
-    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
+    _install_openrouter_responses(
+        mocker, key=_FakeKeyResponse(status_code=401, text="bad key")
+    )
 
     with pytest.raises(VisionError):
         await fetch_openrouter_key_balance("k")
@@ -233,8 +288,9 @@ async def test_fetch_openrouter_key_balance_raises_on_a_rejected_key(mocker):
 
 @pytest.mark.asyncio
 async def test_fetch_openrouter_key_balance_raises_on_an_unexpected_body(mocker):
-    _FakeHTTPXGetClient.response = _FakeKeyResponse(body={"unexpected": "shape"})
-    mocker.patch("httpx.AsyncClient", _FakeHTTPXGetClient)
+    _install_openrouter_responses(
+        mocker, key=_FakeKeyResponse(body={"unexpected": "shape"})
+    )
 
     with pytest.raises(VisionError):
         await fetch_openrouter_key_balance("k")
