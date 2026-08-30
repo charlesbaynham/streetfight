@@ -347,6 +347,7 @@ function Headline({
   game,
   players,
   now,
+  screenAwake,
   fullscreenActive,
   onToggleFullscreen,
 }) {
@@ -369,6 +370,13 @@ function Headline({
       <span className={styles.headlineAlive}>
         {alive} of {players.length} alive
       </span>
+      {/* Only when there is something to say: the screen is not being held
+          awake, so the tablet this is propped up on will lock itself and take
+          the dashboard with it. Amber, because it is a doubt rather than a
+          verdict, and it says which way round it is in words. */}
+      {screenAwake ? null : (
+        <span className={styles.headlineSleep}>Screen may sleep</span>
+      )}
       {/* The one clickable thing on an otherwise hands-off screen: set once
           when the laptop is wired to the TV, then left alone. */}
       <button
@@ -662,7 +670,7 @@ function useFaceCycle(hasGallery) {
 }
 
 function SpectatorScreen() {
-  useWakeLock();
+  const screenAwake = useWakeLock();
 
   const fullscreenHandle = useFullScreenHandle();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -760,6 +768,7 @@ function SpectatorScreen() {
         game={game}
         players={players}
         now={now}
+        screenAwake={screenAwake}
         fullscreenActive={isFullscreen}
         onToggleFullscreen={toggleFullscreen}
       />
