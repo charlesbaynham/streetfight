@@ -474,7 +474,7 @@ describe("the face cycle", () => {
     expect(screen.getByTestId("map-view-admin")).toBeInTheDocument();
 
     await act(async () => {
-      jest.advanceTimersByTime(90 * 1000 + 50);
+      jest.advanceTimersByTime(40 * 1000 + 50);
       for (let i = 0; i < 8; i++) await Promise.resolve();
     });
 
@@ -486,7 +486,7 @@ describe("the face cycle", () => {
     await mount([]);
 
     await act(async () => {
-      jest.advanceTimersByTime(90 * 1000 + 50);
+      jest.advanceTimersByTime(40 * 1000 + 50);
       for (let i = 0; i < 8; i++) await Promise.resolve();
     });
 

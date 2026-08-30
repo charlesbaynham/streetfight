@@ -37,12 +37,12 @@ const TICKER_LINES = 6;
 // The headline clock only has to look live, so a slow tick is plenty.
 const CLOCK_TICK_MS = 1000;
 
-// How long each face holds before the screen swaps. The gallery's 45s is not
+// How long each face holds before the screen swaps. The gallery's 10s is not
 // arbitrary: .screenProgress's countdown animation runs for exactly that, so
-// the hairline finishes as the face changes. The map gets twice the airtime
-// because it is the main event and the gallery is the interstitial.
-const DASHBOARD_MS = 90 * 1000;
-const GALLERY_MS = 45 * 1000;
+// the hairline finishes as the face changes. The map gets four times the
+// airtime because it is the main event and the gallery is the interstitial.
+const DASHBOARD_MS = 40 * 1000;
+const GALLERY_MS = 10 * 1000;
 
 // The takeover: a new shot's photograph gets the room, holds while CharlesBot
 // works, and leaves a few seconds after the first conclusion - "escalating"
