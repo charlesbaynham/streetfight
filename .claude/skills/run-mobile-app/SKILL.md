@@ -10,32 +10,33 @@ The frontend is a mobile-first PWA; always render it at a phone viewport
 Linux container and end with a PNG of the in-game user view, with the player
 already named, on a team, and holding ammo.
 
-## 1. One-time container setup
+## 1. Setup — already done for you
+
+The `SessionStart` hook (`.claude/hooks/session-start.sh`) installs the Python
+and node dependencies, writes `.env` if there isn't one, and — in a container
+with a preinstalled Chromium — installs the Playwright driver into
+`$STREETFIGHT_PW_DRIVER`. It runs in the background, so if you are early:
 
 ```bash
-# Python deps: one command, from the committed uv.lock. This is the same
-# resolution Nix builds the deployed container from, so what you test here is
-# what runs in production. Prefix later python/pytest/uvicorn calls with
-# `uv run`, or use .venv/bin/... directly.
-uv sync --frozen --all-groups
-
-# Frontend deps (several minutes; run in background while doing the rest).
-cd react-ui && npm install --no-audit --no-fund
-
-# Playwright driver, in a scratch dir OUTSIDE the repo. If
-# PLAYWRIGHT_BROWSERS_PATH points at a preinstalled Chromium (Claude Code
-# remote containers set /opt/pw-browsers), the install is quick and you must
-# NOT run "playwright install".
-mkdir -p "$SCRATCH/driver" && cd "$SCRATCH/driver" && npm init -y && npm i playwright
+until [ -f .claude/.session-start.done ]; do sleep 5; done   # or just read the file
 ```
 
-## 2. Environment and database
+`.claude/session-start.log` says what it did and what failed. Prefix Python
+calls with `uv run` (or use `.venv/bin/...`) unless you are in `nix develop`.
+
+Only if the hook did not run, or reported a failure:
+`uv sync --frozen --all-groups`, `npm install`, and for the driver
+`mkdir -p "$SCRATCH/driver" && cd "$SCRATCH/driver" && npm init -y && npm i playwright`
+— in a scratch dir **outside** the repo. Never run `playwright install` where
+`PLAYWRIGHT_BROWSERS_PATH` is already set (Claude Code containers set
+`/opt/pw-browsers`); the browser is on disk already.
+
+## 2. Database
 
 ```bash
-cp .env.dev .env    # sets sqlite DB, admin password "password", MAKE_DEBUG_ENTRIES
-
-# Reset the DB. MAKE_DEBUG_ENTRIES creates an *active* sample game
-# (id a47c0fcf-67bd-4c91-a83b-1ac6c3d8fd43) with ten empty teams.
+# .env sets the sqlite DB, admin password "password", and MAKE_DEBUG_ENTRIES,
+# which creates an *active* sample game (id
+# a47c0fcf-67bd-4c91-a83b-1ac6c3d8fd43) with ten empty teams.
 set -a && . ./.env && set +a && uv run python -m backend.reset_db
 ```
 
@@ -57,7 +58,7 @@ cd react-ui && HTTPS=false BROWSER=none PORT=3000 npx react-scripts start
 ## 4. Screenshot the user view
 
 ```bash
-cd "$SCRATCH/driver"
+cd "${STREETFIGHT_PW_DRIVER:-$SCRATCH/driver}"
 cp <this skill dir>/scripts/screenshot_usermode.js .
 node screenshot_usermode.js usermode.png
 ```
