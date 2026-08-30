@@ -101,7 +101,6 @@ from .admin_auth import require_admin_auth
 
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
-from .asyncio_triggers import trigger_update_event
 from .model import AI_REVIEW_STATE_DONE
 from .model import GameModel
 from .model import ShotModel
@@ -207,16 +206,12 @@ async def submit_shot(
 ):
     logger.info("Received shot from user %s", user_id)
 
+    # Waking the shot queue and queueing the review belong to
+    # UserInterface.submit_shot, not here: this route is not the only thing
+    # that fires a shot (backend/test_world/replay.py is the other), and the
+    # two must not be able to drift apart.
     with UserInterface(user_id) as ui:
         shot_id = ui.submit_shot(shot.photo, heading=shot.heading)
-        game_id = ui.get_user().team.game_id
-
-    # Outside the session: queueing the review must not slow down the player
-    # who fired, and the review itself must not hold a database session while
-    # it waits on the network.
-    trigger_update_event("shots", game_id)
-    if AdminInterface().is_ai_shot_review_enabled(game_id):
-        ai_shot_review.enqueue_review(shot_id)
 
     return shot_id
 

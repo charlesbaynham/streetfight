@@ -507,8 +507,16 @@ class UserInterface:
 
         logger.info("User %s submitting shot to game %s", user.id, game.id)
 
+        # Read off the game *now*, before anything is written. The
+        # AdminInterface call below commits this session, which expires every
+        # ORM object in it, and the attribute access that reloads one
+        # afterwards autoflushes the pending shot -- clearing the dirty flag
+        # @db_scoped watches to decide whether this user's update event fires.
+        game_id = game.id
+        review_enabled = game.ai_shot_review_enabled
+
         all_user_locations = AdminInterface(session=self._session).get_locations(
-            game_id=game.id
+            game_id=game_id
         )
 
         # Assign the id here rather than letting the column default do it at
@@ -537,6 +545,27 @@ class UserInterface:
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
+
+        # Everything a new shot sets in motion lives here, at the only thing
+        # that writes one, rather than in `/api/submit_shot`: the route is not
+        # the only caller. The demo game and the replay
+        # (backend/test_world/replay.py) fire straight through this method,
+        # and while the route owned these two lines every shot the demo
+        # dripped into a game with recognition on arrived unannounced and
+        # unread -- sitting at "waiting for admin" until somebody flipped the
+        # toggle off and on to sweep it up as backlog.
+        #
+        # Both are safe with the session still open: `trigger_update_event`
+        # only sets an asyncio.Event, and `enqueue_review` only creates a
+        # task. Neither yields, so @db_scoped has committed this shot before
+        # either the SSE stream or the review coroutine gets to run. The
+        # toggle and the game id are the ones read at the top, for the reason
+        # given there.
+        asyncio_triggers.trigger_update_event("shots", game_id)
+        if review_enabled:
+            from . import ai_shot_review
+
+            ai_shot_review.enqueue_review(shot_id)
 
         return shot_id
 

@@ -664,6 +664,22 @@ Three deployment targets share one service definition:
   what `QueueHead` did, so the auto-action drain was scoring every head as
   "now". Any new projection that will be passed to identification needs
   `time_created` in it.
+- **Firing a shot is what queues its review**, not the route that took it.
+  `UserInterface.submit_shot` triggers the `"shots"` update event and, when
+  the game's recognition toggle is on, calls `ai_shot_review.enqueue_review`
+  itself. Those two lines used to live in `/api/submit_shot`, which is only
+  *one* of the two callers: the demo game and the replay
+  (`backend/test_world/replay.py`) fire straight through the interface, so
+  every shot the demo dripped into a game with CharlesBot on arrived unread
+  and sat at "waiting for admin" until an admin flipped the toggle off and on
+  to sweep it up as backlog. Anything a new shot sets in motion belongs at the
+  writer.
+  A gotcha if you add to it: `AdminInterface.get_locations` runs on the same
+  session part-way through, and a `@db_scoped` call from another interface
+  **commits** — which expires every ORM object, so the next attribute access
+  reloads one and autoflushes the pending shot, clearing the dirty flag
+  `@db_scoped` uses to fire this user's update event. That is why the game id
+  and the toggle are read into locals before anything is written.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

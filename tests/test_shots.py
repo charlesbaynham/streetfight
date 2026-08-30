@@ -42,14 +42,20 @@ def test_submit_shot_no_ammo(user_in_team, test_image_string):
         ui.submit_shot(test_image_string)
 
 
-def test_trigger_update_event_on_shot(mocker, user_in_team, test_image_string):
+def test_trigger_update_event_on_shot(
+    mocker, one_game, user_in_team, test_image_string
+):
+    """Two events, not one: the shooter's own client, and the shot queue every
+    admin dashboard and spectator screen is watching."""
     mocked = mocker.patch("backend.asyncio_triggers.trigger_update_event")
     ui = UserInterface(user_in_team)
     ui.award_ammo(1)
     mocked.reset_mock()
     UserInterface(user_in_team).submit_shot(test_image_string)
-    assert mocked.call_count == 1
-    assert mocked.call_args_list[0][0][0] == "user"
+    assert [call.args for call in mocked.call_args_list] == [
+        ("shots", one_game),
+        ("user", user_in_team),
+    ]
 
 
 # -- the user-facing shot history -------------------------------------------
