@@ -945,6 +945,12 @@ describe("RankedCandidates", () => {
           team_name: "Reds",
           probability: 0.82,
           code_distance: 0,
+          outfit: {
+            tshirt: { colour: "yellow", hex: "#e8c33a", agrees: true },
+            trousers: { colour: "mustard", hex: "#b8860b", agrees: true },
+            hat: { colour: "salmon", hex: "#e79a86", agrees: null },
+            armbands: { colour: "blue", hex: "#3a6ee8", agrees: true },
+          },
         },
         {
           user_id: "u-bob",
@@ -952,6 +958,12 @@ describe("RankedCandidates", () => {
           team_name: "Blues",
           probability: 0.12,
           code_distance: 2,
+          outfit: {
+            tshirt: { colour: "yellow", hex: "#e8c33a", agrees: true },
+            trousers: { colour: "black", hex: "#1c1c1c", agrees: false },
+            hat: { colour: "navy", hex: "#1f3352", agrees: null },
+            armbands: { colour: "blue", hex: "#3a6ee8", agrees: true },
+          },
         },
       ],
       readable_channels: 3,
@@ -961,11 +973,11 @@ describe("RankedCandidates", () => {
     };
   });
 
-  async function renderQueue() {
+  async function renderQueue({ checked = false } = {}) {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: () => ["shot-1"],
-      admin_get_shot: () => shotWithFixes(),
+      admin_get_shot: () => ({ ...shotWithFixes(), checked, result: "miss" }),
       admin_get_shot_ai_review: () => ({
         status: 200,
         body: {
@@ -1012,6 +1024,95 @@ describe("RankedCandidates", () => {
     expect(
       within(bob).getByText("p=0.12 - code distance 2 - —"),
     ).toBeInTheDocument();
+  });
+
+  test("shows what each candidate is wearing, in the review's channel order", async () => {
+    await renderQueue();
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    // The order is the comparison: it has to match the tags under the photo,
+    // so read the colours off in the order they are rendered.
+    expect(
+      within(alice)
+        .getAllByTitle(/^(tshirt|trousers|hat|armbands):/)
+        .map((garment) => garment.getAttribute("title").split(" - ")[0]),
+    ).toEqual([
+      "tshirt: yellow",
+      "trousers: mustard",
+      "hat: salmon",
+      "armbands: blue",
+    ]);
+  });
+
+  test("marks each garment as agreeing with, contradicting, or unread by the reading", async () => {
+    await renderQueue();
+
+    // Which garments the distance is counting, not just how many: Bob's
+    // trousers contradict the reading and his hat was never read. That the
+    // marks add up to the code distance is the backend's invariant (see
+    // tests/test_shot_identification.py); what matters here is that all three
+    // states are said in words and not left to the tint alone.
+    const bob = (await screen.findByText("Bob")).closest("li");
+    const titleOf = (colour) =>
+      within(bob).getByText(colour).closest("[title]").getAttribute("title");
+
+    expect(titleOf("black")).toBe("trousers: black - contradicts the reading");
+    expect(titleOf("navy")).toBe("hat: navy - not read in this photo");
+    expect(titleOf("yellow")).toBe("tshirt: yellow - agrees with the reading");
+  });
+
+  test("picking a candidate arms the hit button rather than ruling on the spot", async () => {
+    await renderQueue();
+
+    // Nothing picked: the button is there but says so and does nothing.
+    const hit = screen.getByRole("button", {
+      name: "Hit candidate - tap one above first",
+    });
+    expect(hit).toBeDisabled();
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    await actAndFlush(() => userEvent.click(within(alice).getByRole("button")));
+
+    // One tap selects and no more: the shot is still unruled.
+    expect(getLastAPICall("admin_shot_hit_user")).toBeUndefined();
+    expect(within(alice).getByRole("button")).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+
+    const armed = screen.getByRole("button", { name: "Hit Alice" });
+    expect(armed).toBeEnabled();
+    await actAndFlush(() => userEvent.click(armed));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_shot_hit_user")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_shot_hit_user").query).toEqual({
+      shot_id: "shot-1",
+      target_user_id: "u-alice",
+    });
+  });
+
+  test("tapping the picked candidate again disarms the hit button", async () => {
+    await renderQueue();
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    await actAndFlush(() => userEvent.click(within(alice).getByRole("button")));
+    await actAndFlush(() => userEvent.click(within(alice).getByRole("button")));
+
+    expect(
+      screen.getByRole("button", {
+        name: "Hit candidate - tap one above first",
+      }),
+    ).toBeDisabled();
+  });
+
+  test("an adjudicated shot's candidates are a list to read, not buttons", async () => {
+    await renderQueue({ checked: true });
+
+    const alice = (await screen.findByText("Alice")).closest("li");
+    expect(within(alice).queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Hit / })).toBeNull();
   });
 
   test("warns when two candidates are too close to call", async () => {

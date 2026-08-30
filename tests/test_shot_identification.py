@@ -274,6 +274,63 @@ def test_the_payload_names_every_candidate_and_scores_their_distance():
     )
 
 
+def test_the_payload_carries_what_each_candidate_is_wearing():
+    """The admin compares a candidate's colours with the reading by eye, so the
+    ranking has to say what they are wearing - and say it in the review's own
+    channel order and shape, or the two columns don't line up."""
+    shooter = player(name="shooter")
+    # An override, because the whole point of scoring against effective words
+    # is the player who is not in their canonical codeword.
+    worn = dict(SCHEME.appearance_of_slot(7))
+    channel = SCHEME.channels.names[0]
+    swapped = next(
+        colour for colour in SCHEME.channels[0].labels if colour != worn[channel]
+    )
+    worn[channel] = swapped
+    target = player(slot=7, overrides={channel: swapped}, name="target")
+
+    payload = si.identification_payload(
+        shot_by(shooter), [shooter, target, player(slot=21)], review_of(worn)
+    )
+
+    best = payload["ranked"][0]
+    assert best["name"] == "target"
+    assert list(best["outfit"]) == list(SCHEME.channels.names)
+    assert {name: garment["colour"] for name, garment in best["outfit"].items()} == worn
+    assert all(garment["hex"] for garment in best["outfit"].values())
+
+
+def test_each_garment_is_marked_against_the_reading():
+    """The green/red the admin looks at and the code distance printed beside it
+    are the same comparison, so they must always agree: one red garment per
+    unit of distance, and nothing marked either way where the model read
+    nothing."""
+    shooter = player(name="shooter")
+    names = list(SCHEME.channels.names)
+    worn = SCHEME.appearance_of_slot(7)
+    # Read one garment as somebody else's colour and one not at all.
+    misread, unread = names[0], names[1]
+    reading = dict(worn)
+    reading[misread] = next(
+        colour for colour in SCHEME.channels[0].labels if colour != worn[misread]
+    )
+    reading[unread] = None
+
+    payload = si.identification_payload(
+        shot_by(shooter), [shooter, player(slot=7, name="target")], review_of(reading)
+    )
+
+    best = payload["ranked"][0]
+    agrees = {name: garment["agrees"] for name, garment in best["outfit"].items()}
+    assert agrees[misread] is False
+    assert agrees[unread] is None
+    assert all(agrees[name] is True for name in names[2:])
+
+    assert (
+        sum(1 for value in agrees.values() if value is False) == best["code_distance"]
+    )
+
+
 def test_an_unreadable_photograph_ranks_nobody():
     """Four erasures leave the prior handed back untouched, which would put
     somebody top on no evidence at all. That is a retake, not a recognition."""

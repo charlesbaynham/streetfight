@@ -1634,6 +1634,34 @@ client-side); ambiguous, inconsistent and unreadable readings each say so in
 words, in amber, rather than leaving the admin to infer it from an empty
 table.
 
+**Extended 30 Aug, from watching a shot get adjudicated.** Two things the
+first version left the admin to do by hand:
+
+* **Each candidate now shows what they are wearing**, as swatches and colour
+  names in the scheme's channel order -- which is the review's channel order
+  too, so the row lines up garment for garment with CharlesBot's tags under
+  the photograph. `code_distance` says *how many* garments contradict the
+  reading; this says *which*, without walking the identity roster in another
+  tab. The payload rides on each ranked entry as `outfit`, shaped like a
+  review's `channels` and built by `identity_admin.appearance_payload` -- the
+  same function behind R7's `expected_outfit`, so the door check and the queue
+  cannot drift apart about what somebody is supposed to look like. Each
+  garment carries an `agrees` flag and is tinted by it: green agrees with the
+  reading, red contradicts it, grey was never read. `agrees` is `None` at
+  exactly the positions `_hamming_distance` skips -- an erasure, or a symbol
+  the candidate's overrides leave unknown -- so the red garments on a row
+  always come to the code distance printed above them, which is the invariant
+  the backend test asserts. Grey rather than amber on purpose: this page keeps
+  amber for "the machine is unsure", and an unread channel is not uncertainty,
+  it is the absence of evidence.
+* **Ruling on a candidate is two taps**: tapping a row selects it (and says so
+  -- a blue border, not just a tint), and the ruling itself is a separate
+  full-width button below the list that reads "Hit *name*". Disabled with the
+  reason in words until something is picked. The point of the second tap is
+  that a stray thumb on a name must not decide a shot; the per-team roster of
+  little "Hit" buttons is still there below it, unchanged, and is still the
+  way to name somebody the ranking never offered.
+
 The original brief follows.
 
 **What.** In review mode, list the people CharlesBot thinks it hit, ranked by
