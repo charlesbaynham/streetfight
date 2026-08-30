@@ -183,7 +183,9 @@ export function charlesBotVerdict({
 // The strong model's verdict, when a shot was hard enough for the cheap
 // model's reading to get escalated. Distinct from the weak review above -
 // this is what the human is actually deciding against for an "unsure" shot.
-function ShotEscalation({ state, escalation }) {
+// Exported so the replay workbench renders a trial escalation exactly as the
+// queue renders a real one.
+export function ShotEscalation({ state, escalation }) {
   if (!state) return null;
 
   if (state === "pending") {

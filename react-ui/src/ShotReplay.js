@@ -9,12 +9,25 @@
 // match. A prompt edited alone is a prompt overruled - the model can only
 // answer the question its schema asks, and the pipeline's follow-up turns
 // refer it back to "the JSON described above" whatever it was told.
+//
+// The Escalate button is the other rung on the same terms: the stronger model
+// on a shot, verdict and transcript, stored nowhere. It is not a variant of
+// the contract above - its prompt is built from the candidate ranking rather
+// than typed, so none of the boxes reach it - and it is kept in separate
+// state from the review replay, because comparing the two rungs on one card
+// is the reason to have both.
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
-import { ChannelTags, outcomeTag, verdictText, zoomTag } from "./ShotQueue";
+import {
+  ChannelTags,
+  ShotEscalation,
+  outcomeTag,
+  verdictText,
+  zoomTag,
+} from "./ShotQueue";
 import { Row, Col } from "react-bootstrap";
 
 import styles from "./ShotReplay.module.css";
@@ -187,8 +200,10 @@ export function ShotVisionImages({ shot_id, zoomCount }) {
 }
 
 // One selectable shot: thumbnail, shooter, the admin's verdict if there is
-// one, and whatever the last replay run said about it.
-function ShotCard({ shot_id, selected, onToggle, result }) {
+// one, and whatever the last replay run said about it - the cheap pass's
+// reading and the escalation are separate runs, so a card can show one, the
+// other, or both side by side.
+function ShotCard({ shot_id, selected, onToggle, result, escalation }) {
   const [shot, setShot] = useState(null);
 
   useEffect(() => {
@@ -245,6 +260,22 @@ function ShotCard({ shot_id, selected, onToggle, result }) {
             <TranscriptView transcript={result.review.transcript} />
           </div>
         ) : null}
+        {escalation && escalation.status === "running" ? (
+          <p>Escalating...</p>
+        ) : null}
+        {escalation && escalation.status === "error" ? (
+          <p className={styles.replayError}>
+            Escalation replay failed: {escalation.error}
+          </p>
+        ) : null}
+        {escalation && escalation.payload ? (
+          <div onClick={(e) => e.stopPropagation()}>
+            {/* The queue's own renderer, told the run is done: a trial
+                escalation must read exactly like a stored one. */}
+            <ShotEscalation state="done" escalation={escalation.payload} />
+            <TranscriptView transcript={escalation.payload.transcript} />
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -261,7 +292,11 @@ function ShotReplayPanel() {
   // setting (or none at all) applies, exactly as it does for a real review.
   const [reasoningEffort, setReasoningEffort] = useState("");
   const [results, setResults] = useState({});
+  // Escalation runs are kept apart from review runs rather than replacing
+  // them: the point of the second rung is reading it against the first.
+  const [escalations, setEscalations] = useState({});
   const [running, setRunning] = useState(false);
+  const [escalating, setEscalating] = useState(false);
   // What the backend last handed back, so an *untouched* box can follow a
   // change of conversation shape while an edited one is never clobbered.
   const seeded = useRef({ prompt: null, schema: null });
@@ -327,6 +362,41 @@ function ShotReplayPanel() {
     setResults((previous) => ({ ...previous, [shot_id]: result }));
   }, []);
 
+  const setEscalation = useCallback((shot_id, escalation) => {
+    setEscalations((previous) => ({ ...previous, [shot_id]: escalation }));
+  }, []);
+
+  // The second rung, run the same way: no store, no verdict, no auto-actions.
+  // Nothing above is sent - the escalation prompt is assembled from the
+  // candidate ranking, so only the reasoning-effort knob reaches it.
+  const escalateSelected = useCallback(() => {
+    setEscalating(true);
+    Promise.all(
+      [...selected].map((shot_id) => {
+        setEscalation(shot_id, { status: "running" });
+        return sendAPIRequest(
+          "admin_replay_shot_escalation",
+          {},
+          "POST",
+          null,
+          { shot_id, reasoning_effort: reasoningEffort || null },
+        ).then(async (response) => {
+          if (response.ok) {
+            setEscalation(shot_id, {
+              status: "done",
+              payload: await response.json(),
+            });
+          } else {
+            setEscalation(shot_id, {
+              status: "error",
+              error: `${response.status}: ${await response.text()}`,
+            });
+          }
+        });
+      }),
+    ).then(() => setEscalating(false));
+  }, [selected, reasoningEffort, setEscalation]);
+
   const replaySelected = useCallback(() => {
     let responseSchema;
     try {
@@ -378,6 +448,16 @@ function ShotReplayPanel() {
             must match, run. A reply that is not a standard reading is shown as
             it landed.
           </p>
+          <p>
+            <strong>Escalate</strong> runs the second rung instead - the
+            stronger model, shown the candidate ranking and their reference
+            photos - and shows its verdict and transcript beside the reading. It
+            uses each shot's <em>stored</em> review to build that ranking, like
+            the queue's "Run escalated review" button does, so a shot nobody has
+            reviewed cannot be escalated. Its prompt is assembled from the
+            candidates rather than typed, so nothing in the boxes above reaches
+            it; the reasoning-effort control does.
+          </p>
           <textarea
             aria-label="Vision prompt"
             className={styles.promptBox}
@@ -413,6 +493,16 @@ function ShotReplayPanel() {
               {running
                 ? "Replaying..."
                 : `Replay ${selected.size} selected shot${
+                    selected.size === 1 ? "" : "s"
+                  }`}
+            </button>
+            <button
+              onClick={escalateSelected}
+              disabled={escalating || selected.size === 0}
+            >
+              {escalating
+                ? "Escalating..."
+                : `Escalate ${selected.size} selected shot${
                     selected.size === 1 ? "" : "s"
                   }`}
             </button>
@@ -470,6 +560,7 @@ function ShotReplayPanel() {
                 selected={selected.has(shot_id)}
                 onToggle={() => toggle(shot_id)}
                 result={results[shot_id]}
+                escalation={escalations[shot_id]}
               />
             ))}
           </div>

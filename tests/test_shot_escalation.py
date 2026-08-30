@@ -635,3 +635,130 @@ def test_an_errored_escalation_falls_back_to_the_weak_review(
     )
 
     assert suggestion_for(user_in_team) == "miss"
+
+
+# -- the replay workbench's escalation (roadmap R13 #9) ----------------------
+
+
+def test_the_escalation_replay_needs_admin_auth(api_client, shot_from_user_in_team):
+    response = api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team)},
+    )
+
+    assert response.status_code == 403
+
+
+def test_the_escalation_replay_without_a_key_is_a_clear_error(
+    monkeypatch, db_session, admin_api_client, shot_from_user_in_team
+):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    store_weak_review(shot_from_user_in_team)
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team)},
+    )
+
+    assert response.status_code == 503
+    assert "OPENROUTER_API_KEY" in response.json()["detail"]
+
+
+def test_the_escalation_replay_needs_a_review_to_escalate_from(
+    escalation_model, db_session, admin_api_client, shot_from_user_in_team
+):
+    # The same precondition as the queue's own button: the candidate ranking
+    # is built from the cheap pass's reading.
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team)},
+    )
+
+    assert response.status_code == 400
+    assert "run the AI review first" in response.json()["detail"]
+
+
+def test_the_escalation_replay_returns_the_verdict_and_the_transcript(
+    mocker,
+    escalation_model,
+    db_session,
+    admin_api_client,
+    shot_from_user_in_team,
+    candidates,
+):
+    client = FakeVisionClient(
+        reply=verdict_reply("player", confidence=0.9, candidate=1),
+        reasoning="the hat settles it",
+    )
+    mocker.patch("backend.main.get_escalation_client", return_value=client)
+    store_weak_review(shot_from_user_in_team)
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team)},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["verdict"] == "player"
+    assert payload["target_name"] == name_of(candidates[0])
+    # The whole point of the endpoint: the exchange, turn by turn, the way
+    # TranscriptView already renders a review's.
+    assert [turn["role"] for turn in payload["transcript"]] == [
+        "user",
+        "user",
+        "user",
+        "user",
+        "user",
+        "assistant",
+    ]
+    assert payload["transcript"][-1]["reasoning"] == "the hat settles it"
+
+
+def test_the_escalation_replay_stores_nothing_and_settles_nothing(
+    mocker,
+    escalation_model,
+    db_session,
+    admin_api_client,
+    shot_from_user_in_team,
+    candidates,
+):
+    # A confident "player" verdict through the real path would take a life;
+    # through the workbench it must leave the shot exactly as it found it.
+    mocker.patch(
+        "backend.main.get_escalation_client",
+        return_value=FakeVisionClient(
+            reply=verdict_reply("player", confidence=0.99, candidate=1)
+        ),
+    )
+    drain = mocker.patch("backend.shot_auto_actions.process_queue_head")
+    store_weak_review(shot_from_user_in_team)
+
+    assert admin_api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team)},
+    ).is_success
+
+    stored = stored_escalation(shot_from_user_in_team)
+    assert stored["escalation_state"] is None
+    assert stored["escalation"] is None
+    drain.assert_not_called()
+    assert AdminInterface().get_shot_model(shot_from_user_in_team).checked is False
+
+
+def test_the_escalation_replay_passes_the_reasoning_effort_override_through(
+    mocker, escalation_model, db_session, admin_api_client, shot_from_user_in_team
+):
+    get_client = mocker.patch(
+        "backend.main.get_escalation_client",
+        return_value=FakeVisionClient(reply=verdict_reply("unsure", confidence=0.2)),
+    )
+    store_weak_review(shot_from_user_in_team)
+
+    response = admin_api_client.post(
+        "/api/admin_replay_shot_escalation",
+        json={"shot_id": str(shot_from_user_in_team), "reasoning_effort": "high"},
+    )
+
+    assert response.is_success
+    get_client.assert_called_once_with(reasoning_effort="high")

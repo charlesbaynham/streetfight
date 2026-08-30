@@ -865,7 +865,8 @@ several of these are *silent* failures (a player believes they have joined
 when they have not) that a solo walkthrough is unlikely to hit, because the
 person doing it already knows what "done" is supposed to look like.
 
-**Status: all twelve open.** None fixed yet as of this write-up.
+**Status: one of twelve done** (#9, the escalation transcript). The other
+eleven are open.
 
 - [ ] **1. Join links, not just QR codes** — `JoinQRCodes.js` only exposes
   the join URL as the QR image's `href`; add a visible, copyable plain-text
@@ -906,11 +907,25 @@ person doing it already knows what "done" is supposed to look like.
   `ShotQueue.js`/`ShotHistory.js` via the same `WEAPONS` lookup as #7. Cheap
   stopgap without a schema change: derive it from damage alone, accepting
   the ambiguity between same-damage weapons.
-- [ ] **9. Escalation transcript in the replay workbench** —
-  `ShotReplay.js` already has `TranscriptView` for the primary model; add a
-  no-store "replay escalation" path (mirroring
-  `shot_escalation._run_escalation`'s existing transcript-building) so the
-  escalated model's reasoning can be inspected the same way.
+- [x] **9. Escalation transcript in the replay workbench** — *done.* The
+  workbench grew an **Escalate** button beside **Replay**, posting to
+  `admin_replay_shot_escalation` → `shot_escalation.replay_shot_escalation`
+  (the renamed-public `run_escalation`, which already built the transcript;
+  only the storing wrapper was ever in the way). The result renders through
+  `ShotQueue.js`'s own `ShotEscalation`, now exported, so a trial escalation
+  reads exactly like a stored one, with `TranscriptView` beneath it. Three
+  decisions worth carrying: the two runs are kept in **separate state**, so a
+  card shows the cheap reading and the second opinion side by side rather
+  than replacing one with the other — reading the rungs against each other is
+  the point; the **contract boxes do not reach it**, because the escalation
+  prompt is assembled from the candidate ranking rather than typed (only the
+  reasoning-effort control is shared, as
+  `OPENROUTER_ESCALATION_REASONING_EFFORT`'s override); and it inherits
+  `admin_escalate_shot`'s precondition, since the ranking is built from the
+  cheap pass's **stored** review, so a shot nobody has reviewed is a 400 with
+  that said in words. It borrows `ai_shot_review`'s semaphore the way
+  `reference_photos.py` does — "Select all" is how forty multi-image calls get
+  fired at once.
 - [ ] **10. Map zoom is broken, not just clunky** — found the likely root
   cause: `VenueMapView`'s `clickCatcher` (`MapView.js`) sits inside the
   zoomable `TransformComponent` and its tap handler isn't gated on

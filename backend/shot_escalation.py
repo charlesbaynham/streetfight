@@ -559,8 +559,13 @@ def _load_context(shot_id: UUID):
     return shot, candidates, photos
 
 
-async def _run_escalation(shot_id: UUID, client) -> dict:
-    """One escalated call (or two, if photos are asked for), as a payload."""
+async def run_escalation(shot_id: UUID, client) -> dict:
+    """One escalated call (or two, if photos are asked for), as a payload.
+
+    Public because it stores nothing: :func:`escalate_shot` wraps it in the
+    state columns and the auto-action drain, and
+    :func:`replay_shot_escalation` wraps it in nothing at all.
+    """
     shot, candidates, photos = _load_context(shot_id)
     numbers = [candidate["number"] for candidate in candidates]
     by_number = {candidate["number"]: candidate for candidate in candidates}
@@ -646,6 +651,35 @@ async def _run_escalation(shot_id: UUID, client) -> dict:
     }
 
 
+async def replay_shot_escalation(shot_id: UUID, client) -> dict:
+    """Escalate one shot on demand and hand the payload straight back.
+
+    The replay workbench's counterpart to
+    :func:`backend.ai_shot_review.replay_shot_review`: the same call the queue
+    makes, transcript and all, but stored nowhere, announced to nobody and
+    acted on by nothing -- so the stronger model's reasoning can be read
+    without spending a verdict on the shot.
+
+    The one thing the workbench cannot vary here is the contract. The
+    escalation prompt is *built* from the candidate ranking rather than typed,
+    so the page's prompt, schema and zoom controls have nothing to edit on this
+    path. The ranking itself comes from the cheap pass's **stored** reading,
+    exactly as the real escalation's does, so a shot nobody has reviewed raises
+    :class:`EscalationError` rather than escalating from nothing.
+
+    The semaphore is the review pipeline's own: "Select all" on the workbench
+    is how forty multi-image calls get fired at once, and an escalation costs
+    more per call than a review does.
+    """
+    # Local: ai_shot_review reaches back into this module via shot_auto_actions,
+    # so importing it at module level would close a cycle. Same trick, and the
+    # same shared bound, as backend.reference_photos.
+    from . import ai_shot_review
+
+    async with ai_shot_review._get_semaphore():
+        return await run_escalation(shot_id, client)
+
+
 async def escalate_shot(shot_id: UUID, client=None) -> None:
     """Escalate one shot and store the verdict. Never raises."""
     from .admin_interface import AdminInterface
@@ -669,7 +703,7 @@ async def escalate_shot(shot_id: UUID, client=None) -> None:
     state = STATE_DONE
     payload = None
     try:
-        payload = await _run_escalation(shot_id, client)
+        payload = await run_escalation(shot_id, client)
         logger.info(
             "Shot %s escalated: %s (%s, confidence %s)",
             shot_id,

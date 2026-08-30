@@ -672,6 +672,18 @@ Three deployment targets share one service definition:
   answer the old schema through the old follow-ups, so the new prompt has no
   effect — that was a real bug (roadmap R1). `build_prompt(zoom_mode=…)` writes
   the zoom wording that matches the shape being run; keep them in step.
+  The page's **Escalate** button is the second rung, same terms
+  (`admin_replay_shot_escalation` → `shot_escalation.replay_shot_escalation`):
+  nothing stored, nothing announced, no auto-actions, but the stronger model's
+  verdict and its whole transcript. It is a *different* kind of run, not a
+  variant of the first — the escalation prompt is assembled from the candidate
+  ranking rather than typed, so none of the contract boxes reach it (only the
+  reasoning-effort control, which becomes
+  `OPENROUTER_ESCALATION_REASONING_EFFORT`'s override), and it needs the shot's
+  **stored** cheap-pass review to build that ranking from, exactly as the
+  queue's "Run escalated review" button does. Its result and the review's are
+  held in separate state and shown together: comparing the rungs is the whole
+  reason to have both on one card.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or
