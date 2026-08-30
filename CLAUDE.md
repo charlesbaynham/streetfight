@@ -227,10 +227,25 @@ exemplar.
   cancellable, and it **refuses to run at all** if anybody in a team is not
   one of the thirty simulated players, since it creates thirty players and
   shoots at them.
-- `scripts/` — standalone analysis tools, not part of the app.
+- `scripts/` — standalone tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
   (see `docs/team_photo_identification_plan.md` §12.5).
+  `deploy.sh <live|staging> [ref]` wraps the two deploy workflows — see the
+  deployment section below.
+- `.claude/` — the agent tooling. `hooks/session-start.sh` bootstraps a fresh
+  checkout (see "Session bootstrap" below), and `skills/` holds the repeatable
+  procedures:
+  - **`run-mobile-app`** — launch the stack and screenshot the UI at a phone
+    viewport, with a fake camera and GPS.
+  - **`draw-venue-map`** — make and georeference a map for a new venue.
+  - **`regenerate-test-world-images`** — rebuild the test world and its
+    generated photographs. Read it *before* spending anything at OpenRouter.
+  - **`deploy-streetfight`** — deploy live or staging, verify, roll back.
+
+  Keep these current the same way as this file: when a procedure changes,
+  change the skill that describes it rather than leaving a second version in
+  prose somewhere.
 - `tests/` — pytest suite (`test_backend.py`, `test_items.py`, `test_shots.py`,
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and
@@ -243,8 +258,30 @@ exemplar.
 
 All commands below are run from the repo root.
 
+### Session bootstrap (agents: this is already done)
+
+`.claude/hooks/session-start.sh` runs on every session start and leaves the
+checkout able to run the tests, the linters and the app: `uv sync --frozen
+--all-groups`, `npm install` (which covers `react-ui` through the root
+package's `install` lifecycle script), a self-signed cert, and `.env`.
+
+It is **async**, so it may still be running when you get control.
+`.claude/.session-start.done` appears only when it has finished and
+`.claude/session-start.log` says what happened — read the log rather than
+re-running the installs, and wait on the marker if you are about to run
+something that needs the environment.
+
+Every step is conditional on its own output being absent, so it is safe on a
+laptop with a setup already in place: **`.env` and the certificates are never
+overwritten**. That is also why it does the safe parts of `npm run bootstrap`
+by hand rather than calling it — `bootstrap` ends with `cp .env.dev .env`,
+which would replace a real `OPENROUTER_API_KEY` with a comment. It also skips
+`npm run build`, since every path an agent uses serves from the dev server.
+
 ```bash
-# First-time setup: npm i + generate self-signed cert + build frontend + cp .env.dev .env
+# First-time setup by hand, if you are not in an agent session: npm i +
+# generate self-signed cert + build frontend + cp .env.dev .env. NOTE this
+# overwrites .env.
 npm run bootstrap
 
 # Run the backend (uvicorn with autoreload)
@@ -365,6 +402,12 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 
 ## Deployment (brief)
 
+The **`deploy-streetfight` skill** is the operating summary — how to deploy
+either target, verify it, and roll it back — and `scripts/deploy.sh
+<live|staging> [ref]` is the command. **Merging to master deploys neither**;
+`live` and `staging` are both moved by hand, and live is never deployed on an
+agent's own initiative. What follows is the architecture.
+
 Three deployment targets share one service definition:
 
 - **The cloud droplet (the live deployment)** is a NixOS host:
@@ -445,20 +488,17 @@ Three deployment targets share one service definition:
   `react-ui/src/mapImages.js` — nothing in `MapView.js` should need touching.
   Note the resort venue currently active is a temporary test one.
 - **The test world costs money to change, and only in one direction.** An
-  image in `backend/test_world/data/images/` is named for the hash of its
-  prompt, its input images, the model and the parameters, so editing a scene
-  description regenerates exactly the images it touches and nothing else —
-  and re-running `generate` when nothing has changed sends nothing at all.
-  Generation goes through OpenRouter's **Image** API
-  (`OpenRouterImageClient`), *not* `/chat/completions`, which does not serve
-  image models; the default is `bytedance-seed/seedream-5-0-lite` at about
-  $0.035 a picture. Google models are refused in both the generation and the
-  localisation paths by an explicit guard, because the recogniser under test
-  is a Google model and using one to make or measure its own inputs would
-  make the benchmark circular. Measurements from `observe` are recorded and
-  reported, never acted on: nothing regenerates an image because a colour
-  came out wrong. Wanting a different picture means editing the scene
-  description.
+  image in `backend/test_world/data/images/` is content-addressed on its
+  prompt, inputs, model and parameters, so editing a scene description
+  regenerates exactly the images it touches and nothing else — and re-running
+  `generate` when nothing has changed sends nothing at all. Google models are
+  refused in both the generation and the localisation paths by an explicit
+  guard, because the recogniser under test is a Google model and using one to
+  make or measure its own inputs would make the benchmark circular.
+  Measurements from `observe` are recorded and reported, never acted on:
+  wanting a different picture means editing the scene description, which is
+  the only lever. **Dry-run `generate` and read the plan before spending** —
+  the `regenerate-test-world-images` skill is the full pipeline.
 - Run `pre-commit run --all-files` before committing, and never introduce
   `FIXME` comments (CI gate).
 - **AI shot review** (`backend/ai_shot_review.py`, `backend/shot_vision.py`,

@@ -460,3 +460,8 @@ backend/test_world/data/*.truth.npz
 
 # Generated test-world images are content-addressed; committed deliberately
 # once approved at a gate, but never left lying around from a failed run.
+
+# Written by the SessionStart hook (.claude/hooks/session-start.sh): the
+# running commentary, and the marker that says it finished.
+.claude/session-start.log
+.claude/.session-start.done
