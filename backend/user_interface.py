@@ -194,12 +194,31 @@ def touch_user(user_interface: "UserInterface"):
     user.touch()
 
 
+def announce_updates(user_interface):
+    """Fire this scope's update events, now the session has committed.
+
+    Every scope announces the user itself. A call that also changes something
+    the rest of the game watches queues its own event with
+    :meth:`UserInterface.announce_after_commit` instead of firing it inline,
+    so the announcement lands *after* the row exists rather than before it -
+    and, more to the point, so it lands however the call was reached. The
+    ``/api/submit_shot`` route is not the only way a shot enters a game: the
+    demo drip and ``npm run demoshots`` go through the interface directly, and
+    a shot that reaches the database without a "shots" event is a shot no
+    spectator screen, admin queue or nav-bar counter ever hears about.
+    """
+    asyncio_triggers.trigger_update_event("user", user_interface.user_id)
+
+    pending = user_interface._pending_announcements
+    user_interface._pending_announcements = []
+    for event_type, key in pending:
+        asyncio_triggers.trigger_update_event(event_type, key)
+
+
 UserScopeWrapper = DatabaseScopeProvider(
     "users",
     precommit_method=touch_user,
-    postcommit_method=lambda user_interface: asyncio_triggers.trigger_update_event(
-        "user", user_interface.user_id
-    ),
+    postcommit_method=announce_updates,
 )
 db_scoped = UserScopeWrapper.db_scoped
 
@@ -221,6 +240,7 @@ class UserInterface:
         self._session_users = 0
         self._session_is_external = bool(session)
         self._db_scoped_altering = False
+        self._pending_announcements: List[tuple] = []
 
     def __enter__(self):
         from . import database
@@ -246,6 +266,10 @@ class UserInterface:
 
     def get_session(self):
         return self._session
+
+    def announce_after_commit(self, event_type: str, key) -> None:
+        """Queue an update event for :func:`announce_updates` to fire."""
+        self._pending_announcements.append((event_type, key))
 
     @db_scoped
     def _make_user(self) -> User:
@@ -505,7 +529,13 @@ class UserInterface:
         if user.num_bullets <= 0:
             raise HTTPException(403, "User has no ammo")
 
-        logger.info("User %s submitting shot to game %s", user.id, game.id)
+        # Read before anything below dirties the session: an attribute read
+        # on an expired object autoflushes, and a flush clears the dirty flag
+        # @db_scoped uses to decide whether to announce anything at all (the
+        # same trap the shot id is assigned by hand to avoid, below).
+        game_id = game.id
+
+        logger.info("User %s submitting shot to game %s", user.id, game_id)
 
         all_user_locations = AdminInterface(session=self._session).get_locations(
             game_id=game.id
@@ -537,6 +567,12 @@ class UserInterface:
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
+
+        # Everything watching the queue - the admin's shot list, its nav-bar
+        # counter, the spectator screen's feed - hears about the shot here
+        # rather than in the route, so a shot fired by the demo drip announces
+        # itself exactly like a shot fired by a player.
+        self.announce_after_commit("shots", game_id)
 
         return shot_id
 

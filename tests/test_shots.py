@@ -1,5 +1,6 @@
 import json
 from uuid import UUID
+from uuid import uuid4 as get_uuid
 
 import pytest
 from fastapi.exceptions import HTTPException
@@ -43,13 +44,42 @@ def test_submit_shot_no_ammo(user_in_team, test_image_string):
 
 
 def test_trigger_update_event_on_shot(mocker, user_in_team, test_image_string):
+    """A new shot announces itself, whoever put it there.
+
+    Both events come from ``submit_shot`` rather than from the
+    ``/api/submit_shot`` route, because the route is not the only way a shot
+    gets into a game: the demo drip and ``npm run demoshots`` call the
+    interface directly, and a spectator screen watching a shot land is exactly
+    what the "shots" event is for.
+    """
     mocked = mocker.patch("backend.asyncio_triggers.trigger_update_event")
     ui = UserInterface(user_in_team)
     ui.award_ammo(1)
     mocked.reset_mock()
+    game_id = UserInterface(user_in_team).get_game_id()
     UserInterface(user_in_team).submit_shot(test_image_string)
-    assert mocked.call_count == 1
-    assert mocked.call_args_list[0][0][0] == "user"
+    events = [c.args for c in mocked.call_args_list]
+    assert ("user", user_in_team) in events
+    assert ("shots", game_id) in events
+
+
+def test_a_replayed_shot_announces_itself_too(mocker, user_in_team, test_image_string):
+    """The demo game's shots are fired through the interface, not the route.
+
+    Pressing "Fire demo game" used to leave the spectator screen watching a
+    perfectly healthy SSE connection that never said anything again: the drip
+    fires ten shots over five minutes and none of them triggered an update, so
+    the feed stayed on whatever it had when the button was pressed.
+    """
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    game_id = ui.get_game_id()
+
+    mocked = mocker.patch("backend.asyncio_triggers.trigger_update_event")
+    with UserInterface(user_in_team) as replayer:
+        replayer.submit_shot(test_image_string, shot_id=get_uuid())
+
+    assert ("shots", game_id) in [c.args for c in mocked.call_args_list]
 
 
 # -- the user-facing shot history -------------------------------------------
