@@ -18,7 +18,7 @@ reads as just fired, and every fix behind it keeps the exact age the world
 gave it. Between shots the cast jump forward by minutes of world time in
 seconds of wall time, which is what "speed up time" means here.
 
-Four properties the admin button needs:
+Five properties the admin button needs:
 
 * **Every press starts the game from the beginning.** The button empties the
   database, rebuilds the thirty players from the seed, arms them, unpauses the
@@ -31,6 +31,12 @@ Four properties the admin button needs:
   a shot from an unarmed player takes nobody's last hit point, so nothing on
   the dashboard ever changes. So each of them is handed plenty of ammo, the
   weakest weapon there is, and no armour at all: a hit kills.
+* **A shot nobody can fire is skipped, not fatal.** The cast have one hit
+  point each, so a shot the queue judges a hit kills its target -- and if a
+  later scenario has that player shooting back, ``submit_shot`` refuses it
+  with "User is dead". The scenario is dropped into ``skipped`` (with the
+  reason, which the admin page shows) and the run carries on; the first
+  casualty must not end the demo with six shots unfired.
 * **Cancellable.** Cancelling stops the task between shots; what has already
   been fired stays fired, until the next press wipes it.
 * **Refuses a real game.** If any player who is in a team is not one of the
@@ -50,6 +56,8 @@ from dataclasses import field
 from pathlib import Path
 from typing import List
 from typing import Optional
+
+from fastapi import HTTPException
 
 from .database import session_scope
 from .model import DEFAULT_SHOT_TIMEOUT
@@ -99,6 +107,7 @@ class _Run:
     total: int = 0
     fired: List[dict] = field(default_factory=list)
     missing: List[str] = field(default_factory=list)
+    skipped: List[dict] = field(default_factory=list)
     interval_s: Optional[float] = None
     next_fire_at: Optional[float] = None
     error: Optional[str] = None
@@ -287,13 +296,30 @@ async def _drip(run: _Run) -> None:
                 # arriving during provisioning is still obeyed.
                 await asyncio.sleep(0)
 
-            row = replay_mod.fire_shot(
-                run.seed,
-                world,
-                shot,
-                images_dir,
-                anchor=replay_mod.anchor_epoch(shot["tick"]),
-            )
+            try:
+                row = replay_mod.fire_shot(
+                    run.seed,
+                    world,
+                    shot,
+                    images_dir,
+                    anchor=replay_mod.anchor_epoch(shot["tick"]),
+                )
+            except HTTPException as refusal:
+                # The cast have one hit point and no armour, so a shot the
+                # queue judges a hit kills its target -- and a later scenario
+                # may have that player shooting back, which `submit_shot`
+                # refuses with "User is dead". That is the demo working, not
+                # the demo broken: the auto-actions this button exists to show
+                # off are what killed them. So the scenario is dropped and the
+                # rest of the run goes on, rather than the first casualty
+                # ending the evening with six shots unfired.
+                logger.warning(
+                    "Demo game: skipping %s - %s", shot["scenario"], refusal.detail
+                )
+                run.skipped.append(
+                    {"scenario": shot["scenario"], "reason": str(refusal.detail)}
+                )
+                continue
             if row is None:
                 logger.warning(
                     "Demo game: no cropped photograph for %s", shot["scenario"]
@@ -377,6 +403,7 @@ def status() -> dict:
             "total": 0,
             "scenarios": [],
             "missing": [],
+            "skipped": [],
             "interval_s": None,
             "next_in_s": None,
             "error": None,
@@ -393,6 +420,7 @@ def status() -> dict:
         "total": run.total,
         "scenarios": [row["scenario"] for row in run.fired],
         "missing": run.missing,
+        "skipped": run.skipped,
         "interval_s": run.interval_s,
         "next_in_s": next_in,
         "error": run.error,

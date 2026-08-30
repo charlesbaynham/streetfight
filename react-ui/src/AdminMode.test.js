@@ -170,6 +170,7 @@ function idleDemoStatus(overrides = {}) {
     total: 0,
     scenarios: [],
     missing: [],
+    skipped: [],
     interval_s: null,
     next_in_s: null,
     error: null,
@@ -944,6 +945,23 @@ describe("DemoGamePanel", () => {
     );
 
     expect(screen.getByText(refusal)).toBeInTheDocument();
+  });
+
+  test("a shot the run could not fire is named, with the reason", async () => {
+    await renderAdmin({
+      admin_demo_game_status: idleDemoStatus({
+        state: "done",
+        fired: 9,
+        total: 10,
+        skipped: [{ scenario: "S4", reason: "User is dead" }],
+      }),
+    });
+
+    expect(
+      await screen.findByText(
+        "9 of 10 shots fired - skipped S4 (User is dead)",
+      ),
+    ).toBeInTheDocument();
   });
 
   test("Cancel is only offered while a run is going, and stops it", async () => {
