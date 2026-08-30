@@ -97,9 +97,10 @@ checklist with someone other than an agent driving. Decisions taken for it:
 > branch called **`staging`** exactly as the droplet is by `live` — a **Deploy to
 > staging** workflow, and a pull-based deployer at the far end (the hypervisor's
 > `cattle-deploy.timer`, watching for a template release published only from that
-> branch). It serves the deterministic sample game at
-> `https://streetfight-staging.i.houseabsolute.co.uk`, inside the house only.
-> Runbook: `docs/deployment_staging.md`.
+> branch). It answers at `https://streetfight-staging.i.houseabsolute.co.uk`,
+> inside the house only, with an **empty** database: the deterministic sample
+> game is made on demand by the admin's **Fire demo game** button, not on every
+> boot. Runbook: `docs/deployment_staging.md`.
 
 
 **Shipped** as `nix/auto-deploy.nix`, imported by `streetfight-cloud`, with

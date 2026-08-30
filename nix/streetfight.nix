@@ -153,8 +153,13 @@ in
         Build the deterministic sample game at start-up if the database does
         not already hold it (MAKE_DEBUG_ENTRIES). Idempotent, so it is safe to
         leave on: `reset_db.make_debug_entries_if_wanted` returns early once
-        the game is there. For a staging deployment; never for a host carrying
-        a real game.
+        the game is there. Never for a host carrying a real game.
+
+        No deployment sets this. Staging used to, and now starts empty
+        instead: making the sample game is the admin's own act, the "Fire
+        demo game" button, which wipes and rebuilds the same thirty players
+        from the same seed. The option stays because that is still the only
+        way to have a box come up already populated.
       '';
     };
 
