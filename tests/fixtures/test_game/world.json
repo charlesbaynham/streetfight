@@ -1,4 +1,1061 @@
 {
+ "boxes": {
+  "01db5a02d8e5ec93": {
+   "armband": {
+    "x0": 0.29,
+    "x1": 0.36,
+    "y0": 0.37,
+    "y1": 0.42
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.54,
+    "y0": 0.07,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.24,
+    "x1": 0.71,
+    "y0": 0.07,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.35,
+    "x1": 0.61,
+    "y0": 0.28,
+    "y1": 0.56
+   }
+  },
+  "0957dbcb8517cf32": {
+   "armband": {
+    "x0": 0.61,
+    "x1": 0.68,
+    "y0": 0.43,
+    "y1": 0.48
+   },
+   "hat": {
+    "x0": 0.43,
+    "x1": 0.57,
+    "y0": 0.05,
+    "y1": 0.14
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.31,
+    "x1": 0.7,
+    "y0": 0.05,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.39,
+    "x1": 0.62,
+    "y0": 0.34,
+    "y1": 0.61
+   }
+  },
+  "0bca907ff46d1f7b": {
+   "armband": {
+    "x0": 0.54,
+    "x1": 0.6,
+    "y0": 0.32,
+    "y1": 0.37
+   },
+   "hat": {
+    "x0": 0.4,
+    "x1": 0.52,
+    "y0": 0.03,
+    "y1": 0.11
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.31,
+    "x1": 0.61,
+    "y0": 0.03,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.37,
+    "x1": 0.57,
+    "y0": 0.26,
+    "y1": 0.5
+   }
+  },
+  "0e5b4b54695ec08d": {
+   "armband": {
+    "x0": 0.552,
+    "x1": 0.607,
+    "y0": 0.389,
+    "y1": 0.424
+   },
+   "hat": {
+    "x0": 0.412,
+    "x1": 0.517,
+    "y0": 0.096,
+    "y1": 0.168
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.325,
+    "x1": 0.61,
+    "y0": 0.096,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.387,
+    "x1": 0.556,
+    "y0": 0.303,
+    "y1": 0.568
+   }
+  },
+  "1001de4fbbcbf420": {
+   "armband": {
+    "x0": 0.34,
+    "x1": 0.39,
+    "y0": 0.39,
+    "y1": 0.43
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.53,
+    "y0": 0.07,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.32,
+    "x1": 0.63,
+    "y0": 0.07,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.37,
+    "x1": 0.58,
+    "y0": 0.29,
+    "y1": 0.5
+   }
+  },
+  "12ba245f5ebf2c23": {
+   "armband": {
+    "x0": 0.29,
+    "x1": 0.364,
+    "y0": 0.37,
+    "y1": 0.436
+   },
+   "hat": {
+    "x0": 0.417,
+    "x1": 0.534,
+    "y0": 0.067,
+    "y1": 0.151
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.287,
+    "x1": 0.693,
+    "y0": 0.067,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.353,
+    "x1": 0.63,
+    "y0": 0.29,
+    "y1": 0.585
+   }
+  },
+  "1d0f404130b608d0": {
+   "armband": {
+    "x0": 0.27,
+    "x1": 0.35,
+    "y0": 0.41,
+    "y1": 0.47
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.55,
+    "y0": 0.07,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.25,
+    "x1": 0.68,
+    "y0": 0.07,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.35,
+    "x1": 0.61,
+    "y0": 0.33,
+    "y1": 0.66
+   }
+  },
+  "27e03d89b50987f3": {
+   "armband": null,
+   "hat": null,
+   "other_person": {
+    "x0": 0.76,
+    "x1": 0.81,
+    "y0": 0.65,
+    "y1": 0.78
+   },
+   "subject": {
+    "x0": 0.37,
+    "x1": 0.68,
+    "y0": 0.43,
+    "y1": 1.0
+   },
+   "tshirt": null
+  },
+  "34dcdd8a89787b3c": {
+   "armband": null,
+   "hat": {
+    "x0": 0.43,
+    "x1": 0.57,
+    "y0": 0.01,
+    "y1": 0.1
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.69,
+    "y0": 0.01,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.38,
+    "x1": 0.65,
+    "y0": 0.29,
+    "y1": 0.58
+   }
+  },
+  "3d41cc4f31ad1daa": {
+   "armband": {
+    "x0": 0.61,
+    "x1": 0.681,
+    "y0": 0.367,
+    "y1": 0.447
+   },
+   "hat": {
+    "x0": 0.409,
+    "x1": 0.54,
+    "y0": 0.03,
+    "y1": 0.112
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.297,
+    "x1": 0.71,
+    "y0": 0.03,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.425,
+    "x1": 0.565,
+    "y0": 0.267,
+    "y1": 0.666
+   }
+  },
+  "3f083027666fcf03": {
+   "armband": null,
+   "hat": {
+    "x0": 0.5,
+    "x1": 0.56,
+    "y0": 0.49,
+    "y1": 0.53
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.43,
+    "x1": 0.62,
+    "y0": 0.49,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.46,
+    "x1": 0.57,
+    "y0": 0.57,
+    "y1": 0.74
+   }
+  },
+  "4df36a49460d2ecc": {
+   "armband": {
+    "x0": 0.59,
+    "x1": 0.66,
+    "y0": 0.39,
+    "y1": 0.45
+   },
+   "hat": {
+    "x0": 0.43,
+    "x1": 0.56,
+    "y0": 0.06,
+    "y1": 0.14
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.32,
+    "x1": 0.67,
+    "y0": 0.06,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.38,
+    "x1": 0.61,
+    "y0": 0.31,
+    "y1": 0.62
+   }
+  },
+  "4f024019c0892f15": {
+   "armband": {
+    "x0": 0.59,
+    "x1": 0.66,
+    "y0": 0.36,
+    "y1": 0.41
+   },
+   "hat": {
+    "x0": 0.46,
+    "x1": 0.56,
+    "y0": 0.07,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.36,
+    "x1": 0.67,
+    "y0": 0.07,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.42,
+    "x1": 0.61,
+    "y0": 0.26,
+    "y1": 0.55
+   }
+  },
+  "52e4e3c6bf8fca70": {
+   "armband": {
+    "x0": 0.321,
+    "x1": 0.388,
+    "y0": 0.428,
+    "y1": 0.485
+   },
+   "hat": {
+    "x0": 0.434,
+    "x1": 0.563,
+    "y0": 0.061,
+    "y1": 0.145
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.307,
+    "x1": 0.721,
+    "y0": 0.061,
+    "y1": 0.998
+   },
+   "tshirt": {
+    "x0": 0.377,
+    "x1": 0.636,
+    "y0": 0.314,
+    "y1": 0.687
+   }
+  },
+  "55044356818c23ba": {
+   "armband": {
+    "x0": 0.6,
+    "x1": 0.68,
+    "y0": 0.37,
+    "y1": 0.42
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.56,
+    "y0": 0.04,
+    "y1": 0.12
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.27,
+    "x1": 0.71,
+    "y0": 0.04,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.34,
+    "x1": 0.65,
+    "y0": 0.26,
+    "y1": 0.61
+   }
+  },
+  "598039b00ba1b262": {
+   "armband": {
+    "x0": 0.57,
+    "x1": 0.64,
+    "y0": 0.36,
+    "y1": 0.4
+   },
+   "hat": {
+    "x0": 0.43,
+    "x1": 0.54,
+    "y0": 0.07,
+    "y1": 0.14
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.65,
+    "y0": 0.07,
+    "y1": 0.86
+   },
+   "tshirt": {
+    "x0": 0.38,
+    "x1": 0.61,
+    "y0": 0.26,
+    "y1": 0.55
+   }
+  },
+  "5aee6a238c24eac7": {
+   "armband": {
+    "x0": 0.59,
+    "x1": 0.68,
+    "y0": 0.37,
+    "y1": 0.42
+   },
+   "hat": {
+    "x0": 0.41,
+    "x1": 0.53,
+    "y0": 0.03,
+    "y1": 0.11
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.25,
+    "x1": 0.69,
+    "y0": 0.03,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.33,
+    "x1": 0.63,
+    "y0": 0.26,
+    "y1": 0.6
+   }
+  },
+  "6e1b0871fab76a31": {
+   "armband": {
+    "x0": 0.34,
+    "x1": 0.39,
+    "y0": 0.34,
+    "y1": 0.38
+   },
+   "hat": {
+    "x0": 0.41,
+    "x1": 0.51,
+    "y0": 0.08,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.32,
+    "x1": 0.59,
+    "y0": 0.08,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.36,
+    "x1": 0.57,
+    "y0": 0.25,
+    "y1": 0.5
+   }
+  },
+  "8713256193710b16": {
+   "armband": {
+    "x0": 0.56,
+    "x1": 0.61,
+    "y0": 0.32,
+    "y1": 0.37
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.53,
+    "y0": 0.03,
+    "y1": 0.11
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.34,
+    "x1": 0.62,
+    "y0": 0.03,
+    "y1": 0.98
+   },
+   "tshirt": {
+    "x0": 0.39,
+    "x1": 0.57,
+    "y0": 0.25,
+    "y1": 0.47
+   }
+  },
+  "8769c28156613a2c": {
+   "armband": {
+    "x0": 0.319,
+    "x1": 0.378,
+    "y0": 0.419,
+    "y1": 0.504
+   },
+   "hat": {
+    "x0": 0.435,
+    "x1": 0.554,
+    "y0": 0.085,
+    "y1": 0.167
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.307,
+    "x1": 0.693,
+    "y0": 0.085,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.418,
+    "x1": 0.573,
+    "y0": 0.284,
+    "y1": 0.611
+   }
+  },
+  "8955d8e06714e5e4": {
+   "armband": null,
+   "hat": {
+    "x0": 0.471,
+    "x1": 0.588,
+    "y0": 0.346,
+    "y1": 0.424
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.377,
+    "x1": 0.718,
+    "y0": 0.346,
+    "y1": 0.999
+   },
+   "tshirt": {
+    "x0": 0.433,
+    "x1": 0.597,
+    "y0": 0.573,
+    "y1": 0.802
+   }
+  },
+  "89d36963baf25bbd": {
+   "armband": {
+    "x0": 0.253,
+    "x1": 0.359,
+    "y0": 0.809,
+    "y1": 0.895
+   },
+   "hat": {
+    "x0": 0.338,
+    "x1": 0.593,
+    "y0": 0.335,
+    "y1": 0.465
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.246,
+    "x1": 0.601,
+    "y0": 0.335,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.318,
+    "x1": 0.534,
+    "y0": 0.647,
+    "y1": 0.837
+   }
+  },
+  "8b0cdb32a84c73cd": {
+   "armband": {
+    "x0": 0.285,
+    "x1": 0.375,
+    "y0": 0.374,
+    "y1": 0.421
+   },
+   "hat": {
+    "x0": 0.418,
+    "x1": 0.551,
+    "y0": 0.066,
+    "y1": 0.149
+   },
+   "other_person": {
+    "x0": 0.746,
+    "x1": 0.823,
+    "y0": 0.278,
+    "y1": 0.486
+   },
+   "subject": {
+    "x0": 0.283,
+    "x1": 0.667,
+    "y0": 0.066,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.357,
+    "x1": 0.587,
+    "y0": 0.337,
+    "y1": 0.628
+   }
+  },
+  "9de4bb22589f5bdc": {
+   "armband": {
+    "x0": 0.33,
+    "x1": 0.39,
+    "y0": 0.41,
+    "y1": 0.47
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.56,
+    "y0": 0.04,
+    "y1": 0.14
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.32,
+    "x1": 0.66,
+    "y0": 0.04,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.38,
+    "x1": 0.61,
+    "y0": 0.31,
+    "y1": 0.62
+   }
+  },
+  "9ef7a61b2ec501a3": {
+   "armband": {
+    "x0": 0.59,
+    "x1": 0.65,
+    "y0": 0.35,
+    "y1": 0.41
+   },
+   "hat": {
+    "x0": 0.44,
+    "x1": 0.55,
+    "y0": 0.03,
+    "y1": 0.11
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.34,
+    "x1": 0.67,
+    "y0": 0.03,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.45,
+    "x1": 0.55,
+    "y0": 0.22,
+    "y1": 0.54
+   }
+  },
+  "ad75dd898eb07754": {
+   "armband": {
+    "x0": 0.562,
+    "x1": 0.614,
+    "y0": 0.384,
+    "y1": 0.426
+   },
+   "hat": {
+    "x0": 0.426,
+    "x1": 0.543,
+    "y0": 0.047,
+    "y1": 0.143
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.327,
+    "x1": 0.634,
+    "y0": 0.047,
+    "y1": 0.999
+   },
+   "tshirt": {
+    "x0": 0.383,
+    "x1": 0.578,
+    "y0": 0.298,
+    "y1": 0.577
+   }
+  },
+  "ae9f6c9babba0f2a": {
+   "armband": {
+    "x0": 0.614,
+    "x1": 0.689,
+    "y0": 0.437,
+    "y1": 0.493
+   },
+   "hat": {
+    "x0": 0.463,
+    "x1": 0.561,
+    "y0": 0.138,
+    "y1": 0.208
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.356,
+    "x1": 0.694,
+    "y0": 0.138,
+    "y1": 0.999
+   },
+   "tshirt": {
+    "x0": 0.484,
+    "x1": 0.573,
+    "y0": 0.316,
+    "y1": 0.619
+   }
+  },
+  "b6526e1b408c8a0c": {
+   "armband": {
+    "x0": 0.35,
+    "x1": 0.4,
+    "y0": 0.32,
+    "y1": 0.37
+   },
+   "hat": {
+    "x0": 0.43,
+    "x1": 0.55,
+    "y0": 0.04,
+    "y1": 0.13
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.69,
+    "y0": 0.04,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.4,
+    "x1": 0.6,
+    "y0": 0.27,
+    "y1": 0.48
+   }
+  },
+  "b8524f44456fd843": {
+   "armband": {
+    "x0": 0.339,
+    "x1": 0.386,
+    "y0": 0.352,
+    "y1": 0.402
+   },
+   "hat": {
+    "x0": 0.405,
+    "x1": 0.521,
+    "y0": 0.037,
+    "y1": 0.119
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.327,
+    "x1": 0.609,
+    "y0": 0.037,
+    "y1": 0.998
+   },
+   "tshirt": {
+    "x0": 0.385,
+    "x1": 0.548,
+    "y0": 0.268,
+    "y1": 0.505
+   }
+  },
+  "c152bf7a268ed7b5": {
+   "armband": null,
+   "hat": null,
+   "other_person": null,
+   "subject": {
+    "x0": 0.0,
+    "x1": 1.0,
+    "y0": 0.0,
+    "y1": 1.0
+   },
+   "tshirt": null
+  },
+  "c86da8f7dac73a97": {
+   "armband": {
+    "x0": 0.34,
+    "x1": 0.41,
+    "y0": 0.38,
+    "y1": 0.43
+   },
+   "hat": {
+    "x0": 0.45,
+    "x1": 0.56,
+    "y0": 0.06,
+    "y1": 0.14
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.67,
+    "y0": 0.06,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.38,
+    "x1": 0.62,
+    "y0": 0.28,
+    "y1": 0.59
+   }
+  },
+  "cf97c64fb071169a": {
+   "armband": {
+    "x0": 0.36,
+    "x1": 0.49,
+    "y0": 0.51,
+    "y1": 0.62
+   },
+   "hat": {
+    "x0": 0.41,
+    "x1": 0.63,
+    "y0": 0.11,
+    "y1": 0.23
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.06,
+    "x1": 0.71,
+    "y0": 0.11,
+    "y1": 0.65
+   },
+   "tshirt": {
+    "x0": 0.45,
+    "x1": 0.61,
+    "y0": 0.38,
+    "y1": 0.51
+   }
+  },
+  "d89f8160260a5743": {
+   "armband": {
+    "x0": 0.636,
+    "x1": 0.705,
+    "y0": 0.487,
+    "y1": 0.553
+   },
+   "hat": {
+    "x0": 0.415,
+    "x1": 0.571,
+    "y0": 0.037,
+    "y1": 0.141
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.276,
+    "x1": 0.728,
+    "y0": 0.037,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.348,
+    "x1": 0.659,
+    "y0": 0.361,
+    "y1": 0.786
+   }
+  },
+  "dbbeeeb957362362": {
+   "armband": {
+    "x0": 0.562,
+    "x1": 0.684,
+    "y0": 0.69,
+    "y1": 0.757
+   },
+   "hat": {
+    "x0": 0.404,
+    "x1": 0.663,
+    "y0": 0.232,
+    "y1": 0.354
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.196,
+    "x1": 0.721,
+    "y0": 0.232,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.288,
+    "x1": 0.608,
+    "y0": 0.498,
+    "y1": 0.815
+   }
+  },
+  "e702ea3c011d0506": {
+   "armband": {
+    "x0": 0.59,
+    "x1": 0.66,
+    "y0": 0.41,
+    "y1": 0.48
+   },
+   "hat": {
+    "x0": 0.44,
+    "x1": 0.56,
+    "y0": 0.06,
+    "y1": 0.15
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.67,
+    "y0": 0.06,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.41,
+    "x1": 0.59,
+    "y0": 0.3,
+    "y1": 0.66
+   }
+  },
+  "e817e9a1ef503d61": {
+   "armband": {
+    "x0": 0.72,
+    "x1": 0.79,
+    "y0": 0.49,
+    "y1": 0.55
+   },
+   "hat": {
+    "x0": 0.57,
+    "x1": 0.68,
+    "y0": 0.23,
+    "y1": 0.31
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.48,
+    "x1": 0.79,
+    "y0": 0.23,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.53,
+    "x1": 0.72,
+    "y0": 0.41,
+    "y1": 0.63
+   }
+  },
+  "ee27e67a09345789": {
+   "armband": {
+    "x0": 0.58,
+    "x1": 0.64,
+    "y0": 0.34,
+    "y1": 0.39
+   },
+   "hat": {
+    "x0": 0.42,
+    "x1": 0.54,
+    "y0": 0.04,
+    "y1": 0.13
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.33,
+    "x1": 0.64,
+    "y0": 0.04,
+    "y1": 1.0
+   },
+   "tshirt": {
+    "x0": 0.39,
+    "x1": 0.59,
+    "y0": 0.28,
+    "y1": 0.5
+   }
+  },
+  "effb434f29f83199": {
+   "armband": {
+    "x0": 0.593,
+    "x1": 0.657,
+    "y0": 0.359,
+    "y1": 0.403
+   },
+   "hat": {
+    "x0": 0.431,
+    "x1": 0.541,
+    "y0": 0.047,
+    "y1": 0.122
+   },
+   "other_person": null,
+   "subject": {
+    "x0": 0.337,
+    "x1": 0.664,
+    "y0": 0.047,
+    "y1": 0.999
+   },
+   "tshirt": {
+    "x0": 0.401,
+    "x1": 0.593,
+    "y0": 0.307,
+    "y1": 0.557
+   }
+  },
+  "f1242af43d6b2a0b": {
+   "armband": {
+    "x0": 0.536,
+    "x1": 0.588,
+    "y0": 0.333,
+    "y1": 0.377
+   },
+   "hat": {
+    "x0": 0.387,
+    "x1": 0.51,
+    "y0": 0.031,
+    "y1": 0.115
+   },
+   "other_person": {
+    "x0": 0.743,
+    "x1": 0.816,
+    "y0": 0.428,
+    "y1": 0.614
+   },
+   "subject": {
+    "x0": 0.304,
+    "x1": 0.593,
+    "y0": 0.031,
+    "y1": 0.999
+   },
+   "tshirt": {
+    "x0": 0.354,
+    "x1": 0.557,
+    "y0": 0.252,
+    "y1": 0.525
+   }
+  },
+  "f80722459d6dccec": {
+   "armband": {
+    "x0": 0.0,
+    "x1": 0.09,
+    "y0": 0.43,
+    "y1": 0.51
+   },
+   "hat": {
+    "x0": 0.12,
+    "x1": 0.29,
+    "y0": 0.01,
+    "y1": 0.12
+   },
+   "other_person": {
+    "x0": 0.4,
+    "x1": 0.67,
+    "y0": 0.22,
+    "y1": 0.99
+   },
+   "subject": {
+    "x0": 0.0,
+    "x1": 0.41,
+    "y0": 0.01,
+    "y1": 0.99
+   },
+   "tshirt": {
+    "x0": 0.07,
+    "x1": 0.34,
+    "y0": 0.28,
+    "y1": 0.68
+   }
+  }
+ },
  "cast": [
   {
    "age": 25,
@@ -49445,18 +50502,18 @@
    },
    "S10": {
     "aim_point": [
-     0.1428,
-     0.3116
+     0.5475,
+     0.5746
     ],
     "band_wanted": 1.0,
     "crop_box": [
-     0,
-     484,
-     585,
-     792
+     195,
+     688,
+     2048,
+     1665
     ],
     "crosshair_offset": 0.0001,
-    "kept_height": 0.15,
+    "kept_height": 0.477,
     "size": [
      2048,
      1080
@@ -49464,17 +50521,17 @@
    },
    "S2": {
     "aim_point": [
-     0.688,
-     0.3516
+     0.7845,
+     0.3508
     ],
     "band_wanted": 0.55,
     "crop_box": [
-     1112,
-     157,
-     1706,
-     1283
+     1310,
+     155,
+     1904,
+     1282
     ],
-    "crosshair_offset": 0.0,
+    "crosshair_offset": 0.0002,
     "kept_height": 0.55,
     "size": [
      1080,
@@ -49483,15 +50540,15 @@
    },
    "S3": {
     "aim_point": [
-     0.384,
-     0.2978
+     0.385,
+     0.299
     ],
     "band_wanted": 0.55,
     "crop_box": [
-     489,
-     47,
-     1083,
-     1173
+     491,
+     49,
+     1085,
+     1176
     ],
     "crosshair_offset": 0.0002,
     "kept_height": 0.55,
@@ -49502,18 +50559,18 @@
    },
    "S4": {
     "aim_point": [
-     0.4455,
-     0.3685
+     0.4485,
+     0.3698
     ],
     "band_wanted": 0.78,
     "crop_box": [
-     514,
+     519,
      0,
-     1310,
-     1509
+     1318,
+     1515
     ],
-    "crosshair_offset": 0.0002,
-    "kept_height": 0.737,
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.74,
     "size": [
      1080,
      2048
@@ -49540,18 +50597,18 @@
    },
    "S6": {
     "aim_point": [
-     0.5475,
-     0.7091
+     0.525,
+     0.665
     ],
     "band_wanted": 1.0,
     "crop_box": [
-     195,
-     964,
+     102,
+     849,
      2048,
-     1941
+     1875
     ],
-    "crosshair_offset": 0.0002,
-    "kept_height": 0.477,
+    "crosshair_offset": 0.0001,
+    "kept_height": 0.501,
     "size": [
      2048,
      1080
@@ -49559,15 +50616,15 @@
    },
    "S7": {
     "aim_point": [
-     0.455,
-     0.4995
+     0.4585,
+     0.5008
     ],
     "band_wanted": 0.55,
     "crop_box": [
-     635,
-     460,
-     1229,
-     1586
+     642,
+     462,
+     1236,
+     1589
     ],
     "crosshair_offset": 0.0001,
     "kept_height": 0.55,
@@ -49597,15 +50654,15 @@
    },
    "S9": {
     "aim_point": [
-     0.415,
-     0.5645
+     0.4235,
+     0.5677
     ],
     "band_wanted": 0.78,
     "crop_box": [
-     429,
-     357,
-     1271,
-     1955
+     446,
+     364,
+     1289,
+     1961
     ],
     "crosshair_offset": 0.0001,
     "kept_height": 0.78,
@@ -49627,8 +50684,8 @@
    {
     "channel": "armbands",
     "colour": "blue",
-    "delta_e": 7.7,
-    "measured_hex": "#074CA4",
+    "delta_e": 8.1,
+    "measured_hex": "#064BA6",
     "slug": "pimlico-1",
     "wanted_hex": "#0F61A6"
    },
@@ -49643,16 +50700,40 @@
    {
     "channel": "hat",
     "colour": "tan",
-    "delta_e": 10.3,
-    "measured_hex": "#A27657",
+    "delta_e": 6.3,
+    "measured_hex": "#AE7D52",
+    "slug": "pimlico-3",
+    "wanted_hex": "#C48E5B"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 9.6,
+    "measured_hex": "#F95705",
+    "slug": "pimlico-3",
+    "wanted_hex": "#FA7A08"
+   },
+   {
+    "channel": "tshirt",
+    "colour": "black",
+    "delta_e": 4.2,
+    "measured_hex": "#09090B",
+    "slug": "pimlico-3",
+    "wanted_hex": "#1A1A1A"
+   },
+   {
+    "channel": "hat",
+    "colour": "tan",
+    "delta_e": 11.7,
+    "measured_hex": "#A17255",
     "slug": "pimlico-4",
     "wanted_hex": "#C48E5B"
    },
    {
     "channel": "armbands",
     "colour": "purple",
-    "delta_e": 17.0,
-    "measured_hex": "#6F2190",
+    "delta_e": 21.6,
+    "measured_hex": "#4C1469",
     "slug": "pimlico-4",
     "wanted_hex": "#964F7E"
    },
@@ -49668,17 +50749,9 @@
     "channel": "hat",
     "colour": "tan",
     "delta_e": 7.7,
-    "measured_hex": "#D3A87E",
+    "measured_hex": "#D4A87E",
     "slug": "pimlico-5",
     "wanted_hex": "#C48E5B"
-   },
-   {
-    "channel": "armbands",
-    "colour": "brown",
-    "delta_e": 13.9,
-    "measured_hex": "#6E3B26",
-    "slug": "pimlico-5",
-    "wanted_hex": "#8E6453"
    },
    {
     "channel": "tshirt",
@@ -49692,15 +50765,15 @@
     "channel": "hat",
     "colour": "rust",
     "delta_e": 3.8,
-    "measured_hex": "#AD4027",
+    "measured_hex": "#AD4026",
     "slug": "millbank-1",
     "wanted_hex": "#BF4227"
    },
    {
     "channel": "armbands",
     "colour": "purple",
-    "delta_e": 9.8,
-    "measured_hex": "#8A439A",
+    "delta_e": 13.3,
+    "measured_hex": "#7C3597",
     "slug": "millbank-1",
     "wanted_hex": "#964F7E"
    },
@@ -49715,16 +50788,16 @@
    {
     "channel": "hat",
     "colour": "rust",
-    "delta_e": 3.4,
-    "measured_hex": "#BA3D15",
+    "delta_e": 3.3,
+    "measured_hex": "#BA3D16",
     "slug": "millbank-2",
     "wanted_hex": "#BF4227"
    },
    {
     "channel": "armbands",
     "colour": "yellow",
-    "delta_e": 11.5,
-    "measured_hex": "#FAE30E",
+    "delta_e": 12.4,
+    "measured_hex": "#FAE60E",
     "slug": "millbank-2",
     "wanted_hex": "#FCC221"
    },
@@ -49747,48 +50820,48 @@
    {
     "channel": "armbands",
     "colour": "lime",
-    "delta_e": 12.5,
-    "measured_hex": "#6CD755",
+    "delta_e": 12.7,
+    "measured_hex": "#6CD956",
     "slug": "millbank-3",
     "wanted_hex": "#AAC634"
    },
    {
     "channel": "tshirt",
     "colour": "yellow",
-    "delta_e": 10.5,
-    "measured_hex": "#F7CC0E",
+    "delta_e": 10.4,
+    "measured_hex": "#F6CC0E",
     "slug": "millbank-3",
     "wanted_hex": "#FFF200"
    },
    {
     "channel": "hat",
     "colour": "rust",
-    "delta_e": 6.3,
-    "measured_hex": "#A23C1F",
+    "delta_e": 6.1,
+    "measured_hex": "#A33C1F",
     "slug": "millbank-4",
     "wanted_hex": "#BF4227"
    },
    {
     "channel": "armbands",
     "colour": "brown",
-    "delta_e": 16.2,
-    "measured_hex": "#6C331B",
+    "delta_e": 17.1,
+    "measured_hex": "#6A3018",
     "slug": "millbank-4",
     "wanted_hex": "#8E6453"
    },
    {
     "channel": "tshirt",
     "colour": "orange",
-    "delta_e": 5.9,
-    "measured_hex": "#EE700A",
+    "delta_e": 5.7,
+    "measured_hex": "#ED710A",
     "slug": "millbank-4",
     "wanted_hex": "#FF8200"
    },
    {
     "channel": "hat",
     "colour": "rust",
-    "delta_e": 12.5,
-    "measured_hex": "#F35325",
+    "delta_e": 12.6,
+    "measured_hex": "#F45325",
     "slug": "millbank-5",
     "wanted_hex": "#BF4227"
    },
@@ -49811,8 +50884,8 @@
    {
     "channel": "hat",
     "colour": "salmon",
-    "delta_e": 23.7,
-    "measured_hex": "#834E47",
+    "delta_e": 19.4,
+    "measured_hex": "#8F5750",
     "slug": "horseferry-1",
     "wanted_hex": "#DA7B70"
    },
@@ -49820,7 +50893,7 @@
     "channel": "armbands",
     "colour": "yellow",
     "delta_e": 4.8,
-    "measured_hex": "#F7CC07",
+    "measured_hex": "#F7CC08",
     "slug": "horseferry-1",
     "wanted_hex": "#FCC221"
    },
@@ -49828,23 +50901,23 @@
     "channel": "tshirt",
     "colour": "yellow",
     "delta_e": 8.9,
-    "measured_hex": "#F7D10F",
+    "measured_hex": "#F7D110",
     "slug": "horseferry-1",
     "wanted_hex": "#FFF200"
    },
    {
     "channel": "hat",
     "colour": "salmon",
-    "delta_e": 7.5,
-    "measured_hex": "#F49483",
+    "delta_e": 8.2,
+    "measured_hex": "#F69786",
     "slug": "horseferry-2",
     "wanted_hex": "#DA7B70"
    },
    {
     "channel": "armbands",
     "colour": "lime",
-    "delta_e": 9.9,
-    "measured_hex": "#D4EE3E",
+    "delta_e": 10.1,
+    "measured_hex": "#D5EF40",
     "slug": "horseferry-2",
     "wanted_hex": "#AAC634"
    },
@@ -49852,7 +50925,7 @@
     "channel": "tshirt",
     "colour": "orange",
     "delta_e": 7.1,
-    "measured_hex": "#EE6C0E",
+    "measured_hex": "#EF6C0E",
     "slug": "horseferry-2",
     "wanted_hex": "#FF8200"
    },
@@ -49867,8 +50940,8 @@
    {
     "channel": "armbands",
     "colour": "blue",
-    "delta_e": 4.3,
-    "measured_hex": "#015BBE",
+    "delta_e": 4.9,
+    "measured_hex": "#0357B8",
     "slug": "horseferry-3",
     "wanted_hex": "#0F61A6"
    },
@@ -49883,24 +50956,24 @@
    {
     "channel": "hat",
     "colour": "salmon",
-    "delta_e": 14.3,
-    "measured_hex": "#FBB3A9",
+    "delta_e": 13.9,
+    "measured_hex": "#FAB1A8",
     "slug": "horseferry-4",
     "wanted_hex": "#DA7B70"
    },
    {
     "channel": "armbands",
     "colour": "red",
-    "delta_e": 4.6,
-    "measured_hex": "#E9041A",
+    "delta_e": 5.4,
+    "measured_hex": "#E4051A",
     "slug": "horseferry-4",
     "wanted_hex": "#F5252F"
    },
    {
     "channel": "tshirt",
     "colour": "green",
-    "delta_e": 17.5,
-    "measured_hex": "#027B5A",
+    "delta_e": 18.0,
+    "measured_hex": "#027A5A",
     "slug": "horseferry-4",
     "wanted_hex": "#00A651"
    },
@@ -49915,40 +50988,40 @@
    {
     "channel": "armbands",
     "colour": "orange",
-    "delta_e": 3.3,
-    "measured_hex": "#FD6F03",
+    "delta_e": 3.6,
+    "measured_hex": "#FD6E03",
     "slug": "horseferry-5",
     "wanted_hex": "#FA7A08"
    },
    {
     "channel": "tshirt",
     "colour": "purple",
-    "delta_e": 8.5,
-    "measured_hex": "#51286E",
+    "delta_e": 8.7,
+    "measured_hex": "#51286D",
     "slug": "horseferry-5",
     "wanted_hex": "#6A1B9A"
    },
    {
     "channel": "hat",
     "colour": "green",
-    "delta_e": 19.1,
-    "measured_hex": "#0D3D32",
+    "delta_e": 18.9,
+    "measured_hex": "#0D3E33",
     "slug": "victoria-1",
     "wanted_hex": "#4F7468"
    },
    {
     "channel": "armbands",
     "colour": "brown",
-    "delta_e": 15.8,
-    "measured_hex": "#6D3816",
+    "delta_e": 17.4,
+    "measured_hex": "#5D3518",
     "slug": "victoria-1",
     "wanted_hex": "#8E6453"
    },
    {
     "channel": "tshirt",
     "colour": "yellow",
-    "delta_e": 8.4,
-    "measured_hex": "#F0D00D",
+    "delta_e": 8.6,
+    "measured_hex": "#EFCF0D",
     "slug": "victoria-1",
     "wanted_hex": "#FFF200"
    },
@@ -49956,23 +51029,23 @@
     "channel": "hat",
     "colour": "green",
     "delta_e": 17.7,
-    "measured_hex": "#0E4238",
+    "measured_hex": "#0F4238",
     "slug": "victoria-2",
     "wanted_hex": "#4F7468"
    },
    {
     "channel": "armbands",
     "colour": "yellow",
-    "delta_e": 11.0,
-    "measured_hex": "#F9E117",
+    "delta_e": 10.4,
+    "measured_hex": "#F9DF0E",
     "slug": "victoria-2",
     "wanted_hex": "#FCC221"
    },
    {
     "channel": "tshirt",
     "colour": "purple",
-    "delta_e": 8.2,
-    "measured_hex": "#57367D",
+    "delta_e": 8.1,
+    "measured_hex": "#58367D",
     "slug": "victoria-2",
     "wanted_hex": "#6A1B9A"
    },
@@ -49987,40 +51060,40 @@
    {
     "channel": "armbands",
     "colour": "orange",
-    "delta_e": 7.9,
-    "measured_hex": "#FA5F0C",
+    "delta_e": 7.7,
+    "measured_hex": "#FC6214",
     "slug": "victoria-3",
     "wanted_hex": "#FA7A08"
    },
    {
     "channel": "tshirt",
     "colour": "blue",
-    "delta_e": 14.1,
-    "measured_hex": "#024BA5",
+    "delta_e": 13.8,
+    "measured_hex": "#024CA6",
     "slug": "victoria-3",
     "wanted_hex": "#0072CE"
    },
    {
     "channel": "hat",
     "colour": "green",
-    "delta_e": 19.3,
-    "measured_hex": "#063F2C",
+    "delta_e": 19.5,
+    "measured_hex": "#063E2C",
     "slug": "victoria-4",
     "wanted_hex": "#4F7468"
    },
    {
     "channel": "armbands",
     "colour": "purple",
-    "delta_e": 16.5,
-    "measured_hex": "#71218E",
+    "delta_e": 16.8,
+    "measured_hex": "#6E1E88",
     "slug": "victoria-4",
     "wanted_hex": "#964F7E"
    },
    {
     "channel": "tshirt",
     "colour": "red",
-    "delta_e": 5.3,
-    "measured_hex": "#C10816",
+    "delta_e": 5.1,
+    "measured_hex": "#C00816",
     "slug": "victoria-4",
     "wanted_hex": "#B00020"
    },
@@ -50031,6 +51104,14 @@
     "measured_hex": "#083F33",
     "slug": "victoria-5",
     "wanted_hex": "#4F7468"
+   },
+   {
+    "channel": "armbands",
+    "colour": "orange",
+    "delta_e": 6.4,
+    "measured_hex": "#FA6407",
+    "slug": "victoria-5",
+    "wanted_hex": "#FA7A08"
    },
    {
     "channel": "tshirt",
@@ -50044,55 +51125,55 @@
     "channel": "hat",
     "colour": "navy",
     "delta_e": 15.6,
-    "measured_hex": "#12244F",
+    "measured_hex": "#12244E",
     "slug": "vauxhall-1",
     "wanted_hex": "#2D5170"
    },
    {
     "channel": "armbands",
     "colour": "lime",
-    "delta_e": 12.1,
-    "measured_hex": "#ADF757",
+    "delta_e": 11.9,
+    "measured_hex": "#A9F555",
     "slug": "vauxhall-1",
     "wanted_hex": "#AAC634"
    },
    {
     "channel": "tshirt",
     "colour": "green",
-    "delta_e": 17.4,
-    "measured_hex": "#027953",
+    "delta_e": 17.8,
+    "measured_hex": "#027852",
     "slug": "vauxhall-1",
     "wanted_hex": "#00A651"
    },
    {
     "channel": "hat",
     "colour": "navy",
-    "delta_e": 14.9,
-    "measured_hex": "#182753",
+    "delta_e": 15.2,
+    "measured_hex": "#172652",
     "slug": "vauxhall-2",
     "wanted_hex": "#2D5170"
    },
    {
     "channel": "armbands",
     "colour": "red",
-    "delta_e": 5.3,
-    "measured_hex": "#E30B1E",
+    "delta_e": 6.4,
+    "measured_hex": "#DF0919",
     "slug": "vauxhall-2",
     "wanted_hex": "#F5252F"
    },
    {
     "channel": "tshirt",
     "colour": "red",
-    "delta_e": 5.6,
-    "measured_hex": "#C7101F",
+    "delta_e": 5.7,
+    "measured_hex": "#C70F1E",
     "slug": "vauxhall-2",
     "wanted_hex": "#B00020"
    },
    {
     "channel": "hat",
     "colour": "navy",
-    "delta_e": 13.4,
-    "measured_hex": "#0C2967",
+    "delta_e": 13.3,
+    "measured_hex": "#0B2968",
     "slug": "vauxhall-3",
     "wanted_hex": "#2D5170"
    },
@@ -50131,16 +51212,16 @@
    {
     "channel": "tshirt",
     "colour": "purple",
-    "delta_e": 6.1,
-    "measured_hex": "#5A2F80",
+    "delta_e": 6.3,
+    "measured_hex": "#5A2F7F",
     "slug": "vauxhall-4",
     "wanted_hex": "#6A1B9A"
    },
    {
     "channel": "hat",
     "colour": "navy",
-    "delta_e": 17.4,
-    "measured_hex": "#0C1E48",
+    "delta_e": 17.1,
+    "measured_hex": "#0D1F48",
     "slug": "vauxhall-5",
     "wanted_hex": "#2D5170"
    },
@@ -50155,8 +51236,8 @@
    {
     "channel": "tshirt",
     "colour": "orange",
-    "delta_e": 7.0,
-    "measured_hex": "#F06C0B",
+    "delta_e": 7.2,
+    "measured_hex": "#F06B0A",
     "slug": "vauxhall-5",
     "wanted_hex": "#FF8200"
    },
@@ -50171,32 +51252,32 @@
    {
     "channel": "armbands",
     "colour": "brown",
-    "delta_e": 15.3,
-    "measured_hex": "#773717",
+    "delta_e": 15.2,
+    "measured_hex": "#743818",
     "slug": "smith-square-1",
     "wanted_hex": "#8E6453"
    },
    {
     "channel": "tshirt",
     "colour": "red",
-    "delta_e": 1.9,
-    "measured_hex": "#B40A1D",
+    "delta_e": 1.8,
+    "measured_hex": "#B4091D",
     "slug": "smith-square-1",
     "wanted_hex": "#B00020"
    },
    {
     "channel": "hat",
     "colour": "burgundy",
-    "delta_e": 12.8,
-    "measured_hex": "#6F0524",
+    "delta_e": 12.9,
+    "measured_hex": "#6E0624",
     "slug": "smith-square-2",
     "wanted_hex": "#A62C3E"
    },
    {
     "channel": "armbands",
     "colour": "red",
-    "delta_e": 7.3,
-    "measured_hex": "#E0080B",
+    "delta_e": 6.2,
+    "measured_hex": "#E7080C",
     "slug": "smith-square-2",
     "wanted_hex": "#F5252F"
    },
@@ -50219,16 +51300,16 @@
    {
     "channel": "armbands",
     "colour": "orange",
-    "delta_e": 7.2,
-    "measured_hex": "#FB6108",
+    "delta_e": 7.3,
+    "measured_hex": "#FD6108",
     "slug": "smith-square-3",
     "wanted_hex": "#FA7A08"
    },
    {
     "channel": "tshirt",
     "colour": "yellow",
-    "delta_e": 8.0,
-    "measured_hex": "#F7D416",
+    "delta_e": 8.5,
+    "measured_hex": "#F6D215",
     "slug": "smith-square-3",
     "wanted_hex": "#FFF200"
    },
@@ -50243,8 +51324,8 @@
    {
     "channel": "armbands",
     "colour": "yellow",
-    "delta_e": 10.7,
-    "measured_hex": "#F4DD0B",
+    "delta_e": 12.0,
+    "measured_hex": "#F9E40B",
     "slug": "smith-square-4",
     "wanted_hex": "#FCC221"
    },
@@ -50252,23 +51333,23 @@
     "channel": "tshirt",
     "colour": "green",
     "delta_e": 18.0,
-    "measured_hex": "#02764C",
+    "measured_hex": "#01764C",
     "slug": "smith-square-4",
     "wanted_hex": "#00A651"
    },
    {
     "channel": "hat",
     "colour": "burgundy",
-    "delta_e": 16.6,
-    "measured_hex": "#5D0624",
+    "delta_e": 16.8,
+    "measured_hex": "#5C0624",
     "slug": "smith-square-5",
     "wanted_hex": "#A62C3E"
    },
    {
     "channel": "armbands",
     "colour": "blue",
-    "delta_e": 4.3,
-    "measured_hex": "#1558AF",
+    "delta_e": 8.6,
+    "measured_hex": "#144A9F",
     "slug": "smith-square-5",
     "wanted_hex": "#0F61A6"
    },
@@ -50285,64 +51366,64 @@
    {
     "channel": "armbands",
     "colour": "blue",
-    "max_pairwise_delta_e": 5.6,
-    "mean_pairwise_delta_e": 3.2,
+    "max_pairwise_delta_e": 5.1,
+    "mean_pairwise_delta_e": 3.1,
     "worn_by": 4
    },
    {
     "channel": "armbands",
     "colour": "brown",
-    "max_pairwise_delta_e": 4.4,
-    "mean_pairwise_delta_e": 3.6,
-    "worn_by": 4
+    "max_pairwise_delta_e": 5.9,
+    "mean_pairwise_delta_e": 5.0,
+    "worn_by": 3
    },
    {
     "channel": "armbands",
     "colour": "lime",
     "max_pairwise_delta_e": 16.3,
-    "mean_pairwise_delta_e": 11.7,
+    "mean_pairwise_delta_e": 11.5,
     "worn_by": 3
    },
    {
     "channel": "armbands",
     "colour": "orange",
-    "max_pairwise_delta_e": 4.7,
+    "max_pairwise_delta_e": 6.1,
     "mean_pairwise_delta_e": 2.7,
-    "worn_by": 4
+    "worn_by": 6
    },
    {
     "channel": "armbands",
     "colour": "purple",
-    "max_pairwise_delta_e": 9.8,
-    "mean_pairwise_delta_e": 7.9,
+    "max_pairwise_delta_e": 16.6,
+    "mean_pairwise_delta_e": 10.0,
     "worn_by": 4
    },
    {
     "channel": "armbands",
     "colour": "red",
-    "max_pairwise_delta_e": 3.0,
-    "mean_pairwise_delta_e": 2.4,
+    "max_pairwise_delta_e": 2.8,
+    "mean_pairwise_delta_e": 2.1,
     "worn_by": 3
    },
    {
     "channel": "armbands",
     "colour": "yellow",
     "max_pairwise_delta_e": 9.6,
-    "mean_pairwise_delta_e": 4.2,
+    "mean_pairwise_delta_e": 4.4,
     "worn_by": 5
    },
    {
     "channel": "hat",
     "colour": "burgundy",
-    "max_pairwise_delta_e": 6.6,
+    "max_pairwise_delta_e": 6.4,
     "mean_pairwise_delta_e": 3.6,
     "worn_by": 5
    },
    {
     "channel": "hat",
     "colour": "green",
-    "max_pairwise_delta_e": 6.1,
-    "mean_pairwise_delta_e": 2.9,
+    "max_pairwise_delta_e": 5.8,
+    "mean_pairwise_delta_e": 2.7,
     "worn_by": 5
    },
    {
@@ -50356,48 +51437,48 @@
     "channel": "hat",
     "colour": "rust",
     "max_pairwise_delta_e": 18.8,
-    "mean_pairwise_delta_e": 9.8,
+    "mean_pairwise_delta_e": 9.7,
     "worn_by": 5
    },
    {
     "channel": "hat",
     "colour": "salmon",
-    "max_pairwise_delta_e": 35.8,
-    "mean_pairwise_delta_e": 16.3,
+    "max_pairwise_delta_e": 31.0,
+    "mean_pairwise_delta_e": 14.3,
     "worn_by": 5
    },
    {
     "channel": "hat",
     "colour": "tan",
-    "max_pairwise_delta_e": 16.2,
-    "mean_pairwise_delta_e": 11.3,
-    "worn_by": 3
+    "max_pairwise_delta_e": 17.6,
+    "mean_pairwise_delta_e": 10.5,
+    "worn_by": 4
    },
    {
     "channel": "tshirt",
     "colour": "black",
     "max_pairwise_delta_e": 0.9,
-    "mean_pairwise_delta_e": 0.9,
-    "worn_by": 2
+    "mean_pairwise_delta_e": 0.8,
+    "worn_by": 3
    },
    {
     "channel": "tshirt",
     "colour": "green",
-    "max_pairwise_delta_e": 11.7,
+    "max_pairwise_delta_e": 11.3,
     "mean_pairwise_delta_e": 6.7,
     "worn_by": 4
    },
    {
     "channel": "tshirt",
     "colour": "orange",
-    "max_pairwise_delta_e": 4.0,
-    "mean_pairwise_delta_e": 2.1,
+    "max_pairwise_delta_e": 4.4,
+    "mean_pairwise_delta_e": 2.2,
     "worn_by": 4
    },
    {
     "channel": "tshirt",
     "colour": "purple",
-    "max_pairwise_delta_e": 5.3,
+    "max_pairwise_delta_e": 5.4,
     "mean_pairwise_delta_e": 3.2,
     "worn_by": 6
    },
@@ -50405,14 +51486,14 @@
     "channel": "tshirt",
     "colour": "red",
     "max_pairwise_delta_e": 4.1,
-    "mean_pairwise_delta_e": 2.6,
+    "mean_pairwise_delta_e": 2.5,
     "worn_by": 5
    },
    {
     "channel": "tshirt",
     "colour": "yellow",
-    "max_pairwise_delta_e": 3.6,
-    "mean_pairwise_delta_e": 2.0,
+    "max_pairwise_delta_e": 3.5,
+    "mean_pairwise_delta_e": 1.9,
     "worn_by": 6
    }
   ]

@@ -52,7 +52,8 @@ describe anything: return boxes only.
 
 The photograph shows one person wearing a coloured baseball cap, a coloured
 t-shirt and a coloured elasticated armband on each upper arm. Return, as
-normalised coordinates between 0 and 1 where (0,0) is the top-left corner:
+fractions between 0 and 1 -- not pixels, and not a 0-1000 grid -- where (0,0)
+is the top-left corner and (1,1) the bottom-right:
 
 - subject: a tight box around that person, head to foot.
 - hat: a tight box around the fabric of their cap, or null if no cap is
@@ -139,10 +140,18 @@ def _clean(
     except (KeyError, TypeError, ValueError):
         return None
 
-    # Answered in pixels rather than in fractions: convert instead of
-    # clamping every coordinate to 1.0 and calling the box malformed.
-    if size and max(values.values()) > 1.0:
-        width, height = size
+    # Three conventions come back from the same model on the same prompt, so
+    # all three are read rather than assumed. Fractions are used as they are.
+    # Anything larger is a grid: 0-1000 is what these models are usually
+    # trained on and is what this one mostly reaches for, and pixels are the
+    # remaining case. Getting this wrong is quiet and expensive -- dividing a
+    # 0-1000 answer by a 2048px width shrinks every box to half size and pins
+    # it into the top-left corner, where it samples background and reports it
+    # as the colour of somebody's hat.
+    largest = max(values.values())
+    if largest > 1.0:
+        scale = (1000.0, 1000.0) if largest <= 1000.0 else (size or (1.0, 1.0))
+        width, height = scale
         values = {
             "x0": values["x0"] / width,
             "x1": values["x1"] / width,

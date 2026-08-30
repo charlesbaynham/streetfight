@@ -1206,7 +1206,7 @@ data than everything to date, so build this to consume it.
 
 ---
 
-### R11 — A deterministic thirty-player test world *(built; one step outstanding)*
+### R11 — A deterministic thirty-player test world *(shipped)*
 
 Real games have found bugs that unit tests did not, because unit tests
 provision one or two players at a time and the bugs needed a crowd. The
@@ -1253,15 +1253,16 @@ API — image models are not served by `/chat/completions` at all — on
 teams, thirty players in outfits they picked themselves, working join codes
 and everybody standing where their phone last reported them.
 
-**Outstanding: the localisation pass.** `python -m backend.test_world observe
+**The localisation pass has run.** `python -m backend.test_world observe
 --execute` sends each image once to a **non-Google** model for bounding boxes
 (the recogniser under test is Gemini, so measuring its inputs with it would be
 circular), then crops each shot so the crosshair lands where the scenario says
-and measures every garment against `PALETTE_HEX`. It costs about $0.12 for the
-set and needs re-running: the boxes were cached inside `world["scenes"]`,
-which `scenes` rewrites wholesale, and a prompt edit threw them away. They now
-live in `world["boxes"]`, keyed by image id, so that cannot recur — but the
-set does need paying for once more.
+and measures every garment against `PALETTE_HEX`. All forty images are
+localised, all ten shots cropped to the 1080x2048 a phone really produces, and
+every crosshair sits within 0.0002 of its aim point. The boxes live in
+`world["boxes"]` keyed by image id, so regenerating the scenes cannot throw
+them away and an edited scene simply gets a new image with no stale box
+attached. See R12 for doing this part without an API.
 
 **What the first measurement pass found**, recorded rather than corrected:
 the hat is the worst-rendered channel (median ΔE2000 14.3, with the greens
@@ -1270,6 +1271,62 @@ max 35.8) when the brief says a hat is mass-produced and should not, and the
 generator will not render a distant figure small however the prompt is worded
 — it plateaus at about a third of the frame height, which is why the distant
 band leads with the street rather than the person.
+
+### R12 — Localise garments locally, instead of paying a model to do it *(proposed)*
+
+R11's `observe` step sends every generated image to a vision model for
+bounding boxes: where the person is, where their cap, armband and t-shirt are.
+Python then crops each shot so the crosshair lands where the scenario says, and
+samples each garment to compare it against `PALETTE_HEX`. It works, it costs
+about $0.12 for the forty-image set, and the boxes are cached per image id so
+it is paid once.
+
+It is also the least solid part of that pipeline, and every failure so far has
+been there rather than in the images: replies that are a page of tab
+characters, coordinates in pixels where fractions were asked for, coordinates
+on a 0-1000 grid where pixels were assumed — that last one silently halved four
+boxes and pinned them into the top-left corner, where they sampled pavement and
+reported it as the colour of a hat. Each was recoverable, and each was a
+half-hour of somebody working out that the *measurements* were fine and the
+*parsing* was not.
+
+**Worth researching: do it locally.** A person detector run on this machine
+would be deterministic, free, offline, and would not answer in whichever
+coordinate convention it woke up in that morning. Candidates, roughly in order
+of how much they would need proving:
+
+- **YOLO** (darknet, or one of the maintained PyTorch/ONNX ports). Person
+  detection is the canonical COCO class 0, so a stock model needs no training
+  at all for the subject box.
+- **HOG + a linear SVM**, which OpenCV ships as `HOGDescriptor` with a
+  pre-trained people detector. Cheapest possible: no model weights to vendor,
+  no GPU, and it works on the one thing we need most.
+- **A segmentation model** (rather than a detector) if garment boxes turn out
+  to matter more than the subject box.
+
+**The catch, and what makes this research rather than a task.** A stock
+detector finds *people*, not *the cap on that person's head*. The subject box
+is the easy half and is what the crop needs; the garment boxes are what the
+colour measurement needs, and no off-the-shelf person detector supplies them.
+Options to test: derive garment regions geometrically from the subject box
+(a cap is in the top eighth, a t-shirt the middle third, armbands at the
+outside of the upper quarter) which is crude but free and deterministic; use a
+pose estimator's keypoints, which gives shoulders and head directly; or keep
+the vision model only for garments and take the subject box locally.
+
+**Also weigh the cost of the dependency.** `pyproject.toml` deliberately
+carries no colour-science library for the sake of one CIEDE2000 function
+(R11's `measure.py`), and opencv or torch is a much larger thing to add for
+one offline script. `scripts/` is not part of the app, so a heavy dependency
+confined to a dev group may be acceptable where one in the runtime would not
+be — that is part of what the research has to settle.
+
+**Not blocking anything.** The paid path works and the boxes are cached, so
+this is a cost and robustness improvement rather than a fix. Do it if the
+localiser keeps misbehaving, or if the fixture set is regenerated often enough
+that $0.12 a time starts to matter. The fallback if neither happens: annotate
+the forty boxes by hand once and commit them — the plumbing already reads them
+from `world["boxes"]`, so nothing else would need to change.
 
 ### #5 — Two readable channels should still identify somebody *(shipped)*
 

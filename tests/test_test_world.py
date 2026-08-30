@@ -94,24 +94,33 @@ def test_generation_refuses_a_google_model():
 # -- localisation, cropping and measurement ------------------------------------
 
 
-def test_a_box_answered_in_pixels_is_converted_rather_than_discarded():
-    """The localiser mostly answers in fractions and sometimes in pixels.
+def test_every_coordinate_convention_the_localiser_uses_is_read_correctly():
+    """The same model on the same prompt answers in three different scales.
 
-    Clamping a pixel answer to 0-1 turns every coordinate into 1.0 and the box
-    into nothing, which reads as "no subject in the picture" -- so the shot is
-    silently dropped from the fixture set rather than reported as a bad
-    reading.
+    Reading one as another is quiet and expensive. A 0-1000 answer divided by
+    an image's 2048px width shrinks every box to half size and pins it into
+    the top-left corner, where it samples the background and reports it as the
+    colour of somebody's hat -- which is exactly what happened, to four of
+    forty images, and it looked like a rendering fault rather than a parsing
+    one. Clamping instead of converting is worse still: every coordinate
+    becomes 1.0, the box is degenerate, and the shot silently leaves the
+    fixture set.
     """
     from backend.test_world.localise import _clean
 
-    pixels = {"x0": 460, "y0": 553, "x1": 630, "y1": 999}
-    converted = _clean(pixels, size=(2048, 2048))
+    fractions = {"x0": 0.1, "y0": 0.2, "x1": 0.3, "y1": 0.4}
+    assert _clean(fractions, size=(2048, 2048)) == pytest.approx(fractions)
 
-    assert converted == pytest.approx(
-        {"x0": 460 / 2048, "y0": 553 / 2048, "x1": 630 / 2048, "y1": 999 / 2048}
+    # The convention this model actually reaches for most of the time.
+    grid = {"x0": 100, "y0": 200, "x1": 300, "y1": 400}
+    assert _clean(grid, size=(2048, 2048)) == pytest.approx(fractions)
+
+    # Genuine pixels, unambiguous because they exceed the 0-1000 grid.
+    pixels = {"x0": 1024, "y0": 1280, "x1": 1536, "y1": 1792}
+    assert _clean(pixels, size=(2048, 2048)) == pytest.approx(
+        {"x0": 0.5, "y0": 0.625, "x1": 0.75, "y1": 0.875}
     )
-    # Without a size there is nothing to convert by, so it stays refused.
-    assert _clean(pixels) is None
+
     assert _clean({"x0": 0.5, "y0": 0.5, "x1": 0.5, "y1": 0.9}) is None
     assert _clean(None) is None
 
