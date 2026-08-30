@@ -23,7 +23,10 @@ Three properties the admin button needs:
 * **Idempotent.** Starting a run that is already going returns its status and
   changes nothing. Even across a cancel, a restart *resumes*: the shot ids are
   derived from the seed, so the shots already fired are skipped and the drip
-  picks up at the next one.
+  picks up at the next one. A half-provisioned game -- the cast interrupted
+  part-way through, by a crash, a reload, or a deleted player -- is
+  *completed* rather than fired into: the next press finishes provisioning
+  the missing players before resuming the drip.
 * **Cancellable.** Cancelling stops the task between shots; what has already
   been fired stays fired.
 * **Refuses a real game.** If any player who is in a team is not one of the
@@ -129,7 +132,16 @@ def refuse_if_live(seed: int = SAMPLE_SEED) -> None:
 
 
 def _provision(seed: int) -> None:
-    """Make the sample game, unless it is already there.
+    """Make the sample game, or finish it, unless the whole cast is there.
+
+    The ``Game`` row existing is not proof the cast is: ``test_world.cast
+    .provision`` commits the game, then the teams, then each of the thirty
+    players in their own transaction, so anything that interrupts it part-way
+    -- the service restarting, a dev-server reload, an exception mid-pick --
+    leaves a game row with a missing or partial cast. Checking for the
+    players themselves, not just the game, is what makes a second press
+    *finish* a half-provisioned game rather than skip straight to firing
+    shots at shooters who were never really there.
 
     Synchronous, and therefore blocking the event loop for the few seconds
     thirty players take to pick outfits through the real allocator. That is
@@ -140,11 +152,26 @@ def _provision(seed: int) -> None:
     from .reset_db import make_debug_entries
 
     game_id = sample_game_id()
+    wanted = demo_user_ids(seed)
     with session_scope() as session:
-        if session.get(Game, game_id) is not None:
-            return
+        game_present = session.get(Game, game_id) is not None
+        present = {
+            user_id
+            for (user_id,) in session.query(User.id)
+            .filter(User.id.in_(wanted), User.team_id.isnot(None))
+            .all()
+        }
+    missing = wanted - present
 
-    logger.warning("Demo game: provisioning the sample game %s", game_id)
+    if game_present and not missing:
+        return
+
+    logger.warning(
+        "Demo game: provisioning the sample game %s (%d of %d cast members missing)",
+        game_id,
+        len(missing),
+        len(wanted),
+    )
     made = make_debug_entries(seed)
     logger.warning(
         "Demo game: %d players, %d with a location", made["players"], made["located"]

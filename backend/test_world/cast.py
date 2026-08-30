@@ -38,13 +38,17 @@ from typing import List
 from uuid import UUID
 
 from backend.admin_interface import AdminInterface
+from backend.database import session_scope
 from backend.identity.config import default_scheme
 from backend.identity_admin import IdentitySetRequest
+from backend.identity_admin import _player_row
 from backend.identity_admin import build_join_codes
 from backend.identity_admin import outfit_options_page
 from backend.identity_admin import pick_outfit
 from backend.identity_admin import set_identity
 from backend.join_codes import JoinCodeModel
+from backend.model import Game
+from backend.model import Team
 from backend.test_world import ids
 from backend.test_world import spec
 from backend.user_interface import UserInterface
@@ -80,6 +84,18 @@ def _narrow_wardrobe(scheme, rng: random.Random) -> Dict[str, List[str]]:
 def provision(seed: int, cast: List[dict]) -> dict:
     """Create the game, the teams and every player's outfit.
 
+    Resumable: safe to call again over a game that a previous call left
+    part-provisioned (``make_debug_entries`` is called that way by
+    ``backend.demo_game`` -- see its docstring). The game and each team are
+    only created if their row is missing (``create_team`` would otherwise hit
+    a primary-key collision), and a player who already holds a team and an
+    identity slot in this game is taken as-is rather than sent through
+    ``outfit_options_page`` again -- that call gates on Hamming distance
+    against everyone already placed *including this player*, so it can
+    legitimately offer nothing to somebody who has already picked, and would
+    raise the "no outfit could be offered" error below for exactly the
+    players a resumed run should be skipping.
+
     Returns the identity facts the world file needs, keyed by player slug,
     plus the database ids -- which are *not* part of the reproducible world,
     only of this materialisation of it.
@@ -88,28 +104,69 @@ def provision(seed: int, cast: List[dict]) -> dict:
     admin = AdminInterface()
 
     game_id = ids.game_id(seed)
-    admin.create_game(game_id)
+    with session_scope() as session:
+        game_present = session.get(Game, game_id) is not None
+    if not game_present:
+        admin.create_game(game_id)
 
     team_ids: Dict[str, UUID] = {}
     for team_name in spec.TEAM_NAMES:
         slug = team_name.lower().replace(" ", "-")
-        team_ids[team_name] = admin.create_team(
-            game_id, team_name, ids.team_id(seed, slug)
-        )
+        team_id = ids.team_id(seed, slug)
+        with session_scope() as session:
+            team_present = session.get(Team, team_id) is not None
+        if not team_present:
+            admin.create_team(game_id, team_name, team_id)
+        team_ids[team_name] = team_id
 
     # Pins each team's hat colour. Idempotent afterwards, and the moment the
     # printed cards become meaningful.
     join = build_join_codes(game_id)
     team_colours = {row["team_name"]: row["team_colour"] for row in join["teams"]}
 
+    placed = {u.id: u for u in admin.get_users_for_game(game_id)}
+
     players: Dict[str, dict] = {}
     late_patches: List[tuple] = []
 
     for person in cast:
-        rng = random.Random(f"{seed}:pick:{person['slug']}")
         user_id = ids.user_id(seed, person["slug"])
         team_id = team_ids[person["team"]]
         code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=None)
+
+        existing = placed.get(user_id)
+        if (
+            existing is not None
+            and existing.team_id == team_id
+            and existing.identity_slot is not None
+        ):
+            # Already picked in an earlier, interrupted call - take the row
+            # the database already holds (including the stored
+            # identity_wardrobe) instead of asking the allocator again.
+            row = _player_row(existing, scheme)
+            players[person["slug"]] = {
+                "user_id": str(user_id),
+                "team": person["team"],
+                "team_colour": team_colours[person["team"]],
+                "slot": row["slot"],
+                "overrides": row.get("overrides") or {},
+                "appearance": row["effective_appearance"],
+                "canonical_appearance": row["canonical_appearance"],
+                "wardrobe": row["wardrobe"],
+                "picking": person["picking"],
+                # Facts about the pick itself, not recoverable from the
+                # database once it already happened. Only
+                # `python -m backend.test_world world` reads them, and that
+                # always provisions a fresh database, so this branch is never
+                # what it sees.
+                "relaxed": False,
+                "exhausted": False,
+            }
+            if person["picking"] == "late_patch":
+                late_patches.append((person, user_id, row))
+            continue
+
+        rng = random.Random(f"{seed}:pick:{person['slug']}")
 
         with UserInterface(user_id) as ui:
             ui.set_name(person["name"])
@@ -162,16 +219,34 @@ def provision(seed: int, cast: List[dict]) -> dict:
     # The door patches happen after everybody has picked, because that is when
     # they happen in life: the admin is looking at a player who is already in
     # the game and already has a slot.
+    #
+    # The baseline is the *canonical* colour of the patched channel, not
+    # whatever the player's row currently shows there. That makes the
+    # replacement -- same seed, same baseline -- the same colour every time
+    # this runs, so a resumed call finds the earlier patch already reflected
+    # in `effective_appearance` and skips re-issuing it, rather than patching
+    # an already-patched player again from a baseline the first patch moved.
     for person, user_id, row in late_patches:
         rng = random.Random(f"{seed}:patch:{person['slug']}")
         channel = spec.LATE_PATCH_CHANNEL
-        current = row["effective_appearance"][channel]
+        current = row["canonical_appearance"][channel]
         alternatives = [
             colour
             for colour in scheme.channels.by_name(channel).labels
             if colour != current
         ]
         replacement = rng.choice(sorted(alternatives))
+
+        entry = players[person["slug"]]
+        if row["effective_appearance"][channel] == replacement:
+            # Already patched by an earlier, interrupted call.
+            entry["late_patch"] = {
+                "channel": channel,
+                "from": current,
+                "to": replacement,
+            }
+            continue
+
         result = set_identity(
             IdentitySetRequest(
                 user_id=user_id,
@@ -180,7 +255,6 @@ def provision(seed: int, cast: List[dict]) -> dict:
                 force=True,
             )
         )
-        entry = players[person["slug"]]
         entry["overrides"] = result.get("overrides") or {channel: replacement}
         entry["appearance"] = result["effective_appearance"]
         entry["late_patch"] = {"channel": channel, "from": current, "to": replacement}
