@@ -174,6 +174,7 @@ export function AdminNav() {
       <ShotQueueLink />
       <AdminNavLink to="/admin/replay">Shot replay</AdminNavLink>
       <AdminNavLink to="/admin/reference">Reference photos</AdminNavLink>
+      <AdminNavLink to="/admin/spectator">Spectator screen</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">
         Identity overrides
@@ -255,7 +256,12 @@ function AdminFooter() {
 // Gate + shared chrome for every admin page: checks the login cookie, shows
 // the login form if it is missing, and otherwise renders the nav bar, the admin
 // SSE connection (which live-updates everything below it) and the page itself.
-export function AdminPage({ children }) {
+//
+// `bare` drops the Container's max width, the nav and the footer, for a page
+// that wants the whole viewport (the spectator screen). It keeps the gate, the
+// SSE connection and the error log - a red box is how you notice from across
+// the room that the screen has stopped working.
+export function AdminPage({ children, bare = false }) {
   const [authed, setAuthed] = useState(null);
 
   useEffect(() => {
@@ -278,6 +284,15 @@ export function AdminPage({ children }) {
         <AdminErrorLog />
         <AdminLoginForm onSuccess={() => setAuthed(true)} />
       </Container>
+    );
+
+  if (bare)
+    return (
+      <>
+        <UpdateSSEConnection endpoint="sse_admin_updates" />
+        <AdminErrorLog />
+        {children}
+      </>
     );
 
   return (

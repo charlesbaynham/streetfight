@@ -271,6 +271,7 @@ def build_report(game_id: UUID) -> dict:
 
     return {
         "channels": _channels_payload(scheme),
+        "team_channel": TEAM_CHANNEL,
         "players": players,
         "pairs": pairs,
         "effective_min_distance": effective_min_distance,

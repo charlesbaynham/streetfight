@@ -912,6 +912,34 @@ async def admin_get_reference_photo_status(game_id: UUID) -> List[dict]:
     return AdminInterface().get_reference_photo_status(game_id)
 
 
+@admin_method("/admin_get_recent_shots", method="GET")
+async def admin_get_recent_shots(game_id: UUID, limit: int = 6) -> List[dict]:
+    """The last few shots of a game, newest first, with their adjudication.
+
+    Feeds the spectator screen (react-ui/src/SpectatorView.js). Carries no
+    image: the photographs come one at a time from admin_get_shot_thumbnail,
+    which the client caches by id.
+    """
+    return AdminInterface().get_recent_shots(game_id, limit=limit)
+
+
+@admin_method("/admin_get_shot_thumbnail", method="GET")
+async def admin_get_shot_thumbnail(shot_id: UUID) -> dict:
+    """One shot's photograph, downsized for a screen rather than a model."""
+    return {"image_base64": AdminInterface().get_shot_thumbnail(shot_id)}
+
+
+@admin_method("/admin_get_scoreboard", method="GET")
+async def admin_get_scoreboard(game_id: UUID) -> dict:
+    """The scoreboard for a game, keyed by game rather than by the caller.
+
+    The player-facing /get_scoreboard resolves the game from the caller's own
+    session and 404s if they are not in one -- which a browser wired to a TV
+    never is. Same table, addressed the way the admin pages address things.
+    """
+    return AdminInterface().get_scoreboard(game_id)
+
+
 @admin_method("/admin_get_locations", method="GET")
 async def admin_get_locations(game_id=None):
     """

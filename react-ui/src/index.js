@@ -10,6 +10,7 @@ import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
 import ReferencePhotos from "./ReferencePhotos";
+import SpectatorView from "./SpectatorView";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -50,6 +51,10 @@ const router = createBrowserRouter([
   {
     path: "admin/reference",
     element: <ReferencePhotos />,
+  },
+  {
+    path: "admin/spectator",
+    element: <SpectatorView />,
   },
   {
     path: "admin/identity",

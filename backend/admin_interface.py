@@ -21,6 +21,7 @@ from .asyncio_triggers import trigger_update_event
 from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
+from .image_processing import downscale_jpeg
 from .image_processing import draw_cross_on_image
 from .items import ItemModel
 from .model import AI_REVIEW_STATE_DONE
@@ -49,6 +50,12 @@ from .utils import add_params_to_url
 logger = logging.getLogger(__name__)
 
 
+# One size, used by all three faces of the spectator screen. The takeover
+# frame is 600x900, so anything smaller upscales and goes soft on a
+# television; the sidebar's small thumbnails just downsample in the browser.
+# At quality 70 this is ~100KB, fetched once per shot and then held.
+THUMBNAIL_MAX_DIMENSION = 900
+
 AdminScopeWrapper = DatabaseScopeProvider("admin")
 db_scoped = AdminScopeWrapper.db_scoped
 
@@ -67,6 +74,56 @@ QueueHead = namedtuple(
         "location_context",
     ],
 )
+
+
+# One row of the spectator feed. Superset of QueueHead: it carries what the
+# screen shows (when, who, the verdict so far) as well as what
+# _ai_review_payload needs, and like QueueHead it never loads image_base64.
+RecentShotRow = namedtuple(
+    "RecentShotRow",
+    [
+        "id",
+        "time_created",
+        "user_id",
+        "target_user_id",
+        "checked",
+        "result",
+        "ai_review_state",
+        "ai_review",
+        "ai_escalation_state",
+        "ai_escalation",
+        "location_context",
+    ],
+)
+
+
+def _ai_review_payload(shot, users: List[UserModel]) -> dict:
+    """One shot's stored review, its escalation, and who the reading looks like.
+
+    ``shot`` needs only the review/escalation columns plus ``user_id`` and
+    ``location_context`` -- a ``QueueHead`` satisfies it as well as an ORM
+    ``Shot`` does, which is what lets the spectator feed build many of these
+    from one columns-only query.
+
+    ``users`` is passed in rather than looked up so a caller doing a whole
+    game's worth resolves the roster once instead of per shot.
+    """
+    review = _stored_json(shot.ai_review)
+
+    # Scored here rather than stored with the review: an outfit correction
+    # made after the review must change who this reading looks like,
+    # without rewriting the reading itself.
+    identification = None
+    if shot.ai_review_state == AI_REVIEW_STATE_DONE and isinstance(review, dict):
+        identification = identification_payload(shot, users, review)
+
+    return {
+        "state": shot.ai_review_state,
+        "review": review,
+        "identification": identification,
+        "escalation_state": shot.ai_escalation_state,
+        "escalation": _stored_json(shot.ai_escalation),
+    }
 
 
 def _stored_json(raw: Optional[str]) -> Optional[dict]:
@@ -667,24 +724,7 @@ class AdminInterface:
         image cached and this small payload live avoids that.
         """
         shot = self._get_shot_orm(shot_id)
-        review = _stored_json(shot.ai_review)
-
-        # Scored here rather than stored with the review: an outfit correction
-        # made after the review must change who this reading looks like,
-        # without rewriting the reading itself.
-        identification = None
-        if shot.ai_review_state == AI_REVIEW_STATE_DONE and isinstance(review, dict):
-            identification = identification_payload(
-                shot, self.get_users_for_game(shot.game_id), review
-            )
-
-        return {
-            "state": shot.ai_review_state,
-            "review": review,
-            "identification": identification,
-            "escalation_state": shot.ai_escalation_state,
-            "escalation": _stored_json(shot.ai_escalation),
-        }
+        return _ai_review_payload(shot, self.get_users_for_game(shot.game_id))
 
     @db_scoped
     def store_shot_ai_review(
@@ -1506,6 +1546,76 @@ class AdminInterface:
         return locations
 
     @db_scoped
+    def get_recent_shots(self, game_id: UUID, limit: int = 6) -> List[dict]:
+        """The last few shots of a game, newest first, for the spectator screen.
+
+        Includes checked shots: this is a history of what just happened, not a
+        queue of what needs doing. Columns only, and no image -- the screen
+        refetches this on every SSE bump, and the thumbnails come separately
+        from :func:`get_shot_thumbnail` because they never change.
+
+        ``time_created`` has 1s resolution and the ids are uuid4, so two shots
+        fired in the same second come back in an arbitrary but *stable* order.
+        Stability is the part that matters on a screen: an unstable tiebreak
+        would make the feed visibly reshuffle on every refetch.
+        """
+        rows = (
+            self._session.query(
+                Shot.id,
+                Shot.time_created,
+                Shot.user_id,
+                Shot.target_user_id,
+                Shot.checked,
+                Shot.result,
+                Shot.ai_review_state,
+                Shot.ai_review,
+                Shot.ai_escalation_state,
+                Shot.ai_escalation,
+                Shot.location_context,
+            )
+            .filter_by(game_id=game_id)
+            .order_by(Shot.time_created.desc(), Shot.id.desc())
+            .limit(limit)
+            .all()
+        )
+
+        # Resolved once for the whole feed, and reused as the candidate roster
+        # for every shot's identification.
+        users = self.get_users_for_game(game_id)
+        by_id = {u.id: u for u in users}
+
+        out = []
+        for row in rows:
+            shot = RecentShotRow(*row)
+            shooter = by_id.get(shot.user_id)
+            target = by_id.get(shot.target_user_id)
+            out.append(
+                {
+                    "id": shot.id,
+                    "time_created": shot.time_created,
+                    "shooter_name": shooter.name if shooter else None,
+                    "shooter_team": shooter.team_name if shooter else None,
+                    "target_name": target.name if target else None,
+                    "checked": shot.checked,
+                    "result": shot.result,
+                    **_ai_review_payload(shot, users),
+                }
+            )
+        return out
+
+    def get_shot_thumbnail(self, shot_id: UUID) -> str:
+        """A shot's photograph, small enough to put on a screen repeatedly.
+
+        Immutable for the life of the shot, so the frontend fetches it once per
+        id and holds it -- the same "small live payload, heavy cached body"
+        split that keeps admin_get_shot separate from admin_get_shot_ai_review.
+        """
+        image = self.get_shot_image_base64(shot_id)
+        return draw_cross_on_image(
+            downscale_jpeg(image, max_dimension=THUMBNAIL_MAX_DIMENSION, quality=70)
+        )
+
+    @db_scoped
     def get_scoreboard(self, game_id: UUID):
         teams_and_ids = (
             self._session.query(Team.id, Team.name).filter_by(game_id=game_id).all()
@@ -1553,6 +1663,9 @@ class AdminInterface:
             )
             table.append(
                 {
+                    # So a caller can join a row to its player exactly. Names
+                    # are not unique and may be unset.
+                    "user_id": user_id,
                     "name": username,
                     "team": teamname,
                     "hitpoints": hitpoints,
