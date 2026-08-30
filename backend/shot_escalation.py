@@ -1,18 +1,22 @@
-"""The hard shots, put to a stronger model with the reference photos.
+"""The hard shots, put to a second look with the reference photos.
 
 Roadmap #11's middle rung. The cheap pass (:mod:`backend.shot_vision`) asks
 what colour each garment is; when too little of the outfit was legible for
 :mod:`backend.shot_auto_actions` to act on the answer, the shot comes here
-rather than straight to the admin. This module asks a *different* question of a
-*different* model: which of these people is this -- or did the shot miss, or
-hit a non-player, or can you genuinely not tell which player it is.
+rather than straight to the admin. This module asks a *different* question:
+which of these people is this -- or did the shot miss, or hit a non-player, or
+can you genuinely not tell which player it is. ``OPENROUTER_ESCALATION_MODEL``
+is free to name a stronger model, but does not have to -- the escalation pass
+earns its keep mainly by being handed more to work with, not by being a bigger
+model. Running it with the same model as the cheap pass is a reasonable,
+supported choice.
 
-What the stronger model is given: the photograph and its zoom, the ranked
-candidate list with each candidate's prior and outfit, and the reference photos
-of the top few candidates, the rest available on request. Asking for one is
-another turn in the same multi-turn shape the screening/zoom loop already uses
-rather than provider tool-calling, because ``OPENROUTER_ESCALATION_MODEL`` is
-meant to be swapped freely.
+What the escalation model is given that the cheap pass was not: the ranked
+candidate list with each candidate's prior and outfit, and the reference
+photos of the top few candidates, the rest available on request. Asking for
+one is another turn in the same multi-turn shape the screening/zoom loop
+already uses rather than provider tool-calling, because
+``OPENROUTER_ESCALATION_MODEL`` is meant to be swapped freely.
 
 What it is deliberately **not** given: the cheap pass's conclusions. It draws
 its own from the pixels, and inherits nothing but the ranking -- otherwise the

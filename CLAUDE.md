@@ -114,10 +114,13 @@ exemplar.
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
   - `shot_escalation.py` — the hard cases (roadmap #11): too few readable
-    garments sends the queue head to a second, stronger vision model
+    garments sends the queue head to a second vision pass
     (`OPENROUTER_ESCALATION_MODEL`) with the GPS-ranked candidates and their
-    reference photos; its verdict re-enters the auto-action gate, with
-    "unsure" landing the shot back with the admin.
+    reference photos. That model is free to be stronger than the cheap pass's,
+    but doesn't have to be — the extra context (candidates, reference photos)
+    is what earns the escalation its keep, so running the same model twice is
+    a reasonable, supported choice. Its verdict re-enters the auto-action
+    gate, with "unsure" landing the shot back with the admin.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who
@@ -352,7 +355,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
-| `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = escalation off) |
+| `OPENROUTER_ESCALATION_MODEL` | Vision model for escalated shots — free to be stronger, but the extra context it gets (ranked candidates + reference photos) means the same model as `OPENROUTER_MODEL` is a reasonable choice too (unset = escalation off) |
 | `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort override for the escalation model |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
@@ -463,10 +466,14 @@ Three deployment targets share one service definition:
   (`ai_auto_actions_enabled`, default off) lets `backend/shot_auto_actions.py`
   auto-apply verdicts whose overall confidence ≥ `confident_threshold` (0.6),
   but only ever to the **head** of the queue: an unsettled head blocks the
-  shots behind it. **The stronger model stands in for the admin**
+  shots behind it. **The escalation pass stands in for the admin**
   (`backend/shot_escalation.py`, `OPENROUTER_ESCALATION_MODEL`): with it
   configured and the per-game `ai_escalation_enabled` toggle on, *nothing
-  reaches a human until it has looked*. Every way the weak reading fails to
+  reaches a human until it has looked*. The escalation model is free to be
+  stronger than the cheap pass's, but doesn't have to be — it earns its keep
+  mainly from the extra context it is given (the ranked candidates and their
+  reference photos), so running the same model as `OPENROUTER_MODEL` is a
+  reasonable, supported choice too. Every way the weak reading fails to
   settle a shot — unconfident, fits nobody (`inconsistent`), a tie, an
   unrecognised outcome, or too little read to name anybody — escalates. So
   the readable-channel test (4, or 3 including armbands) no longer picks who
@@ -474,19 +481,19 @@ Three deployment targets share one service definition:
   somebody on its own. A stored escalation is consulted *before* the weak
   reading is retried — its verdict outranks the reading that prompted it,
   including one an admin fired by hand (`admin_escalate_shot`, "Run escalated
-  review"). The admin sees a shot only when the stronger model handed it back
-  ("unsure", or below its own thresholds: 0.75 to name a player, 0.6 for a
-  miss/bystander), when the escalation errored, or when there is no stronger
-  model to ask — that toggle is a kill switch inside an opted-in feature, not
-  a third opt-in, which is why it defaults **on**. A pending escalation blocks
-  the queue the same way. "Too few channels" is never a bystander verdict on
-  its own — `classify()`'s old mapping to that is retired. A fourth per-game
-  toggle, `ai_resolve_everything_enabled` (default off), relaxes only the
-  confidence gate: an unconfident verdict resolves to the best call so the
-  players can appeal it (see appeals, below) rather than waiting on the admin
-  — but only once the stronger model is out of the picture, since a second
-  opinion that is actually coming beats a forced guess. It never forces a
-  resolution with nothing to resolve *from* — no usable review, an
+  review"). The admin sees a shot only when the escalation model handed it
+  back ("unsure", or below its own thresholds: 0.75 to name a player, 0.6 for
+  a miss/bystander), when the escalation errored, or when there is no
+  escalation model to ask — that toggle is a kill switch inside an opted-in
+  feature, not a third opt-in, which is why it defaults **on**. A pending
+  escalation blocks the queue the same way. "Too few channels" is never a
+  bystander verdict on its own — `classify()`'s old mapping to that is
+  retired. A fourth per-game toggle, `ai_resolve_everything_enabled` (default
+  off), relaxes only the confidence gate: an unconfident verdict resolves to
+  the best call so the players can appeal it (see appeals, below) rather than
+  waiting on the admin — but only once escalation is out of the picture, since
+  a second opinion that is actually coming beats a forced guess. It never
+  forces a resolution with nothing to resolve *from* — no usable review, an
   inconsistent reading, no ranking at all, an errored escalation — since with
   nobody to notify, nobody can appeal; strict queue ordering is untouched
   either way. A vision call that errors or answers off-schema is retried
