@@ -95,6 +95,17 @@ HARD_FEATURE_COUNTS: Dict[str, int] = {
     "hood_bunched_at_neck": 3,
 }
 
+# Most features can go to anybody; only the exceptions are listed. A feature
+# is still dealt to exactly its locked number of people -- the eligible pool
+# is what shrinks, not the count.
+HARD_FEATURE_ELIGIBILITY = {
+    "beard": lambda person: person["sex"] == "male",
+}
+
+# Grey hair on a twenty-year-old reads as a generation artefact rather than a
+# person, so it is dealt only above this age.
+GREY_HAIR_MIN_AGE = 45
+
 
 # Phone classes, per player. The accuracy range is what the browser reports as
 # `coords.accuracy`; the staleness is how old the newest fix tends to be by the
@@ -250,9 +261,23 @@ def assert_locked_mix(cast: List[dict]) -> None:
         if dict(got) != expected:
             problems.append(f"{key}: got {dict(got)}, locked mix is {expected}")
     for feature, expected_n in HARD_FEATURE_COUNTS.items():
-        got_n = sum(1 for person in cast if feature in person["hard_features"])
-        if got_n != expected_n:
-            problems.append(f"{feature}: got {got_n}, locked mix is {expected_n}")
+        holders = [person for person in cast if feature in person["hard_features"]]
+        if len(holders) != expected_n:
+            problems.append(
+                f"{feature}: got {len(holders)}, locked mix is {expected_n}"
+            )
+        eligible = HARD_FEATURE_ELIGIBILITY.get(feature)
+        if eligible:
+            wrong = [person["slug"] for person in holders if not eligible(person)]
+            if wrong:
+                problems.append(f"{feature}: given to ineligible {wrong}")
+    young_and_grey = [
+        person["slug"]
+        for person in cast
+        if person["hair_colour"] == "grey" and person["age"] < GREY_HAIR_MIN_AGE
+    ]
+    if young_and_grey:
+        problems.append(f"grey hair under {GREY_HAIR_MIN_AGE}: {young_and_grey}")
     if problems:
         raise AssertionError(
             "cast does not satisfy the locked mix:\n  " + "\n  ".join(problems)

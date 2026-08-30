@@ -6,6 +6,8 @@ reasoning across turns without depending on any one provider's format.
 
 import pytest
 
+from backend.vision_client import OPENROUTER_IMAGE_URL
+from backend.vision_client import OpenRouterImageClient
 from backend.vision_client import OpenRouterVisionClient
 from backend.vision_client import VisionError
 from backend.vision_client import _as_message
@@ -236,3 +238,58 @@ async def test_fetch_openrouter_key_balance_raises_on_an_unexpected_body(mocker)
 
     with pytest.raises(VisionError):
         await fetch_openrouter_key_balance("k")
+
+
+# -- OpenRouterImageClient -----------------------------------------------------
+
+
+class _FakeImageResponse:
+    status_code = 200
+
+    def json(self):
+        return {
+            "data": [{"b64_json": "AAAA", "media_type": "image/jpeg"}],
+            "usage": {"cost": 0.035},
+        }
+
+
+class _FakeImageHTTPXClient(_FakeHTTPXClient):
+    posted_urls = []
+
+    async def post(self, url, json, headers):
+        _FakeImageHTTPXClient.posted_urls.append(url)
+        _FakeHTTPXClient.sent_payloads.append(json)
+        return _FakeImageResponse()
+
+
+@pytest.mark.asyncio
+async def test_generate_posts_to_the_image_api_and_returns_a_data_url(mocker):
+    """The whole transport, not just its parts: the first real generation run
+    failed on a NameError inside it, and the second on being pointed at
+    /chat/completions, which does not serve image models at all.
+    """
+    _FakeHTTPXClient.sent_payloads = []
+    _FakeImageHTTPXClient.posted_urls = []
+    mocker.patch("httpx.AsyncClient", _FakeImageHTTPXClient)
+
+    client = OpenRouterImageClient(
+        api_key="k", model="bytedance-seed/seedream-5-0-lite"
+    )
+    url = await client.generate(
+        "a photograph", ["data:image/jpeg;base64,BBBB"], seed=1, aspect_ratio="1:1"
+    )
+
+    assert url == "data:image/jpeg;base64,AAAA"
+    # What it cost is read back rather than estimated: the gates spend real
+    # money and the rate-card arithmetic was out by an order of magnitude.
+    assert client.last_cost_usd == 0.035
+    assert _FakeImageHTTPXClient.posted_urls == [OPENROUTER_IMAGE_URL]
+
+    payload = _FakeHTTPXClient.sent_payloads[0]
+    assert payload["prompt"] == "a photograph"
+    assert payload["seed"] == 1
+    assert payload["aspect_ratio"] == "1:1"
+    # Reference images ride in input_references here, not as message content.
+    assert payload["input_references"] == [
+        {"type": "image_url", "image_url": {"url": "data:image/jpeg;base64,BBBB"}}
+    ]

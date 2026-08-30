@@ -1214,4 +1214,17 @@ async def sse_admin_updates():
     )
 
 
+@app.on_event("startup")
+def _make_debug_entries() -> None:
+    """Build the sample game, once the app is actually assembled.
+
+    Not done during ``database.load()``: the sample game is built through
+    AdminInterface, and load() runs while that module's own import is still
+    in flight. See backend/reset_db.py.
+    """
+    from .reset_db import make_debug_entries_if_wanted
+
+    make_debug_entries_if_wanted()
+
+
 app.include_router(router, prefix="/api")
