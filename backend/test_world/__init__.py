@@ -22,4 +22,17 @@ Two rules shape everything below:
   are derived from the seed at materialisation time (see ``ids.py``) rather
   than minted randomly, which is also what stops a printed join QR from dying
   on the next server restart.
+
+``data/`` holds the world and everything derived from it, and it lives inside
+this package rather than under ``tests/`` because the replay is not only a
+test tool: the admin's **Fire demo game** button runs it on a server, whose
+working directory is the state directory and which has no checkout anywhere
+near it. Two of its files are therefore declared as package data in
+``pyproject.toml`` and travel into every deployment -- ``world.json`` and the
+ten cropped photographs in ``data/shots/``. The rest (the 25MB image store in
+``data/images/``, and the backdrop and swatch card the generator composes
+from) stays behind in the repository, because only the generation tooling,
+which is only ever run from a checkout, reads it. Anything a *replay* comes to
+need has to be added to that manifest too, or it will be missing exactly where
+nobody is watching.
 """

@@ -7,9 +7,12 @@ been cached (or worse, does not when it should have been), and the guard that
 keeps the generator away from the model being tested.
 """
 
+from pathlib import Path
+
 import pytest
 
 from backend.test_world import ids
+from backend.test_world import replay as replay_mod
 from backend.test_world import scenarios
 from backend.test_world import spec
 from backend.test_world import store
@@ -288,3 +291,48 @@ def test_a_replayed_shot_carries_the_positions_of_its_own_moment(db_session):
     assert again["loaded"] == []
     assert again["skipped"] == [early, late]
     assert db_session.query(Shot).count() == 2
+
+
+# -- the replay's inputs have to reach a deployment ---------------------------
+
+
+def test_the_world_is_found_from_a_working_directory_that_is_not_the_repo(
+    tmp_path, monkeypatch
+):
+    """The demo game is a *button*, so it runs wherever the server runs.
+
+    The world file used to be named by a path relative to the current
+    directory, which on a deployment is the state directory (/data) -- so the
+    admin's "Fire demo game" failed with ENOENT before doing anything at all.
+    """
+    monkeypatch.chdir(tmp_path)
+
+    world = replay_mod.load_world()
+
+    assert world["scenes"]["shots"]
+    assert replay_mod.default_images_dir().is_dir()
+
+
+def test_everything_a_replay_reads_is_declared_as_package_data():
+    """The other half of the same bug: a deployment with no world in it.
+
+    ``tests/`` is not installed, so anything the button reads has to be
+    package data. Checked against pyproject.toml rather than by building a
+    wheel, because the failure mode is silent until somebody presses the
+    button on a box that has no checkout.
+    """
+    import tomllib
+    from fnmatch import fnmatch
+
+    manifest = tomllib.loads(Path("pyproject.toml").read_text())
+    shipped = manifest["tool"]["setuptools"]["package-data"]["backend.test_world"]
+
+    package_dir = Path(replay_mod.__file__).resolve().parent
+    needed = [replay_mod.DEFAULT_WORLD] + sorted(
+        replay_mod.default_images_dir().glob("*.jpg")
+    )
+    assert len(needed) == 11
+
+    for path in needed:
+        relative = path.resolve().relative_to(package_dir).as_posix()
+        assert any(fnmatch(relative, pattern) for pattern in shipped), relative

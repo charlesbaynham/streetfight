@@ -189,9 +189,16 @@ exemplar.
     out of the encounter pool rather than invented, and a content-addressed
     image store. Driven by `python -m backend.test_world <world|scenes|
     generate|observe|gate|gateb|check|shots>`; `world.json` in
-    `tests/fixtures/test_game/` is its single source of truth and everything
-    else is derived from it. `MAKE_DEBUG_ENTRIES` builds this game, so the
-    sample database is a real crowd rather than ten empty teams.
+    `test_world/data/` is its single source of truth and everything
+    else is derived from it. That data sits *inside* the package, not under
+    `tests/`, because the replay is not only a test tool — the admin's demo
+    button runs it on a server with no checkout anywhere near it — so
+    `world.json` and `data/shots/` are declared as package data in
+    `pyproject.toml` and travel into every deployment. The generated image
+    store (`data/images/`) and the generator's own inputs deliberately do not:
+    only a checkout ever regenerates a picture. `MAKE_DEBUG_ENTRIES` builds
+    this game, so the sample database is a real crowd rather than ten empty
+    teams.
     `shots` (`npm run demoshots`, `test_world/replay.py`) puts the ten cropped
     photographs into that game as shots somebody fired. It walks the scenarios
     in tick order, moving the whole cast to the fix each of them had *at that
@@ -433,7 +440,7 @@ Three deployment targets share one service definition:
   `react-ui/src/mapImages.js` — nothing in `MapView.js` should need touching.
   Note the resort venue currently active is a temporary test one.
 - **The test world costs money to change, and only in one direction.** An
-  image in `tests/fixtures/test_game/images/` is named for the hash of its
+  image in `backend/test_world/data/images/` is named for the hash of its
   prompt, its input images, the model and the parameters, so editing a scene
   description regenerates exactly the images it touches and nothing else —
   and re-running `generate` when nothing has changed sends nothing at all.

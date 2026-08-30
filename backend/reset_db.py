@@ -25,7 +25,7 @@ from .model import Base
 logger = logging.getLogger(__name__)
 
 # The seed the fixture world is built from, so a developer's sample game and
-# tests/fixtures/test_game are the same thirty people.
+# backend/test_world/data are the same thirty people.
 SAMPLE_SEED = 20260919
 
 
