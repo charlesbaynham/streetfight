@@ -219,9 +219,11 @@ exemplar.
   tick at this instant, so the shot reads as just fired while every fix behind
   it keeps the exact age the world gave it. Idempotent (pressing it again while
   it runs changes nothing, and after a cancel it resumes — the shot ids come
-  from the seed), cancellable, and it **refuses to run at all** if anybody in a
-  team is not one of the thirty simulated players, since it creates thirty
-  players and shoots at them.
+  from the seed; a half-provisioned game, cast interrupted mid-way by a crash,
+  a reload, or a deleted player, is completed rather than fired into),
+  cancellable, and it **refuses to run at all** if anybody in a team is not
+  one of the thirty simulated players, since it creates thirty players and
+  shoots at them.
 - `scripts/` — standalone analysis tools, not part of the app.
   `simulate_code_capacity.py` Monte-Carlos how much identity capacity is lost if
   players pick outfits freely instead of taking the codeword the scheme assigns
