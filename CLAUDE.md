@@ -70,6 +70,10 @@ When fixing a bug, use a TDD workflow: first write a test that reproduces the
 bug (it should fail against the current code), then make the fix and confirm
 the test passes.
 
+Run only the tests that cover what you changed — CI runs the full suite on the
+pull request, so running it locally too is duplicated work. See "Testing"
+below.
+
 Keep the agent documentation up to date, such as this file and any other documentation for agents in the repository.
 
 It's an unpolished personal project (see `README.md`), so favour pragmatic,
@@ -381,12 +385,30 @@ Notes and gotchas:
 
 ## Testing
 
+**Agents: run the tests that exercise your change, not the whole suite.** CI
+runs everything on the pull request, so a full local `pytest` (let alone
+`npm test`) is the same work done twice, and it is the slowest thing in a
+session. Pick the files, classes or `-k` expression that cover what you
+touched, run those until they pass, and let the PR do the sweep. Run the
+full suite only when Charles asks for it, or when you have a specific
+reason to think the change reaches further than the tests you can name —
+a change to `model.py`, `database_scope_provider.py`, `conftest.py` or
+another shared fixture, say. Say which tests you ran when you report back,
+so it is clear what was and was not covered locally.
+
 ```bash
+# Targeted — the normal case
+pytest tests/test_shots.py                    # one file
+pytest tests/test_shots.py::test_submit_shot  # one test
+pytest -k "appeal"                            # by name across the suite
+cd react-ui && CI=true npm test -- ShotQueue  # frontend, matching files only
+
+# Whole suite — CI's job, not usually yours
 pytest                   # backend suite (setup.cfg sets testpaths = tests)
 pytest -m "not selenium" # default scope, skipping browser tests
 pytest --runselenium     # include selenium/browser integration tests
-cd react-ui && npm test  # frontend tests
-npm test                 # full suite: pytest then react-ui tests
+cd react-ui && CI=true npm test  # all frontend tests (CI=true: no watch mode)
+npm test                 # everything: pytest then react-ui tests
 ```
 
 CI runs the backend tests via `nix develop -c pytest`
