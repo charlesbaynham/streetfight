@@ -393,19 +393,27 @@ def get_escalation_client(
 ) -> Optional[VisionClient]:
     """The stronger model's client (roadmap #11), or None if it is not set up.
 
-    Two switches, both off by default: no ``OPENROUTER_API_KEY`` and there is
-    no vision at all; no ``OPENROUTER_ESCALATION_MODEL`` and escalation
-    specifically is off, which is the safety valve surviving intact -- with it
-    unset, a shot the ladder wants escalated simply waits for the admin, which
-    is where every shot went before any of this existed.
+    The only remaining switch is ``OPENROUTER_API_KEY``: with it unset there is
+    no vision at all, so escalation is off along with everything else -- the
+    safety valve surviving intact, and a shot the ladder wants escalated simply
+    waits for the admin, which is where every shot went before any of this
+    existed. ``OPENROUTER_ESCALATION_MODEL`` no longer needs setting on its
+    own: unset, it falls back to the same model recognition uses
+    (``OPENROUTER_MODEL``, or the built-in default), so escalation runs
+    wherever recognition does. Set it only to point escalation at a genuinely
+    stronger model.
 
     Nothing here is model-specific: it is the same OpenRouter client pointed at
     a different model id, so trialling a new one is an environment change.
     """
     api_key = os.getenv("OPENROUTER_API_KEY")
-    escalation_model = os.getenv("OPENROUTER_ESCALATION_MODEL")
-    if not api_key or not escalation_model:
+    if not api_key:
         return None
+    escalation_model = (
+        os.getenv("OPENROUTER_ESCALATION_MODEL")
+        or os.getenv("OPENROUTER_MODEL")
+        or DEFAULT_MODEL
+    )
     return OpenRouterVisionClient(
         api_key=api_key,
         model=escalation_model,

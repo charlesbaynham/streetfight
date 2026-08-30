@@ -14,12 +14,14 @@ import pytest
 from backend import ai_shot_review
 from backend import shot_escalation
 from backend import shot_vision
+from backend import vision_client
 from backend.admin_interface import AdminInterface
 from backend.identity.config import default_scheme
 from backend.model import User
 from backend.user_interface import UserInterface
 from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
+from backend.vision_client import get_escalation_client
 
 SCHEME = default_scheme()
 
@@ -467,10 +469,34 @@ async def test_an_escalation_is_marked_pending_while_it_runs(
     assert states == [shot_escalation.STATE_PENDING]
 
 
-def test_without_an_escalation_model_nothing_is_queued(
+def test_escalation_defaults_to_the_recognition_model(monkeypatch, db_session):
+    # Unset, OPENROUTER_ESCALATION_MODEL mirrors whatever recognition uses --
+    # escalation is enabled by default wherever recognition is, rather than
+    # needing a second model configured on top.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
+    monkeypatch.delenv("OPENROUTER_MODEL", raising=False)
+
+    client = get_escalation_client()
+
+    assert client is not None
+    assert client.model == vision_client.DEFAULT_MODEL
+
+
+def test_escalation_mirrors_an_explicit_recognition_model(monkeypatch, db_session):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.setenv("OPENROUTER_MODEL", "test/recognition-model")
+    monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
+
+    client = get_escalation_client()
+
+    assert client.model == "test/recognition-model"
+
+
+def test_without_an_api_key_nothing_is_queued(
     monkeypatch, db_session, shot_from_user_in_team
 ):
-    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
 
     assert shot_escalation.enqueue_escalation(shot_from_user_in_team) is None
@@ -486,9 +512,10 @@ def escalation_model(monkeypatch):
     monkeypatch.setenv("OPENROUTER_ESCALATION_MODEL", "test/strong-model")
 
 
-def test_the_manual_escalation_needs_an_escalation_model(
+def test_the_manual_escalation_needs_an_api_key(
     monkeypatch, db_session, admin_api_client, shot_from_user_in_team
 ):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     monkeypatch.delenv("OPENROUTER_ESCALATION_MODEL", raising=False)
     store_weak_review(shot_from_user_in_team)
 
@@ -497,7 +524,7 @@ def test_the_manual_escalation_needs_an_escalation_model(
     )
 
     assert response.status_code == 400
-    assert "OPENROUTER_ESCALATION_MODEL" in response.json()["detail"]
+    assert "OPENROUTER_API_KEY" in response.json()["detail"]
 
 
 def test_the_manual_escalation_needs_a_review_to_escalate_from(
