@@ -1878,6 +1878,19 @@ retried yet.
   double-knockout wart). The prior stays flat for the dead; a death-age
   down-weight is R2-fitting territory.
 
+**Escalation model defaults to the recognition model, 30 Aug.** Charles's
+call: needing a second env var configured on top of `OPENROUTER_MODEL` was
+the reason the "nothing reaches the admin unescalated" promise above did not
+actually hold out of the box. `vision_client.get_escalation_client()` now
+falls back to `OPENROUTER_MODEL` (or the built-in default) when
+`OPENROUTER_ESCALATION_MODEL` is unset, so escalation is live wherever
+recognition is, with the same model asked a second, differently-shaped
+question rather than a genuinely stronger one. `OPENROUTER_API_KEY` is now
+the only remaining switch that can make `get_escalation_client()` return
+`None`; every "no escalation model configured" fallback described above now
+reads as "no `OPENROUTER_API_KEY`". Set `OPENROUTER_ESCALATION_MODEL`
+explicitly once there is a real second model worth trialling.
+
 The original design brief follows.
 
 **Design decided 2026-08-27; reference photos (the prerequisite, R7) are
