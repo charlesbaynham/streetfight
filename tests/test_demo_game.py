@@ -2,9 +2,9 @@
 
 The expensive part of every test here is provisioning: thirty players picking
 outfits through the real allocator takes a few seconds, and each test gets a
-fresh database. So the drip's behaviour -- firing, cancelling, resuming, and
-being idempotent -- is exercised once, in one test, rather than paid for four
-times over.
+fresh database. So the drip's behaviour -- firing, cancelling, resuming, being
+idempotent, and recovering from an interrupted provisioning -- is exercised
+once each, in one test apiece, rather than paid for repeatedly.
 """
 
 import asyncio
@@ -15,6 +15,7 @@ import time
 import pytest
 
 from backend import demo_game
+from backend.admin_interface import AdminInterface
 from backend.database import session_scope
 from backend.model import Shot
 from backend.model import User
@@ -63,6 +64,69 @@ def test_the_demo_cast_are_not_strangers_to_themselves(db_session, one_team):
         ui.join_team(one_team)
 
     assert demo_game.strangers() == []
+
+
+@pytest.mark.asyncio
+async def test_an_interrupted_provisioning_is_completed_not_fired_into(db_session):
+    """Two shapes of interrupted provisioning, both repaired rather than
+    fired into.
+
+    Before the fix, ``_provision`` treated the mere existence of the ``Game``
+    row as proof the whole cast was there. Anything that interrupted
+    provisioning part-way -- a crash, a reload, an exception -- left a game
+    row with a missing or partial cast, and every later press *skipped*
+    provisioning and fired shots at shooters who don't exist:
+    ``UserInterface`` mints them a fresh, teamless row, and ``submit_shot``
+    then 405s with "User is not in a team yet".
+    """
+    admin = AdminInterface()
+
+    # Shape 1: only the Game row exists - provisioning stopped at the very
+    # first commit `test_world.cast.provision` makes, before a single team or
+    # player was created.
+    admin.create_game(sample_game_id())
+
+    demo_game.start(total_s=0.0)
+    await demo_game._current.task
+
+    status = demo_game.status()
+    assert status["state"] == demo_game.STATE_DONE
+    assert status["error"] is None
+    assert status["fired"] == 10
+    with session_scope() as session:
+        assert session.query(User).count() == 30
+
+    # Shape 2: a full cast and all ten shots (a "successful run"), then two
+    # players interrupted out of existence - one a bystander who never fired,
+    # one a shooter. Deleting a user deletes their fired shots too, so the
+    # shooter's shot (S2) vanishes with them and has to be re-fired on the
+    # next press, with a shooter who has to be there to receive it.
+    bystander = ids.user_id(SAMPLE_SEED, "horseferry-2")
+    shooter = ids.user_id(SAMPLE_SEED, "victoria-3")  # fired S2
+    admin.delete_user(bystander)
+    admin.delete_user(shooter)
+
+    with session_scope() as session:
+        assert session.query(User).count() == 28
+        assert session.query(Shot).count() == 9
+
+    demo_game._reset_for_tests()
+    demo_game.start(total_s=0.0)
+    await demo_game._current.task
+
+    status = demo_game.status()
+    assert status["state"] == demo_game.STATE_DONE
+    assert status["error"] is None
+    assert status["fired"] == 10
+
+    with session_scope() as session:
+        assert session.query(User).count() == 30
+        assert session.query(Shot).count() == 10
+        for user_id in (bystander, shooter):
+            user = session.get(User, user_id)
+            assert user is not None
+            assert user.team_id is not None
+            assert user.identity_slot is not None
 
 
 async def wait_until(predicate, timeout=60.0):
