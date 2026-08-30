@@ -1256,7 +1256,7 @@ from one seed and reproducible byte for byte:
   something that changes the picture changes, and a second run costs nothing.
 
 **Status.** The world, the scene selection, the prompts and all forty images
-are in (`tests/fixtures/test_game/`), generated through OpenRouter's **Image**
+are in (`backend/test_world/data/`), generated through OpenRouter's **Image**
 API — image models are not served by `/chat/completions` at all — on
 `bytedance-seed/seedream-5-0-lite` at $0.035 a picture, $1.23 for the set.
 `MAKE_DEBUG_ENTRIES` now builds this game, so the sample database has six
@@ -1305,6 +1305,19 @@ a cancel resumes, since the shot ids come from the seed), cancellable between
 shots, and it refuses outright if any player in a team is not one of the
 thirty simulated ones — it creates thirty players and shoots at them, and
 there is a live game now.
+
+**And a second bug, found by pressing the button on staging.** The demo game
+failed there with `[Errno 2] No such file or directory:
+'tests/fixtures/test_game/world.json'`. Two halves, both of them the same
+mistake — treating the replay as a test tool when it is also a *button*. The
+world file was named by a path relative to the current directory, which on a
+deployment is the state directory; and `tests/` is not installed, so the
+container had no copy of it to find at any path. The world now lives at
+`backend/test_world/data/`, inside the package, addressed from `__file__`;
+`world.json` and the ten cropped photographs are declared as package data in
+`pyproject.toml` and travel into the LXC template, the droplet and the Docker
+image. The 25MB image store beside them deliberately does not: only a checkout
+ever regenerates a picture.
 
 **One bug that pass turned up, now fixed.** `rank_candidates` defaulted
 `at_time` to *now*, so a fix's age was measured from the adjudication rather

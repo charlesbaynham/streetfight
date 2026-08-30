@@ -44,7 +44,11 @@ from backend.user_interface import UserInterface
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_WORLD = Path("tests/fixtures/test_game/world.json")
+# Package data, so it is found from the module rather than from the current
+# directory: the demo game is an admin *button*, and the deployed unit runs out
+# of the state directory (/data), where a relative path finds nothing. See the
+# note in backend/test_world/__init__.py.
+DEFAULT_WORLD = Path(__file__).resolve().parent / "data" / "world.json"
 
 
 def anchor_epoch(seconds_before_now: int, now: Optional[float] = None) -> float:

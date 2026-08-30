@@ -14,7 +14,7 @@ import os
 import sys
 from pathlib import Path
 
-DEFAULT_OUT = Path("tests/fixtures/test_game/world.json")
+DEFAULT_OUT = Path(__file__).resolve().parent / "data" / "world.json"
 DEFAULT_SEED = 20260919  # the game date, so the default world is not arbitrary
 
 
