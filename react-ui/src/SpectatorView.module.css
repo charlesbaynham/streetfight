@@ -166,6 +166,29 @@
   }
 }
 
+/* The one clickable element on the screen, so it gets a real cursor even
+   though .screen turns the cursor off everywhere else. */
+.fullscreenToggle {
+  align-self: center;
+  padding: 6px 16px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg-2);
+  color: var(--ink-dim);
+  font-family: inherit;
+  font-size: var(--size-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.fullscreenToggle:hover,
+.fullscreenToggle:focus-visible {
+  color: var(--ink);
+  border-color: var(--ink-dim);
+}
+
 /* ---------------------------------------------------------------
    BODY
    --------------------------------------------------------------- */
