@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 
-import ShotMap, { shooterFix } from "./ShotMap";
+import ShotMap, { otherFixes, shooterFix } from "./ShotMap";
 import { installFetchMock } from "./testUtils";
 
 // The venue the admin map is drawn against - the same shape backend/venues.py
@@ -18,6 +18,19 @@ const VENUE = {
   landmarks: {},
 };
 
+// The moment the photograph was taken. Naive UTC, exactly as the backend
+// serialises it - reading it as local time is the bug shotEpochSeconds exists
+// to avoid, so the fixtures must not paper over it with a "Z".
+const SHOT_TIME = "2026-08-30T12:00:00";
+const SHOT_EPOCH = Date.parse(`${SHOT_TIME}Z`) / 1000;
+
+// A tenth of a degree of latitude is 11 km; these are the fractions of that
+// which put somebody inside or outside the 200 m box.
+const METRE_IN_DEGREES_LAT = 1 / 110574;
+
+// The shooter is always the middle of the 220 px box (ShotMap's BOX_PX).
+const BOX_CENTRE_PX = 110;
+
 function locationEntry(overrides) {
   return {
     user_id: "u-shooter",
@@ -27,10 +40,23 @@ function locationEntry(overrides) {
     latitude: 51.5,
     longitude: -0.1,
     state: "alive",
-    timestamp: 0,
+    timestamp: SHOT_EPOCH,
     accuracy: null,
     ...overrides,
   };
+}
+
+// A player standing `metres` north of the shooter, on the other team unless
+// told otherwise.
+function otherEntry(metres, overrides = {}) {
+  return locationEntry({
+    user_id: `u-${metres}`,
+    team_id: "t-blue",
+    user: `Player at ${metres} m`,
+    team: "Blue",
+    latitude: 51.5 + metres * METRE_IN_DEGREES_LAT,
+    ...overrides,
+  });
 }
 
 function makeShot(overrides = {}, fixOverrides = {}) {
@@ -38,12 +64,21 @@ function makeShot(overrides = {}, fixOverrides = {}) {
     id: "shot-1",
     user_id: "u-shooter",
     heading: null,
+    time_created: SHOT_TIME,
     location_context: JSON.stringify([
       locationEntry(fixOverrides),
       locationEntry({ user_id: "u-other", user: "Someone else" }),
     ]),
     ...overrides,
   };
+}
+
+// A shot whose context is the shooter plus whatever entries are given.
+function makeShotWithOthers(entries, overrides = {}) {
+  return makeShot({
+    location_context: JSON.stringify([locationEntry({}), ...entries]),
+    ...overrides,
+  });
 }
 
 // The numbers in the rendered path's `d` attribute, in order.
@@ -72,6 +107,64 @@ describe("shooterFix", () => {
   test("reports no fix for a shooter whose phone never reported a position", () => {
     const shot = makeShot({}, { latitude: null, longitude: null });
     expect(shooterFix(shot)).toBeNull();
+  });
+});
+
+describe("otherFixes", () => {
+  test("orders everybody else by how far they were from the shooter", () => {
+    const shot = makeShotWithOthers([otherEntry(120), otherEntry(30)]);
+
+    const [nearest, furthest] = otherFixes(shot);
+
+    expect(nearest.fix.user).toBe("Player at 30 m");
+    // Precision -1: the fixtures place people with a flat metres-per-degree
+    // constant, which the great circle disagrees with by well under a metre.
+    expect(nearest.distance).toBeCloseTo(30, -1);
+    expect(furthest.distance).toBeCloseTo(120, -1);
+  });
+
+  test("ages each fix against the shot, not against the wall clock", () => {
+    const shot = makeShotWithOthers([
+      otherEntry(30, { timestamp: SHOT_EPOCH - 300 }),
+    ]);
+
+    expect(otherFixes(shot)[0].ageSeconds).toBe(300);
+  });
+
+  test("reports an unknown age rather than a fresh one when there is no timestamp", () => {
+    const shot = makeShotWithOthers([otherEntry(30, { timestamp: null })]);
+
+    expect(otherFixes(shot)[0].ageSeconds).toBeNull();
+  });
+
+  test("marks the shooter's own team, and anybody who isn't alive", () => {
+    const shot = makeShotWithOthers([
+      otherEntry(30, { team_id: "t-red" }),
+      otherEntry(60, { state: "knocked out" }),
+    ]);
+
+    const [teammate, down] = otherFixes(shot);
+
+    expect(teammate.teammate).toBe(true);
+    expect(down.teammate).toBe(false);
+    expect(down.down).toBe(true);
+  });
+
+  test("drops players whose phone had never reported a position", () => {
+    const shot = makeShotWithOthers([
+      otherEntry(30),
+      otherEntry(60, { latitude: null, longitude: null }),
+    ]);
+
+    expect(otherFixes(shot).map((other) => other.fix.user)).toEqual([
+      "Player at 30 m",
+    ]);
+  });
+
+  test("has nothing to measure against when the shooter has no fix", () => {
+    const shot = makeShot({ user_id: "u-nobody" });
+
+    expect(otherFixes(shot)).toEqual([]);
   });
 });
 
@@ -123,6 +216,74 @@ describe("ShotMap", () => {
 
     expect(box.querySelector("svg")).toBeNull();
     expect(screen.getByText(/no heading/)).toBeInTheDocument();
+  });
+
+  test("draws the other players who were in the area, by name", async () => {
+    const box = await renderMap(
+      makeShotWithOthers([otherEntry(40), otherEntry(80)]),
+    );
+
+    expect(screen.getByText("Player at 40 m")).toBeInTheDocument();
+    expect(screen.getByText("Player at 80 m")).toBeInTheDocument();
+    expect(screen.getByText(/2 others in view/)).toBeInTheDocument();
+    // North of the shooter, so above the centre of the box, and the further
+    // player is the higher of the two.
+    const [near, far] = ["Player at 40 m", "Player at 80 m"].map((name) =>
+      Number.parseFloat(screen.getByText(name).parentElement.style.bottom),
+    );
+    expect(near).toBeGreaterThan(BOX_CENTRE_PX);
+    expect(far).toBeGreaterThan(near);
+    expect(box).toBeInTheDocument();
+  });
+
+  test("leaves out players too far away to fit on the map, and says how many", async () => {
+    await renderMap(makeShotWithOthers([otherEntry(40), otherEntry(400)]));
+
+    expect(screen.getByText("Player at 40 m")).toBeInTheDocument();
+    expect(screen.queryByText("Player at 400 m")).not.toBeInTheDocument();
+    expect(screen.getByText(/1 other in view/)).toBeInTheDocument();
+    expect(screen.getByText(/1 off the map/)).toBeInTheDocument();
+  });
+
+  test("says so when nobody else was about", async () => {
+    await renderMap(makeShotWithOthers([]));
+
+    expect(screen.getByText(/nobody else in view/)).toBeInTheDocument();
+  });
+
+  test("labels a fix too old to place somebody by with its age", async () => {
+    await renderMap(
+      makeShotWithOthers([otherEntry(40, { timestamp: SHOT_EPOCH - 600 })]),
+    );
+
+    expect(screen.getByText("Player at 40 m (10m old)")).toBeInTheDocument();
+  });
+
+  test("says in words that a player was out, rather than only greying them", async () => {
+    await renderMap(
+      makeShotWithOthers([otherEntry(40, { state: "knocked out" })]),
+    );
+
+    expect(
+      screen.getByText("Player at 40 m (knocked out)"),
+    ).toBeInTheDocument();
+  });
+
+  test("draws only the nearest few when a crowd was in the box", async () => {
+    const crowd = [10, 20, 30, 40, 50, 60, 70, 80, 90].map((m) =>
+      otherEntry(m),
+    );
+
+    await renderMap(makeShotWithOthers(crowd));
+
+    expect(screen.getByText("Player at 10 m")).toBeInTheDocument();
+    expect(screen.queryByText("Player at 90 m")).not.toBeInTheDocument();
+    expect(screen.getByText(/nearest 8 drawn/)).toBeInTheDocument();
+  });
+
+  test("explains what the hollow dots mean, but only when there are some", async () => {
+    await renderMap(makeShotWithOthers([otherEntry(40, { team_id: "t-red" })]));
+    expect(screen.getByText(/hollow dots/)).toBeInTheDocument();
   });
 
   test("shows the accuracy of the fix when there is one", async () => {
