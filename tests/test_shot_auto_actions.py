@@ -693,8 +693,8 @@ def test_a_knockout_mid_drain_refunds_the_victims_shot_and_continues(
     # The hit knocked the victim out...
     assert shot_row(db_session, kill_shot).result == "hit"
     assert UserInterface(target_with_slot).get_user_model().hit_points == 0
-    # ...which refunded their queued shot mid-drain...
-    assert shot_row(db_session, victims_shot).result == "refunded"
+    # ...which invalidated their queued shot mid-drain, fired after the kill...
+    assert shot_row(db_session, victims_shot).result == "invalidated"
     assert UserInterface(target_with_slot).get_user_model().num_bullets == 1
     # ...and the re-reading drain carried on past the vanished entry
     assert shot_row(db_session, later_shot).result == "miss"

@@ -114,6 +114,12 @@
   --status-colour: #2f80d0;
 }
 
+/* Same ammo-back outcome as a refund, but automatic rather than an admin's
+   own call - a distinct blue so the two don't read as the same thing */
+.stateInvalidated {
+  --status-colour: #0e7490;
+}
+
 /* A shot somebody else landed on this player: red, because it cost them */
 .stateHitYou {
   --status-colour: #d32020;

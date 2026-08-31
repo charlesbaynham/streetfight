@@ -85,11 +85,11 @@ def test_a_replayed_shot_announces_itself_too(mocker, user_in_team, test_image_s
 # -- the user-facing shot history -------------------------------------------
 
 
-def submit_a_shot(user_id, test_image_string):
+def submit_a_shot(user_id, test_image_string, time_created=None):
     ui = UserInterface(user_id)
     ui.award_ammo(1)
     ui.set_weapon_data(1, 6)
-    return ui.submit_shot(test_image_string)
+    return ui.submit_shot(test_image_string, time_created=time_created)
 
 
 def test_hit_recorded_in_shot_history(two_users_in_different_teams, test_image_string):
@@ -148,21 +148,54 @@ def test_refund_recorded_in_shot_history(user_in_team, test_image_string):
     assert UserInterface(user_in_team).get_user_model().num_bullets == 1
 
 
-def test_knockout_marks_targets_pending_shots_refunded(
+def test_knockout_invalidates_the_targets_shot_fired_after_the_kill(
     two_users_in_different_teams, test_image_string
 ):
+    """A shot the target fired *after* the photo that killed them was never a
+    legitimate shot from a live player - it is invalidated when the knockout
+    lands, whatever order the admin happens to check the queue in."""
+    import datetime
+
     shooter, target = two_users_in_different_teams
 
-    # The target has a shot of their own waiting in the queue when they get
-    # knocked out - it comes back to them as a refund
-    target_shot = submit_a_shot(target, test_image_string)
-    shooter_shot = submit_a_shot(shooter, test_image_string)
+    shooter_shot = submit_a_shot(
+        shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
+    )
+    target_shot = submit_a_shot(
+        target, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 5)
+    )
 
     AdminInterface().hit_user(shooter_shot, target)
 
     (shot,) = UserInterface(target).get_own_shots()
     assert shot["id"] == target_shot
-    assert shot["result"] == "refunded"
+    assert shot["result"] == "invalidated"
+
+
+def test_knockout_does_not_touch_the_targets_shot_fired_before_the_kill(
+    two_users_in_different_teams, test_image_string
+):
+    """A shot the target fired *before* the photo that killed them was fired
+    while they were still alive and playing fair - it is only sitting
+    unchecked because the queue has not reached it yet, and the knockout that
+    comes later must not sweep it up along with the illegitimate ones."""
+    import datetime
+
+    shooter, target = two_users_in_different_teams
+
+    target_shot = submit_a_shot(
+        target, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
+    )
+    shooter_shot = submit_a_shot(
+        shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 5)
+    )
+
+    AdminInterface().hit_user(shooter_shot, target)
+
+    (shot,) = UserInterface(target).get_own_shots()
+    assert shot["id"] == target_shot
+    assert shot["checked"] is False
+    assert shot["result"] is None
 
 
 def test_hit_does_not_tell_shooter_they_missed(
@@ -197,6 +230,54 @@ def test_the_death_blow_announces_the_knockout_once(
         TickerMessageType.HIT_AND_KNOCKOUT,
         TickerMessageType.USER_GOT_KNOCKED_OUT,
     ]
+
+
+def test_the_knockout_announces_invalidated_shots_with_a_count(
+    mocker, two_users_in_different_teams, test_image_string
+):
+    """The target has two shots of their own still queued when they die, both
+    fired after the fatal photograph - both are invalidated, and the ticker
+    says how many rather than sending one line per shot."""
+    import datetime
+
+    shooter, target = two_users_in_different_teams
+    kill_shot = submit_a_shot(
+        shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
+    )
+    submit_a_shot(
+        target, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 5)
+    )
+    submit_a_shot(
+        target, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 6)
+    )
+    mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
+
+    AdminInterface().hit_user(kill_shot, target)
+
+    assert ticker_types(mocked) == [
+        TickerMessageType.HIT_AND_KNOCKOUT,
+        TickerMessageType.USER_GOT_KNOCKED_OUT,
+        TickerMessageType.SHOTS_INVALIDATED,
+    ]
+    invalidated_call = mocked.call_args_list[2]
+    assert invalidated_call.args[1]["num"] == 2
+
+
+def test_a_self_shot_kill_does_not_invalidate_itself(
+    mocker, user_in_team, test_image_string
+):
+    """A player's only shot, fired at themselves, is its own fatal blow: it
+    must come out of this as a hit, not as an invalidated shot that then gets
+    silently patched back to "hit" - and it must not trigger a
+    SHOTS_INVALIDATED ticker line about a shot that is, in the end, a hit."""
+    shot_id = submit_a_shot(user_in_team, test_image_string)
+    mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
+
+    AdminInterface().hit_user(shot_id, user_in_team)
+
+    assert TickerMessageType.SHOTS_INVALIDATED not in ticker_types(mocked)
+    (shot,) = UserInterface(user_in_team).get_own_shots()
+    assert shot["result"] == "hit"
 
 
 def test_hitting_an_already_dead_player_is_a_plain_hit(

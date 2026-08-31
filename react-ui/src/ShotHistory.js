@@ -43,6 +43,7 @@ const STATE_CLASSES = {
   miss: styles.stateMiss,
   bystander: styles.stateBystander,
   refunded: styles.stateRefunded,
+  invalidated: styles.stateInvalidated,
   hitYou: styles.stateHitYou,
   appealOpen: styles.stateAppealOpen,
   appealUpheld: styles.stateAppealUpheld,
@@ -112,6 +113,13 @@ function baseStatus(shot) {
       };
     if (result === "refunded")
       return { state: "refunded", icon: returnImg, label: "Ammo refunded" };
+    if (result === "invalidated")
+      return {
+        state: "invalidated",
+        icon: returnImg,
+        label: "Invalidated",
+        sublabel: "You were knocked out before this shot could be checked",
+      };
     if (result === "bystander")
       return {
         state: "bystander",
@@ -279,7 +287,10 @@ export function appealButtonState(shot, appealsRemaining) {
     !shot.appeal_state &&
     (shot.direction === "received"
       ? shot.result === "hit"
-      : shot.checked && shot.result && shot.result !== "refunded");
+      : shot.checked &&
+        shot.result &&
+        shot.result !== "refunded" &&
+        shot.result !== "invalidated");
 
   if (outOfAppeals)
     return { show: true, disabled: true, label: "No appeals left" };

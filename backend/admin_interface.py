@@ -1060,7 +1060,7 @@ class AdminInterface:
             elif shot_model.result == "bystander":
                 status = "Hit a bystander"
             else:
-                status = "Missed / refunded"
+                status = "Missed / refunded / invalidated"
 
             stats = {
                 "Shooter": shot_model.user.name,
@@ -1118,11 +1118,16 @@ class AdminInterface:
         shot = self._get_shot_orm(shot_id)
 
         u_from = shot.user
+        # Read before ui_target.hit() below commits and expires shot: it is
+        # this shot's own tie-break for clear_unchecked_shots, the same one
+        # get_queue_head uses against a clock with 1s resolution.
+        shot_time_created = shot.time_created
         ui_target = UserInterface(target_user_id, session=self._session)
 
         # A shot that hits somebody already knocked out is just a hit that does
         # nothing: it is announced as a plain hit, and only the blow that
-        # actually kills announces a knockout and refunds the victim's queue.
+        # actually kills announces a knockout and invalidates the victim's
+        # still-queued shots.
         # Reading the HP afterwards alone would credit a second killer.
         already_dead = self._get_user_orm(target_user_id).hit_points <= 0
 
@@ -1130,6 +1135,7 @@ class AdminInterface:
 
         u_to = self._get_user_orm(target_user_id)
 
+        invalidated_count = 0
         if already_dead or u_to.hit_points > 0:
             message_type_public = tk.TickerMessageType.HIT_AND_DAMAGE
             message_type_private = tk.TickerMessageType.USER_GOT_HIT
@@ -1137,7 +1143,9 @@ class AdminInterface:
         else:
             message_type_public = tk.TickerMessageType.HIT_AND_KNOCKOUT
             message_type_private = tk.TickerMessageType.USER_GOT_KNOCKED_OUT
-            ui_target.clear_unchecked_shots()
+            invalidated_count = ui_target.clear_unchecked_shots(
+                shot_time_created, shot_id
+            )
 
         tk.send_ticker_message(
             message_type_public,
@@ -1158,11 +1166,23 @@ class AdminInterface:
             shot_id=shot.id,
         )
 
+        if invalidated_count:
+            tk.send_ticker_message(
+                tk.TickerMessageType.SHOTS_INVALIDATED,
+                {"num": invalidated_count},
+                game_id=u_from.team.game_id,
+                user_id=u_to.id,
+                session=self._session,
+            )
+
         try:
             _, previous = self._mark_shot_checked(shot_id, "hit")
         except HTTPException:
-            # Handle the edge case where a user shoots themselves: the knockout
-            # above already marked their unchecked shots as refunded
+            # The fatal shot itself is excluded from clear_unchecked_shots
+            # above (it gets its own "hit" result right here), so this no
+            # longer fires for the ordinary self-shot case. Kept as a
+            # defensive catch-all for two resolvers racing on the same
+            # shot_id.
             shot.result = "hit"
             previous = None
 

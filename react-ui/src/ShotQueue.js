@@ -357,6 +357,7 @@ export function verdictText(shot, targetName = null) {
       miss: "Miss",
       bystander: "Bystander",
       refunded: "Refunded",
+      invalidated: "Invalidated",
     }[shot.result] || shot.result
   );
 }

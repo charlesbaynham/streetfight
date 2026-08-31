@@ -233,6 +233,12 @@ describe("the shot feed", () => {
     ],
     ["resolved as a miss", { checked: true, result: "miss" }, "Miss", "bad"],
     ["refunded", { checked: true, result: "refunded" }, "Refunded", "warn"],
+    [
+      "invalidated",
+      { checked: true, result: "invalidated" },
+      "Invalidated",
+      "warn",
+    ],
   ])("says %s", (_name, overrides, expectedText, expectedTone) => {
     const [text, tone] = adjudicationStatus(shot(overrides));
     expect(text).toBe(expectedText);

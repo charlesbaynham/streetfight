@@ -168,11 +168,15 @@ class Shot(Base):
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
 
-    # How the shot was adjudicated: "hit" / "miss" / "bystander" / "refunded",
-    # or null while it is still in the queue. Recorded so the shooter's shot
-    # history can report what happened - target_user_id alone can't tell a miss
-    # from a refund. "bystander" costs the ammo like a miss, but says the photo
-    # caught somebody who isn't playing.
+    # How the shot was adjudicated: "hit" / "miss" / "bystander" / "refunded" /
+    # "invalidated", or null while it is still in the queue. Recorded so the
+    # shooter's shot history can report what happened - target_user_id alone
+    # can't tell a miss from a refund. "bystander" costs the ammo like a miss,
+    # but says the photo caught somebody who isn't playing. "refunded" is an
+    # admin's own call (nobody could read the shot); "invalidated" is the same
+    # ammo-back outcome reached automatically, because the shooter was already
+    # knocked out before this shot of theirs could be checked - see
+    # UserInterface.clear_unchecked_shots.
     result = Column(String, nullable=True)
 
     location_context = Column(String, nullable=True)
