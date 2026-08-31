@@ -19,6 +19,41 @@
   box-sizing: border-box;
 }
 
+.progressBar {
+  display: flex;
+  align-items: center;
+  gap: 2mm;
+  margin-bottom: 4mm;
+}
+
+.progressTrack {
+  flex: 1;
+  height: 2mm;
+  min-height: 6px;
+  border-radius: 1mm;
+  background: rgba(255, 255, 255, 0.15);
+  overflow: hidden;
+}
+
+.progressFill {
+  height: 100%;
+  background: #e8850c;
+  transition: width 0.3s ease, background-color 0.3s ease;
+}
+
+.progressFillDone {
+  background: #00a651;
+}
+
+.progressPercent {
+  flex-shrink: 0;
+  min-width: 3.5em;
+  text-align: right;
+  font-size: smaller;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.85;
+}
+
 .header {
   text-align: center;
   margin-bottom: 6mm;

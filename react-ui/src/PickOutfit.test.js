@@ -906,6 +906,102 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
   ).toBeInTheDocument();
 });
 
+// ---------------------------------------------------------------------------
+// Progress bar - a continuous "how far through joining am I" nudge, on top
+// of the confirm screen's own warning (item 12's fix). Percent is read as
+// visible text (e.g. "40%") rather than off the styled fill width, since
+// that's what a player actually sees.
+// ---------------------------------------------------------------------------
+
+test("the progress bar climbs through every stage of the flow, ending at 100% once locked in", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: null }),
+    outfit_options: makeOptionsResult(),
+    set_name: {},
+    pick_outfit: {
+      user_id: "u1",
+      name: "Alice",
+      team_name: "Reds",
+      slot: 1,
+      overrides: null,
+      wardrobe: {},
+      canonical_appearance: makeOption().appearance,
+      effective_appearance: makeOption().appearance,
+      overridden: false,
+    },
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  expect(screen.getByText("0%")).toBeInTheDocument();
+
+  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  await actAndFlush(() => {
+    fireEvent.change(nameBox, { target: { value: "Alice" } });
+    fireEvent.keyDown(nameBox, { key: "Enter" });
+  });
+  expect(screen.getByText("20%")).toBeInTheDocument();
+
+  await showOutfits();
+  expect(screen.getByText("40%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  expect(screen.getByText("60%")).toBeInTheDocument();
+
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+  expect(screen.getByText("80%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+  );
+  expect(screen.getByText("100%")).toBeInTheDocument();
+});
+
+test("choosing a different outfit drops the progress bar back down honestly, rather than only ever climbing", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+  expect(screen.getByText("40%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  expect(screen.getByText("60%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(
+      screen.getByRole("button", { name: "Choose a different outfit" }),
+    ),
+  );
+  expect(screen.getByText("40%")).toBeInTheDocument();
+});
+
+test("a returning visitor whose slot is already set sees the progress bar already at 100%", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        wardrobe: { tshirt: ["black"] },
+        canonical_appearance: makeOption().appearance,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+  });
+
+  renderPickOutfit();
+
+  expect(await screen.findByText("100%")).toBeInTheDocument();
+});
+
 // The footer is trivial to render but easy to break silently: it must survive
 // every screen of the flow, and it must open in a new tab, since navigating
 // away would discard the wardrobe ticks held in React state.
