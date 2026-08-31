@@ -5,6 +5,7 @@ import { getShotFromCache, evictShotFromCache } from "./ShotCache";
 import ShotMap, { haversineMetres } from "./ShotMap";
 import UpdateListener from "./UpdateListener";
 import { Row, Col } from "react-bootstrap";
+import { weaponName } from "./weapons";
 
 import styles from "./ShotQueue.module.css";
 
@@ -1021,7 +1022,10 @@ function ShotQueuePanel() {
         <>
           <Row>
             <Col>
-              <em>By {shot.user.name}</em>
+              <em>
+                By {shot.user.name}
+                {weaponName(shot) ? ` with ${weaponName(shot)}` : ""}
+              </em>
               <img
                 className={styles.shotImg}
                 alt="The next shot in the queue"

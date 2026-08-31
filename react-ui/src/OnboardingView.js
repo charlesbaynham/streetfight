@@ -23,6 +23,15 @@ import {
 
 import styles from "./OnboardingView.module.css";
 
+// animateReposition defaults on: as later rows appear, the centred container
+// grows and every row above shifts up, and framer-motion's layout animation
+// is what makes that shift a smooth slide instead of a snap. Off for the
+// webcam/location rows specifically (see getActionItems below) - a tap
+// landing mid-reflow on the one gating button that's load-bearing for the
+// whole join flow is a plausible explanation for guests on Safari sometimes
+// finding it unresponsive (dry-run item 5), and the animation there is
+// purely cosmetic.
+
 // Tapping the (stuck) location button this many times in a row skips it -
 // see the bypass note above requestGeolocationPermission's LOCATION_BYPASS_KEY
 // in utils.js.
@@ -33,6 +42,7 @@ const ActionItem = ({
   done,
   onClick = null,
   doable = true,
+  animateReposition = true,
   warn = false,
 }) => (
   <button
@@ -43,7 +53,7 @@ const ActionItem = ({
       (warn ? " " + styles.warn : "")
     }
   >
-    <motion.div layout>
+    <motion.div layout={animateReposition}>
       <p>{text}</p>
       {doable ? (
         <div className={styles.actionButton}>
@@ -95,10 +105,11 @@ function NameEntry({ user, className, onNameSet = null }) {
           setNameBoxValue(e.target.value);
         }}
         onKeyDown={handleKeyDown}
+        onBlur={setUserName}
         placeholder="Enter your name..."
       />
       <button className={styles.actionButton} onClick={setUserName}>
-        <img src={returnIcon} alt="" />
+        <img src={done ? actionDone : returnIcon} alt="" />
       </button>
     </motion.div>
   );
@@ -110,6 +121,7 @@ function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
     useState(false);
+  const [locationError, setLocationError] = useState(false);
   const [compassPermissionGranted, setCompassPermissionGranted] =
     useState(false);
   const [locationBypassed, setLocationBypassed] = useState(() =>
@@ -157,12 +169,13 @@ function OnboardingView({ user }) {
               setWebcamPermissionGranted(true);
             });
           }}
+          animateReposition={false}
           key={"webcam"}
         />,
       );
     else return actionItems;
 
-    if (webcamPermissionGranted)
+    if (webcamPermissionGranted) {
       actionItems.push(
         <ActionItem
           text={
@@ -187,14 +200,24 @@ function OnboardingView({ user }) {
             setLocationTapCount(nextTapCount);
 
             console.log("Requesting location permission from OnboardingView");
+            setLocationError(false);
             const success = await requestGeolocationPermission();
             if (success) setLocationTapCount(0);
             setLocationPermissionGranted(success);
+            setLocationError(!success);
           }}
+          animateReposition={false}
           key={"location"}
         />,
       );
-    else return actionItems;
+      if (locationError)
+        actionItems.push(
+          <p className={styles.locationError} key={"location-error"}>
+            Couldn't get your location — check Settings &gt; Privacy &gt;
+            Location Services, then tap again.
+          </p>,
+        );
+    } else return actionItems;
 
     // The compass rung. Unlike the two above it this one does not gate what
     // follows: a heading is telemetry, and a phone without a compass (or a

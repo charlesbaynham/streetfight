@@ -164,6 +164,12 @@ class Shot(Base):
 
     # Required since users could pick up upgrades after taking this shot
     shot_damage = Column(Integer, default=1)
+    # Same reasoning as shot_damage above: recorded at fire time because a
+    # player's own shot_timeout can change later. Damage alone cannot name a
+    # weapon (react-ui/src/weapons.js's WEAPONS keys on both, since e.g.
+    # Pewster and Eat-a-bullet share damage 1) - this is what lets the shot
+    # queue and a player's own shot history say which weapon fired a shot.
+    shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
 
     image_base64 = Column(String, nullable=False)
     checked = Column(Boolean, nullable=False, default=False)
@@ -555,6 +561,7 @@ class ShotModel(pydantic.BaseModel):
     target_user_id: Optional[UUID] = None
 
     shot_damage: int
+    shot_timeout: float
 
     location_context: Optional[str] = None
     heading: Optional[float] = None

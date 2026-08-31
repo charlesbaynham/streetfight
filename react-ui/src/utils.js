@@ -114,7 +114,10 @@ export async function isCameraPermissionGranted() {
 function getPosition() {
   return new Promise((resolve, reject) => {
     console.log("Requesting geolocation");
-    return navigator.geolocation.getCurrentPosition(resolve, reject);
+    return navigator.geolocation.getCurrentPosition(resolve, reject, {
+      timeout: 10000,
+      maximumAge: 60000,
+    });
   });
 }
 

@@ -159,6 +159,44 @@ test("pressing Enter in the name box POSTs set_name with the typed name", async 
   expect(getLastAPICall("set_name").query).toEqual({ name: "EnterName" });
 });
 
+test("leaving the name box (blur) POSTs set_name, with no button tap or Enter needed", async () => {
+  installFetchMock({ set_name: {} });
+  await renderOnboarding(
+    makeUser({ name: null, team_id: null, team_name: null }),
+  );
+
+  const input = screen.getByPlaceholderText("Enter your name...");
+  fireEvent.change(input, { target: { value: "BlurName" } });
+  fireEvent.blur(input);
+
+  await waitFor(() => expect(getLastAPICall("set_name")).toBeDefined());
+  expect(getLastAPICall("set_name").query).toEqual({ name: "BlurName" });
+});
+
+test("blurring an empty name box does not POST set_name", async () => {
+  installFetchMock({ set_name: {} });
+  await renderOnboarding(
+    makeUser({ name: null, team_id: null, team_name: null }),
+  );
+
+  fireEvent.blur(screen.getByPlaceholderText("Enter your name..."));
+
+  expect(getLastAPICall("set_name")).toBeUndefined();
+});
+
+test("a saved name shows a checkmark, not just a colour change", async () => {
+  await renderOnboarding(
+    makeUser({ name: "Zara", team_id: null, team_name: null }),
+  );
+
+  // The name entry's own action button swaps to the same checkmark icon
+  // every other done onboarding step uses, instead of always showing the
+  // return arrow.
+  const input = screen.getByPlaceholderText("Enter your name...");
+  const icon = input.parentElement.querySelector("img");
+  expect(icon.getAttribute("src")).toContain("check-solid");
+});
+
 test("steps already satisfied on mount render as done without any click", async () => {
   grantAllPermissions();
   await renderOnboarding(
@@ -176,7 +214,7 @@ test("steps already satisfied on mount render as done without any click", async 
 // / isLocationPermissionGranted report "granted" for the rest of this file
 // regardless of the mocked Permissions API state.
 
-test("clicking the location step and being denied leaves it not done", async () => {
+test("clicking the location step and being denied leaves it not done and shows a visible error", async () => {
   setPermission("camera", "granted");
   mockGeolocationDenied();
   await renderOnboarding(soloUser({ name: "Bob" }));
@@ -188,6 +226,7 @@ test("clicking the location step and being denied leaves it not done", async () 
   expect(window.navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
   expect(isDone("Grant location permission:")).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/Couldn't get your location/)).toBeInTheDocument();
 });
 
 test("tapping the location button fewer than five times does not bypass it", async () => {
@@ -247,4 +286,18 @@ test("clicking the location step requests geolocation and marks itself done when
   expect(
     screen.getByText("Scan your team's join QR code with your camera app..."),
   ).toBeInTheDocument();
+});
+
+test("getCurrentPosition is called with a timeout, so a stuck fix cannot hang the button forever", async () => {
+  setPermission("camera", "granted");
+  mockGeolocationSuccess();
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  await actAndFlush(() =>
+    fireEvent.click(stepButton("Grant location permission:")),
+  );
+
+  const options =
+    window.navigator.geolocation.getCurrentPosition.mock.calls[0][2];
+  expect(options.timeout).toBeGreaterThan(0);
 });

@@ -7,11 +7,14 @@
 // for the ranking rationale behind the flow below.
 //
 // Deliberately outside UserMode: no map, no webcam, no SSE, no permission
-// polling - this page only ever talks to join_options / outfit_options /
-// pick_outfit.
+// polling while picking - this page only ever talks to join_options /
+// outfit_options / pick_outfit. The one exception is after the outfit is
+// locked in: a lightweight user_info poll (see PickOutfit's own effect)
+// hard-redirects to / once the game goes active, since nothing else on this
+// page would ever tell a player who left the tab open that it had started.
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Popup from "./Popup";
 import { sendAPIRequest } from "./utils";
@@ -124,6 +127,12 @@ function WardrobeChannel({ channel, selected, onToggle }) {
               aria-label={label}
               onClick={() => onToggle(label)}
             >
+              {/* A checkmark, not just a highlighted border - ticking is
+                  multi-select, and a border-only highlight reads as the
+                  single-choice picker this deliberately isn't. */}
+              <span className={styles.swatchCheckbox} aria-hidden="true">
+                {isSelected ? "✓" : ""}
+              </span>
               <Swatch hex={channel.hex[label]} label={label} size="large" />
               <span className={styles.swatchLabel}>{label}</span>
               {note ? <span className={styles.swatchNote}>{note}</span> : null}
@@ -284,22 +293,34 @@ function ConfirmScreen({
   onBack,
   confirming,
   hasName,
+  checked,
+  onCheckedChange,
 }) {
-  const [checked, setChecked] = useState(false);
   return (
     <div className={styles.confirmScreen}>
-      <h2>Wear this outfit?</h2>
+      <h2>One more step to join</h2>
+      <p className={styles.confirmIntro}>
+        You haven't joined yet - tick the box and tap{" "}
+        <strong>"Lock in my choice"</strong> below to confirm this outfit and
+        join the game.
+      </p>
       <OutfitGarments
         appearance={option.appearance}
         wardrobeChannels={wardrobeChannels}
         channels={channels}
         size="large"
       />
-      <label className={styles.confirmRow}>
+      <label
+        className={
+          styles.confirmRow +
+          " " +
+          (checked ? styles.confirmRowChecked : styles.confirmRowPending)
+        }
+      >
         <input
           type="checkbox"
           checked={checked}
-          onChange={(e) => setChecked(e.target.checked)}
+          onChange={(e) => onCheckedChange(e.target.checked)}
         />
         I will wear this on the night.
       </label>
@@ -369,19 +390,67 @@ function CuriosityFooter() {
   );
 }
 
+// A running "how far through joining am I" bar, shown above every screen of
+// the flow. This is the same nudge idea as item 12's fix direction one level
+// up: rather than only warning at the confirm step that the player isn't
+// done, show it continuously, so stopping early always looks unfinished
+// rather than looking like a natural resting point.
+function JoinProgressBar({ percent }) {
+  return (
+    <div className={styles.progressBar}>
+      <div
+        className={styles.progressTrack}
+        role="progressbar"
+        aria-label="Join progress"
+        aria-valuenow={percent}
+        aria-valuemin={0}
+        aria-valuemax={100}
+      >
+        <div
+          className={
+            styles.progressFill +
+            (percent >= 100 ? " " + styles.progressFillDone : "")
+          }
+          style={{ width: `${percent}%` }}
+        />
+      </div>
+      <span className={styles.progressPercent}>{percent}%</span>
+    </div>
+  );
+}
+
+// The nudge: default every colour to ticked, not empty. A player who never
+// touches this step still gets offered outfits at all - ranked
+// canonical-first, so the ones near the top of the list are the ones we'd
+// actually prefer they land on - rather than the thin, often non-canonical
+// set an empty (or barely-ticked) wardrobe produces. Ticking is then framed
+// as narrowing down for a better match, not building up from nothing.
+function defaultWardrobe(joinData) {
+  const wardrobe = {};
+  for (const name of joinData.wardrobe_channels) {
+    const channel = joinData.channels.find((c) => c.name === name);
+    wardrobe[name] = channel ? [...channel.labels] : [];
+  }
+  return wardrobe;
+}
+
 function PickOutfitForm({
   code,
   joinData,
   onPicked,
   onError,
   onChoosingChange,
+  onProgressChange,
 }) {
-  const [wardrobe, setWardrobe] = useState({});
+  const [wardrobe, setWardrobe] = useState(() => defaultWardrobe(joinData));
   const [optionsResult, setOptionsResult] = useState(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
   const [showingAll, setShowingAll] = useState(false);
+  // Lifted out of ConfirmScreen (rather than that component's own state) so
+  // the progress bar below can see it too.
+  const [checked, setChecked] = useState(false);
   // join_options only reports the name as it was on load, and NameEntry posts
   // set_name without telling anyone - so track it here, since the confirm
   // step is gated on it.
@@ -397,7 +466,29 @@ function PickOutfitForm({
     onChoosingChange(selectedOption !== null);
   }, [selectedOption, onChoosingChange]);
 
+  // A fresh outfit (or none at all) starts unconfirmed - same reset a full
+  // unmount/remount of ConfirmScreen used to give this for free.
+  useEffect(() => {
+    setChecked(false);
+  }, [selectedOption]);
+
   const wardrobeChannels = joinData.wardrobe_channels;
+  const showingOptions = optionsResult && optionsResult.total > 0;
+
+  // The progress bar's own five rungs: name given, outfits found, one
+  // tapped, consent ticked, locked in (that last one only the parent can
+  // know, since claiming happens above this component). Whole-flow rather
+  // than per-screen, so backing up (Change what I own, Choose a different
+  // outfit, a 409) honestly drops the bar back down instead of it only ever
+  // climbing.
+  useEffect(() => {
+    let percent = 0;
+    if (name) percent = 20;
+    if (showingOptions) percent = 40;
+    if (selectedOption) percent = 60;
+    if (checked) percent = 80;
+    onProgressChange(percent);
+  }, [name, showingOptions, selectedOption, checked, onProgressChange]);
 
   // Back to the wardrobe form: the next list is a fresh one, so it starts
   // nudging again rather than inheriting a previous "show me the rest".
@@ -483,6 +574,8 @@ function PickOutfitForm({
           channels={joinData.channels}
           confirming={claiming}
           hasName={Boolean(name)}
+          checked={checked}
+          onCheckedChange={setChecked}
           onConfirm={(confirmed) => claimOption(selectedOption, confirmed)}
           onBack={() => setSelectedOption(null)}
         />
@@ -492,7 +585,6 @@ function PickOutfitForm({
 
   const showAreYouSure =
     optionsResult && optionsResult.total === 0 && !optionsResult.relaxed;
-  const showingOptions = optionsResult && optionsResult.total > 0;
   const totalPages = optionsResult
     ? Math.max(1, Math.ceil(optionsResult.total / optionsResult.page_size))
     : 0;
@@ -531,8 +623,10 @@ function PickOutfitForm({
       ) : (
         <>
           <p className={styles.wardrobeIntro}>
-            Tick everything you own - the more you tick, the more choices you
-            get.
+            Everything's ticked to start, so you'll be offered a good outfit
+            either way. <strong>Untick</strong> anything you don't actually own
+            or won't wear on the night - not what you'd merely like to - for a
+            better match.
           </p>
 
           {wardrobeChannels.map((channelName) => {
@@ -626,9 +720,15 @@ function PickOutfitForm({
   );
 }
 
+// How often to check whether the game has gone active, once an outfit is
+// locked in - the same idiom OnboardingView/UserMode uses for its own
+// permission recheck, not a full SSE connection.
+const GAME_START_POLL_MS = 12000;
+
 function PickOutfit() {
   const query = useQuery();
   const code = query.get("j");
+  const navigate = useNavigate();
 
   const [joinData, setJoinData] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -636,6 +736,10 @@ function PickOutfit() {
   const [choosing, setChoosing] = useState(false);
   const [errorMessage, setErrorMessage] = useState(null);
   const [errorVisible, setErrorVisible] = useState(false);
+  // Reported up by PickOutfitForm as the player moves through the flow; a
+  // locked-in result overrides it to 100% below, since a returning visitor
+  // who already has a slot never mounts the form at all.
+  const [formProgress, setFormProgress] = useState(0);
 
   useEffect(() => {
     if (!code) return undefined;
@@ -663,6 +767,28 @@ function PickOutfit() {
     joinData.you.slot !== null &&
     joinData.you.slot !== undefined;
   const result = pickedRow || (alreadyPicked ? joinData.you : null);
+  const progress = result ? 100 : formProgress;
+
+  // Once an outfit is locked in, there's nothing left to do on this page but
+  // wait for the game to start - and this page never opens an SSE
+  // connection, so without this a player who picked ahead of time and left
+  // the tab open would have no way in once the game actually kicked off.
+  useEffect(() => {
+    if (!result) return undefined;
+    let cancelled = false;
+    const checkActive = () => {
+      sendAPIRequest("user_info", null, "GET", (data) => {
+        if (!cancelled && data && data.active) {
+          navigate("/");
+        }
+      });
+    };
+    const interval = setInterval(checkActive, GAME_START_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [result, navigate]);
 
   return (
     <div className={styles.outerContainer}>
@@ -678,6 +804,7 @@ function PickOutfit() {
           <p>Loading...</p>
         ) : (
           <>
+            <JoinProgressBar percent={progress} />
             <Header
               joinData={joinData}
               showWardrobePrompt={!result && !choosing}
@@ -695,6 +822,7 @@ function PickOutfit() {
                 onPicked={setPickedRow}
                 onError={showError}
                 onChoosingChange={setChoosing}
+                onProgressChange={setFormProgress}
               />
             )}
           </>

@@ -849,7 +849,7 @@ changes.
 
 ---
 
-### R13 — Fix the dry-run feedback (30 Aug 2026) *(proposed)*
+### R13 — Fix the dry-run feedback (30 Aug 2026) *(ten of twelve done, 31 Aug)*
 
 **What.** Charles ran the 30 Aug dry run (see "The dry run: Sunday 30
 August", above) with ~10 real guests on their own phones, then wrote up
@@ -865,48 +865,59 @@ several of these are *silent* failures (a player believes they have joined
 when they have not) that a solo walkthrough is unlikely to hit, because the
 person doing it already knows what "done" is supposed to look like.
 
-**Status: two of twelve done** (#9, the escalation transcript; #11, the
-shot browser's jump controls). The other ten are open.
+**Status: ten of twelve done** (#1, #2, #3, #5, #6, #7, #8, #9, #10, #12).
+Only #4 is deliberately held open (deferred by Charles - see its entry).
+All ten landed together in one PR off `docs/dry_run_feedback_2026-08-30.md`'s
+triage.
 
-- [ ] **1. Join links, not just QR codes** — `JoinQRCodes.js` only exposes
-  the join URL as the QR image's `href`; add a visible, copyable plain-text
-  link so it can be pasted into a WhatsApp message from a single phone.
-- [ ] **2. "Tick everything, tick as many as you can" isn't landing** —
-  `PickOutfit.js`'s wardrobe step reads as a single-choice colour picker
-  (swatch highlight, no checkbox affordance) despite the multi-select copy;
-  strengthen both the copy and the visual multi-select cue.
-- [ ] **3. Name entry silently fails to save** — `NameEntry`
-  (`OnboardingView.js`) only submits on Enter/button-tap, nothing on blur;
-  add submit-on-blur and a much more visible "saved" state.
+- [x] **1. Join links, not just QR codes** — *done.* `JoinQRCodes.js` now
+  shows each team's join link as a visible, readonly, selectable text field
+  next to its QR code, plus a **Copy** button (`navigator.clipboard`), so it
+  can be pasted into a WhatsApp message from a single phone instead of only
+  existing as the QR image's `href`.
+- [x] **2. "Tick everything, tick as many as you can" isn't landing** —
+  *done, together with #12.* `PickOutfit.js`'s wardrobe intro now says to
+  tick what you'll *actually wear on the night*, not what you'd like to, and
+  each swatch shows an explicit checkbox tick (`.swatchCheckbox`) instead of
+  relying on a highlighted border alone, which read as single-choice.
+- [x] **3. Name entry silently fails to save** — *done.* `NameEntry`
+  (`OnboardingView.js`) now submits on blur as well as Enter/button-tap, and
+  swaps its button icon to the same checkmark every other onboarding step
+  uses when done (previously always the return arrow), with the input
+  background tinted too — a state change, not just a border-colour change.
 - [ ] **4. "Screenshot this page" → a real save/share button** —
   `PickOutfit.js`'s `ResultScreen` needs a DOM-rasterization step (e.g.
   `html2canvas`, a new dependency) and the Web Share API for a native
-  save/forward, with a download link as fallback.
-- [ ] **5. Safari: some users can't tap the location-permission button** —
-  hard to reproduce; leading suspect is framer-motion's `layout`/
-  `AnimatePresence` reflow on `OnboardingView.js`'s action-item list fighting
-  Safari's touch hit-testing mid-animation. Needs more repro info (dead-to-
-  touch vs. registers-but-nothing-happens, standalone PWA vs. Safari tab) or
-  a defensive fix (drop the `layout` animation from the gating rows)
-  regardless.
-- [ ] **6. No route from `/pick` to the actual game** — `PickOutfit.js` and
-  `UserMode.js` (`/`) are disconnected; a player who locks in an outfit and
-  leaves the tab open has no way into the game when it starts. Add a
-  lightweight poll on `/pick` (no full SSE, by the page's own design) that
-  redirects to `/` once the game goes active — `/` already handles
-  everything else live from there.
-- [ ] **7. Weapon loot items: pick from the same enum admin already has** —
-  `NewItems.js`'s weapon item type is two raw number inputs (`shot_damage`,
-  `shot_timeout`); reuse `AdminMode.js`'s `WEAPONS` lookup instead of
-  retyping damage/timeout by hand.
-- [ ] **8. Shots should say which weapon fired them** — needs a new
-  `Shot.shot_timeout` column (damage alone can't disambiguate weapons that
-  share a damage value, e.g. Pewster vs. Eat-a-bullet) — **a live-DB schema
-  change; needs Charles's sign-off before it's written, per the "game is
-  live" section of `CLAUDE.md`** — then render the weapon name in
-  `ShotQueue.js`/`ShotHistory.js` via the same `WEAPONS` lookup as #7. Cheap
-  stopgap without a schema change: derive it from damage alone, accepting
-  the ambiguity between same-damage weapons.
+  save/forward, with a download link as fallback. **Deferred by Charles**:
+  not important enough to justify the new dependency right now.
+- [x] **5. Safari: some users can't tap the location-permission button** —
+  *defensive fix shipped.* Hard to reproduce, so this isn't a confirmed root
+  cause, but the leading suspect (framer-motion's `layout` animation on
+  `OnboardingView.js`'s action-item list fighting Safari's touch hit-testing
+  mid-reflow) is now dropped from the two gating, clickable rows (webcam,
+  location) via a new `animateReposition` prop on `ActionItem`, since the
+  smooth-reflow effect there was purely cosmetic.
+- [x] **6. No route from `/pick` to the actual game** — *done.*
+  `PickOutfit.js` now polls `user_info` every 12s once an outfit is locked
+  in (matching the permission-recheck idiom `UserMode.js` already uses) and
+  hard-redirects to `/` the moment the game goes active — `/` already
+  handles everything else live from there.
+- [x] **7. Weapon loot items: pick from the same enum admin already has** —
+  *done.* The `WEAPONS` lookup (previously local to `AdminMode.js`) is now
+  a shared `react-ui/src/weapons.js` module, imported by both `AdminMode.js`
+  and `SpectatorView.js` as before and newly by `NewItems.js`, whose weapon
+  item type is now a `<select>` of weapon names ("No weapon" excluded, since
+  a loot drop is never that) instead of two raw number inputs.
+- [x] **8. Shots should say which weapon fired them** — *done, with
+  Charles's sign-off to wipe the live DB rather than migrate it.* Added
+  `Shot.shot_timeout` (damage alone can't disambiguate weapons that share
+  a damage value, e.g. Pewster vs. Eat-a-bullet), captured in `submit_shot`
+  alongside `shot_damage` as a snapshot at fire time - a later upgrade
+  must not retroactively rename an old shot's weapon. The weapon name now
+  renders next to the shooter in the admin queue (`ShotQueue.js`: "By
+  Alice with Pewster") and in a player's own shot history
+  (`ShotHistory.js`: "Fired with Pewster"), via the same `WEAPONS` lookup
+  as #7 rather than re-deriving it.
 - [x] **9. Escalation transcript in the replay workbench** — *done.* The
   workbench grew an **Escalate** button beside **Replay**, posting to
   `admin_replay_shot_escalation` → `shot_escalation.replay_shot_escalation`
@@ -926,13 +937,14 @@ shot browser's jump controls). The other ten are open.
   that said in words. It borrows `ai_shot_review`'s semaphore the way
   `reference_photos.py` does — "Select all" is how forty multi-image calls get
   fired at once.
-- [ ] **10. Map zoom is broken, not just clunky** — found the likely root
-  cause: `VenueMapView`'s `clickCatcher` (`MapView.js`) sits inside the
-  zoomable `TransformComponent` and its tap handler isn't gated on
-  `poppedOut`, so any tap once popped out — including the tap a pinch-zoom
-  gesture ends with — collapses the map back to its corner and resets the
-  zoom. Gate the toggle-and-reset behaviour to the unexpanded corner state
-  only.
+- [x] **10. Map zoom is broken, not just clunky** — *done.* Confirmed root
+  cause: `VenueMapView`'s `clickCatcher` (`MapView.js`) sat inside the
+  zoomable `TransformComponent` with its tap handler ungated on `poppedOut`,
+  so any tap once popped out — including the tap a pinch-zoom gesture ends
+  with — collapsed the map back to its corner and reset the zoom. The
+  toggle-and-reset behaviour is now wired only for the unexpanded corner
+  state; a popped-out map closes via a new explicit close button instead,
+  which sits outside the zoomable area so it stays put regardless of zoom.
 - [x] **11. Shot browser needs to jump, not just step** — *done.*
   `ShotQueue.js`'s queue browser now has six navigation targets —
   First / -10 / Previous / Next / +10 / Last — plus a **Jump to** dropdown
@@ -949,15 +961,27 @@ shot browser's jump controls). The other ten are open.
   doubling as the post-game history view — which is exactly the case that
   prompted the report. The dropdown is hidden below two shots, where it has
   nothing to offer.
-- [ ] **12. Outfit-picking flow is genuinely confusing, and some guests
-  never actually joined** — ties #2 and #3 together and adds a third:
-  tapping an outfit option (`OptionRow`) is pure local state, no API call —
-  only the separate confirm screen's "Lock in my choice" actually claims the
-  slot (`claimOption` → `pick_outfit`). Several guests stopped after the
-  first tap believing they'd joined; they hadn't. Needs: (a) unambiguous
-  "what you're wearing, not what you'd like" copy on the wardrobe step; (b)
-  the tap-option and confirm-and-lock-in steps to read as one continuous
-  action rather than two, with no silent stopping point.
+- [x] **12. Outfit-picking flow is genuinely confusing, and some guests
+  never actually joined** — *done, together with #2.* Ties #2 and #3
+  together and adds a third: tapping an outfit option (`OptionRow`) was pure
+  local state, no API call — only the separate confirm screen's "Lock in my
+  choice" actually claims the slot (`claimOption` → `pick_outfit`), and
+  several guests stopped after the first tap believing they'd joined. The
+  confirm screen is now retitled "One more step to join", says outright that
+  the outfit isn't joined yet, and the checkbox row is visually flagged
+  pending (orange) vs. done (green) rather than reading as a passive label
+  under an outfit that already looked final — matching #2's wardrobe-copy
+  fix above.
+
+  **Follow-up nudge (Charles, 31 Aug).** The wardrobe step's default was
+  still empty - a player who ticked nothing (or too little) got a thin,
+  often non-canonical option set, which is a second way to land on a bad
+  outfit even with #2 and #12's fixes in place. Every colour now starts
+  **ticked**, not empty: a player who never touches the step still gets
+  offered outfits at all, ranked canonical-first, which is the outcome we
+  actually want (`defaultWardrobe`, `PickOutfit.js`). Ticking is reframed
+  as narrowing down for a better match (untick what you don't have) rather
+  than building up from nothing - the wardrobe intro copy changed to match.
 
 **One item dropped.** A reported backend typo in "parliament" could not be
 located anywhere in the checked-out code (`venues.py`, `test_world/
@@ -966,9 +990,10 @@ alarm.
 
 **Lands in:** across the frontend (`JoinQRCodes.js`, `PickOutfit.js`,
 `OnboardingView.js`, `NewItems.js`, `MapView.js`, `ShotQueue.js`,
-`ShotReplay.js`) and a couple of backend spots (`model.py`, `main.py`,
-`shot_escalation.py`); see `docs/dry_run_feedback_2026-08-30.md` for exact
-file:line citations and reasoning per item.
+`ShotHistory.js`, and a new shared `weapons.js` extracted from
+`AdminMode.js`) and the backend (`model.py`, `user_interface.py`); see
+`docs/dry_run_feedback_2026-08-30.md` for exact file:line citations and
+reasoning per item.
 **Depends on:** nothing blocking — twelve independent fixes.
 **Feeds:** R9's manual pass — several of these are exactly the kind of thing
 R9 exists to catch, just surfaced a session early, by real guests, instead of

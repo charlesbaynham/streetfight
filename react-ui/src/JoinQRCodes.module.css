@@ -27,3 +27,20 @@
 .capacityLine {
   color: #555;
 }
+
+.joinLinkRow {
+  display: flex;
+  gap: 0.4em;
+  margin-top: 0.6em;
+}
+
+.joinLinkInput {
+  flex: 1;
+  min-width: 0;
+  font-size: smaller;
+  padding: 0.3em;
+}
+
+.copyButton {
+  flex-shrink: 0;
+}

@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 
 import { sendAPIRequest } from "./utils";
+import { WEAPONS } from "./weapons";
 
 const ITEM_PARAMS = {
   ammo: ["num"],
@@ -10,6 +11,26 @@ const ITEM_PARAMS = {
   medpack: [],
   weapon: ["shot_damage", "shot_timeout"],
 };
+
+// A loot drop for "No weapon" makes no sense - that entry exists only for
+// AdminMode's per-player select, to describe a player who currently has
+// none.
+const WEAPON_LOOT_NAMES = Object.keys(WEAPONS).filter(
+  (name) => name !== "No weapon",
+);
+
+// The weapon select is controlled by name, but what's actually held in
+// selectedItemData is the (damage, timeout) pair updateItemQR posts - so
+// look the name back up from those, the same way AdminMode's weaponName
+// does for a player's stats.
+function selectedWeaponName(selectedItemData) {
+  const damage = selectedItemData.weaponshot_damage;
+  const timeout = selectedItemData.weaponshot_timeout;
+  for (const [name, [d, t]] of Object.entries(WEAPONS)) {
+    if (d === damage && t === timeout) return name;
+  }
+  return null;
+}
 
 function ItemDisplay({ item }) {
   const item_type = item["itype"];
@@ -99,25 +120,51 @@ export default function NewItems() {
       <b>Properties:</b>
       <br />
 
-      {ITEM_PARAMS[selectedItemType].map((data_name) => {
-        const key = selectedItemType + data_name;
+      {selectedItemType === "weapon" ? (
+        <div>
+          <span>weapon:</span>
+          <select
+            value={selectedWeaponName(selectedItemData) || ""}
+            onChange={(e) => {
+              const [shot_damage, shot_timeout] = WEAPONS[e.target.value];
+              setSelectedItemData({
+                ...selectedItemData,
+                weaponshot_damage: shot_damage,
+                weaponshot_timeout: shot_timeout,
+              });
+            }}
+          >
+            <option value="" disabled>
+              choose a weapon
+            </option>
+            {WEAPON_LOOT_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        ITEM_PARAMS[selectedItemType].map((data_name) => {
+          const key = selectedItemType + data_name;
 
-        return (
-          <div key={key}>
-            <span>{data_name}:</span>
-            <input
-              type="number"
-              value={key in selectedItemData ? selectedItemData[key] : ""}
-              onChange={(e) => {
-                // Clone the object to trigger a state update
-                const new_data = { ...selectedItemData };
-                new_data[key] = e.target.value;
-                setSelectedItemData(new_data);
-              }}
-            />
-          </div>
-        );
-      })}
+          return (
+            <div key={key}>
+              <span>{data_name}:</span>
+              <input
+                type="number"
+                value={key in selectedItemData ? selectedItemData[key] : ""}
+                onChange={(e) => {
+                  // Clone the object to trigger a state update
+                  const new_data = { ...selectedItemData };
+                  new_data[key] = e.target.value;
+                  setSelectedItemData(new_data);
+                }}
+              />
+            </div>
+          );
+        })
+      )}
 
       <br />
       <label htmlFor="collected_only_once">collected_only_once</label>

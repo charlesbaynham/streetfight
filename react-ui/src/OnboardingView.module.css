@@ -52,6 +52,7 @@
 .done .nameInput {
   border-color: green;
   color: green;
+  background-color: rgba(0, 128, 0, 0.2);
 }
 
 button.stackedItem {
@@ -103,6 +104,16 @@ button.stackedItem {
   left: 50%;
   top: 50%;
   transform: translateX(-55%) translateY(-50%);
+}
+
+.locationError {
+  width: 80vw;
+  max-width: 150mm;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2mm 10mm 4mm;
+  color: #ff8080;
+  font-size: smaller;
 }
 
 .logo {

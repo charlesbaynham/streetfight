@@ -24,7 +24,7 @@ import { MapViewAdmin } from "./MapView";
 import { fallbackTeamColour } from "./teamColours";
 import UpdateListener from "./UpdateListener";
 import { charlesBotVerdict, verdictText } from "./ShotQueue";
-import { weaponName } from "./AdminMode";
+import { weaponName } from "./weapons";
 import { hexFor } from "./Swatch";
 import useWakeLock from "./useWakeLock";
 import { sendAPIRequest } from "./utils";

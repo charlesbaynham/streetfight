@@ -45,6 +45,31 @@ export default function JoinQRCodes({ game_id }) {
               >
                 <QRCode value={team.encoded_url} size={256} />
               </a>
+              {/* A QR image is useless to forward from the same phone someone
+                  would scan it with (item 1 of the 30 Aug dry-run feedback) -
+                  this is the plain link, visible and selectable, to paste
+                  straight into a WhatsApp message. */}
+              <div className={styles.joinLinkRow}>
+                <input
+                  className={styles.joinLinkInput}
+                  type="text"
+                  readOnly
+                  value={team.encoded_url}
+                  aria-label={`Join link text for team ${team.team_name}`}
+                  onFocus={(e) => e.target.select()}
+                />
+                <button
+                  type="button"
+                  className={styles.copyButton}
+                  onClick={() => {
+                    if (navigator.clipboard && navigator.clipboard.writeText) {
+                      navigator.clipboard.writeText(team.encoded_url);
+                    }
+                  }}
+                >
+                  Copy
+                </button>
+              </div>
               <p className={styles.capacityLine}>
                 holds {team.capacity} players at full accuracy
               </p>

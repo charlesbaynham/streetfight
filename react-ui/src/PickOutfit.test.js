@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
 import PickOutfit from "./PickOutfit";
@@ -94,6 +94,24 @@ function makeOptionsResult(overrides = {}) {
   };
 }
 
+// Renders the current router location so navigation triggered by the page
+// under test (the game-start poll redirecting to /) is observable, matching
+// JoinFromQueryParams.test.js's own helper of the same shape.
+function LocationDisplay() {
+  const location = useLocation();
+  return (
+    <div data-testid="location">{location.pathname + location.search}</div>
+  );
+}
+
+// Advances only the microtask queue, not any timer - safe to use whether or
+// not fake timers are active, since Promise resolution isn't timer-driven.
+async function flushMicrotasks(ticks = 5) {
+  await act(async () => {
+    for (let i = 0; i < ticks; i++) await Promise.resolve();
+  });
+}
+
 function renderPickOutfit(initialEntry = "/pick?j=CODE1") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -165,10 +183,12 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   // The confirm checkbox has moved off this step entirely.
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
+  // Every colour starts ticked (the nudge) - untick the ones this player
+  // doesn't have, leaving just black in each channel.
   const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
-  userEvent.click(within(tshirtGroup).getByRole("button", { name: "black" }));
+  userEvent.click(within(tshirtGroup).getByRole("button", { name: "red" }));
   const trousersGroup = screen.getByRole("group", { name: "Trousers" });
-  userEvent.click(within(trousersGroup).getByRole("button", { name: "black" }));
+  userEvent.click(within(trousersGroup).getByRole("button", { name: "blue" }));
 
   await showOutfits();
 
@@ -191,6 +211,82 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
   expect(screen.queryByText(/^Hat:/)).not.toBeInTheDocument();
   expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
+});
+
+test("the wardrobe intro explains the nudge: everything starts ticked, untick what isn't actually worn", async () => {
+  installFetchMock({ join_options: makeJoinData() });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  expect(screen.getByText(/ticked to start/i)).toBeInTheDocument();
+  expect(screen.getByText(/won't wear on the night/i)).toBeInTheDocument();
+});
+
+test("every swatch starts ticked, with the checkbox-style tick shown from the first render", async () => {
+  installFetchMock({ join_options: makeJoinData() });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+  const blackSwatch = within(tshirtGroup).getByRole("button", {
+    name: "black",
+  });
+
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("true");
+  expect(within(blackSwatch).getByText("✓")).toBeInTheDocument();
+
+  userEvent.click(blackSwatch);
+
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("false");
+  expect(within(blackSwatch).queryByText("✓")).not.toBeInTheDocument();
+});
+
+test("the confirm screen makes clear the outfit isn't joined yet until it's locked in", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+
+  expect(screen.getByText(/haven't joined yet/i)).toBeInTheDocument();
+
+  const checkbox = screen.getByRole("checkbox", {
+    name: /wear this on the night/,
+  });
+  // Unchecked reads as needing action (a distinct class from the checked
+  // state), not just a passive label sitting beneath the outfit.
+  expect(checkbox.closest("label").className).toMatch(/confirmRowPending/);
+
+  userEvent.click(checkbox);
+  expect(checkbox.closest("label").className).toMatch(/confirmRowChecked/);
+});
+
+test("a player who touches nothing still gets offered outfits, built from every colour ticked by default", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  expect(getLastAPICall("outfit_options").body).toEqual({
+    data: "CODE1",
+    wardrobe: { tshirt: ["black", "red"], trousers: ["black", "blue"] },
+    relaxed: false,
+    page: 0,
+  });
+  expect(screen.getByText("preferred")).toBeInTheDocument();
 });
 
 test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
@@ -296,7 +392,7 @@ test("tapping an option shows the confirmation screen without claiming it, and L
   await actAndFlush(() => userEvent.click(row));
 
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
-  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+  expect(screen.getByText("One more step to join")).toBeInTheDocument();
 
   const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
   expect(lockIn).toBeDisabled();
@@ -440,7 +536,10 @@ test("ticking the confirm box and pressing Lock in my choice claims the outfit a
   ).toBeInTheDocument();
   expect(getLastAPICall("pick_outfit").body).toEqual({
     data: "CODE1",
-    wardrobe: {},
+    // Nobody unticked anything in this test, so the nudge's full default
+    // wardrobe (every colour in makeJoinData's channels) is what gets
+    // posted.
+    wardrobe: { tshirt: ["black", "red"], trousers: ["black", "blue"] },
     appearance: makeOption().appearance,
     confirmed: true,
   });
@@ -462,7 +561,7 @@ test("Choose a different outfit returns to the options list without claiming any
 
   const row = screen.getByRole("button", { name: /Choose:/ });
   await actAndFlush(() => userEvent.click(row));
-  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+  expect(screen.getByText("One more step to join")).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(
@@ -470,7 +569,7 @@ test("Choose a different outfit returns to the options list without claiming any
     ),
   );
 
-  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
+  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Choose:/ })).toBeInTheDocument();
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
 });
@@ -496,6 +595,55 @@ test("a returning visitor whose slot is already set sees the result, not the for
   expect(
     screen.queryByText("You already joined a team:"),
   ).not.toBeInTheDocument();
+});
+
+test("once an outfit is locked in, polling picks up the game going active and redirects to /", async () => {
+  let gameActive = false;
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        wardrobe: { tshirt: ["black"] },
+        canonical_appearance: makeOption().appearance,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+    user_info: () => ({ active: gameActive }),
+  });
+
+  jest.useFakeTimers();
+  try {
+    render(
+      <MemoryRouter initialEntries={["/pick?j=CODE1"]}>
+        <PickOutfit />
+        <LocationDisplay />
+      </MemoryRouter>,
+    );
+    await flushMicrotasks();
+
+    expect(
+      screen.getByText("Locked in - please screenshot this page!"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
+    expect(getAPICalls("user_info")).toHaveLength(0);
+
+    // Not active yet - a tick of the poll changes nothing.
+    await act(async () => {
+      jest.advanceTimersByTime(12000);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+    expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
+
+    gameActive = true;
+    await act(async () => {
+      jest.advanceTimersByTime(12000);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/");
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("another team's link, tapped after picking, names the team already joined", async () => {
@@ -554,7 +702,7 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
       "Someone just took that outfit - please choose again.",
     ),
   ).toBeInTheDocument();
-  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
+  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });
 
@@ -756,6 +904,102 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
   expect(
     screen.getByRole("button", { name: "Show more outfits" }),
   ).toBeInTheDocument();
+});
+
+// ---------------------------------------------------------------------------
+// Progress bar - a continuous "how far through joining am I" nudge, on top
+// of the confirm screen's own warning (item 12's fix). Percent is read as
+// visible text (e.g. "40%") rather than off the styled fill width, since
+// that's what a player actually sees.
+// ---------------------------------------------------------------------------
+
+test("the progress bar climbs through every stage of the flow, ending at 100% once locked in", async () => {
+  installFetchMock({
+    join_options: makeJoinData({ you: null }),
+    outfit_options: makeOptionsResult(),
+    set_name: {},
+    pick_outfit: {
+      user_id: "u1",
+      name: "Alice",
+      team_name: "Reds",
+      slot: 1,
+      overrides: null,
+      wardrobe: {},
+      canonical_appearance: makeOption().appearance,
+      effective_appearance: makeOption().appearance,
+      overridden: false,
+    },
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  expect(screen.getByText("0%")).toBeInTheDocument();
+
+  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  await actAndFlush(() => {
+    fireEvent.change(nameBox, { target: { value: "Alice" } });
+    fireEvent.keyDown(nameBox, { key: "Enter" });
+  });
+  expect(screen.getByText("20%")).toBeInTheDocument();
+
+  await showOutfits();
+  expect(screen.getByText("40%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  expect(screen.getByText("60%")).toBeInTheDocument();
+
+  userEvent.click(
+    screen.getByRole("checkbox", { name: /wear this on the night/ }),
+  );
+  expect(screen.getByText("80%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+  );
+  expect(screen.getByText("100%")).toBeInTheDocument();
+});
+
+test("choosing a different outfit drops the progress bar back down honestly, rather than only ever climbing", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+  expect(screen.getByText("40%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+  expect(screen.getByText("60%")).toBeInTheDocument();
+
+  await actAndFlush(() =>
+    userEvent.click(
+      screen.getByRole("button", { name: "Choose a different outfit" }),
+    ),
+  );
+  expect(screen.getByText("40%")).toBeInTheDocument();
+});
+
+test("a returning visitor whose slot is already set sees the progress bar already at 100%", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        wardrobe: { tshirt: ["black"] },
+        canonical_appearance: makeOption().appearance,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+  });
+
+  renderPickOutfit();
+
+  expect(await screen.findByText("100%")).toBeInTheDocument();
 });
 
 // The footer is trivial to render but easy to break silently: it must survive

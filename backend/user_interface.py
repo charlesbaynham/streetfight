@@ -559,6 +559,7 @@ class UserInterface:
             game=game,
             image_base64=image_base64,
             shot_damage=user.shot_damage,
+            shot_timeout=user.shot_timeout,
             location_context=json.dumps(all_user_locations, default=str),
             heading=heading,
         )
@@ -645,6 +646,11 @@ class UserInterface:
                     "ai_review_state": shot.ai_review_state,
                     "ai_suggestion": suggestion,
                     "ai_target_name": ai_target_name,
+                    # Lets the frontend name the weapon (react-ui/src/weapons.js's
+                    # WEAPONS, shared with the admin queue) without a second
+                    # round trip.
+                    "shot_damage": shot.shot_damage,
+                    "shot_timeout": shot.shot_timeout,
                     **self._appeal_fields(shot, me, APPEAL_PARTY_SHOOTER),
                 }
             )

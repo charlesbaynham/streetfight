@@ -143,6 +143,27 @@
   top: 0;
 }
 
+/* Sits outside TransformComponent, so it stays put in the corner of the
+   popped-out map regardless of zoom/pan - the one way to close a popped-out
+   map, now that tapping the map surface itself no longer does. */
+.closeButton {
+  position: absolute;
+  z-index: 101;
+  top: 0.4em;
+  right: 0.4em;
+  width: 2em;
+  height: 2em;
+  min-width: 44px;
+  min-height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  font-size: 1.2em;
+  line-height: 1;
+  cursor: pointer;
+}
+
 /* Fill whatever box the parent gives us, at whatever aspect ratio. The
    expanded map is square because a phone screen is roughly square once the
    HUD is off it; a map panel on a widescreen display is not. */

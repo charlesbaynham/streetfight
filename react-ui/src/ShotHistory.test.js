@@ -432,6 +432,41 @@ describe("ShotHistoryController", () => {
     expect(screen.queryByText(/All shots/)).not.toBeInTheDocument();
   });
 
+  test("the detail view names the weapon that fired the shot, when it recognises the pairing", async () => {
+    const shot = makeShot({
+      checked: false,
+      shot_damage: 2,
+      shot_timeout: 6,
+    });
+    installFetchMock({ user_shots: [shot] });
+
+    render(<ShotHistoryController />);
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
+
+    act(() => openShotHistory(shot.id));
+
+    expect(
+      await screen.findByText("Fired with Tracka-Tracka"),
+    ).toBeInTheDocument();
+  });
+
+  test("the detail view names nothing when the shot carries no weapon data", async () => {
+    const shot = makeShot({ checked: false });
+    installFetchMock({ user_shots: [shot] });
+
+    render(<ShotHistoryController />);
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
+
+    act(() => openShotHistory(shot.id));
+
+    await screen.findByText(/All shots/);
+    expect(screen.queryByText(/Fired with/)).not.toBeInTheDocument();
+  });
+
   test("closing the popup clears the selected shot, so reopening shows the list", async () => {
     const shot = makeShot({ checked: false });
     installFetchMock({ user_shots: [shot] });
