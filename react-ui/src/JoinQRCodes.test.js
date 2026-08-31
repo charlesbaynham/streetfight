@@ -65,6 +65,45 @@ test("each QR is itself a link to that team's join URL", async () => {
   ).toHaveAttribute("href", "https://example.com?j=navy");
 });
 
+test("each card shows the join link as visible, selectable text alongside the QR code", async () => {
+  installFetchMock({ admin_join_qr_codes: REPORT });
+  render(<JoinQRCodes game_id="game-1" />);
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
+
+  const burgundyLinkText = await screen.findByLabelText(
+    "Join link text for team Burgundy",
+  );
+  expect(burgundyLinkText).toHaveValue("https://example.com?j=burgundy");
+  expect(burgundyLinkText).toHaveAttribute("readonly");
+
+  expect(
+    screen.getByLabelText("Join link text for team Navy"),
+  ).toHaveValue("https://example.com?j=navy");
+});
+
+test("Copy writes the team's join link to the clipboard", async () => {
+  installFetchMock({ admin_join_qr_codes: REPORT });
+  const writeText = jest.fn();
+  Object.defineProperty(window.navigator, "clipboard", {
+    configurable: true,
+    value: { writeText },
+  });
+  render(<JoinQRCodes game_id="game-1" />);
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: "Generate" })),
+  );
+  await screen.findByText("Team Burgundy");
+
+  const copyButtons = screen.getAllByRole("button", { name: "Copy" });
+  userEvent.click(copyButtons[0]);
+
+  expect(writeText).toHaveBeenCalledWith("https://example.com?j=burgundy");
+});
+
 test("each team card names its colour and full-accuracy capacity", async () => {
   installFetchMock({ admin_join_qr_codes: REPORT });
   render(<JoinQRCodes game_id="game-1" />);
