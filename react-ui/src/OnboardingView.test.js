@@ -34,6 +34,10 @@ function isDone(text) {
   return /\bdone\b/.test(stepButton(text).className);
 }
 
+function isWarn(text) {
+  return /\bwarn\b/.test(stepButton(text).className);
+}
+
 function mockGeolocationSuccess() {
   window.navigator.geolocation.getCurrentPosition.mockImplementation(
     (success) => success({ coords: { latitude: 51.4, longitude: -0.3 } }),
@@ -184,6 +188,40 @@ test("clicking the location step and being denied leaves it not done", async () 
   expect(window.navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
   expect(isDone("Grant location permission:")).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
+});
+
+test("tapping the location button fewer than five times does not bypass it", async () => {
+  setPermission("camera", "granted");
+  // getCurrentPosition is left as the default bare jest.fn() (see testUtils.js),
+  // which never calls its success or error callback - modelling the iPhone
+  // bug where the permission prompt never appears at all.
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  const button = stepButton("Grant location permission:");
+  fireEvent.click(button);
+  fireEvent.click(button);
+  fireEvent.click(button);
+  fireEvent.click(button);
+
+  expect(isDone("Grant location permission:")).toBe(false);
+  expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
+});
+
+test("tapping the location button five times in a row bypasses it, and unlocks the rest of onboarding", async () => {
+  setPermission("camera", "granted");
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  const button = stepButton("Grant location permission:");
+  for (let i = 0; i < 5; i++) {
+    fireEvent.click(button);
+  }
+
+  const bypassedText = /Location skipped/;
+  expect(isDone(bypassedText)).toBe(true);
+  expect(isWarn(bypassedText)).toBe(true);
+  expect(
+    screen.getByText("Scan your team's join QR code with your camera app..."),
+  ).toBeInTheDocument();
 });
 
 test("clicking the webcam step requests camera access and marks itself done", async () => {
