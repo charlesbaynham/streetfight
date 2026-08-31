@@ -8,6 +8,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
 import { sendAPIRequest } from "./utils";
+import { weaponName } from "./weapons";
 import {
   countUnseenShots,
   getShotImage,
@@ -395,6 +396,9 @@ function ShotDetail({ shot, onBack, appealsRemaining, onAppealed }) {
         wrapperClassName={styles.detailImageWrapper}
       />
       <p className={styles.rowTime}>{formatShotTime(shot.time_created)}</p>
+      {weaponName(shot) ? (
+        <p className={styles.rowSublabel}>Fired with {weaponName(shot)}</p>
+      ) : null}
       {shot.my_appeal_reason ? (
         <p className={styles.rowSublabel}>
           You appealed: {reasonLabel(shot, shot.my_appeal_reason)}

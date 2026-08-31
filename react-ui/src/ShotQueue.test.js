@@ -478,6 +478,28 @@ describe("ShotQueuePanel", () => {
     );
   });
 
+  test("names the weapon that fired the shot, when its damage/timeout match one", async () => {
+    shotsById["shot-1"] = makeShotDetail("shot-1", {
+      shot_damage: 2,
+      shot_timeout: 6,
+    });
+    await renderQueue();
+
+    expect(
+      screen.getByText("By Shooter of shot-1 with Tracka-Tracka"),
+    ).toBeInTheDocument();
+  });
+
+  test("names nothing extra for a shot with no recognised weapon pairing", async () => {
+    shotsById["shot-1"] = makeShotDetail("shot-1", {
+      shot_damage: 9,
+      shot_timeout: 9,
+    });
+    await renderQueue();
+
+    expect(screen.getByText("By Shooter of shot-1")).toBeInTheDocument();
+  });
+
   test("Hit posts admin_shot_hit_user with the shot id and the chosen target's id, then refreshes the queue", async () => {
     await renderQueue();
     const before = getAPICalls("admin_get_shots_info").length;

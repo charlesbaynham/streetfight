@@ -37,6 +37,25 @@ def test_a_real_shot_is_stamped_by_the_database(
     assert abs(stamped - now) < datetime.timedelta(minutes=5)
 
 
+def test_submit_shot_records_shot_timeout(db_session, user_in_team, test_image_string):
+    """shot_timeout is captured alongside shot_damage for the same reason:
+    damage alone can't name a weapon (react-ui/src/weapons.js's WEAPONS keys
+    on both, since e.g. Pewster and Eat-a-bullet share damage 1), so both
+    have to be frozen at the moment of firing."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    ui.set_weapon_data(damage=2, fire_delay=6)
+
+    shot_id = ui.submit_shot(test_image_string)
+
+    assert db_session.get(Shot, shot_id).shot_timeout == 6
+
+    # Picking up a later upgrade must not retroactively change what this
+    # shot recorded - it is a snapshot of the moment it was fired.
+    ui.set_weapon_data(damage=3, fire_delay=1)
+    assert db_session.get(Shot, shot_id).shot_timeout == 6
+
+
 def test_submit_shot_no_ammo(user_in_team, test_image_string):
     ui = UserInterface(user_in_team)
     with pytest.raises(HTTPException):
@@ -345,7 +364,11 @@ def test_shot_history_only_shares_the_ai_bottom_line(
     (shot,) = UserInterface(user_in_team).get_own_shots()
     assert shot["ai_review_state"] == "done"
     assert shot["ai_suggestion"] == "hit"
-    # No reasoning, no clothing readings, no image - just the summary fields
+    # No reasoning, no clothing readings, no image - just the summary fields.
+    # shot_damage/shot_timeout are the exception worth calling out: not
+    # sensitive and not bulky like the excluded fields, and needed so the
+    # frontend can name the weapon (react-ui/src/weapons.js's WEAPONS,
+    # shared with the admin queue) without a second round trip.
     assert set(shot.keys()) == {
         "id",
         "time_created",
@@ -355,6 +378,8 @@ def test_shot_history_only_shares_the_ai_bottom_line(
         "ai_review_state",
         "ai_suggestion",
         "ai_target_name",
+        "shot_damage",
+        "shot_timeout",
         "appeal_state",
         "my_appeal_reason",
         "can_appeal",
