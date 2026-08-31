@@ -201,8 +201,10 @@ function MapCircles({
 }
 
 // The map, once we know which venue we're playing at. Split out from MapView
-// so that all of this can assume it has a geometry to draw against.
-function VenueMapView({
+// so that all of this can assume it has a geometry to draw against. Exported
+// for tests only - MapView is the one thing anything outside this file
+// should ever mount.
+export function VenueMapView({
   geometry,
   ownPosition = null,
   other_positions_and_details = [],
@@ -464,20 +466,41 @@ function VenueMapView({
                 />
               )}
 
-              {/* A box that intercepts clicks - transparent and at the top z-order */}
+              {/* A box that intercepts clicks - transparent and at the top z-order.
+              Only wired for the unexpanded corner map (tap to pop out): once
+              popped out this sits inside the zoomable TransformComponent, so
+              leaving it wired to "any tap toggles" made a pinch-zoom gesture's
+              own closing tap collapse the map straight back to its corner and
+              reset the zoom on the same gesture. Closing a popped-out map goes
+              through the explicit close button below instead. */}
               <div
                 className={styles.clickCatcher}
+                data-testid="map-click-catcher"
                 onClick={
-                  alwaysExpanded
+                  alwaysExpanded || poppedOut
                     ? null
                     : () => {
-                        setPoppedOut(!poppedOut);
+                        setPoppedOut(true);
                         resetTransform();
                         handleResize();
                       }
                 }
               />
             </TransformComponent>
+            {poppedOut && !alwaysExpanded ? (
+              <button
+                type="button"
+                className={styles.closeButton}
+                aria-label="Close map"
+                onClick={() => {
+                  setPoppedOut(false);
+                  resetTransform();
+                  handleResize();
+                }}
+              >
+                ×
+              </button>
+            ) : null}
           </div>
         )
       }
