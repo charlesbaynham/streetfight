@@ -19,6 +19,7 @@ import { MapViewSelf } from "./MapView";
 import {
   isLocationPermissionGranted,
   isCameraPermissionGranted,
+  isLocationBypassActive,
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
@@ -40,7 +41,8 @@ function GetView({ user }) {
       isLocationPermissionGranted(),
       isCameraPermissionGranted(),
     ]).then(([locationGranted, cameraGranted]) => {
-      setPermissionsGranted(locationGranted && cameraGranted);
+      const locationOk = locationGranted || isLocationBypassActive();
+      setPermissionsGranted(locationOk && cameraGranted);
     });
   }, [triggerPermissionsRecheck, user]);
 

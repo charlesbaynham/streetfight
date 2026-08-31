@@ -134,6 +134,31 @@ export async function requestGeolocationPermission() {
   }
 }
 
+// Some iPhones never show the location prompt at all - getCurrentPosition
+// just hangs, so requestGeolocationPermission above neither resolves nor
+// rejects and the player is stuck at the onboarding gate with no way through.
+// Tapping the location button several times in a row lets them declare the
+// bypass themselves. It's remembered in localStorage (rather than a plain
+// variable, the same reasoning as ORIENTATION_GRANTED_KEY below) because the
+// player may reload the page after tapping through.
+const LOCATION_BYPASS_KEY = "streetfight_location_bypass";
+
+export function isLocationBypassActive() {
+  try {
+    return window.localStorage.getItem(LOCATION_BYPASS_KEY) === "true";
+  } catch {
+    return false;
+  }
+}
+
+export function setLocationBypass() {
+  try {
+    window.localStorage.setItem(LOCATION_BYPASS_KEY, "true");
+  } catch {
+    // Best effort - worst case they just have to tap through again later.
+  }
+}
+
 // The device compass, used to record which way a shot was fired
 // (docs/roadmap.md R5b). Everything here is best-effort: a phone with no
 // compass, or a player who says no, simply has no heading recorded, and

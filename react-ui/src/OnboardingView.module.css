@@ -90,6 +90,14 @@ button.stackedItem {
   background-color: green;
 }
 
+.warn {
+  color: #e0a835;
+}
+
+.warn .actionButton {
+  background-color: #e0a835;
+}
+
 .actionButton img {
   width: 60%;
   position: absolute;

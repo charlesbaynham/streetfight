@@ -14,9 +14,11 @@ import {
   getEventSources,
   emitUpdate,
   grantAllPermissions,
+  setPermission,
   makeUser,
   actAndFlush,
 } from "./testUtils";
+import { setLocationBypass } from "./utils";
 
 // WebcamView, MapView and FullscreenButton are heavy children that fight
 // jsdom (real camera/canvas access, react-zoom-pan-pinch, add-to-homescreen).
@@ -120,6 +122,18 @@ test("shows onboarding when permissions aren't granted, even though everything e
   );
   await flushPendingEffects();
   expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+});
+
+test("shows the in-game HUD when location was bypassed instead of granted", async () => {
+  // Camera is properly granted, but location never was - the player tapped
+  // through the onboarding gate's bypass instead (OnboardingView.js).
+  setPermission("camera", "granted");
+  setLocationBypass();
+  installFetchMock({ user_info: readyUser(), user_shots: [] });
+  await actAndFlush(renderUserMode);
+
+  await waitFor(() => expect(screen.getByText(/Ammo:/)).toBeInTheDocument());
+  await flushPendingEffects();
 });
 
 test("shows the in-game HUD for a living player once everything is satisfied", async () => {
