@@ -7,11 +7,14 @@
 // for the ranking rationale behind the flow below.
 //
 // Deliberately outside UserMode: no map, no webcam, no SSE, no permission
-// polling - this page only ever talks to join_options / outfit_options /
-// pick_outfit.
+// polling while picking - this page only ever talks to join_options /
+// outfit_options / pick_outfit. The one exception is after the outfit is
+// locked in: a lightweight user_info poll (see PickOutfit's own effect)
+// hard-redirects to / once the game goes active, since nothing else on this
+// page would ever tell a player who left the tab open that it had started.
 
 import React, { useCallback, useEffect, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import Popup from "./Popup";
 import { sendAPIRequest } from "./utils";
@@ -644,9 +647,15 @@ function PickOutfitForm({
   );
 }
 
+// How often to check whether the game has gone active, once an outfit is
+// locked in - the same idiom OnboardingView/UserMode uses for its own
+// permission recheck, not a full SSE connection.
+const GAME_START_POLL_MS = 12000;
+
 function PickOutfit() {
   const query = useQuery();
   const code = query.get("j");
+  const navigate = useNavigate();
 
   const [joinData, setJoinData] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -681,6 +690,27 @@ function PickOutfit() {
     joinData.you.slot !== null &&
     joinData.you.slot !== undefined;
   const result = pickedRow || (alreadyPicked ? joinData.you : null);
+
+  // Once an outfit is locked in, there's nothing left to do on this page but
+  // wait for the game to start - and this page never opens an SSE
+  // connection, so without this a player who picked ahead of time and left
+  // the tab open would have no way in once the game actually kicked off.
+  useEffect(() => {
+    if (!result) return undefined;
+    let cancelled = false;
+    const checkActive = () => {
+      sendAPIRequest("user_info", null, "GET", (data) => {
+        if (!cancelled && data && data.active) {
+          navigate("/");
+        }
+      });
+    };
+    const interval = setInterval(checkActive, GAME_START_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [result, navigate]);
 
   return (
     <div className={styles.outerContainer}>

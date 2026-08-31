@@ -1,6 +1,6 @@
 import React from "react";
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
 import PickOutfit from "./PickOutfit";
@@ -92,6 +92,24 @@ function makeOptionsResult(overrides = {}) {
     exhausted: false,
     ...overrides,
   };
+}
+
+// Renders the current router location so navigation triggered by the page
+// under test (the game-start poll redirecting to /) is observable, matching
+// JoinFromQueryParams.test.js's own helper of the same shape.
+function LocationDisplay() {
+  const location = useLocation();
+  return (
+    <div data-testid="location">{location.pathname + location.search}</div>
+  );
+}
+
+// Advances only the microtask queue, not any timer - safe to use whether or
+// not fake timers are active, since Promise resolution isn't timer-driven.
+async function flushMicrotasks(ticks = 5) {
+  await act(async () => {
+    for (let i = 0; i < ticks; i++) await Promise.resolve();
+  });
 }
 
 function renderPickOutfit(initialEntry = "/pick?j=CODE1") {
@@ -556,6 +574,59 @@ test("a returning visitor whose slot is already set sees the result, not the for
   expect(
     screen.queryByText("You already joined a team:"),
   ).not.toBeInTheDocument();
+});
+
+test("once an outfit is locked in, polling picks up the game going active and redirects to /", async () => {
+  let gameActive = false;
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        wardrobe: { tshirt: ["black"] },
+        canonical_appearance: makeOption().appearance,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+    user_info: () => ({ active: gameActive }),
+  });
+
+  jest.useFakeTimers();
+  try {
+    render(
+      <MemoryRouter initialEntries={["/pick?j=CODE1"]}>
+        <PickOutfit />
+        <LocationDisplay />
+      </MemoryRouter>,
+    );
+    await flushMicrotasks();
+
+    expect(
+      screen.getByText("Locked in - please screenshot this page!"),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/pick?j=CODE1",
+    );
+    expect(getAPICalls("user_info")).toHaveLength(0);
+
+    // Not active yet - a tick of the poll changes nothing.
+    await act(async () => {
+      jest.advanceTimersByTime(12000);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+    expect(screen.getByTestId("location")).toHaveTextContent(
+      "/pick?j=CODE1",
+    );
+
+    gameActive = true;
+    await act(async () => {
+      jest.advanceTimersByTime(12000);
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+    });
+
+    expect(screen.getByTestId("location")).toHaveTextContent("/");
+  } finally {
+    jest.useRealTimers();
+  }
 });
 
 test("another team's link, tapped after picking, names the team already joined", async () => {
