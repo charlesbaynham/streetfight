@@ -55,19 +55,37 @@ jobs:
     # pushed to Cachix is one it has to build itself, which on a game night is
     # the difference between two minutes and half an hour. build_images.yml's
     # build_cloud_system job is what puts it there.
+    # The check run may not exist yet, or may still be queued/in-progress, if
+    # this deploy was dispatched hot on the heels of the push that triggered
+    # it. Rather than fail on that race, poll for up to ten minutes for it to
+    # land — a genuine failure (not just "not there yet") still fails fast.
     - name: Check the cloud closure was built
       if: ${{ !inputs.skip_build_check }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
-          --jq '.check_runs[] | select(.name == "build_cloud_system") | .conclusion' \
-          | head -n1)
-        if [ "$CONCLUSION" != "success" ]; then
-          echo "::error::build_cloud_system for $SHA is '${CONCLUSION:-missing}', not success." \
-            "Wait for it, or re-run with skip_build_check to let the droplet build it itself."
-          exit 1
-        fi
+        DEADLINE=$((SECONDS + 600))
+        while true; do
+          CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
+            --jq '.check_runs[] | select(.name == "build_cloud_system") | .conclusion' \
+            | head -n1)
+          if [ "$CONCLUSION" = "success" ]; then
+            echo "build_cloud_system for $SHA succeeded."
+            break
+          fi
+          if [ -n "$CONCLUSION" ] && [ "$CONCLUSION" != "null" ]; then
+            echo "::error::build_cloud_system for $SHA is '$CONCLUSION', not success." \
+              "Re-run with skip_build_check to let the droplet build it itself."
+            exit 1
+          fi
+          if [ "$SECONDS" -ge "$DEADLINE" ]; then
+            echo "::error::build_cloud_system for $SHA still '${CONCLUSION:-missing}' after 10 minutes." \
+              "Wait for it, or re-run with skip_build_check to let the droplet build it itself."
+            exit 1
+          fi
+          echo "build_cloud_system for $SHA is '${CONCLUSION:-missing}', waiting..."
+          sleep 20
+        done
 
     # Force, because rolling back to an earlier commit is the emergency path
     # and it is not a fast-forward.
