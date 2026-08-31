@@ -291,7 +291,7 @@ describe("ShotQueuePanel", () => {
         </MemoryRouter>,
       ),
     );
-    await screen.findByText("Shot 1 of 3:");
+    await screen.findByText(`Shot 1 of ${shotIds.length}:`);
     // The header (queue length) and the shot itself (loaded async, through
     // ShotCache) settle independently - wait for both before proceeding.
     await screen.findByAltText("The next shot in the queue");
@@ -355,6 +355,89 @@ describe("ShotQueuePanel", () => {
       userEvent.click(screen.getByRole("button", { name: "Previous" })),
     );
     expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument();
+  });
+
+  test("+10 / -10 jump ten at a time and clamp at both ends", async () => {
+    // A party's worth of shots, which is the case the jump controls exist for.
+    shotIds = Array.from({ length: 25 }, (_, i) => `shot-${i + 1}`);
+    shotsById = Object.fromEntries(
+      shotIds.map((id) => [id, makeShotDetail(id)]),
+    );
+    await renderQueue();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "+10" })),
+    );
+    expect(screen.getByText("Shot 11 of 25:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "+10" })),
+    );
+    expect(screen.getByText("Shot 21 of 25:")).toBeInTheDocument();
+
+    // Clamps at the end rather than overshooting off the queue.
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "+10" })),
+    );
+    expect(screen.getByText("Shot 25 of 25:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "-10" })),
+    );
+    expect(screen.getByText("Shot 15 of 25:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "-10" })),
+    );
+    expect(screen.getByText("Shot 5 of 25:")).toBeInTheDocument();
+
+    // ...and at the start.
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "-10" })),
+    );
+    expect(screen.getByText("Shot 1 of 25:")).toBeInTheDocument();
+  });
+
+  test("First / Last go to either end of the queue", async () => {
+    await renderQueue();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Last" })),
+    );
+    expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "First" })),
+    );
+    expect(screen.getByText("Shot 1 of 3:")).toBeInTheDocument();
+  });
+
+  test("the jump dropdown lists every shot by shooter and whether it is ruled on, and goes straight there", async () => {
+    shotsById["shot-3"] = makeShotDetail("shot-3", {
+      checked: true,
+      result: "miss",
+    });
+    await renderQueue();
+
+    // The ids arrive before the shots behind them, so the labels fill in.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "2. Shooter of shot-2" }),
+      ).toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("option", {
+        name: "3. Shooter of shot-3 (adjudicated)",
+      }),
+    ).toBeInTheDocument();
+
+    await actAndFlush(() =>
+      userEvent.selectOptions(screen.getByRole("combobox"), "2"),
+    );
+    expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("By Shooter of shot-3")).toBeInTheDocument(),
+    );
   });
 
   test("clamps the index down when the queue shrinks below it, rather than showing a blank panel", async () => {

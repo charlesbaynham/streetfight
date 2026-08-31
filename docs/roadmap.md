@@ -865,8 +865,8 @@ several of these are *silent* failures (a player believes they have joined
 when they have not) that a solo walkthrough is unlikely to hit, because the
 person doing it already knows what "done" is supposed to look like.
 
-**Status: one of twelve done** (#9, the escalation transcript). The other
-eleven are open.
+**Status: two of twelve done** (#9, the escalation transcript; #11, the
+shot browser's jump controls). The other ten are open.
 
 - [ ] **1. Join links, not just QR codes** — `JoinQRCodes.js` only exposes
   the join URL as the QR image's `href`; add a visible, copyable plain-text
@@ -933,10 +933,22 @@ eleven are open.
   gesture ends with — collapses the map back to its corner and resets the
   zoom. Gate the toggle-and-reset behaviour to the unexpanded corner state
   only.
-- [ ] **11. Shot browser needs to jump, not just step** — `ShotQueue.js`'s
-  admin queue view only has one-at-a-time Next/Previous
-  (`currentShotIdx +/- 1`); add a +10/-10 jump and a dropdown to go straight
-  to a shot index.
+- [x] **11. Shot browser needs to jump, not just step** — *done.*
+  `ShotQueue.js`'s queue browser now has six navigation targets —
+  First / -10 / Previous / Next / +10 / Last — plus a **Jump to** dropdown
+  listing every shot. All six and the dropdown go through one `goToShot(idx)`
+  that clamps to `[0, length - 1]`, so the two hand-clamped step functions
+  are gone and there is only one place a jump can go off the end; each button
+  is `disabled` at the end it cannot move away from, which is also what keeps
+  the existing clamp tests honest. The dropdown is **labelled**, not just
+  numbered: `update` already pre-loads the whole queue into `ShotCache`, so a
+  second effect reads those cached shots back into a `shotSummaries` map and
+  each option reads "12. Alice (adjudicated)". A bare "Shot 12" would have
+  been little better than clicking Next twelve times; the shooter's name and
+  the ruled/unruled word are what an admin steers by when the queue is
+  doubling as the post-game history view — which is exactly the case that
+  prompted the report. The dropdown is hidden below two shots, where it has
+  nothing to offer.
 - [ ] **12. Outfit-picking flow is genuinely confusing, and some guests
   never actually joined** — ties #2 and #3 together and adds a third:
   tapping an outfit option (`OptionRow`) is pure local state, no API call —
