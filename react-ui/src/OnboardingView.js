@@ -20,12 +20,26 @@ import {
 
 import styles from "./OnboardingView.module.css";
 
-const ActionItem = ({ text, done, onClick = null, doable = true }) => (
+// animateReposition defaults on: as later rows appear, the centred container
+// grows and every row above shifts up, and framer-motion's layout animation
+// is what makes that shift a smooth slide instead of a snap. Off for the
+// webcam/location rows specifically (see getActionItems below) - a tap
+// landing mid-reflow on the one gating button that's load-bearing for the
+// whole join flow is a plausible explanation for guests on Safari sometimes
+// finding it unresponsive (dry-run item 5), and the animation there is
+// purely cosmetic.
+const ActionItem = ({
+  text,
+  done,
+  onClick = null,
+  doable = true,
+  animateReposition = true,
+}) => (
   <button
     onClick={onClick}
     className={styles.stackedItem + (done ? " " + styles.done : "")}
   >
-    <motion.div layout>
+    <motion.div layout={animateReposition}>
       <p>{text}</p>
       {doable ? (
         <div className={styles.actionButton}>
@@ -132,6 +146,7 @@ function OnboardingView({ user }) {
               setWebcamPermissionGranted(true);
             });
           }}
+          animateReposition={false}
           key={"webcam"}
         />,
       );
@@ -147,6 +162,7 @@ function OnboardingView({ user }) {
             const success = await requestGeolocationPermission();
             setLocationPermissionGranted(success);
           }}
+          animateReposition={false}
           key={"location"}
         />,
       );
