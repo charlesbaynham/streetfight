@@ -62,19 +62,37 @@ jobs:
     # the deploy would look like it worked and then simply never happen. Cheap
     # to check here, because build_images.yml builds the template on every
     # branch; only the release is gated on `staging`.
+    # The check run may not exist yet, or may still be queued/in-progress, if
+    # this deploy was dispatched hot on the heels of the push that triggered
+    # it. Rather than fail on that race, poll for up to ten minutes for it to
+    # land — a genuine failure (not just "not there yet") still fails fast.
     - name: Check the LXC template was built
       if: ${{ !inputs.skip_build_check }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
-          --jq '.check_runs[] | select(.name == "build_lxc_template / build") | .conclusion' \
-          | head -n1)
-        if [ "$CONCLUSION" != "success" ]; then
-          echo "::error::build_lxc_template for $SHA is '${CONCLUSION:-missing}', not success." \
-            "Wait for it, or re-run with skip_build_check if you know better."
-          exit 1
-        fi
+        DEADLINE=$((SECONDS + 600))
+        while true; do
+          CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
+            --jq '.check_runs[] | select(.name == "build_lxc_template / build") | .conclusion' \
+            | head -n1)
+          if [ "$CONCLUSION" = "success" ]; then
+            echo "build_lxc_template for $SHA succeeded."
+            break
+          fi
+          if [ -n "$CONCLUSION" ] && [ "$CONCLUSION" != "null" ]; then
+            echo "::error::build_lxc_template for $SHA is '$CONCLUSION', not success." \
+              "Re-run with skip_build_check if you know better."
+            exit 1
+          fi
+          if [ "$SECONDS" -ge "$DEADLINE" ]; then
+            echo "::error::build_lxc_template for $SHA still '${CONCLUSION:-missing}' after 10 minutes." \
+              "Wait for it, or re-run with skip_build_check if you know better."
+            exit 1
+          fi
+          echo "build_lxc_template for $SHA is '${CONCLUSION:-missing}', waiting..."
+          sleep 20
+        done
 
     # Force, because rolling back to an earlier commit is not a fast-forward.
     # ⚠️ On staging a rollback needs one more step than on the droplet: the
