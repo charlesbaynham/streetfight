@@ -325,3 +325,31 @@
 .notesBox button {
   margin-bottom: 0.4em;
 }
+
+/* The queue browser's navigation. Six targets that all do the same kind of
+   thing, sized for a thumb like the rest of the admin pages, wrapping to a
+   second line rather than shrinking below that on a narrow phone. */
+.queueNav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4em;
+}
+
+.queueNav button {
+  flex: 1 1 4.5em;
+  min-height: 3em;
+}
+
+.jumpToShot {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  width: 100%;
+  margin: 0.5em 0;
+}
+
+.jumpToShot select {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 3em;
+}

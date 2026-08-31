@@ -751,6 +751,20 @@ async function loadQueuedShot(shot_id, mustBeUnadjudicated) {
   return getShotFromCache(shot_id);
 }
 
+// What one entry in the jump dropdown says. The shot may not have loaded yet -
+// the list of ids arrives before the shots behind them do - so the number is
+// always there and the rest is added as it becomes known. "adjudicated" is
+// spelled out rather than ticked: this queue doubles as the post-game history
+// view, where most of the list is ruled on and the word is what distinguishes
+// the few that are not.
+function shotJumpLabel(idx, summary) {
+  const position = `${idx + 1}.`;
+  if (!summary) return position;
+  const name = summary.name ? ` ${summary.name}` : "";
+  const ruled = summary.checked ? " (adjudicated)" : "";
+  return `${position}${name}${ruled}`;
+}
+
 function ShotQueuePanel() {
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
@@ -763,6 +777,12 @@ function ShotQueuePanel() {
   // than a backlog to drain (roadmap R8).
   const [contested, setContested] = useState(false);
   const [appealState, setAppealState] = useState(null);
+  // A dropdown of forty entries reading "Shot 12" is barely better than
+  // clicking Next forty times: what tells an admin where they are is who fired
+  // the shot and whether it has been ruled on. `update` has already pulled the
+  // whole queue into the cache, so labelling the jump list costs a read each,
+  // not a request each.
+  const [shotSummaries, setShotSummaries] = useState({});
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
@@ -796,6 +816,28 @@ function ShotQueuePanel() {
       );
     });
   }, [currentShotIdx, showChecked, contested]);
+
+  useEffect(() => {
+    let stale = false;
+    Promise.all(
+      shotsInQueue.map(async (id) => [id, await getShotFromCache(id)]),
+    ).then((entries) => {
+      if (stale) return;
+      setShotSummaries(
+        Object.fromEntries(
+          entries
+            .filter(([, loaded]) => loaded)
+            .map(([id, loaded]) => [
+              id,
+              { name: loaded.user?.name, checked: !!loaded.checked },
+            ]),
+        ),
+      );
+    });
+    return () => {
+      stale = true;
+    };
+  }, [shotsInQueue]);
 
   // If current shot ID changes, load the shot from the cache into the state
   useEffect(() => {
@@ -855,17 +897,27 @@ function ShotQueuePanel() {
 
   useEffect(update, [update]);
 
-  const nextShot = useCallback(() => {
-    if (currentShotIdx < shotsInQueue.length - 1) {
-      setCurrentShotIdx(currentShotIdx + 1);
-    }
-  }, [currentShotIdx, shotsInQueue]);
+  // Every way of moving through the queue clamps the same way, so they are all
+  // one function: stepping, jumping ten at a time, and the dropdown alike.
+  const goToShot = useCallback(
+    (idx) => {
+      setCurrentShotIdx(Math.max(0, Math.min(idx, shotsInQueue.length - 1)));
+    },
+    [shotsInQueue],
+  );
 
-  const previousShot = useCallback(() => {
-    if (currentShotIdx > 0) {
-      setCurrentShotIdx(currentShotIdx - 1);
-    }
-  }, [currentShotIdx]);
+  const nextShot = useCallback(
+    () => goToShot(currentShotIdx + 1),
+    [goToShot, currentShotIdx],
+  );
+
+  const previousShot = useCallback(
+    () => goToShot(currentShotIdx - 1),
+    [goToShot, currentShotIdx],
+  );
+
+  const atStart = currentShotIdx <= 0;
+  const atEnd = currentShotIdx >= shotsInQueue.length - 1;
 
   // An adjudicated shot is normally final, but an open appeal re-opens it for
   // exactly one re-ruling - which is what the contested queue is for.
@@ -884,20 +936,56 @@ function ShotQueuePanel() {
         </Col>
       </Row>
       <Row>
-        <button
-          onClick={() => {
-            nextShot();
-          }}
-        >
-          Next
-        </button>
-        <button
-          onClick={() => {
-            previousShot();
-          }}
-        >
-          Previous
-        </button>
+        <Col className={styles.queueNav}>
+          <button onClick={() => goToShot(0)} disabled={atStart}>
+            First
+          </button>
+          <button
+            onClick={() => goToShot(currentShotIdx - 10)}
+            disabled={atStart}
+          >
+            -10
+          </button>
+          <button onClick={previousShot} disabled={atStart}>
+            Previous
+          </button>
+          <button onClick={nextShot} disabled={atEnd}>
+            Next
+          </button>
+          <button
+            onClick={() => goToShot(currentShotIdx + 10)}
+            disabled={atEnd}
+          >
+            +10
+          </button>
+          <button
+            onClick={() => goToShot(shotsInQueue.length - 1)}
+            disabled={atEnd}
+          >
+            Last
+          </button>
+        </Col>
+      </Row>
+      {shotsInQueue.length > 1 ? (
+        <Row>
+          <Col>
+            <label className={styles.jumpToShot}>
+              Jump to
+              <select
+                value={currentShotIdx}
+                onChange={(event) => goToShot(Number(event.target.value))}
+              >
+                {shotsInQueue.map((id, idx) => (
+                  <option key={id} value={idx}>
+                    {shotJumpLabel(idx, shotSummaries[id])}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </Col>
+        </Row>
+      ) : null}
+      <Row>
         <label className={styles.showCheckedToggle}>
           <input
             type="radio"

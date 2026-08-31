@@ -194,6 +194,12 @@ exemplar.
     button rules, so a stray thumb on a name cannot decide a shot. The
     per-team roster of small "Hit" buttons below it is unchanged, and is
     still how you name somebody the ranking never offered.
+    Moving *between* shots is one clamping `goToShot(idx)` behind six buttons
+    (First / -10 / Previous / Next / +10 / Last) and a **Jump to** dropdown -
+    add a new way to navigate there rather than another hand-clamped `idx +/- n`.
+    That dropdown names each shot's shooter and says whether it is adjudicated,
+    read out of `ShotCache` (which `update` has already filled) rather than
+    from a request of its own.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
     the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`). Its
