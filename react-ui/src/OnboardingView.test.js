@@ -210,7 +210,7 @@ test("steps already satisfied on mount render as done without any click", async 
 // / isLocationPermissionGranted report "granted" for the rest of this file
 // regardless of the mocked Permissions API state.
 
-test("clicking the location step and being denied leaves it not done", async () => {
+test("clicking the location step and being denied leaves it not done and shows a visible error", async () => {
   setPermission("camera", "granted");
   mockGeolocationDenied();
   await renderOnboarding(soloUser({ name: "Bob" }));
@@ -222,6 +222,7 @@ test("clicking the location step and being denied leaves it not done", async () 
   expect(window.navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
   expect(isDone("Grant location permission:")).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
+  expect(screen.getByText(/Couldn't get your location/)).toBeInTheDocument();
 });
 
 test("clicking the webcam step requests camera access and marks itself done", async () => {
@@ -247,4 +248,18 @@ test("clicking the location step requests geolocation and marks itself done when
   expect(
     screen.getByText("Scan your team's join QR code with your camera app..."),
   ).toBeInTheDocument();
+});
+
+test("getCurrentPosition is called with a timeout, so a stuck fix cannot hang the button forever", async () => {
+  setPermission("camera", "granted");
+  mockGeolocationSuccess();
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  await actAndFlush(() =>
+    fireEvent.click(stepButton("Grant location permission:")),
+  );
+
+  const options =
+    window.navigator.geolocation.getCurrentPosition.mock.calls[0][2];
+  expect(options.timeout).toBeGreaterThan(0);
 });

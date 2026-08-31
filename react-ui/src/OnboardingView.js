@@ -107,6 +107,7 @@ function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
     useState(false);
+  const [locationError, setLocationError] = useState(false);
   const [compassPermissionGranted, setCompassPermissionGranted] =
     useState(false);
 
@@ -152,21 +153,30 @@ function OnboardingView({ user }) {
       );
     else return actionItems;
 
-    if (webcamPermissionGranted)
+    if (webcamPermissionGranted) {
       actionItems.push(
         <ActionItem
           text={"Grant location permission:"}
           done={locationPermissionGranted}
           onClick={async () => {
             console.log("Requesting location permission from OnboardingView");
+            setLocationError(false);
             const success = await requestGeolocationPermission();
             setLocationPermissionGranted(success);
+            setLocationError(!success);
           }}
           animateReposition={false}
           key={"location"}
         />,
       );
-    else return actionItems;
+      if (locationError)
+        actionItems.push(
+          <p className={styles.locationError} key={"location-error"}>
+            Couldn't get your location — check Settings &gt; Privacy &gt;
+            Location Services, then tap again.
+          </p>,
+        );
+    } else return actionItems;
 
     // The compass rung. Unlike the two above it this one does not gate what
     // follows: a heading is telemetry, and a phone without a compass (or a
