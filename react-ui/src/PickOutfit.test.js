@@ -217,9 +217,7 @@ test("the wardrobe intro says to tick what you'll actually wear, not what you'd 
   renderPickOutfit();
   await goPastHeader();
 
-  expect(
-    screen.getByText(/actually wear on the night/i),
-  ).toBeInTheDocument();
+  expect(screen.getByText(/actually wear on the night/i)).toBeInTheDocument();
 });
 
 test("ticking a swatch shows a checkbox-style tick, not just a highlighted border", async () => {
@@ -546,9 +544,7 @@ test("Choose a different outfit returns to the options list without claiming any
     ),
   );
 
-  expect(
-    screen.queryByText("One more step to join"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Choose:/ })).toBeInTheDocument();
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
 });
@@ -603,9 +599,7 @@ test("once an outfit is locked in, polling picks up the game going active and re
     expect(
       screen.getByText("Locked in - please screenshot this page!"),
     ).toBeInTheDocument();
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      "/pick?j=CODE1",
-    );
+    expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
     expect(getAPICalls("user_info")).toHaveLength(0);
 
     // Not active yet - a tick of the poll changes nothing.
@@ -613,9 +607,7 @@ test("once an outfit is locked in, polling picks up the game going active and re
       jest.advanceTimersByTime(12000);
       for (let i = 0; i < 5; i++) await Promise.resolve();
     });
-    expect(screen.getByTestId("location")).toHaveTextContent(
-      "/pick?j=CODE1",
-    );
+    expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
 
     gameActive = true;
     await act(async () => {
@@ -685,9 +677,7 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
       "Someone just took that outfit - please choose again.",
     ),
   ).toBeInTheDocument();
-  expect(
-    screen.queryByText("One more step to join"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });
 

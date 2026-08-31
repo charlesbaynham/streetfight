@@ -551,9 +551,9 @@ function PickOutfitForm({
       ) : (
         <>
           <p className={styles.wardrobeIntro}>
-            Tick what you'll <strong>actually wear on the night</strong> -
-            not what you'd like to. Tick as many as you own: the more you
-            tick, the more outfit choices you'll be offered.
+            Tick what you'll <strong>actually wear on the night</strong> - not
+            what you'd like to. Tick as many as you own: the more you tick, the
+            more outfit choices you'll be offered.
           </p>
 
           {wardrobeChannels.map((channelName) => {

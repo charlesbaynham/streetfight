@@ -79,9 +79,9 @@ test("each card shows the join link as visible, selectable text alongside the QR
   expect(burgundyLinkText).toHaveValue("https://example.com?j=burgundy");
   expect(burgundyLinkText).toHaveAttribute("readonly");
 
-  expect(
-    screen.getByLabelText("Join link text for team Navy"),
-  ).toHaveValue("https://example.com?j=navy");
+  expect(screen.getByLabelText("Join link text for team Navy")).toHaveValue(
+    "https://example.com?j=navy",
+  );
 });
 
 test("Copy writes the team's join link to the clipboard", async () => {
