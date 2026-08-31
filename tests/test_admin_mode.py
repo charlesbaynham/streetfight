@@ -74,8 +74,19 @@ def old_shot_prep(
     # User A shoots user B (the admin hasn't checked it yet)
     shot_a = submit_shot_and_get_id(db_session, user_a, test_image_string)
 
-    # User B shoots user A (though they should be dead)
+    # User B shoots user A (though they should be dead) - pinned strictly
+    # after shot_a, since the invalidation cascade below only clears a
+    # victim's own queued shots fired at or after the photo that kills them,
+    # and time_created's 1s resolution can't be trusted to keep these two
+    # shots in submission order on its own.
     shot_b = submit_shot_and_get_id(db_session, user_b, test_image_string)
+    db_session.query(Shot).filter_by(id=shot_a).update(
+        {"time_created": datetime.datetime(2026, 1, 1, 12, 0, 0)}
+    )
+    db_session.query(Shot).filter_by(id=shot_b).update(
+        {"time_created": datetime.datetime(2026, 1, 1, 12, 0, 5)}
+    )
+    db_session.commit()
 
     # The admin checks user A and awards the shot to them
     response = admin_api_client.post(

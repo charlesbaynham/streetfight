@@ -48,6 +48,7 @@ class TickerMessageType(Enum):
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
+    SHOTS_INVALIDATED = auto()
 
 
 class TickerTarget(Enum):
@@ -168,6 +169,11 @@ TICKER_MESSAGES = {
     TickerMessageType.REFUNDED_SHOT: (
         TickerTarget.PRIVATE_USER,
         "We couldn't read your shot - your ammo was refunded",
+    ),
+    TickerMessageType.SHOTS_INVALIDATED: (
+        TickerTarget.PRIVATE_USER,
+        "{num}x of your shots were invalidated - you were knocked out "
+        "before they could be checked, so your ammo was refunded",
     ),
 }
 

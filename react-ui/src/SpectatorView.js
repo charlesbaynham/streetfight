@@ -282,7 +282,10 @@ export function adjudicationStatus(shot) {
   if (shot.checked) {
     const text = verdictText(shot, shot.target_name);
     if (shot.result === "hit") return [text, "good"];
-    return [text, shot.result === "refunded" ? "warn" : "bad"];
+    return [
+      text,
+      ["refunded", "invalidated"].includes(shot.result) ? "warn" : "bad",
+    ];
   }
 
   if (shot.escalation_state === "pending")

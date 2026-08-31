@@ -12,6 +12,8 @@ from uuid import UUID
 from uuid import uuid4 as get_uuid
 
 from fastapi import HTTPException
+from sqlalchemy import and_
+from sqlalchemy import or_
 from sqlalchemy.orm import Session as SQLAlchemySession
 
 from . import asyncio_triggers
@@ -171,7 +173,7 @@ def appeal_refusal(shot: Shot, user: User, party: str) -> Optional[str]:
     """
     if not shot.checked:
         return "This shot hasn't been adjudicated yet"
-    if shot.result is None or shot.result == "refunded":
+    if shot.result is None or shot.result in ("refunded", "invalidated"):
         return "There's no verdict on this shot to appeal"
     if shot.appeal_state not in (None, APPEAL_OPEN):
         return "The referee has already ruled on an appeal against this shot"
@@ -917,25 +919,59 @@ class UserInterface:
         return ticker.generate_updates(timeout=timeout)
 
     @db_scoped
-    def clear_unchecked_shots(self):
+    def clear_unchecked_shots(
+        self, since_time_created: datetime.datetime, since_shot_id: UUID
+    ) -> int:
         """
-        Mark all unchecked shots for this user as checked and refund all bullets
+        Invalidate this user's own unchecked shots, fired for the knockout
+        that has just killed them.
+
+        Only shots at or after ``(since_time_created, since_shot_id)`` -- the
+        fatal shot's own tie-break, the same one
+        AdminInterface.get_queue_head uses for a clock with 1s resolution --
+        qualify, and the fatal shot itself is always excluded: it gets its
+        own adjudication as a hit right after this call returns (including
+        the self-shot edge case, where the fatal shot is one of this same
+        user's own unchecked shots). A shot fired *before* the fatal one was
+        taken while this user was still alive and playing fair; it is only
+        sitting unchecked because the queue has not reached it yet, and
+        invalidating it would wipe out a legitimate shot for no reason but
+        bad luck in the queue order.
+
+        Mechanically the same as an admin's refund - checked, no result,
+        ammo back - but recorded as "invalidated" rather than "refunded" so
+        the two are told apart: this one was never looked at by anybody,
+        because its shooter was already out.
+
+        Returns how many shots were invalidated, so the caller can decide
+        whether there is anything to tell the player.
         """
 
         u = self.get_user()
         unchecked_shots = (
             self._session.query(Shot)
             .filter_by(user_id=self.user_id, team_id=u.team_id, checked=False)
+            .filter(Shot.id != since_shot_id)
+            .filter(
+                or_(
+                    Shot.time_created > since_time_created,
+                    and_(
+                        Shot.time_created == since_time_created,
+                        Shot.id >= since_shot_id,
+                    ),
+                )
+            )
             .all()
         )
 
         bullet_refunds = 0
         for shot in unchecked_shots:
             shot.checked = True
-            shot.result = "refunded"
+            shot.result = "invalidated"
             bullet_refunds += 1
 
         self.award_ammo(bullet_refunds)
+        return bullet_refunds
 
     def set_location(
         self, latitute: float, longitude: float, accuracy: Optional[float] = None

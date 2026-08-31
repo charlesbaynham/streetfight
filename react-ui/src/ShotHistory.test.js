@@ -75,6 +75,17 @@ describe("shotStatus", () => {
     );
   });
 
+  test("checked + invalidated", () => {
+    expect(
+      shotStatus(makeShot({ checked: true, result: "invalidated" })),
+    ).toEqual({
+      state: "invalidated",
+      icon: returnImg,
+      label: "Invalidated",
+      sublabel: "You were knocked out before this shot could be checked",
+    });
+  });
+
   test("checked + miss", () => {
     expect(shotStatus(makeShot({ checked: true, result: "miss" }))).toEqual({
       state: "miss",
