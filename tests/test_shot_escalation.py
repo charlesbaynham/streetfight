@@ -143,6 +143,9 @@ async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
     # The listed armband colour is only useful to somebody who knows where to
     # look for it, and that it is not always the upper arm.
     assert shot_vision.ARMBANDS_PLACEMENT in prompt
+    # The reference photos share backdrops by accident of where they were
+    # taken, so the prompt says the backdrop means nothing either way.
+    assert shot_escalation.REFERENCE_BACKGROUND_CLAUSE in prompt
 
 
 @pytest.mark.asyncio
@@ -481,6 +484,20 @@ def test_escalation_defaults_to_the_recognition_model(monkeypatch, db_session):
 
     assert client is not None
     assert client.model == vision_client.DEFAULT_MODEL
+
+
+def test_escalation_thinks_hard_by_default(monkeypatch, db_session):
+    # The cheap pass sends no reasoning override; this rung asks for "high"
+    # unless told otherwise, and the env var still wins when it is set.
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
+    monkeypatch.delenv("OPENROUTER_ESCALATION_REASONING_EFFORT", raising=False)
+    monkeypatch.delenv("OPENROUTER_REASONING_EFFORT", raising=False)
+
+    assert get_escalation_client().reasoning_effort == "high"
+
+    monkeypatch.setenv("OPENROUTER_ESCALATION_REASONING_EFFORT", "low")
+    assert get_escalation_client().reasoning_effort == "low"
+    assert get_escalation_client(reasoning_effort="medium").reasoning_effort == "medium"
 
 
 def test_escalation_mirrors_an_explicit_recognition_model(monkeypatch, db_session):

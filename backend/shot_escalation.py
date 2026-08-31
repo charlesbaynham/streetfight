@@ -183,6 +183,20 @@ KNOCKED_OUT_CLAUSE = (
     "Already knocked out earlier in the game, but may still be in the photograph."
 )
 
+# The reference photos are taken at the door, one after another, so several
+# players share a wall and the rest have whatever was behind them at the time.
+# A model left to work that out for itself reads the backdrop as evidence --
+# both ways, matching on a shared wall and ruling a candidate out for standing
+# somewhere else -- so say plainly that it carries none.
+REFERENCE_BACKGROUND_CLAUSE = (
+    "Reference photos were taken wherever each player happened to be standing "
+    "when they were kitted out, so their backgrounds carry no information at "
+    "all. Two players photographed against the same wall are not thereby the "
+    "same person, and a reference photo taken somewhere other than the scene "
+    "of the shot is not evidence against a match. Compare the people and the "
+    "clothes they are wearing, and nothing else."
+)
+
 
 def _candidate_line(candidate: dict) -> str:
     """One numbered candidate: who they are, how likely, what they are wearing,
@@ -223,8 +237,8 @@ def build_escalation_prompt(candidates: List[dict], has_more_photos: bool) -> st
             "photograph can and should overrule. A garment given as "
             f'"{shot_vision.UNKNOWN}" is one nobody recorded. The '
             f"{shot_vision.ARMBANDS_CHANNEL} are "
-            f"{shot_vision.ARMBANDS_PLACEMENT}.\n\n"
-            + "\n".join(_candidate_line(candidate) for candidate in candidates)
+            f"{shot_vision.ARMBANDS_PLACEMENT}. {REFERENCE_BACKGROUND_CLAUSE}"
+            "\n\n" + "\n".join(_candidate_line(candidate) for candidate in candidates)
         )
     else:
         candidate_section = (
