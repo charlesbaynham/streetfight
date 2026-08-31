@@ -155,6 +155,44 @@ test("pressing Enter in the name box POSTs set_name with the typed name", async 
   expect(getLastAPICall("set_name").query).toEqual({ name: "EnterName" });
 });
 
+test("leaving the name box (blur) POSTs set_name, with no button tap or Enter needed", async () => {
+  installFetchMock({ set_name: {} });
+  await renderOnboarding(
+    makeUser({ name: null, team_id: null, team_name: null }),
+  );
+
+  const input = screen.getByPlaceholderText("Enter your name...");
+  fireEvent.change(input, { target: { value: "BlurName" } });
+  fireEvent.blur(input);
+
+  await waitFor(() => expect(getLastAPICall("set_name")).toBeDefined());
+  expect(getLastAPICall("set_name").query).toEqual({ name: "BlurName" });
+});
+
+test("blurring an empty name box does not POST set_name", async () => {
+  installFetchMock({ set_name: {} });
+  await renderOnboarding(
+    makeUser({ name: null, team_id: null, team_name: null }),
+  );
+
+  fireEvent.blur(screen.getByPlaceholderText("Enter your name..."));
+
+  expect(getLastAPICall("set_name")).toBeUndefined();
+});
+
+test("a saved name shows a checkmark, not just a colour change", async () => {
+  await renderOnboarding(
+    makeUser({ name: "Zara", team_id: null, team_name: null }),
+  );
+
+  // The name entry's own action button swaps to the same checkmark icon
+  // every other done onboarding step uses, instead of always showing the
+  // return arrow.
+  const input = screen.getByPlaceholderText("Enter your name...");
+  const icon = input.parentElement.querySelector("img");
+  expect(icon.getAttribute("src")).toContain("check-solid");
+});
+
 test("steps already satisfied on mount render as done without any click", async () => {
   grantAllPermissions();
   await renderOnboarding(

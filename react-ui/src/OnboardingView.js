@@ -77,10 +77,11 @@ function NameEntry({ user, className, onNameSet = null }) {
           setNameBoxValue(e.target.value);
         }}
         onKeyDown={handleKeyDown}
+        onBlur={setUserName}
         placeholder="Enter your name..."
       />
       <button className={styles.actionButton} onClick={setUserName}>
-        <img src={returnIcon} alt="" />
+        <img src={done ? actionDone : returnIcon} alt="" />
       </button>
     </motion.div>
   );

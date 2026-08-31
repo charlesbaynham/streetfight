@@ -52,6 +52,7 @@
 .done .nameInput {
   border-color: green;
   color: green;
+  background-color: rgba(0, 128, 0, 0.2);
 }
 
 button.stackedItem {
