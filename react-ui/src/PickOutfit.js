@@ -567,9 +567,9 @@ function PickOutfitForm({
         <>
           <p className={styles.wardrobeIntro}>
             Everything's ticked to start, so you'll be offered a good outfit
-            either way. <strong>Untick</strong> anything you don't actually
-            own or won't wear on the night - not what you'd merely like to -
-            for a better match.
+            either way. <strong>Untick</strong> anything you don't actually own
+            or won't wear on the night - not what you'd merely like to - for a
+            better match.
           </p>
 
           {wardrobeChannels.map((channelName) => {

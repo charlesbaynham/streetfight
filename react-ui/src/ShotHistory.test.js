@@ -447,7 +447,9 @@ describe("ShotHistoryController", () => {
 
     act(() => openShotHistory(shot.id));
 
-    expect(await screen.findByText("Fired with Tracka-Tracka")).toBeInTheDocument();
+    expect(
+      await screen.findByText("Fired with Tracka-Tracka"),
+    ).toBeInTheDocument();
   });
 
   test("the detail view names nothing when the shot carries no weapon data", async () => {
