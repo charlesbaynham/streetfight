@@ -69,6 +69,7 @@
 }
 
 .swatchButton {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -88,6 +89,34 @@
   background: rgba(255, 255, 255, 0.15);
 }
 
+/* A visible tick box, not just a highlighted border - this is multi-select
+   (item 2 of the 30 Aug dry-run feedback: it was reading as a single-choice
+   colour picker). Always present so the empty box itself signals
+   "checkbox", not just the check mark once ticked. */
+.swatchCheckbox {
+  position: absolute;
+  top: 1mm;
+  right: 1mm;
+  width: 4mm;
+  height: 4mm;
+  min-width: 14px;
+  min-height: 14px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 1mm;
+  font-size: smaller;
+  line-height: 1;
+}
+
+.swatchSelected .swatchCheckbox {
+  background: white;
+  color: black;
+  border-color: white;
+}
+
 .swatchLabel {
   font-size: smaller;
   text-transform: capitalize;
@@ -100,11 +129,33 @@
   text-align: center;
 }
 
+.confirmIntro {
+  font-weight: bold;
+  opacity: 0.95;
+  margin: 0 0 4mm;
+}
+
 .confirmRow {
   display: flex;
   align-items: center;
   gap: 2mm;
   margin: 4mm 0;
+  padding: 3mm;
+  border-radius: 3mm;
+  border: 1px solid transparent;
+}
+
+/* Unchecked reads as "action needed", not a passive label - the failure
+   mode this is fixing is guests believing tapping an outfit was the whole
+   action and never reaching this box at all. */
+.confirmRowPending {
+  border-color: #e8850c;
+  background: rgba(232, 133, 12, 0.15);
+}
+
+.confirmRowChecked {
+  border-color: #00a651;
+  background: rgba(0, 166, 81, 0.15);
 }
 
 .submitButton {

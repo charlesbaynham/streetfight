@@ -124,6 +124,12 @@ function WardrobeChannel({ channel, selected, onToggle }) {
               aria-label={label}
               onClick={() => onToggle(label)}
             >
+              {/* A checkmark, not just a highlighted border - ticking is
+                  multi-select, and a border-only highlight reads as the
+                  single-choice picker this deliberately isn't. */}
+              <span className={styles.swatchCheckbox} aria-hidden="true">
+                {isSelected ? "✓" : ""}
+              </span>
               <Swatch hex={channel.hex[label]} label={label} size="large" />
               <span className={styles.swatchLabel}>{label}</span>
               {note ? <span className={styles.swatchNote}>{note}</span> : null}
@@ -288,14 +294,25 @@ function ConfirmScreen({
   const [checked, setChecked] = useState(false);
   return (
     <div className={styles.confirmScreen}>
-      <h2>Wear this outfit?</h2>
+      <h2>One more step to join</h2>
+      <p className={styles.confirmIntro}>
+        You haven't joined yet - tick the box and tap{" "}
+        <strong>"Lock in my choice"</strong> below to confirm this outfit and
+        join the game.
+      </p>
       <OutfitGarments
         appearance={option.appearance}
         wardrobeChannels={wardrobeChannels}
         channels={channels}
         size="large"
       />
-      <label className={styles.confirmRow}>
+      <label
+        className={
+          styles.confirmRow +
+          " " +
+          (checked ? styles.confirmRowChecked : styles.confirmRowPending)
+        }
+      >
         <input
           type="checkbox"
           checked={checked}
@@ -531,8 +548,9 @@ function PickOutfitForm({
       ) : (
         <>
           <p className={styles.wardrobeIntro}>
-            Tick everything you own - the more you tick, the more choices you
-            get.
+            Tick what you'll <strong>actually wear on the night</strong> -
+            not what you'd like to. Tick as many as you own: the more you
+            tick, the more outfit choices you'll be offered.
           </p>
 
           {wardrobeChannels.map((channelName) => {

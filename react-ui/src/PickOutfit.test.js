@@ -193,6 +193,64 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
 });
 
+test("the wardrobe intro says to tick what you'll actually wear, not what you'd like", async () => {
+  installFetchMock({ join_options: makeJoinData() });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  expect(
+    screen.getByText(/actually wear on the night/i),
+  ).toBeInTheDocument();
+});
+
+test("ticking a swatch shows a checkbox-style tick, not just a highlighted border", async () => {
+  installFetchMock({ join_options: makeJoinData() });
+
+  renderPickOutfit();
+  await goPastHeader();
+
+  const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+  const blackSwatch = within(tshirtGroup).getByRole("button", {
+    name: "black",
+  });
+
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("false");
+  expect(within(blackSwatch).queryByText("✓")).not.toBeInTheDocument();
+
+  userEvent.click(blackSwatch);
+
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("true");
+  expect(within(blackSwatch).getByText("✓")).toBeInTheDocument();
+});
+
+test("the confirm screen makes clear the outfit isn't joined yet until it's locked in", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+  );
+
+  expect(screen.getByText(/haven't joined yet/i)).toBeInTheDocument();
+
+  const checkbox = screen.getByRole("checkbox", {
+    name: /wear this on the night/,
+  });
+  // Unchecked reads as needing action (a distinct class from the checked
+  // state), not just a passive label sitting beneath the outfit.
+  expect(checkbox.closest("label").className).toMatch(/confirmRowPending/);
+
+  userEvent.click(checkbox);
+  expect(checkbox.closest("label").className).toMatch(/confirmRowChecked/);
+});
+
 test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
   installFetchMock({
     join_options: makeJoinData(),
@@ -296,7 +354,7 @@ test("tapping an option shows the confirmation screen without claiming it, and L
   await actAndFlush(() => userEvent.click(row));
 
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
-  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+  expect(screen.getByText("One more step to join")).toBeInTheDocument();
 
   const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
   expect(lockIn).toBeDisabled();
@@ -462,7 +520,7 @@ test("Choose a different outfit returns to the options list without claiming any
 
   const row = screen.getByRole("button", { name: /Choose:/ });
   await actAndFlush(() => userEvent.click(row));
-  expect(screen.getByText("Wear this outfit?")).toBeInTheDocument();
+  expect(screen.getByText("One more step to join")).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(
@@ -470,7 +528,9 @@ test("Choose a different outfit returns to the options list without claiming any
     ),
   );
 
-  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("One more step to join"),
+  ).not.toBeInTheDocument();
   expect(screen.getByRole("button", { name: /Choose:/ })).toBeInTheDocument();
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
 });
@@ -554,7 +614,9 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
       "Someone just took that outfit - please choose again.",
     ),
   ).toBeInTheDocument();
-  expect(screen.queryByText("Wear this outfit?")).not.toBeInTheDocument();
+  expect(
+    screen.queryByText("One more step to join"),
+  ).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });
 
