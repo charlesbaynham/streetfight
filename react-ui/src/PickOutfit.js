@@ -389,6 +389,21 @@ function CuriosityFooter() {
   );
 }
 
+// The nudge: default every colour to ticked, not empty. A player who never
+// touches this step still gets offered outfits at all - ranked
+// canonical-first, so the ones near the top of the list are the ones we'd
+// actually prefer they land on - rather than the thin, often non-canonical
+// set an empty (or barely-ticked) wardrobe produces. Ticking is then framed
+// as narrowing down for a better match, not building up from nothing.
+function defaultWardrobe(joinData) {
+  const wardrobe = {};
+  for (const name of joinData.wardrobe_channels) {
+    const channel = joinData.channels.find((c) => c.name === name);
+    wardrobe[name] = channel ? [...channel.labels] : [];
+  }
+  return wardrobe;
+}
+
 function PickOutfitForm({
   code,
   joinData,
@@ -396,7 +411,7 @@ function PickOutfitForm({
   onError,
   onChoosingChange,
 }) {
-  const [wardrobe, setWardrobe] = useState({});
+  const [wardrobe, setWardrobe] = useState(() => defaultWardrobe(joinData));
   const [optionsResult, setOptionsResult] = useState(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
   const [selectedOption, setSelectedOption] = useState(null);
@@ -551,9 +566,10 @@ function PickOutfitForm({
       ) : (
         <>
           <p className={styles.wardrobeIntro}>
-            Tick what you'll <strong>actually wear on the night</strong> - not
-            what you'd like to. Tick as many as you own: the more you tick, the
-            more outfit choices you'll be offered.
+            Everything's ticked to start, so you'll be offered a good outfit
+            either way. <strong>Untick</strong> anything you don't actually
+            own or won't wear on the night - not what you'd merely like to -
+            for a better match.
           </p>
 
           {wardrobeChannels.map((channelName) => {

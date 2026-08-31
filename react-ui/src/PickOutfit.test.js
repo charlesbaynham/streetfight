@@ -183,10 +183,12 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   // The confirm checkbox has moved off this step entirely.
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
+  // Every colour starts ticked (the nudge) - untick the ones this player
+  // doesn't have, leaving just black in each channel.
   const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
-  userEvent.click(within(tshirtGroup).getByRole("button", { name: "black" }));
+  userEvent.click(within(tshirtGroup).getByRole("button", { name: "red" }));
   const trousersGroup = screen.getByRole("group", { name: "Trousers" });
-  userEvent.click(within(trousersGroup).getByRole("button", { name: "black" }));
+  userEvent.click(within(trousersGroup).getByRole("button", { name: "blue" }));
 
   await showOutfits();
 
@@ -211,16 +213,17 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
 });
 
-test("the wardrobe intro says to tick what you'll actually wear, not what you'd like", async () => {
+test("the wardrobe intro explains the nudge: everything starts ticked, untick what isn't actually worn", async () => {
   installFetchMock({ join_options: makeJoinData() });
 
   renderPickOutfit();
   await goPastHeader();
 
-  expect(screen.getByText(/actually wear on the night/i)).toBeInTheDocument();
+  expect(screen.getByText(/ticked to start/i)).toBeInTheDocument();
+  expect(screen.getByText(/won't wear on the night/i)).toBeInTheDocument();
 });
 
-test("ticking a swatch shows a checkbox-style tick, not just a highlighted border", async () => {
+test("every swatch starts ticked, with the checkbox-style tick shown from the first render", async () => {
   installFetchMock({ join_options: makeJoinData() });
 
   renderPickOutfit();
@@ -231,13 +234,13 @@ test("ticking a swatch shows a checkbox-style tick, not just a highlighted borde
     name: "black",
   });
 
-  expect(blackSwatch.getAttribute("aria-pressed")).toBe("false");
-  expect(within(blackSwatch).queryByText("✓")).not.toBeInTheDocument();
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("true");
+  expect(within(blackSwatch).getByText("✓")).toBeInTheDocument();
 
   userEvent.click(blackSwatch);
 
-  expect(blackSwatch.getAttribute("aria-pressed")).toBe("true");
-  expect(within(blackSwatch).getByText("✓")).toBeInTheDocument();
+  expect(blackSwatch.getAttribute("aria-pressed")).toBe("false");
+  expect(within(blackSwatch).queryByText("✓")).not.toBeInTheDocument();
 });
 
 test("the confirm screen makes clear the outfit isn't joined yet until it's locked in", async () => {
@@ -265,6 +268,25 @@ test("the confirm screen makes clear the outfit isn't joined yet until it's lock
 
   userEvent.click(checkbox);
   expect(checkbox.closest("label").className).toMatch(/confirmRowChecked/);
+});
+
+test("a player who touches nothing still gets offered outfits, built from every colour ticked by default", async () => {
+  installFetchMock({
+    join_options: makeJoinData(),
+    outfit_options: makeOptionsResult(),
+  });
+
+  renderPickOutfit();
+  await goPastHeader();
+  await showOutfits();
+
+  expect(getLastAPICall("outfit_options").body).toEqual({
+    data: "CODE1",
+    wardrobe: { tshirt: ["black", "red"], trousers: ["black", "blue"] },
+    relaxed: false,
+    page: 0,
+  });
+  expect(screen.getByText("preferred")).toBeInTheDocument();
 });
 
 test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
@@ -514,7 +536,10 @@ test("ticking the confirm box and pressing Lock in my choice claims the outfit a
   ).toBeInTheDocument();
   expect(getLastAPICall("pick_outfit").body).toEqual({
     data: "CODE1",
-    wardrobe: {},
+    // Nobody unticked anything in this test, so the nudge's full default
+    // wardrobe (every colour in makeJoinData's channels) is what gets
+    // posted.
+    wardrobe: { tshirt: ["black", "red"], trousers: ["black", "blue"] },
     appearance: makeOption().appearance,
     confirmed: true,
   });
