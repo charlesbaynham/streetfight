@@ -107,6 +107,37 @@ hours. It keeps the last two rules - state said in words, and colour meaning
 certainty - and none of the shapes. Do not "fix" it back towards this
 exemplar.
 
+### Flows people actually finish
+
+The house style above says what a screen should look like. `docs/nudge/` says
+whether a *flow* works: behavioural design, choice architecture and phone
+ergonomics, distilled from primary sources with the URLs attached
+(`frameworks.md`, `evidence.md`, `ergonomics.md`, `ethics.md`). The
+**`nudge-ux` agent** (`.claude/agents/nudge-ux.md`) is the consultant that
+works from it — hand it a flow that loses people rather than reasoning about
+one from scratch.
+
+Four things from it that are worth knowing even if you never call the agent:
+
+- **Hunt for silent stopping points.** A step the user believes finished the
+  job, that *looks* finished, and that changed nothing on the server. It
+  raises no error and generates no complaint, because nobody involved knows it
+  happened. Both high-severity onboarding failures on the 30 August dry run
+  were this shape — a name typed but never submitted, and an outfit tapped but
+  never confirmed — and the second cost real player signups
+  (`docs/dry_run_feedback_2026-08-30.md` items 3 and 12).
+- **Removing a step beats improving a sentence.** Deletions and defaults are
+  the interventions with large, reliable effects; persuasion is not. Nobody
+  reads the copy, and this project's players are already motivated — they came
+  out on a Saturday to play. The problems here are always whether they *can*.
+- **Friction is a tool; the test is whose interest it serves.** The shot
+  queue's two-tap ruling and `demo_game.refuse_if_live` are deliberate and
+  load-bearing. Say so in the code when you add one, so the next person does
+  not tidy it away.
+- **Don't oversell an effect.** The published nudge literature overstates
+  effect sizes by roughly six times (`docs/nudge/evidence.md`), and at thirty
+  players most of them are unmeasurable anyway.
+
 ## Repository layout
 
 - `backend/` — FastAPI application.
@@ -327,6 +358,17 @@ exemplar.
   Keep these current the same way as this file: when a procedure changes,
   change the skill that describes it rather than leaving a second version in
   prose somewhere.
+
+  `agents/` holds the consultants — personas to hand a problem to, rather
+  than procedures to follow:
+  - **`nudge-ux`** — behavioural design and interaction ergonomics: flows
+    people actually finish, and nudging them towards the right thing without
+    manipulating them. Ask it when a flow loses people, when onboarding or
+    joining fails, when copy has to change behaviour, when a control must work
+    one-handed on a phone in the dark, or for a sludge audit or an ethics
+    check on anything that steers a player's choice. Its reference library is
+    `docs/nudge/` (see below), and its evidence base is
+    `docs/dry_run_feedback_2026-08-30.md`.
 - `tests/` — pytest suite (`test_backend.py`, `test_items.py`, `test_shots.py`,
   `test_ticker.py`, `test_admin_mode.py`, `test_user_interface.py`,
   `test_sse.py`, `test_selenium.py`; fixtures in `conftest.py` and
