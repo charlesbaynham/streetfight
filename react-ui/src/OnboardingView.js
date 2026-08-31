@@ -10,20 +10,38 @@ import { motion, AnimatePresence } from "framer-motion";
 import returnIcon from "./images/return.svg";
 import actionNotDone from "./images/hand-pointer-solid.svg";
 import actionDone from "./images/check-solid.svg";
+import actionWarn from "./images/triangle-exclamation-solid.svg";
 import logo from "./images/art/logo.png";
 import {
   isLocationPermissionGranted,
   isCameraPermissionGranted,
   isOrientationPermissionGranted,
   requestOrientationPermission,
+  isLocationBypassActive,
+  setLocationBypass,
 } from "./utils";
 
 import styles from "./OnboardingView.module.css";
 
-const ActionItem = ({ text, done, onClick = null, doable = true }) => (
+// Tapping the (stuck) location button this many times in a row skips it -
+// see the bypass note above requestGeolocationPermission's LOCATION_BYPASS_KEY
+// in utils.js.
+const LOCATION_BYPASS_TAPS = 5;
+
+const ActionItem = ({
+  text,
+  done,
+  onClick = null,
+  doable = true,
+  warn = false,
+}) => (
   <button
     onClick={onClick}
-    className={styles.stackedItem + (done ? " " + styles.done : "")}
+    className={
+      styles.stackedItem +
+      (done ? " " + styles.done : "") +
+      (warn ? " " + styles.warn : "")
+    }
   >
     <motion.div layout>
       <p>{text}</p>
@@ -31,7 +49,7 @@ const ActionItem = ({ text, done, onClick = null, doable = true }) => (
         <div className={styles.actionButton}>
           <img
             className={styles.actionButton}
-            src={done ? actionDone : actionNotDone}
+            src={warn ? actionWarn : done ? actionDone : actionNotDone}
             alt=""
           />
         </div>
@@ -94,6 +112,14 @@ function OnboardingView({ user }) {
     useState(false);
   const [compassPermissionGranted, setCompassPermissionGranted] =
     useState(false);
+  const [locationBypassed, setLocationBypassed] = useState(() =>
+    isLocationBypassActive(),
+  );
+  const [locationTapCount, setLocationTapCount] = useState(0);
+
+  // Location doesn't have to be granted to get past this gate, just either
+  // granted or bypassed - see LOCATION_BYPASS_TAPS above.
+  const locationStepDone = locationPermissionGranted || locationBypassed;
 
   // Check if permissions have already been granted on load
   useEffect(() => {
@@ -139,11 +165,30 @@ function OnboardingView({ user }) {
     if (webcamPermissionGranted)
       actionItems.push(
         <ActionItem
-          text={"Grant location permission:"}
-          done={locationPermissionGranted}
+          text={
+            locationBypassed && !locationPermissionGranted
+              ? "Location skipped — no map"
+              : "Grant location permission:"
+          }
+          done={locationStepDone}
+          warn={locationBypassed && !locationPermissionGranted}
           onClick={async () => {
+            if (locationBypassed) return;
+
+            // Some iPhones never show the prompt at all, so a tap here can
+            // hang forever with no resolve or reject. Count taps themselves,
+            // synchronously, rather than counting failures.
+            const nextTapCount = locationTapCount + 1;
+            if (nextTapCount >= LOCATION_BYPASS_TAPS) {
+              setLocationBypass();
+              setLocationBypassed(true);
+              return;
+            }
+            setLocationTapCount(nextTapCount);
+
             console.log("Requesting location permission from OnboardingView");
             const success = await requestGeolocationPermission();
+            if (success) setLocationTapCount(0);
             setLocationPermissionGranted(success);
           }}
           key={"location"}
@@ -154,7 +199,7 @@ function OnboardingView({ user }) {
     // The compass rung. Unlike the two above it this one does not gate what
     // follows: a heading is telemetry, and a phone without a compass (or a
     // player who says no) must still be able to finish joining and play.
-    if (locationPermissionGranted)
+    if (locationStepDone)
       actionItems.push(
         <ActionItem
           text={"Grant compass permission:"}
@@ -172,7 +217,7 @@ function OnboardingView({ user }) {
         ? ` — outfit #${user.identity_slot}`
         : "";
 
-    if (locationPermissionGranted)
+    if (locationStepDone)
       actionItems.push(
         <ActionItem
           text={

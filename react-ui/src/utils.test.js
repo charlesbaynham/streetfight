@@ -1,11 +1,13 @@
 import {
   getGunImgFromUser,
   headingFromOrientationEvent,
+  isLocationBypassActive,
   isOrientationPermissionGranted,
   makeAPIURL,
   requestOrientationPermission,
   sendAPIRequest,
   setAPIErrorHandler,
+  setLocationBypass,
   watchCompassHeading,
 } from "./utils";
 import { installFetchMock, getLastAPICall } from "./testUtils";
@@ -280,5 +282,17 @@ describe("isOrientationPermissionGranted", () => {
       .mockRejectedValue(new Error("must be called from a user gesture"));
 
     await expect(requestOrientationPermission()).resolves.toBe(false);
+  });
+});
+
+describe("location bypass", () => {
+  afterEach(() => {
+    window.localStorage.clear();
+  });
+
+  test("is not active until set, and is remembered once it is", () => {
+    expect(isLocationBypassActive()).toBe(false);
+    setLocationBypass();
+    expect(isLocationBypassActive()).toBe(true);
   });
 });
