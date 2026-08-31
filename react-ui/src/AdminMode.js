@@ -10,23 +10,7 @@ import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
 import TickerView from "./TickerView";
-
-// Mirrors WEAPON_NAME_LOOKUP in backend/item_actions.py
-const WEAPONS = {
-  "No weapon": [0, 6],
-  Pewster: [1, 6],
-  "Tracka-Tracka": [2, 6],
-  OMG: [3, 6],
-  "Eat-a-bullet": [1, 1],
-};
-
-export function weaponName(user) {
-  for (const [name, [damage, timeout]] of Object.entries(WEAPONS)) {
-    if (user.shot_damage === damage && user.shot_timeout === timeout)
-      return name;
-  }
-  return null;
-}
+import { WEAPONS, weaponName } from "./weapons";
 
 // One player's in-game stats and the knobs to fiddle with them. Renaming and
 // team assignment live in the global Players section instead.
