@@ -336,6 +336,13 @@ def _content_of(body: dict):
 # every level, but these are the values OpenRouter itself accepts.
 VALID_REASONING_EFFORTS = {"none", "minimal", "low", "medium", "high", "xhigh", "max"}
 
+# Unlike the cheap pass, which sends no override at all, escalation asks for
+# real thinking by default: it is the rung that stands in for a human admin,
+# it runs on a handful of hard shots rather than every one, and the reasoning
+# is what the admin reads when it hands one back. Overridden by
+# OPENROUTER_ESCALATION_REASONING_EFFORT, or per request by the replay bench.
+DEFAULT_ESCALATION_REASONING_EFFORT = "high"
+
 
 def _normalize_reasoning_effort(value: Optional[str]) -> Optional[str]:
     """A validated, lowercased reasoning-effort level, or None.
@@ -405,6 +412,10 @@ def get_escalation_client(
 
     Nothing here is model-specific: it is the same OpenRouter client pointed at
     a different model id, so trialling a new one is an environment change.
+
+    Reasoning effort defaults to ``DEFAULT_ESCALATION_REASONING_EFFORT`` rather
+    than to whatever the cheap pass is set to: the two rungs are asked
+    different questions, and this one is meant to think.
     """
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
@@ -418,7 +429,9 @@ def get_escalation_client(
         api_key=api_key,
         model=escalation_model,
         reasoning_effort=(
-            reasoning_effort or os.getenv("OPENROUTER_ESCALATION_REASONING_EFFORT")
+            reasoning_effort
+            or os.getenv("OPENROUTER_ESCALATION_REASONING_EFFORT")
+            or DEFAULT_ESCALATION_REASONING_EFFORT
         ),
     )
 

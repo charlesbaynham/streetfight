@@ -127,8 +127,16 @@ exemplar.
     reference photos. That model is free to be stronger than the cheap
     pass's, but doesn't have to be — unset, it mirrors `OPENROUTER_MODEL`, so
     the extra context (candidates, reference photos) is what earns the
-    escalation its keep, not being a bigger model. Its verdict re-enters the
-    auto-action gate, with "unsure" landing the shot back with the admin.
+    escalation its keep, not being a bigger model — though it does think
+    harder: reasoning effort defaults to `high` here
+    (`vision_client.DEFAULT_ESCALATION_REASONING_EFFORT`) where the cheap pass
+    sends no override at all. The prompt also says outright that a reference
+    photo's *background* means nothing
+    (`REFERENCE_BACKGROUND_CLAUSE`) — they were taken at the door one after
+    another, so players share backdrops by accident, and a model left to work
+    that out reads the wall as evidence in both directions. Its verdict
+    re-enters the auto-action gate, with "unsure" landing the shot back with
+    the admin.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who
@@ -488,7 +496,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
 | `OPENROUTER_ESCALATION_MODEL` | Stronger vision model for escalated shots (unset = mirrors `OPENROUTER_MODEL`, so escalation is on wherever recognition is) |
-| `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort override for the escalation model |
+| `OPENROUTER_ESCALATION_REASONING_EFFORT` | Reasoning-effort for the escalation model (unset = `high`, unlike the cheap pass's no-override default) |
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
