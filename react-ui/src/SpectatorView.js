@@ -314,9 +314,9 @@ export function hasConcluded(shot) {
   if (!shot) return false;
   return Boolean(
     shot.checked ||
-      shot.state === "done" ||
-      shot.state === "error" ||
-      shot.escalation_state,
+    shot.state === "done" ||
+    shot.state === "error" ||
+    shot.escalation_state,
   );
 }
 
