@@ -34,5 +34,8 @@ ten cropped photographs in ``data/shots/``. The rest (the 25MB image store in
 from) stays behind in the repository, because only the generation tooling,
 which is only ever run from a checkout, reads it. Anything a *replay* comes to
 need has to be added to that manifest too, or it will be missing exactly where
-nobody is watching.
+nobody is watching. The one thing that reads the image store outside the generator
+-- ``replay.load_reference_photos``, which gives the sample cast their door
+photographs -- is written to do without it, so the demo button works either
+way and only a checkout's sample game has the photos.
 """

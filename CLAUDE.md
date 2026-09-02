@@ -289,7 +289,11 @@ Four things from it that are worth knowing even if you never call the agent:
     store (`data/images/`) and the generator's own inputs deliberately do not:
     only a checkout ever regenerates a picture. `MAKE_DEBUG_ENTRIES` builds
     this game, so the sample database is a real crowd rather than ten empty
-    teams.
+    teams - and in a checkout each of the thirty also gets their generated
+    reference photograph as the door kit check
+    (`replay.load_reference_photos`, stored unreviewed so a reset costs no
+    vision calls). On a deployment the image store is absent, so the demo
+    button provisions the same cast with no photos rather than failing.
     `shots` (`npm run demoshots`, `test_world/replay.py`) puts the ten cropped
     photographs into that game as shots somebody fired. It walks the scenarios
     in tick order, moving the whole cast to the fix each of them had *at that

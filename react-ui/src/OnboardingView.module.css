@@ -90,12 +90,30 @@ button.stackedItem {
   background-color: green;
 }
 
+.warn {
+  color: #e0a835;
+}
+
+.warn .actionButton {
+  background-color: #e0a835;
+}
+
 .actionButton img {
   width: 60%;
   position: absolute;
   left: 50%;
   top: 50%;
   transform: translateX(-55%) translateY(-50%);
+}
+
+.locationError {
+  width: 80vw;
+  max-width: 150mm;
+  box-sizing: border-box;
+  margin: 0;
+  padding: 2mm 10mm 4mm;
+  color: #ff8080;
+  font-size: smaller;
 }
 
 .logo {
