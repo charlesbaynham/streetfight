@@ -38,6 +38,7 @@ from backend.model import Shot
 from backend.model import User
 from backend.test_world import generate as generate_mod
 from backend.test_world import ids
+from backend.test_world import store as store_mod
 from backend.test_world import telemetry as telemetry_mod
 from backend.test_world import world as world_mod
 from backend.user_interface import UserInterface
@@ -145,6 +146,45 @@ def place_players(
             user.location_timestamp = anchor + fix["t"]
             placed += 1
     return placed
+
+
+def load_reference_photos(seed: int, world_path: Path = DEFAULT_WORLD) -> int:
+    """Give each of the cast the kit-check photo taken of them at the door.
+
+    The thirty reference photographs are the generator's, so they are found
+    the way it finds them -- by planning the world against the image store
+    beside ``world.json`` -- and they live only in a checkout: the store and
+    the fixtures the ids are hashed from are not package data (see
+    ``backend/test_world/__init__.py``), so a deployment provisions the cast
+    without them and this returns 0 rather than failing the demo button.
+
+    Stored straight to the column, never reviewed: a review would cost a
+    vision call per player every reset, and the door page can run one by hand.
+    Returns how many players got a photograph.
+    """
+    store = store_mod.ImageStore(Path(world_path).parent / "images")
+    if not store.root.is_dir():
+        return 0
+    try:
+        plan = generate_mod.plan(load_world(world_path), world_path, store=store)
+    except FileNotFoundError:
+        return 0
+
+    loaded = 0
+    with session_scope() as session:
+        for job in plan.jobs:
+            if job.kind != "reference" or not store.has(job.image_id):
+                continue
+            user = session.get(User, ids.user_id(seed, job.name))
+            if user is None:
+                continue
+            user.reference_photo_base64 = generate_mod.data_url(
+                store.path_for(job.image_id)
+            )
+            user.reference_review_state = None
+            user.reference_review = None
+            loaded += 1
+    return loaded
 
 
 def _stamp(anchor: float, tick: int) -> datetime.datetime:

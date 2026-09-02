@@ -48,6 +48,7 @@ def make_debug_entries(seed: int = SAMPLE_SEED) -> dict:
     from .test_world.movement import truth_track
     from .test_world.personas import build_cast
     from .test_world.replay import anchor_epoch
+    from .test_world.replay import load_reference_photos
     from .test_world.replay import place_players
 
     cast = build_cast(seed)
@@ -68,7 +69,16 @@ def make_debug_entries(seed: int = SAMPLE_SEED) -> dict:
         seed, fixes, spec.N_TICKS, anchor=anchor_epoch(spec.DURATION_S)
     )
 
-    return {"players": len(cast), "located": placed, "identity": identity}
+    # The kit check at the door, where the images exist to take it from --
+    # a checkout, not a deployment.
+    photos = load_reference_photos(seed)
+
+    return {
+        "players": len(cast),
+        "located": placed,
+        "reference_photos": photos,
+        "identity": identity,
+    }
 
 
 def debug_entries_wanted() -> bool:

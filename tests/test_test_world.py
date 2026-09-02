@@ -336,3 +336,38 @@ def test_everything_a_replay_reads_is_declared_as_package_data():
     for path in needed:
         relative = path.resolve().relative_to(package_dir).as_posix()
         assert any(fnmatch(relative, pattern) for pattern in shipped), relative
+
+
+def test_the_sample_game_carries_the_cast_reference_photos(db_session):
+    """``MAKE_DEBUG_ENTRIES`` used to provision thirty players with no kit
+    check, so the door page and the escalation pass had nothing to show for a
+    crowd whose reference photographs already sit in the image store."""
+    from backend.model import User
+    from backend.reset_db import SAMPLE_SEED
+    from backend.reset_db import make_debug_entries
+
+    made = make_debug_entries(SAMPLE_SEED)
+
+    assert made["reference_photos"] == made["players"]
+    photos = db_session.query(User.reference_photo_base64, User.reference_review_state)
+    assert photos.count() == made["players"]
+    for photo, state in photos:
+        assert photo.startswith("data:image/jpeg;base64,")
+        assert state is None
+
+
+def test_reference_photos_are_skipped_where_the_image_store_is_absent(
+    db_session, tmp_path
+):
+    """A deployment has ``world.json`` but not the 25MB image store, and the
+    demo button must still provision the game there."""
+    import shutil
+
+    from backend.reset_db import SAMPLE_SEED
+    from backend.reset_db import make_debug_entries
+
+    world_path = tmp_path / "world.json"
+    shutil.copy(replay_mod.DEFAULT_WORLD, world_path)
+
+    make_debug_entries(SAMPLE_SEED)
+    assert replay_mod.load_reference_photos(SAMPLE_SEED, world_path) == 0
