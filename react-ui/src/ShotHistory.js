@@ -3,10 +3,12 @@
 // adjudicated outcome, and a bubble in the corner showing the latest shot's
 // status.
 
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import useSound from "use-sound";
 
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
+import Modernizr from "./modernizr";
 import { sendAPIRequest } from "./utils";
 import { weaponName } from "./weapons";
 import {
@@ -25,6 +27,8 @@ import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
 import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
+import shotConfirmedSound from "./shot_confirmed.wav";
+import shotMissedSound from "./shot_missed.wav";
 
 const OPEN_EVENT = "streetfight:open-shot-history";
 
@@ -454,6 +458,52 @@ function ShotNotifierBubble({ shotList }) {
   );
 }
 
+// Plays a sound - and briefly vibrates on a hit - the instant one of the
+// player's own fired shots gets its verdict, so there's feedback beyond the
+// status bubble quietly changing colour. A ref tracks each fired shot's last
+// seen checked/result fingerprint, so a verdict fires only on the transition
+// into "checked", never on a later change to an already-checked shot (an
+// appeal ruling, say - the verdict already happened, so that stays silent).
+// The very first list this hook ever sees seeds the ref without a sound: on
+// a reload, old verdicts must not replay. After that, a fired shot that
+// turns up already checked with no prior fingerprint at all - fired and
+// ruled between two refreshes - still sounds, since nothing has yet.
+function useShotOutcomeSounds(shotList) {
+  const [playConfirmed] = useSound(shotConfirmedSound);
+  const [playMissed] = useSound(shotMissedSound);
+  const lastSeen = useRef(null);
+
+  useEffect(() => {
+    if (!shotList) return;
+
+    const firstLoad = lastSeen.current === null;
+    const previous = lastSeen.current || new Map();
+    const next = new Map();
+
+    shotList.forEach((shot) => {
+      if (shot.direction !== "fired") return;
+
+      const fingerprint = `${shot.checked}|${shot.result}`;
+      if (!firstLoad && shot.checked) {
+        const before = previous.get(shot.id);
+        const justVerdicted =
+          before === undefined || before.startsWith("false|");
+        if (justVerdicted) {
+          if (shot.result === "hit") {
+            playConfirmed();
+            if (Modernizr.vibrate) navigator.vibrate(200);
+          } else if (shot.result === "miss" || shot.result === "bystander") {
+            playMissed();
+          }
+        }
+      }
+      next.set(shot.id, fingerprint);
+    });
+
+    lastSeen.current = next;
+  }, [shotList, playConfirmed, playMissed]);
+}
+
 // Mount exactly one of these in the in-game view: it owns the shot list, the
 // popup and the status bubble
 export function ShotHistoryController() {
@@ -477,6 +527,7 @@ export function ShotHistoryController() {
 
   useEffect(() => subscribeShots(setShotList), []);
   useEffect(refreshEverything, [refreshEverything]);
+  useShotOutcomeSounds(shotList);
 
   useEffect(() => {
     const handler = (event) => {

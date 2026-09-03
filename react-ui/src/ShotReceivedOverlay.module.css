@@ -1,0 +1,97 @@
+/* Full-screen and must-dismiss: above Popup's 100 and MapView's 101 (see
+   z-index notes in those modules), so nothing on the in-game screen can hide
+   it. index.css sets a global 12px base font-size, so every size here is an
+   explicit em-scale rather than relying on the browser default. */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.5em;
+  padding: 1.5em 1.2em;
+  overflow-y: auto;
+  /* Opaque: the HUD and the camera feed under it are noise at this moment */
+  background: linear-gradient(to bottom, #3c0000, #140000);
+  color: white;
+  text-align: center;
+}
+
+.headline {
+  margin: 0.3em 0 0;
+  font-size: 2.4em;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+.shooter {
+  margin: 0;
+  font-size: 1.4em;
+}
+
+.image,
+.imagePlaceholder {
+  width: 100%;
+  max-width: 30em;
+  flex: 1 1 auto;
+  min-height: 8em;
+  border-radius: 0.5em;
+}
+
+/* Letterboxed into whatever height is left, against the gradient rather
+   than a box of its own: an empty dark frame round a landscape photo reads
+   as something failing to load. */
+.image {
+  object-fit: contain;
+}
+
+.imagePlaceholder {
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.outcome {
+  margin: 0;
+  font-size: 1.6em;
+  font-weight: 700;
+}
+
+/* Big and bulky - the house style for a primary action driven one-handed
+   mid-game (see CLAUDE.md's admin UI exemplar notes). */
+.okButton {
+  width: 100%;
+  max-width: 30em;
+  min-height: 3.5em;
+  border: none;
+  border-radius: 0.5em;
+  background-color: white;
+  color: #3c0000;
+  font: inherit;
+  font-size: 1.3em;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* Deliberately smaller and quieter than the OK button: this is the escape
+   hatch for the rare "that wasn't a hit", not the expected next tap. */
+.appealButton {
+  width: auto;
+  min-height: 2.5em;
+  padding: 0 1em;
+  margin-bottom: 0.5em;
+  border: none;
+  background: none;
+  color: rgba(255, 255, 255, 0.75);
+  font: inherit;
+  font-size: 1em;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .overlay {
+    transition: none !important;
+  }
+}

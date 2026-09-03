@@ -264,6 +264,21 @@ Four things from it that are worth knowing even if you never call the agent:
     one* - the tablet locking itself is how the dashboard disappears, and a
     browser too old for the Wake Lock API is the one case nothing can be done
     about from here.
+    `ShotReceivedOverlay.js` is the full-screen "You have been shot" card a
+    player must dismiss (2026-09-03): before it, a hit just took a hit point
+    off the HUD in silence. It reads the received half of `shotHistoryStore`
+    (a received shot with `result === "hit"`), shows the shooter's photograph
+    of them and names the shooter, and acknowledges by shot id in
+    `localStorage` so a reload cannot re-show a hit already dismissed.
+    Dismissing one also acknowledges every *older* hit, but never a newer
+    one, so a fresh phone with a long history costs one tap while a second
+    hit that lands behind the card still gets its own. Sounds are all
+    frontend: the card plays `hit_received.wav`, the fire button `bang.mp3`,
+    and `useShotOutcomeSounds` in `ShotHistory.js` plays
+    `shot_confirmed.wav` / `shot_missed.wav` the moment one of the player's
+    own shots is ruled on - seeded silently from the first list it sees, so a
+    reload replays nothing. Those `.wav`s were synthesised (numpy → `wave`),
+    so replacing one is just dropping a better file over it.
     `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the

@@ -147,6 +147,93 @@ describe("corrupt localStorage", () => {
     expect(() => store.countUnseenShots([shot])).not.toThrow();
     expect(store.countUnseenShots([shot])).toBe(1);
   });
+
+  test("corrupt JSON under the acknowledged-hits key falls back to an empty map instead of throwing", () => {
+    localStorage.setItem("acknowledgedHits", "{not valid json");
+    const shot = makeShot({ id: "s1", direction: "received", result: "hit" });
+
+    expect(() => store.unacknowledgedHits([shot])).not.toThrow();
+    expect(store.unacknowledgedHits([shot])).toEqual([shot]);
+  });
+});
+
+// unacknowledgedHits / acknowledgeHit back the "You have been shot" overlay
+// (ShotReceivedOverlay.js): which shot it shows, and what dismissing it
+// sweeps away.
+describe("unacknowledgedHits / acknowledgeHit", () => {
+  // Newest-first, matching the order getShots()/refreshShots() already
+  // produce - unacknowledgedHits does not re-sort.
+  const older = makeShot({
+    id: "r-old",
+    direction: "received",
+    result: "hit",
+    time_created: "2026-08-15T10:00:00Z",
+  });
+  const newer = makeShot({
+    id: "r-new",
+    direction: "received",
+    result: "hit",
+    time_created: "2026-08-15T10:05:00Z",
+  });
+
+  test("only received hits count - fired shots and non-hit results are excluded", () => {
+    const firedHit = makeShot({ direction: "fired", result: "hit" });
+    const receivedMiss = makeShot({ direction: "received", result: "miss" });
+    const receivedUnruled = makeShot({ direction: "received", result: null });
+
+    expect(
+      store.unacknowledgedHits([
+        firedHit,
+        receivedMiss,
+        receivedUnruled,
+        older,
+      ]),
+    ).toEqual([older]);
+  });
+
+  test("preserves the newest-first order of the list", () => {
+    expect(store.unacknowledgedHits([newer, older])).toEqual([newer, older]);
+  });
+
+  test("acknowledging a shot also acknowledges every received hit at or before its time", () => {
+    const list = [newer, older];
+
+    store.acknowledgeHit(list, newer.id);
+
+    expect(store.unacknowledgedHits(list)).toEqual([]);
+  });
+
+  test("acknowledging an older shot leaves a newer one showing", () => {
+    const list = [newer, older];
+
+    store.acknowledgeHit(list, older.id);
+
+    expect(store.unacknowledgedHits(list)).toEqual([newer]);
+  });
+
+  test("acknowledging a shot notifies subscribers", () => {
+    const callback = jest.fn();
+    store.subscribeShots(callback);
+
+    store.acknowledgeHit([older], older.id);
+
+    expect(callback).toHaveBeenCalled();
+  });
+
+  test("acknowledging an unknown shot id is a no-op", () => {
+    store.acknowledgeHit([older], "does-not-exist");
+    expect(store.unacknowledgedHits([older])).toEqual([older]);
+  });
+
+  test("survives a fresh module load (localStorage persists across reloads)", () => {
+    store.acknowledgeHit([older], older.id);
+
+    jest.resetModules();
+    jest.doMock("./utils", () => ({ sendAPIRequest: jest.fn() }));
+    const reloadedStore = require("./shotHistoryStore");
+
+    expect(reloadedStore.unacknowledgedHits([older])).toEqual([]);
+  });
 });
 
 // The store fetches both halves of the history (fired and received) on every
