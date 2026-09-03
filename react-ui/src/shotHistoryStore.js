@@ -12,6 +12,7 @@ let shots = null;
 const subscribers = new Set();
 
 const SEEN_STORAGE_KEY = "seenShotStatuses";
+const ACKNOWLEDGED_HITS_STORAGE_KEY = "acknowledgedHits";
 
 function notify() {
   subscribers.forEach((callback) => callback(shots));
@@ -101,6 +102,68 @@ export function markShotsSeen(shotList) {
     seen[shot.id] = shotStatusFingerprint(shot);
   });
   localStorage.setItem(SEEN_STORAGE_KEY, JSON.stringify(seen));
+  notify();
+}
+
+function loadAcknowledgedMap() {
+  try {
+    return (
+      JSON.parse(localStorage.getItem(ACKNOWLEDGED_HITS_STORAGE_KEY)) || {}
+    );
+  } catch (e) {
+    return {};
+  }
+}
+
+function isHitAcknowledged(shot) {
+  return Boolean(loadAcknowledgedMap()[shot.id]);
+}
+
+// Confirmed hits landed on this player (roadmap: the "You have been shot"
+// overlay) that haven't been dismissed yet, newest first - the overlay shows
+// unacknowledgedHits(shots)[0].
+export function unacknowledgedHits(shotList) {
+  if (!shotList) return [];
+  return shotList.filter(
+    (shot) =>
+      shot.direction === "received" &&
+      shot.result === "hit" &&
+      !isHitAcknowledged(shot),
+  );
+}
+
+// Dismissing the overlay acknowledges the shot on screen AND every received
+// hit at or before it in time. A fresh device with a long history shouldn't
+// make the player tap through five old hits to reach the game; but a second
+// hit that lands (in server time) after the one currently on screen must
+// still get its own overlay, so only hits up to the dismissed one's time are
+// swept up.
+export function acknowledgeHit(shotList, shotId) {
+  if (!shotList) return;
+  const target = shotList.find((shot) => shot.id === shotId);
+  if (!target) return;
+  const cutoff = new Date(target.time_created).getTime();
+
+  const acknowledged = loadAcknowledgedMap();
+  shotList.forEach((shot) => {
+    if (
+      shot.direction === "received" &&
+      shot.result === "hit" &&
+      new Date(shot.time_created).getTime() <= cutoff
+    ) {
+      acknowledged[shot.id] = true;
+    }
+  });
+
+  try {
+    localStorage.setItem(
+      ACKNOWLEDGED_HITS_STORAGE_KEY,
+      JSON.stringify(acknowledged),
+    );
+  } catch (e) {
+    // localStorage unavailable (private browsing, quota, ...) - the
+    // overlay will just show again next render, which is safe.
+  }
   notify();
 }
 
