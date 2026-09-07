@@ -33,14 +33,49 @@ branches are the whole gate.
 Run the **Deploy to staging** workflow, or:
 
 ```bash
+scripts/deploy.sh staging                # master
+scripts/deploy.sh staging my-branch      # a branch, to try on a phone
+scripts/deploy.sh staging pr/222         # a pull request, by its number
+```
+
+or by hand:
+
+```bash
 gh workflow run deploy-staging.yml -f ref=master
 ```
 
-`ref` is anything git will resolve - a branch, a tag, a SHA - so putting a pull
-request's head on staging to try it on a phone is the ordinary case. The workflow
-checks that revision's LXC template built, then force-pushes it to
-`refs/heads/staging`. That is all it does; it holds no credential for anything at
-home.
+`ref` is anything git will resolve - a branch, a tag, a SHA - **and a pull
+request**, written `pr/222`, `#222` or bare `222`. Putting an unmerged branch on
+staging to try it on a phone is the ordinary case, not the exception: master is
+only the input's default. The workflow checks that revision's LXC template built,
+force-pushes it to `refs/heads/staging`, clears the way for a fresh release (see
+below), and dispatches the build. That is all it does; it holds no credential for
+anything at home.
+
+A pull request is fetched as `refs/pull/222/head` rather than by branch name,
+which is also what makes a **fork's** PR deployable - no branch of this
+repository holds that commit. The one thing that costs: a fork's head never got
+a push event here, so it has no `build_lxc_template` check run for the workflow
+to look at, and that deploy wants `skip_build_check`.
+
+### Why the workflow deletes a release before building
+
+⚠️ **Load-bearing, and easy to mistake for tidying.** `build-template.yml` names
+its release `template-<date>-<sha7>`, and the deployer at home takes the newest
+release *by publication time*. So a revision already built today gets its asset
+re-uploaded to the release that already exists, whose timestamp does not move -
+and nothing at home ever notices.
+
+That is barely visible when only master is ever deployed. It is the ordinary
+case the moment staging is used for pull requests: try a branch, put master back
+an hour later, and master's release is already this morning's. The deploy run
+goes green, and staging carries on running the branch.
+
+So `deploy-staging.yml` deletes that release, if it exists, between moving the
+ref and dispatching the build, and the build republishes it seconds later. The
+only asset destroyed is the one about to be rebuilt; the git tag is left in
+place for `gh release create` to reuse. Nothing else in this repository
+publishes releases, so there is nothing else it can hit.
 
 What happens next, unattended, in about fifteen to twenty-five minutes:
 
@@ -108,13 +143,13 @@ where to look:
 
 ### Rolling back
 
-⚠️ **Re-running the workflow on an older revision may do nothing.** The deployer
-picks the newest release *by publication time*, and the release tag is
-`template-<date>-<sha7>` - so re-pushing a revision already built today re-uploads
-its asset to the release that already exists, without changing that release's
-timestamp, and nothing looks new.
+Deploy the earlier revision the same way - `scripts/deploy.sh staging <older-sha>`
+- exactly as on the droplet. Going backwards used to be the one thing that
+quietly did not work, for the reason above; the release drop is what fixed it,
+so a re-deploy of a revision built earlier today now genuinely republishes.
 
-Roll back on `homeserver` instead, naming the generation you want:
+You can also roll back on `homeserver` without CI at all, naming the generation
+you want:
 
 ```bash
 /opt/homelab-infra/bin/cattle-deploy.sh streetfight-staging template-20260830-c828e38
