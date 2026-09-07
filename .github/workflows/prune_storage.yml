@@ -1,0 +1,20 @@
+name: Prune CI storage
+
+on:
+  schedule:
+  - cron: 10 5 * * *
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: List what would go, delete nothing.
+        type: boolean
+        default: true
+
+jobs:
+  prune:
+    permissions:
+      actions: write
+      contents: write
+    uses: charlesbaynham/nix-proxmox-cattle/.github/workflows/prune-storage.yml@v1
+    with:
+      dry_run: ${{ inputs.dry_run || false }}
