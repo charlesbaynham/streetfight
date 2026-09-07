@@ -38,7 +38,9 @@
 .progressFill {
   height: 100%;
   background: #e8850c;
-  transition: width 0.3s ease, background-color 0.3s ease;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
 }
 
 .progressFillDone {
@@ -207,6 +209,17 @@
 .submitButton:disabled {
   opacity: 0.4;
   cursor: default;
+}
+
+.enterGameButton {
+  margin-top: 4mm;
+}
+
+/* Says what the button above is for and that not pressing it is survivable -
+   the poll will bring them in anyway. */
+.enterGameNote {
+  margin-top: 2mm;
+  opacity: 0.75;
 }
 
 .linkButton {

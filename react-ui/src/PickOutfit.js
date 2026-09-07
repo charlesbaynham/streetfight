@@ -9,9 +9,12 @@
 // Deliberately outside UserMode: no map, no webcam, no SSE, no permission
 // polling while picking - this page only ever talks to join_options /
 // outfit_options / pick_outfit. The one exception is after the outfit is
-// locked in: a lightweight user_info poll (see PickOutfit's own effect)
-// hard-redirects to / once the game goes active, since nothing else on this
-// page would ever tell a player who left the tab open that it had started.
+// locked in, where there are two ways on to the game proper: a lightweight
+// user_info poll (see PickOutfit's own effect) hard-redirects to / once the
+// game goes active, since nothing else on this page would ever tell a player
+// who left the tab open that it had started, and ResultScreen's own button
+// goes there on demand - / is where the camera and location permissions are
+// granted, so it is somewhere worth being before the game starts too.
 
 import React, {
   useCallback,
@@ -355,6 +358,7 @@ function ConfirmScreen({
 }
 
 function ResultScreen({ appearance, wardrobeChannels, channels }) {
+  const navigate = useNavigate();
   return (
     <div className={styles.resultScreen}>
       <h2>You're set</h2>
@@ -377,6 +381,23 @@ function ResultScreen({ appearance, wardrobeChannels, channels }) {
       </div>
       <p className={styles.finalNote}>
         Locked in - please screenshot this page!
+      </p>
+      {/* The way in by hand. The poll below sends a player here on its own
+          once the game starts, but a player who picked early has nothing to
+          do until then except grant the camera and location permissions the
+          game needs - and that is what / asks for while it waits, so make
+          going there something they can do now rather than only something
+          that happens to them later. */}
+      <button
+        className={`${styles.submitButton} ${styles.enterGameButton}`}
+        onClick={() => navigate("/")}
+        type="button"
+      >
+        Go to the game
+      </button>
+      <p className={styles.enterGameNote}>
+        Set up your camera and location now - we'll take you to the game
+        automatically when it starts.
       </p>
       <p>Ask the admin if you need to change your outfit</p>
     </div>
@@ -893,6 +914,12 @@ function PickOutfit() {
         }
       });
     };
+    // Once immediately, then on the timer: a player who picked before the
+    // game started and comes back to their join link afterwards - a reload,
+    // or the tab reopened - is already late, and waiting out a poll interval
+    // staring at a "locked in" screen is exactly how this page looks like a
+    // dead end.
+    checkActive();
     const interval = setInterval(checkActive, GAME_START_POLL_MS);
     return () => {
       cancelled = true;

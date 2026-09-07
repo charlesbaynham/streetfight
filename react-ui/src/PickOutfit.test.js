@@ -637,7 +637,9 @@ test("once an outfit is locked in, polling picks up the game going active and re
       screen.getByText("Locked in - please screenshot this page!"),
     ).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
-    expect(getAPICalls("user_info")).toHaveLength(0);
+    // Asked once immediately, so a tab reopened after the game started is not
+    // held on this page for a whole poll interval.
+    expect(getAPICalls("user_info")).toHaveLength(1);
 
     // Not active yet - a tick of the poll changes nothing.
     await act(async () => {
@@ -656,6 +658,27 @@ test("once an outfit is locked in, polling picks up the game going active and re
   } finally {
     jest.useRealTimers();
   }
+});
+
+test("a locked-in player can go to the game before it starts", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+    user_info: () => ({ active: false }),
+  });
+
+  renderPickOutfit();
+
+  const button = await screen.findByRole("button", {
+    name: "Go to the game",
+  });
+  await actAndFlush(() => userEvent.click(button));
+
+  expect(currentURL()).toBe("/");
 });
 
 test("another team's link, tapped after picking, names the team already joined", async () => {
