@@ -14,9 +14,16 @@
 # Merging to master deploys nothing. This script is the deliberate act.
 #
 #   scripts/deploy.sh staging                  # put master on staging
-#   scripts/deploy.sh staging my-branch        # try a PR head on a phone
+#   scripts/deploy.sh staging my-branch        # try a branch on a phone
+#   scripts/deploy.sh staging pr/222           # ...or a pull request, by number
 #   scripts/deploy.sh live v1.2.3              # asks before it does it
 #   scripts/deploy.sh live master --yes        # ...unless you say not to
+#
+# Staging takes any ref: a branch, a tag, a SHA, or a pull request as `pr/222`,
+# `#222` or bare `222` (the workflow fetches refs/pull/N/head itself, so a fork's
+# PR works too; quote a leading `#`, or the shell eats it as a comment). Trying a
+# branch before it is merged is the whole point of the box. Live takes a branch,
+# a tag or a SHA - not a PR number, deliberately.
 #
 # Full runbooks, which this does not replace:
 #   docs/deployment_droplet.md   docs/deployment_staging.md
@@ -67,9 +74,26 @@ staging)
     ;;
 *)
     echo "usage: scripts/deploy.sh <live|staging> [ref] [--yes] [--skip-build-check] [--no-wait]" >&2
+    echo "       ref: a branch, tag or SHA; on staging also a pull request (pr/222)" >&2
     exit 2
     ;;
 esac
+
+# Only deploy-staging.yml knows how to fetch refs/pull/N/head, and putting an
+# unmerged pull request in front of the players is not something to make easy.
+# Kept in step with deploy-staging.yml's own resolution: only a bare run of
+# digits is a pull request number.
+case "$REF" in
+pr/* | PR/*) PR_NUMBER="${REF#*/}" ;;
+\#*) PR_NUMBER="${REF#\#}" ;;
+*) PR_NUMBER="$REF" ;;
+esac
+case "$PR_NUMBER" in '' | *[!0-9]*) PR_NUMBER="" ;; esac
+
+if [ -n "$PR_NUMBER" ] && [ "$TARGET" = live ]; then
+    echo "refusing to put pull request #$PR_NUMBER live: name a branch, tag or SHA" >&2
+    exit 2
+fi
 
 if ! command -v gh >/dev/null 2>&1; then
     cat >&2 <<EOF
@@ -83,8 +107,14 @@ EOF
 fi
 
 # Resolve for display only: the workflow re-resolves the ref itself, and the
-# point here is to show which revision you are actually asking for.
-REV="$(git rev-parse --short "$REF" 2>/dev/null || echo "not resolvable locally")"
+# point here is to show which revision you are actually asking for. A pull
+# request is asked of the remote, since its head is not a local ref.
+if [ -n "$PR_NUMBER" ]; then
+    REV="$(git ls-remote origin "refs/pull/$PR_NUMBER/head" 2>/dev/null | cut -c1-7)"
+    REV="${REV:-not resolvable}"
+else
+    REV="$(git rev-parse --short "$REF" 2>/dev/null || echo "not resolvable locally")"
+fi
 
 echo "target      $TARGET  ($HOSTNAME)"
 echo "ref         $REF  -> $REV"

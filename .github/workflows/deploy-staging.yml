@@ -16,12 +16,17 @@ name: Deploy to staging
 # cannot be: the staging host answers on 10.0.1.34, which a GitHub runner has
 # no route to. The job ends at the push. See docs/deployment_staging.md for
 # where to look instead.
+#
+# `ref` is anything git resolves - a branch, a tag, a SHA - and also a pull
+# request, as `pr/222`, `#222` or bare `222`. Trying a branch on a phone before
+# it is merged is what staging is for, so master is only the default, never a
+# restriction.
 
 on:
   workflow_dispatch:
     inputs:
       ref:
-        description: Branch, tag or SHA to put on staging
+        description: Branch, tag, SHA or pull request (pr/222, #222, 222) to put on staging
         required: true
         default: master
       skip_build_check:
@@ -49,19 +54,44 @@ jobs:
       with:
         fetch-depth: 0
 
+    # A pull request is the ordinary thing to want on staging, and its number is
+    # what you have in front of you when you are looking at it. `refs/pull/N/head`
+    # is fetched explicitly because actions/checkout fetches branches and tags
+    # only - and it is also what makes a fork's PR deployable at all, since no
+    # branch of this repository holds that commit.
     - name: Resolve the revision
       env:
         REF: ${{ inputs.ref }}
       run: |
-        SHA=$(git rev-parse --verify "origin/$REF^{commit}" 2>/dev/null \
-          || git rev-parse --verify "$REF^{commit}")
+        case "$REF" in
+        pr/* | PR/*) PR="${REF#*/}" ;;
+        \#*) PR="${REF#\#}" ;;
+        *) PR="$REF" ;;
+        esac
+        # Only a bare run of digits is a pull request number; anything else -
+        # `my-branch`, `v1.2.3`, `pr/oops` - is a git ref to resolve normally.
+        case "$PR" in '' | *[!0-9]*) PR="" ;; esac
+
+        if [ -n "$PR" ]; then
+          git fetch --no-tags origin "refs/pull/$PR/head"
+          SHA=$(git rev-parse --verify FETCH_HEAD)
+          echo "DESCRIPTION=pull request #$PR" >> "$GITHUB_ENV"
+          echo "Deploying PR #$PR -> $SHA"
+        else
+          SHA=$(git rev-parse --verify "origin/$REF^{commit}" 2>/dev/null \
+            || git rev-parse --verify "$REF^{commit}")
+          echo "DESCRIPTION=$REF" >> "$GITHUB_ENV"
+          echo "Deploying $REF -> $SHA"
+        fi
         echo "SHA=$SHA" >> "$GITHUB_ENV"
-        echo "Deploying $REF -> $SHA"
 
     # A revision whose template does not build publishes no release asset, so
     # the deploy would look like it worked and then simply never happen. Cheap
     # to check here, because build_images.yml builds the template on every
-    # branch; only the release is gated on `staging`.
+    # branch; only the release is gated on `staging`. The one revision it
+    # cannot vouch for is a pull request from a fork, whose head never got a
+    # push event in this repository and so has no check run at all - that one
+    # wants skip_build_check.
     # The check run may not exist yet, or may still be queued/in-progress, if
     # this deploy was dispatched hot on the heels of the push that triggered
     # it. Rather than fail on that race, poll for up to ten minutes for it to
@@ -94,16 +124,14 @@ jobs:
           sleep 20
         done
 
-    # Force, because rolling back to an earlier commit is not a fast-forward.
-    # ⚠️ On staging a rollback needs one more step than on the droplet: the
-    # deployer picks the newest release by publication time, and a same-day
-    # re-run only re-uploads the asset to the existing release. See
-    # docs/deployment_staging.md.
+    # Force, because staging goes backwards and sideways as often as forwards:
+    # a branch, then master again, then a different branch. None of those are
+    # fast-forwards.
     - name: Move the deploy ref
       run: |
         git push --force origin "$SHA:refs/heads/$DEPLOY_BRANCH"
         {
-          echo "### Staging: [\`${SHA:0:8}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/$SHA)"
+          echo "### Staging: \`${DESCRIPTION}\` → [\`${SHA:0:8}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/$SHA)"
           echo
           echo "Watch it land:"
           echo
@@ -112,7 +140,34 @@ jobs:
           echo "- \`curl -s https://${HOSTNAME}/api/get_version\` from the LAN or the tailnet"
         } >> "$GITHUB_STEP_SUMMARY"
 
-    # `git push` just above authenticates as the default GITHUB_TOKEN (via
+    # ⚠️ Load-bearing, and the thing that makes deploying anything but master
+    # workable. The hypervisor picks the *newest release by publication time*,
+    # and build-template.yml names its release `template-<date>-<sha7>` — so a
+    # revision already built today gets its asset re-uploaded to the release
+    # that already exists, whose timestamp does not move, and nothing at home
+    # ever notices. That is the ordinary case the moment staging is used for
+    # pull requests: try a branch, put master back, and master's release is
+    # already this morning's. The deploy would report success and staging would
+    # carry on running the branch.
+    #
+    # So delete that release first and let the build below republish it. The
+    # only asset destroyed is the one about to be rebuilt; the git tag is left
+    # in place for `gh release create` to reuse. Nothing else in this
+    # repository publishes releases.
+    - name: Drop a same-day release for this revision
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        TAG="template-$(date -u +%Y%m%d)-${SHA:0:7}"
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "Release $TAG already exists for this revision: deleting it, so the" \
+            "build below publishes one the deployer sees as new."
+          gh release delete "$TAG" --yes
+        else
+          echo "No existing release $TAG; the build below will publish it."
+        fi
+
+    # `git push` two steps above authenticates as the default GITHUB_TOKEN (via
     # actions/checkout's persisted credentials). GitHub does not fire
     # `push`-triggered workflows for GITHUB_TOKEN pushes — anti-recursion
     # protection — so build_images.yml, the workflow that actually builds and
