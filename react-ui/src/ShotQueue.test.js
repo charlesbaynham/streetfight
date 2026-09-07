@@ -1,6 +1,5 @@
 import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 
 import ShotQueue, { charlesBotVerdict, rankShotCandidates } from "./ShotQueue";
 import { SHOT_CACHE_NAME } from "./ShotCache";
@@ -10,7 +9,14 @@ import {
   getLastAPICall,
   emitUpdate,
   actAndFlush,
+  atRoute,
+  currentURL,
 } from "./testUtils";
+
+// The queue keeps the shot on screen in the path, so it needs the route it is
+// mounted at in the real app (src/index.js) rather than a bare router.
+const QUEUE_ROUTE = "/admin/shots/:shotId?";
+const QUEUE_URL = "/admin/shots";
 
 // ---------------------------------------------------------------------------
 // rankShotCandidates - pure function, no rendering needed.
@@ -270,7 +276,7 @@ describe("ShotQueuePanel", () => {
     };
   });
 
-  async function renderQueue(routeOverrides = {}) {
+  async function renderQueue(routeOverrides = {}, url = QUEUE_URL) {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: () => shotIds,
@@ -284,14 +290,12 @@ describe("ShotQueuePanel", () => {
       admin_escalate_shot: {},
       ...routeOverrides,
     });
-    await actAndFlush(() =>
-      render(
-        <MemoryRouter>
-          <ShotQueue />
-        </MemoryRouter>,
-      ),
+    await actAndFlush(() => render(atRoute(QUEUE_ROUTE, <ShotQueue />, url)));
+    await screen.findByText(
+      `Shot ${Math.max(1, shotIds.indexOf(url.split("/").pop()) + 1)} of ${
+        shotIds.length
+      }:`,
     );
-    await screen.findByText(`Shot 1 of ${shotIds.length}:`);
     // The header (queue length) and the shot itself (loaded async, through
     // ShotCache) settle independently - wait for both before proceeding.
     await screen.findByAltText("The next shot in the queue");
@@ -652,6 +656,100 @@ describe("ShotQueuePanel", () => {
     await screen.findByText("Adjudicated: Hit on Target Blue");
   });
 
+  // -------------------------------------------------------------------------
+  // Keeping the admin's place in the URL. The queue is worked one-handed on a
+  // phone during a game, where a reload is a stray swipe away - and losing it
+  // used to mean starting again from the top of a forty-shot queue.
+  // -------------------------------------------------------------------------
+
+  test("names the shot on screen in the path, and moving through the queue moves the path", async () => {
+    await renderQueue();
+
+    // A bare /admin/shots picks up the shot it settled on, so a reload from
+    // here comes back to it rather than to whatever is at the top by then.
+    expect(currentURL()).toBe("/admin/shots/shot-1");
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
+    );
+    expect(currentURL()).toBe("/admin/shots/shot-2");
+
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Last" })),
+    );
+    expect(currentURL()).toBe("/admin/shots/shot-3");
+  });
+
+  test("opens the shot named in the path", async () => {
+    await renderQueue({}, "/admin/shots/shot-3");
+
+    expect(screen.getByText("Shot 3 of 3:")).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.getByText("By Shooter of shot-3")).toBeInTheDocument(),
+    );
+  });
+
+  test("a shot named in the path that is no longer in the queue holds the position rather than the id", async () => {
+    await renderQueue({}, "/admin/shots/shot-2");
+    expect(screen.getByText("Shot 2 of 3:")).toBeInTheDocument();
+
+    // shot-2 is ruled on (here, elsewhere) and leaves the queue: the admin
+    // should land on what is now second in it, not be thrown back to the top.
+    shotIds = ["shot-1", "shot-3"];
+    await actAndFlush(() => emitUpdate("shots"));
+
+    await waitFor(() => expect(currentURL()).toBe("/admin/shots/shot-3"));
+    expect(screen.getByText("Shot 2 of 2:")).toBeInTheDocument();
+  });
+
+  test("the adjudicated-shots filter rides in the query string, both ways", async () => {
+    await renderQueue();
+
+    await actAndFlush(() =>
+      userEvent.click(
+        screen.getByRole("checkbox", { name: "Show adjudicated shots" }),
+      ),
+    );
+
+    // The filter lands in the query string; the path re-acquires the shot it
+    // settles on straight afterwards.
+    await waitFor(() =>
+      expect(currentURL()).toBe("/admin/shots/shot-1?checked=1"),
+    );
+    await waitFor(() =>
+      expect(getLastAPICall("admin_get_shots_info").query).toEqual({
+        include_checked: "true",
+      }),
+    );
+  });
+
+  test("a URL asking for the contested queue opens the contested queue", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: () => shotIds,
+      admin_get_contested_shots_info: () => ["shot-2"],
+      admin_get_shot: ({ query }) => shotsById[query.shot_id],
+      admin_get_shot_ai_review: () => NO_REVIEW_YET,
+    });
+
+    await actAndFlush(() =>
+      render(
+        atRoute(QUEUE_ROUTE, <ShotQueue />, "/admin/shots?mode=contested"),
+      ),
+    );
+
+    await screen.findByText("Shot 1 of 1:");
+    expect(screen.getByRole("radio", { name: "Contested" })).toBeChecked();
+    // The contested list, not the queue - the only admin_get_shots_info call
+    // on the page is the nav bar's own unchecked-shot counter.
+    expect(
+      getAPICalls("admin_get_contested_shots_info").length,
+    ).toBeGreaterThan(0);
+    await waitFor(() =>
+      expect(currentURL()).toBe("/admin/shots/shot-2?mode=contested"),
+    );
+  });
+
   test("notes load with the shot and save back to their endpoint", async () => {
     await renderQueue({
       admin_get_shot_notes: { notes: "crosshair is left of the head" },
@@ -700,11 +798,7 @@ describe("ShotAiTags", () => {
       admin_escalate_shot: {},
     });
     await actAndFlush(() =>
-      render(
-        <MemoryRouter>
-          <ShotQueue />
-        </MemoryRouter>,
-      ),
+      render(atRoute(QUEUE_ROUTE, <ShotQueue />, QUEUE_URL)),
     );
     await screen.findByText("By Shooter of shot-1");
     await flushEffects();
@@ -1128,11 +1222,7 @@ describe("RankedCandidates", () => {
       admin_escalate_shot: {},
     });
     await actAndFlush(() =>
-      render(
-        <MemoryRouter>
-          <ShotQueue />
-        </MemoryRouter>,
-      ),
+      render(atRoute(QUEUE_ROUTE, <ShotQueue />, QUEUE_URL)),
     );
     await screen.findByText("By Shooter of shot-1");
     await flushEffects();
@@ -1318,11 +1408,7 @@ describe("contested shots", () => {
       ...routeOverrides,
     });
     await actAndFlush(() =>
-      render(
-        <MemoryRouter>
-          <ShotQueue />
-        </MemoryRouter>,
-      ),
+      render(atRoute(QUEUE_ROUTE, <ShotQueue />, QUEUE_URL)),
     );
     await screen.findByText("Shot 1 of 1:");
     await flushEffects();

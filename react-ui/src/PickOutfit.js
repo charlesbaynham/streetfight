@@ -13,11 +13,18 @@
 // hard-redirects to / once the game goes active, since nothing else on this
 // page would ever tell a player who left the tab open that it had started.
 
-import React, { useCallback, useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 
 import Popup from "./Popup";
 import { sendAPIRequest } from "./utils";
+import { usePatchSearchParams } from "./urlState";
 import { NameEntry } from "./OnboardingView";
 import { Swatch, hexFor } from "./Swatch";
 
@@ -419,19 +426,53 @@ function JoinProgressBar({ percent }) {
   );
 }
 
+// Where the picker keeps its place. Everything the player has done short of
+// claiming an outfit - which colours they own, which page of options they are
+// reading, which outfit they are being asked to confirm - lives in the query
+// string beside the join code, so a reload (or the browser reaping a
+// backgrounded tab) comes back to the same screen instead of an empty
+// wardrobe form. Query parameters rather than path segments because the join
+// code is already one, and because the step is derivable from them: options
+// are shown once there is a page, the confirm screen once there is an outfit.
+function wardrobeParam(channelName) {
+  return `w_${channelName}`;
+}
+
 // The nudge: default every colour to ticked, not empty. A player who never
 // touches this step still gets offered outfits at all - ranked
 // canonical-first, so the ones near the top of the list are the ones we'd
 // actually prefer they land on - rather than the thin, often non-canonical
 // set an empty (or barely-ticked) wardrobe produces. Ticking is then framed
 // as narrowing down for a better match, not building up from nothing.
-function defaultWardrobe(joinData) {
+//
+// An absent parameter is therefore that default, and an empty one ("w_tshirt=")
+// is a player who unticked the lot - two different things, which is why the
+// absence is not simply written out as "".
+function wardrobeFromParams(searchParams, joinData) {
   const wardrobe = {};
   for (const name of joinData.wardrobe_channels) {
     const channel = joinData.channels.find((c) => c.name === name);
-    wardrobe[name] = channel ? [...channel.labels] : [];
+    const labels = channel ? channel.labels : [];
+    const picked = searchParams.get(wardrobeParam(name));
+    wardrobe[name] =
+      picked === null
+        ? [...labels]
+        : // Filtered through the channel's own labels, so a hand-edited URL
+          // cannot post a colour the scheme has never heard of - and so the
+          // order is the palette's rather than the order they were tapped.
+          labels.filter((label) => picked.split(",").includes(label));
   }
   return wardrobe;
+}
+
+// An outfit named in the URL, as something stable enough to find it again by
+// once the option list has been re-fetched. Only ever compared, never parsed
+// back - the option itself comes from the list.
+function outfitKey(appearance) {
+  return Object.keys(appearance)
+    .sort()
+    .map((name) => `${name}-${appearance[name]}`)
+    .join(".");
 }
 
 function PickOutfitForm({
@@ -442,12 +483,34 @@ function PickOutfitForm({
   onChoosingChange,
   onProgressChange,
 }) {
-  const [wardrobe, setWardrobe] = useState(() => defaultWardrobe(joinData));
+  const [searchParams] = useSearchParams();
+  const patchSearchParams = usePatchSearchParams();
+
+  const wardrobe = useMemo(
+    () => wardrobeFromParams(searchParams, joinData),
+    [searchParams, joinData],
+  );
+  const pageParam = searchParams.get("page");
+  const page = pageParam === null ? null : Math.max(0, Number(pageParam) || 0);
+  const relaxed = searchParams.get("relaxed") === "1";
+  const showingAll = searchParams.get("all") === "1";
+  const selectedKey = searchParams.get("outfit");
+
   const [optionsResult, setOptionsResult] = useState(null);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [selectedOption, setSelectedOption] = useState(null);
   const [claiming, setClaiming] = useState(false);
-  const [showingAll, setShowingAll] = useState(false);
+
+  // The confirm screen is the URL's outfit found in the list that is loaded,
+  // so there is one place the current step is written down. An outfit that
+  // isn't in the list any more - somebody else claimed it while this tab was
+  // shut - drops back to the list rather than offering something unclaimable.
+  const selectedOption =
+    (selectedKey &&
+      optionsResult &&
+      optionsResult.options.find(
+        (option) => outfitKey(option.appearance) === selectedKey,
+      )) ||
+    null;
   // Lifted out of ConfirmScreen (rather than that component's own state) so
   // the progress bar below can see it too.
   const [checked, setChecked] = useState(false);
@@ -467,10 +530,14 @@ function PickOutfitForm({
   }, [selectedOption, onChoosingChange]);
 
   // A fresh outfit (or none at all) starts unconfirmed - same reset a full
-  // unmount/remount of ConfirmScreen used to give this for free.
+  // unmount/remount of ConfirmScreen used to give this for free. Keyed on the
+  // URL's outfit rather than the option object, whose identity changes every
+  // time the list behind it is re-fetched: unticking somebody's consent box
+  // while they are reading it is exactly the silent failure this page exists
+  // to avoid.
   useEffect(() => {
     setChecked(false);
-  }, [selectedOption]);
+  }, [selectedKey]);
 
   const wardrobeChannels = joinData.wardrobe_channels;
   const showingOptions = optionsResult && optionsResult.total > 0;
@@ -492,20 +559,23 @@ function PickOutfitForm({
 
   // Back to the wardrobe form: the next list is a fresh one, so it starts
   // nudging again rather than inheriting a previous "show me the rest".
+  const closedOptions = { page: null, relaxed: null, all: null, outfit: null };
+
   const reopenWardrobe = () => {
-    setOptionsResult(null);
-    setShowingAll(false);
+    patchSearchParams(closedOptions, { replace: false });
   };
 
   const toggleColour = (channelName, label) => {
-    setWardrobe((old) => {
-      const current = old[channelName] || [];
-      const next = current.includes(label)
-        ? current.filter((l) => l !== label)
-        : [...current, label];
-      return { ...old, [channelName]: next };
+    const current = wardrobe[channelName] || [];
+    const next = current.includes(label)
+      ? current.filter((l) => l !== label)
+      : [...current, label];
+    // Replaced rather than pushed: a dozen taps on swatches should not be a
+    // dozen presses of the back button to get off this page.
+    patchSearchParams({
+      ...closedOptions,
+      [wardrobeParam(channelName)]: next.join(","),
     });
-    reopenWardrobe();
   };
 
   const fetchOptions = useCallback(
@@ -528,6 +598,27 @@ function PickOutfitForm({
     [code, wardrobe, onError],
   );
 
+  // The list follows the URL: asking for outfits, turning a page and reloading
+  // the tab are all the same act of putting a page number in the query string.
+  // Guarded on what was last asked for, because the other things that live in
+  // the query string (the chosen outfit, "show me the rest") must not re-post
+  // a list the player is already reading - least of all out from under the
+  // confirm screen.
+  const lastFetchKey = useRef(null);
+  const wardrobeKey = JSON.stringify(wardrobe);
+
+  useEffect(() => {
+    if (page === null) {
+      lastFetchKey.current = null;
+      setOptionsResult(null);
+      return;
+    }
+    const key = `${page}|${relaxed}|${wardrobeKey}`;
+    if (lastFetchKey.current === key) return;
+    lastFetchKey.current = key;
+    fetchOptions(relaxed, page);
+  }, [page, relaxed, wardrobeKey, fetchOptions]);
+
   const claimOption = useCallback(
     async (option, confirmed) => {
       setClaiming(true);
@@ -541,15 +632,16 @@ function PickOutfitForm({
         onPicked(row);
       } catch (e) {
         onError(e.message);
-        setSelectedOption(null);
-        if (e.status === 409 && optionsResult) {
-          fetchOptions(optionsResult.relaxed, optionsResult.page);
-        }
+        // Somebody else took this outfit between it being offered and being
+        // claimed: forget what was fetched so dropping the outfit from the URL
+        // re-asks for the page, rather than re-offering the one just refused.
+        if (e.status === 409) lastFetchKey.current = null;
+        patchSearchParams({ outfit: null });
       } finally {
         setClaiming(false);
       }
     },
-    [code, wardrobe, onPicked, onError, optionsResult, fetchOptions],
+    [code, wardrobe, onPicked, onError, patchSearchParams],
   );
 
   // Always shown, on every step including the confirm screen - a name
@@ -577,7 +669,7 @@ function PickOutfitForm({
           checked={checked}
           onCheckedChange={setChecked}
           onConfirm={(confirmed) => claimOption(selectedOption, confirmed)}
-          onBack={() => setSelectedOption(null)}
+          onBack={() => patchSearchParams({ outfit: null }, { replace: false })}
         />
       </>
     );
@@ -648,7 +740,9 @@ function PickOutfitForm({
             type="button"
             className={styles.submitButton}
             disabled={optionsLoading}
-            onClick={() => fetchOptions(false, 0)}
+            onClick={() =>
+              patchSearchParams({ page: 0, relaxed: null }, { replace: false })
+            }
           >
             {optionsLoading ? "Finding outfits..." : "Show me outfits"}
           </button>
@@ -658,7 +752,12 @@ function PickOutfitForm({
       {showAreYouSure ? (
         <div className={styles.emptyState}>
           <p>No outfits found. Are you sure you don't have any more clothes?</p>
-          <button type="button" onClick={() => fetchOptions(true, 0)}>
+          <button
+            type="button"
+            onClick={() =>
+              patchSearchParams({ page: 0, relaxed: 1 }, { replace: false })
+            }
+          >
             Yes, I'm sure
           </button>
         </div>
@@ -678,13 +777,18 @@ function PickOutfitForm({
             recommendedKeys={recommendedKeys}
             wardrobeChannels={wardrobeChannels}
             channels={joinData.channels}
-            onPick={setSelectedOption}
+            onPick={(option) =>
+              patchSearchParams(
+                { outfit: outfitKey(option.appearance) },
+                { replace: false },
+              )
+            }
           />
           {nudging && hasOthers ? (
             <button
               type="button"
               className={styles.linkButton}
-              onClick={() => setShowingAll(true)}
+              onClick={() => patchSearchParams({ all: 1 }, { replace: false })}
             >
               Show more outfits
             </button>
@@ -695,7 +799,10 @@ function PickOutfitForm({
                 type="button"
                 disabled={optionsResult.page <= 0 || claiming}
                 onClick={() =>
-                  fetchOptions(optionsResult.relaxed, optionsResult.page - 1)
+                  patchSearchParams(
+                    { page: optionsResult.page - 1 },
+                    { replace: false },
+                  )
                 }
               >
                 Previous
@@ -707,7 +814,10 @@ function PickOutfitForm({
                 type="button"
                 disabled={optionsResult.page + 1 >= totalPages || claiming}
                 onClick={() =>
-                  fetchOptions(optionsResult.relaxed, optionsResult.page + 1)
+                  patchSearchParams(
+                    { page: optionsResult.page + 1 },
+                    { replace: false },
+                  )
                 }
               >
                 Next
