@@ -109,6 +109,15 @@ as **R13**, below.
 > inside the house only, with an **empty** database: the deterministic sample
 > game is made on demand by the admin's **Fire demo game** button, not on every
 > boot. Runbook: `docs/deployment_staging.md`.
+>
+> **Pull requests on staging, 2026-09-07.** The workflow always took any ref, but
+> the box was only ever given master, and one thing stood in the way of using it
+> the intended way: re-deploying a revision already built today re-uploaded its
+> asset to the release that already existed, whose publication time is what the
+> deployer sorts on — so *try a branch, put master back* silently left the branch
+> running. `deploy-staging.yml` now drops that release so the build republishes
+> it, and understands a pull request number (`pr/222`) as well as a branch, tag
+> or SHA.
 
 
 **Shipped** as `nix/auto-deploy.nix`, imported by `streetfight-cloud`, with

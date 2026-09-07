@@ -29,11 +29,17 @@ switches itself. Nothing on the internet holds credentials into either host.
 
 ```bash
 scripts/deploy.sh staging                # put master on staging
-scripts/deploy.sh staging my-branch      # try a PR head on a real phone
+scripts/deploy.sh staging my-branch      # try a branch on a real phone
+scripts/deploy.sh staging pr/222         # ...or a pull request, by number
 scripts/deploy.sh live master            # asks you to type "live" first
 ```
 
-`ref` is anything git resolves — a branch, a tag, a SHA. The script wraps
+`ref` is anything git resolves — a branch, a tag, a SHA — and on **staging** a
+pull request too, written `pr/222`, `#222` or bare `222` (its head is fetched as
+`refs/pull/222/head`, so a fork's PR works; that one wants
+`--skip-build-check`, since a fork head has no check run here). Master is the
+default, never a restriction: trying an unmerged branch is what staging is for.
+Live refuses a PR number, deliberately. The script wraps
 `gh workflow run`, watches the run, and afterwards reports what the droplet
 says it is running. `--skip-build-check` deploys even when the closure is not
 in Cachix (the box then builds it itself, slowly); `--no-wait` returns at the
@@ -86,10 +92,12 @@ scripts/deploy.sh live <older-sha>
 nixos-rebuild switch --rollback     # on the box; there is no auto-rollback
 ```
 
-**Staging**: ⚠️ re-running the workflow on an older revision **may do nothing**
-— the deployer picks the newest release by publication time, and re-pushing a
-revision already built today re-uploads to the existing release without
-changing its timestamp. Roll back on `homeserver` by naming the generation:
+**Staging**: the same way — `scripts/deploy.sh staging <older-sha>`. This used
+to be the one thing that quietly did nothing (the deployer takes the newest
+release by publication time, and a revision already built today re-uploaded to
+the release that already existed); `deploy-staging.yml` now deletes that release
+so the build republishes it. Or roll back on `homeserver` without CI, naming the
+generation:
 
 ```bash
 /opt/homelab-infra/bin/cattle-deploy.sh streetfight-staging template-20260830-c828e38

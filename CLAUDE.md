@@ -601,7 +601,15 @@ Three deployment targets share one service definition:
   gate, one branch along — the **Deploy to staging** workflow
   (`.github/workflows/deploy-staging.yml`) moves the `staging` branch, CI
   publishes the template as a release asset only from that branch, and the
-  hypervisor at home polls for it. TLS is terminated upstream by traefik
+  hypervisor at home polls for it. It moves that branch to **whatever revision
+  you name** — a branch, a tag, a SHA, or a pull request as `pr/222` (fetched
+  as `refs/pull/222/head`, so a fork's works too); trying an unmerged branch on
+  a phone is what the box is for, and master is only the input's default. One
+  step in there is load-bearing: it **deletes a same-day release for that
+  revision** before dispatching the build, because the deployer takes the
+  newest release *by publication time* and `template-<date>-<sha7>` would
+  otherwise be re-uploaded to an existing release whose timestamp never moves —
+  a deploy that goes green while staging quietly keeps running what it had. TLS is terminated upstream by traefik
   (gardenfacer), so it answers plain HTTP on :80 and is reachable only inside
   the house, at `https://streetfight-staging.i.houseabsolute.co.uk`. Its
   database **starts empty** — it deliberately does not set
