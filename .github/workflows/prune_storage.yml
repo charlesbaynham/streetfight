@@ -1,12 +1,5 @@
 name: Prune CI storage
 
-# build_images.yml runs on every push to every branch, and its LXC template job
-# leaves a ~280 MB Actions artifact behind each time; the staging deploys have
-# also published over a hundred template releases. This repo is public, so none
-# of it is billed — but bin/cattle-deploy.sh on the hypervisor resolves a
-# template by scanning ONE page of /releases (100), so a repo that publishes
-# past that starts hiding its own older generations from rollback.
-
 on:
   schedule:
   - cron: 10 5 * * *
