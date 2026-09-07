@@ -100,6 +100,14 @@ GAME_AREA_M2 = 1_000_000.0
 # check and friendly fire is possible, just unlikely.
 TEAMMATE_PRIOR = 0.05
 
+# P(T = x) for the shooter photographing themselves. Not zero: a phone can end
+# up pointed at its own holder, deliberately or otherwise, and hit_user has
+# never refused a shot whose target is its own shooter (see the self-shot
+# edge case in UserInterface.clear_unchecked_shots). Arbitrarily half of
+# TEAMMATE_PRIOR, awaiting real data the way every other constant in this
+# block is.
+SELF_PRIOR = 0.025
+
 # The uniform floor mixed into the prior. The posterior is a product, so a zero
 # anywhere is unrecoverable - a candidate at zero cannot be rescued by a
 # photograph that reads their outfit perfectly.
@@ -202,6 +210,7 @@ def location_likelihood_ratios(
     fixes: Dict[UUID, dict],
     candidate_ids: List[UUID],
     at_time: float,
+    shooter_id=None,
 ) -> Dict[UUID, float]:
     """``Λ_x`` per candidate: how much more likely their observed fix is if they
     were at the shooter than if they were simply somewhere in the play area.
@@ -218,12 +227,21 @@ def location_likelihood_ratios(
     * **crowds discriminate less.** The ratio rewards a *uniquely* close player.
       When everybody is close, everybody's ratio is similar and normalisation
       washes it out, which a raw proximity weight cannot express.
+
+    The shooter's own candidacy is exempted and left at 1.0 rather than scored:
+    their fix *is* ``shooter_fix``, so the distance is always exactly zero and
+    this term would otherwise hand them the single highest ratio any candidate
+    can get, every time, regardless of what the photograph actually shows -- a
+    tautology ("the shooter was where the shot was taken from"), not evidence.
     """
     if shooter_fix is None:
         return {pid: 1.0 for pid in candidate_ids}
 
     ratios: Dict[UUID, float] = {}
     for pid in candidate_ids:
+        if shooter_id is not None and pid == shooter_id:
+            ratios[pid] = 1.0
+            continue
         fix = fixes.get(pid)
         if fix is None:
             ratios[pid] = 1.0
@@ -241,26 +259,36 @@ def location_likelihood_ratios(
     return ratios
 
 
-def structural_prior(candidates: List[UserModel], shooter_team_id) -> Dict[UUID, float]:
+def structural_prior(
+    candidates: List[UserModel], shooter_team_id, shooter_id=None
+) -> Dict[UUID, float]:
     """``P(T = x)`` before any evidence: flat, then adjusted for the game rules.
 
     The only thing known before looking at the photograph is that a teammate is
-    an unlikely target -- not an impossible one.
+    an unlikely target -- not an impossible one, and that the shooter themselves
+    is rarer still. ``shooter_id`` is checked first: the shooter is on their own
+    team, so without it they would fall into the teammate case rather than get
+    their own, lower, weight.
     """
     return {
         user.id: (
-            TEAMMATE_PRIOR
-            if shooter_team_id is not None and user.team_id == shooter_team_id
-            else 1.0
+            SELF_PRIOR
+            if shooter_id is not None and user.id == shooter_id
+            else (
+                TEAMMATE_PRIOR
+                if shooter_team_id is not None and user.team_id == shooter_team_id
+                else 1.0
+            )
         )
         for user in candidates
     }
 
 
-def eligible_candidates(
-    users: List[UserModel], shooter_id: Optional[UUID]
-) -> List[UserModel]:
-    """Who could have been photographed: anybody in the game but the shooter.
+def eligible_candidates(users: List[UserModel]) -> List[UserModel]:
+    """Who could have been photographed: anybody in the game, including the
+    shooter themselves -- a phone can end up pointed the wrong way. The
+    shooter is scored against ``SELF_PRIOR`` rather than ruled out, in
+    ``build_prior``, so there is no shooter id to filter on here.
 
     A player with no identity slot is excluded -- they have no effective word,
     so there is nothing to score them against.
@@ -274,11 +302,7 @@ def eligible_candidates(
     -- a down-weight by how long ago they died is plausible, but it is a
     constant to fit from R2's data rather than to invent here.
     """
-    return [
-        user
-        for user in users
-        if user.id != shooter_id and user.identity_slot is not None
-    ]
+    return [user for user in users if user.identity_slot is not None]
 
 
 def build_prior(
@@ -298,9 +322,15 @@ def build_prior(
         return Prior()
 
     ids = [user.id for user in candidates]
-    structural = structural_prior(candidates, shooter.team_id if shooter else None)
+    structural = structural_prior(
+        candidates,
+        shooter.team_id if shooter else None,
+        shooter.id if shooter else None,
+    )
     shooter_fix = fixes.get(shooter.id) if shooter else None
-    ratios = location_likelihood_ratios(shooter_fix, fixes, ids, at_time)
+    ratios = location_likelihood_ratios(
+        shooter_fix, fixes, ids, at_time, shooter.id if shooter else None
+    )
 
     weights = {pid: structural[pid] * ratios[pid] for pid in ids}
     total = sum(weights.values())
@@ -377,7 +407,7 @@ def rank_candidates(
     this function never refuses on its own account.
     """
     scheme = scheme or default_scheme()
-    candidates = eligible_candidates(users, shot.user_id)
+    candidates = eligible_candidates(users)
     if not candidates:
         return None
 
@@ -449,7 +479,7 @@ def identification_payload(
     from .identity_admin import appearance_payload
 
     reading = reading_from_review(review, scheme)
-    words = candidate_words(eligible_candidates(users, shot.user_id), scheme)
+    words = candidate_words(eligible_candidates(users), scheme)
     by_id = {user.id: user for user in users}
 
     def outfit(word) -> Optional[dict]:

@@ -595,9 +595,12 @@ def test_a_misread_garment_is_still_a_confident_hit(
     assert shot.target_user_id == target_with_slot
 
 
-def test_a_hit_identifying_the_shooter_stays_queued(
+def test_a_confident_self_shot_auto_resolves(
     db_session, shot_from_user_in_team, user_in_team
 ):
+    """A reading that matches nobody but the shooter's own outfit resolves as
+    a self-hit like any other confident, untied ranking -- SELF_PRIOR is what
+    keeps that rare, not a second gate on top of the posterior."""
     db_session.query(User).filter_by(id=user_in_team).update(
         {"identity_slot": TARGET_SLOT}
     )
@@ -605,7 +608,9 @@ def test_a_hit_identifying_the_shooter_stays_queued(
 
     shot = drain_with_confident_hit(db_session, shot_from_user_in_team)
 
-    assert shot.checked is False
+    assert shot.result == "hit"
+    assert shot.target_user_id == user_in_team
+    assert UserInterface(user_in_team).get_user_model().hit_points == 0
 
 
 def test_the_same_slot_in_another_game_does_not_confuse_the_mapping(
