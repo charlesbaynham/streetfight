@@ -252,11 +252,13 @@ def _target_from_ranking(
     somebody the evidence argues against, and no ranking at all, which names
     nobody to notify and so nobody who can complain.
 
-    A ranking naming the shooter themselves is never acted on either, forced or
-    not: backend.shot_identification now lets a self-shot rank top (see
-    SELF_PRIOR), but an automatic *hit* against your own account is worth an
-    admin's eyes even when the reading is confident, so it always drops
-    through to the escalation rung and, from there, to the admin's queue.
+    A ranking can name the shooter themselves, and is acted on exactly like any
+    other candidate: backend.shot_identification's SELF_PRIOR already makes
+    that a small fraction of a stranger's weight (half of a teammate's), so a
+    reading confident enough to put the shooter top of a field that includes
+    everybody else has already cleared a higher bar than an ordinary hit did.
+    Singling it out for a second, redundant gate would just be distrust of the
+    same posterior every other candidate is acted on by.
     """
     if ranked is None or ranked.inconsistent:
         return None
@@ -264,7 +266,7 @@ def _target_from_ranking(
         return None
 
     target = next((u for u in users if u.id == ranked.best), None)
-    if target is None or target.id == head.user_id:
+    if target is None:
         return None
 
     return (_HIT, target.id)
@@ -277,10 +279,11 @@ def _decide_auto_hit(
     can name somebody on its own.
 
     It still has to: the reply has to be confident overall, and the reading has
-    to pick out one non-shooter candidate confidently and without a tie -- see
+    to pick out one candidate confidently and without a tie -- see
     backend.shot_identification.rank_candidates, which scores the reading
     against what each candidate is *actually wearing* rather than decoding it
-    against the code. ``resolve_everything`` drops both of those bars; see
+    against the code, the shooter themselves included at their own much lower
+    SELF_PRIOR. ``resolve_everything`` drops both of those bars; see
     :func:`_target_from_ranking` for the two it never drops.
 
     A candidate who is already knocked out is acted on like any other: the shot
@@ -408,9 +411,7 @@ def _decide_escalated(
 
     users = AdminInterface().get_users_for_game(game_id)
     target = next((u for u in users if u.id == target_id), None)
-    # Even a confident escalated verdict naming the shooter is left for the
-    # admin - see the same guard's rationale in _target_from_ranking.
-    if target is None or target.id == head.user_id:
+    if target is None:
         return None
 
     return (_HIT, target.id)

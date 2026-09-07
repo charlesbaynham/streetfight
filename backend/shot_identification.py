@@ -103,10 +103,10 @@ TEAMMATE_PRIOR = 0.05
 # P(T = x) for the shooter photographing themselves. Not zero: a phone can end
 # up pointed at its own holder, deliberately or otherwise, and hit_user has
 # never refused a shot whose target is its own shooter (see the self-shot
-# edge case in UserInterface.clear_unchecked_shots). Arbitrarily 1/10 of an
-# opponent's baseline weight, awaiting real data the way every other constant
-# in this block is.
-SELF_PRIOR = 0.1
+# edge case in UserInterface.clear_unchecked_shots). Arbitrarily half of
+# TEAMMATE_PRIOR, awaiting real data the way every other constant in this
+# block is.
+SELF_PRIOR = 0.025
 
 # The uniform floor mixed into the prior. The posterior is a product, so a zero
 # anywhere is unrecoverable - a candidate at zero cannot be rescued by a
