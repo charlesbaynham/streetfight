@@ -15,7 +15,9 @@ import {
   shotStatus,
 } from "./ShotHistory";
 import { UpdateSSEConnection } from "./UpdateListener";
+import Modernizr from "./modernizr";
 import * as shotHistoryStore from "./shotHistoryStore";
+import { getPlaySpy } from "./testMocks/useSound";
 import {
   actAndFlush,
   emitUpdate,
@@ -573,6 +575,131 @@ describe("ShotHistoryController", () => {
 
     await screen.findByRole("heading", { name: "My shots" });
     expect(container.querySelector("img.crosshair")).not.toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Outcome sounds: a sound (and, on a hit, a vibration) the instant one of the
+// player's own fired shots gets its verdict.
+// ---------------------------------------------------------------------------
+
+describe("useShotOutcomeSounds (via ShotHistoryController)", () => {
+  beforeEach(() => {
+    getPlaySpy().mockClear();
+  });
+
+  test("an already-checked hit on the very first load plays nothing", async () => {
+    const shot = makeShot({ checked: true, result: "hit" });
+    installFetchMock({ user_shots: [shot] });
+    // Seed the store before mounting, so the mount's own refetch (which the
+    // controller kicks off itself) resolves to the exact same content - a
+    // leftover shot from an earlier test in this file would otherwise sit in
+    // the store's cache under a different id, and get read as this shot's
+    // "first" appearance on the second of the two renders a mount produces.
+    await act(() => shotHistoryStore.refreshShots());
+
+    await actAndFlush(() => render(<ShotHistoryController />));
+
+    expect(getPlaySpy()).not.toHaveBeenCalled();
+  });
+
+  test("a fired shot ruled a hit after being unchecked plays a sound and vibrates", async () => {
+    const shot = makeShot({ checked: false });
+    let served = [shot];
+    installFetchMock({ user_shots: () => served });
+
+    render(
+      <>
+        <UpdateSSEConnection />
+        <ShotHistoryController />
+      </>,
+    );
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
+    expect(getPlaySpy()).not.toHaveBeenCalled();
+
+    served = [{ ...shot, checked: true, result: "hit", target_name: "Ann" }];
+    await actAndFlush(() => emitUpdate("user"));
+
+    expect(getPlaySpy()).toHaveBeenCalledTimes(1);
+    // Modernizr.vibrate is computed once at import time against jsdom's
+    // navigator, before testUtils' resetTestEnvironment stubs navigator.vibrate
+    // in - so it may read as unsupported here. Only assert when it didn't.
+    if (Modernizr.vibrate) {
+      expect(navigator.vibrate).toHaveBeenCalledWith(200);
+    }
+  });
+
+  test("a fired shot ruled a miss after being unchecked plays a sound, no vibration assertion needed", async () => {
+    const shot = makeShot({ checked: false });
+    let served = [shot];
+    installFetchMock({ user_shots: () => served });
+
+    render(
+      <>
+        <UpdateSSEConnection />
+        <ShotHistoryController />
+      </>,
+    );
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
+
+    served = [{ ...shot, checked: true, result: "miss" }];
+    await actAndFlush(() => emitUpdate("user"));
+
+    expect(getPlaySpy()).toHaveBeenCalledTimes(1);
+  });
+
+  test("a fired shot refunded after being unchecked plays nothing", async () => {
+    const shot = makeShot({ checked: false });
+    let served = [shot];
+    installFetchMock({ user_shots: () => served });
+
+    render(
+      <>
+        <UpdateSSEConnection />
+        <ShotHistoryController />
+      </>,
+    );
+    await waitFor(() =>
+      expect(shotHistoryStore.getShots()).toEqual(fired([shot])),
+    );
+
+    served = [{ ...shot, checked: true, result: "refunded" }];
+    await actAndFlush(() => emitUpdate("user"));
+
+    expect(getPlaySpy()).not.toHaveBeenCalled();
+  });
+
+  test("a received hit does not play - that's the shot-received overlay's job", async () => {
+    const received = makeShot({
+      checked: true,
+      result: "hit",
+      shooter_name: "Bob",
+    });
+    let servedReceived = [];
+    installFetchMock({
+      user_shots: [],
+      user_shots_received: () => servedReceived,
+    });
+
+    render(
+      <>
+        <UpdateSSEConnection />
+        <ShotHistoryController />
+      </>,
+    );
+    await waitFor(() =>
+      expect(getAPICalls("user_shots_received")).toHaveLength(1),
+    );
+    expect(getPlaySpy()).not.toHaveBeenCalled();
+
+    servedReceived = [received];
+    await actAndFlush(() => emitUpdate("user"));
+
+    expect(getPlaySpy()).not.toHaveBeenCalled();
   });
 });
 

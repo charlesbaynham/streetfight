@@ -2825,6 +2825,18 @@ worker misconfigured on the night would be a poor trade for a notification. Afte
 the game, this is the largest single improvement available to the web app, and it
 costs nothing but time.
 
+The *in-app* half is done (3 Sept): a full-screen "You have been shot" card the
+player has to dismiss, with the photograph and the shooter's name, and sound
+effects for being hit and for a verdict on one's own shot
+(`react-ui/src/ShotReceivedOverlay.js`). It only helps somebody looking at the
+screen, which is exactly the gap this item is still for.
+
+**TODO(Charles): replace the placeholder sounds.** `hit_received.wav`,
+`shot_confirmed.wav` and `shot_missed.wav` (`react-ui/src/`) are synthesised
+tones (numpy → `wave`), chosen only to prove the wiring works - not designed to
+feel good in the moment. Swap in something more characterful before the game;
+same filenames, same rough duration, no code change needed.
+
 Note it makes `AddToHomeScreen.js` mandatory for iPhone players rather than a
 nicety, which is a change to how the game is joined and worth deciding
 deliberately.

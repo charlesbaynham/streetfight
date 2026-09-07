@@ -23,6 +23,7 @@ import {
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
+import ShotReceivedOverlay from "./ShotReceivedOverlay";
 import useWakeLock from "./useWakeLock";
 
 const isGameRunning = (user) => Boolean(user && user.active);
@@ -90,6 +91,7 @@ function GetView({ user }) {
       <WebcamView trigger={triggerShot} isDead={!isAlive} />
 
       <ShotHistoryController />
+      <ShotReceivedOverlay user={user} />
 
       {isAlive ? (
         <CrosshairImage />
