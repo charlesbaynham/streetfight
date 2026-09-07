@@ -251,6 +251,12 @@ def _target_from_ranking(
     appealing: a ranking the reading itself *contradicts*, which would name
     somebody the evidence argues against, and no ranking at all, which names
     nobody to notify and so nobody who can complain.
+
+    A ranking naming the shooter themselves is never acted on either, forced or
+    not: backend.shot_identification now lets a self-shot rank top (see
+    SELF_PRIOR), but an automatic *hit* against your own account is worth an
+    admin's eyes even when the reading is confident, so it always drops
+    through to the escalation rung and, from there, to the admin's queue.
     """
     if ranked is None or ranked.inconsistent:
         return None
@@ -402,6 +408,8 @@ def _decide_escalated(
 
     users = AdminInterface().get_users_for_game(game_id)
     target = next((u for u in users if u.id == target_id), None)
+    # Even a confident escalated verdict naming the shooter is left for the
+    # admin - see the same guard's rationale in _target_from_ranking.
     if target is None or target.id == head.user_id:
         return None
 
