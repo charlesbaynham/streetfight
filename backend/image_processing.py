@@ -4,6 +4,7 @@ import time
 from io import BytesIO
 from pathlib import Path
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 from PIL import Image
@@ -45,6 +46,19 @@ def load_image(base64_image: str) -> Tuple[Image.Image, List[str]]:
     image = Image.open(BytesIO(image_bytes))
 
     return image, split_img
+
+
+def is_decodable(base64_image: Optional[str]) -> bool:
+    """Whether Pillow can open the image. A 0x0 canvas's ``toDataURL`` is the
+    literal ``data:,``, which passes every truthiness check and fails here."""
+    if not base64_image:
+        return False
+    try:
+        image, _ = load_image(base64_image)
+    except Exception:
+        return False
+    image.close()
+    return True
 
 
 def annotate_image_with_stats(base64_image: str, stats: dict) -> str:

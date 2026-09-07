@@ -56,6 +56,9 @@ export const MyWebcam = forwardRef(
 
       let w = video.videoWidth;
       let h = video.videoHeight;
+      // No frame yet: a 0x0 canvas's toDataURL is the literal "data:,", which
+      // every consumer accepts as a photo and no decoder can open.
+      if (!w || !h) return null;
       canvas.width = w;
       canvas.height = h;
 
