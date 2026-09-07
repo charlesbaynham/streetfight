@@ -1675,13 +1675,25 @@ photograph and the position fixes treated as independent measurement channels:
     P(T = x | image, location)  ∝  P(T = x) · P(image | T = x) · P(location | T = x)
 
 **1. `P(T = x)` — the structural prior. Flat, then adjusted for game rules.**
-Before looking at any evidence, what is known about who can have been shot? Only
-the rules: the target is not the shooter, is not already knocked out, and is
-unlikely — but *not* unable — to be a teammate. Note `hit_user` performs no team
-check, so friendly fire is mechanically possible; the teammate term should
-therefore be small and non-zero rather than an exclusion, for the same reason as
-the floor below. Beyond that the prior is flat. Proximity does **not** belong
-here.
+Before looking at any evidence, what is known about who can have been shot?
+Only the rules: the target is not already knocked out, and is unlikely — but
+*not* unable — to be a teammate, or indeed the shooter themselves. Note
+`hit_user` performs no team check, so friendly fire is mechanically possible;
+the teammate term should therefore be small and non-zero rather than an
+exclusion, for the same reason as the floor below. A self-shot gets its own
+smaller-still non-zero term (`SELF_PRIOR`, arbitrarily half of `TEAMMATE_PRIOR`)
+rather than either exclusion or the teammate weight — a camera can end up
+pointed at its own holder, and it is on nobody's team but its own by
+definition, so it does not fall out of the teammate case for free. A ranking
+naming the shooter is auto-actioned exactly like any other candidate:
+`SELF_PRIOR` is what keeps that rare, not a second, redundant gate on the
+posterior. Location evidence is exempted for the shooter specifically: their
+own fix *is* the shot's `shooter_fix`, so scoring it in `P(location | T = x)`
+the way every other candidate's is would compare the shooter's position to
+itself and hand them the maximum possible ratio on every shot, regardless of
+the photograph — a tautology, not evidence. Beyond that the prior is flat.
+Proximity does
+**not** belong here.
 
 **2. `P(image | T = x)` — the vision likelihood.** What `decoder.decode` already
 computes from the reading and `x`'s codeword. Its misread and erasure rates

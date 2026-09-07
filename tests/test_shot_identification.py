@@ -204,11 +204,13 @@ def test_a_lone_candidate_is_still_contradicted_by_a_reading_that_fits_nobody():
 # -- who is a candidate at all ----------------------------------------------
 
 
-def test_the_shooter_is_not_a_candidate():
+def test_the_shooter_is_a_candidate():
+    """A phone can end up pointed at its own holder, so the shooter is scored
+    like anybody else rather than ruled out -- see SELF_PRIOR in build_prior."""
     shooter = player(slot=7)
     alive = player(slot=21)
 
-    assert si.eligible_candidates([shooter, alive], shooter.id) == [alive]
+    assert si.eligible_candidates([shooter, alive]) == [shooter, alive]
 
 
 def test_a_knocked_out_player_is_still_a_candidate():
@@ -218,7 +220,7 @@ def test_a_knocked_out_player_is_still_a_candidate():
     shooter = player(slot=7)
     dead = player(slot=13, hit_points=0)
 
-    assert si.eligible_candidates([shooter, dead], shooter.id) == [dead]
+    assert si.eligible_candidates([shooter, dead]) == [shooter, dead]
 
 
 def test_a_player_with_no_slot_is_not_a_candidate():
@@ -226,13 +228,27 @@ def test_a_player_with_no_slot_is_not_a_candidate():
     shooter = player()
     unassigned = player(slot=None)
 
-    assert si.eligible_candidates([shooter, unassigned], shooter.id) == []
+    assert si.eligible_candidates([shooter, unassigned]) == []
 
 
 def test_ranking_an_empty_field_is_none_rather_than_an_error():
     shooter = player()
     review = review_of(SCHEME.appearance_of_slot(7))
     assert si.rank_candidates(shot_by(shooter), [shooter], review) is None
+
+
+def test_a_shot_can_be_identified_as_the_shooter():
+    """The end-to-end case the module used to refuse outright: nobody else's
+    outfit explains the reading, but the shooter's own does."""
+    shooter = player(slot=7)
+    other = player(slot=21)
+
+    ranked = si.rank_candidates(
+        shot_by(shooter), [shooter, other], review_of(SCHEME.appearance_of_slot(7))
+    )
+
+    assert ranked.best == shooter.id
+    assert ranked.confident
 
 
 # -- the payload the admin queue reads ---------------------------------------
@@ -391,6 +407,46 @@ def test_a_teammate_is_a_less_likely_target_than_an_opponent():
     prior = si.structural_prior([mate, foe], team)
 
     assert prior[mate.id] < prior[foe.id]
+
+
+def test_the_shooter_gets_their_own_lower_prior_not_the_teammate_one():
+    """The shooter is on their own team, so without checking their id first
+    they would fall into the teammate case rather than get SELF_PRIOR."""
+    shooter = player(slot=7)
+    foe = player(slot=13)
+
+    prior = si.structural_prior([shooter, foe], shooter.team_id, shooter.id)
+
+    assert prior[shooter.id] == si.SELF_PRIOR
+    assert prior[shooter.id] < prior[foe.id]
+
+
+def test_the_shooters_own_proximity_to_themselves_is_not_evidence():
+    """The shot's shooter_fix *is* the shooter's own fix, so a naive
+    distance-based ratio would hand them the single highest score any
+    candidate can get, every time - a tautology, not evidence the photo is of
+    them. Checked here against a teammate standing right at the shooter's
+    shoulder wearing the outfit the reading describes exactly: with the
+    shooter's own proximity correctly ignored, only the (lower) SELF_PRIOR
+    separates them, and the teammate - despite TEAMMATE_PRIOR - wins because
+    the shooter's location term no longer inflates their score."""
+    shooter = player(slot=7)
+    mate = player(slot=7, team_id=shooter.team_id)
+
+    now = 1_000_000.0
+    fixes = [
+        fix(shooter, 51.5000, -0.1000, now),
+        fix(mate, 51.5000, -0.1000, now),  # right at the shooter's shoulder
+    ]
+
+    ranked = si.rank_candidates(
+        shot_by(shooter, fixes),
+        [shooter, mate],
+        review_of(SCHEME.appearance_of_slot(7)),
+        at_time=now,
+    )
+
+    assert ranked.best == mate.id
 
 
 def test_proximity_breaks_a_tie_between_identical_outfits():
