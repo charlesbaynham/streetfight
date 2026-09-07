@@ -129,13 +129,16 @@ export function AdminLoginForm({ onSuccess }) {
 }
 
 // One nav entry, sized as a button rather than a word of body text. `end` is
-// always set: none of the admin pages should light up because a sibling route
-// happens to sit below it in the path.
-function AdminNavLink({ to, children }) {
+// set by default: none of the admin pages should light up because a sibling
+// route happens to sit below it in the path. The exceptions are the pages that
+// keep their place in the path themselves (/admin/shots/<shot id>,
+// /admin/reference/<user id>) - there the deeper path *is* the page, so it
+// should stay lit while the admin works through it.
+function AdminNavLink({ to, children, end = true }) {
   return (
     <NavLink
       to={to}
-      end
+      end={end}
       className={({ isActive }) =>
         isActive ? `${styles.navLink} ${styles.navLinkActive}` : styles.navLink
       }
@@ -160,7 +163,7 @@ function ShotQueueLink() {
   return (
     <>
       <UpdateListener update_type="shots" callback={update} />
-      <AdminNavLink to="/admin/shots">
+      <AdminNavLink to="/admin/shots" end={false}>
         Shot queue{numShots === null ? "" : ` (${numShots})`}
       </AdminNavLink>
     </>
@@ -173,7 +176,9 @@ export function AdminNav() {
       <AdminNavLink to="/admin">Admin home</AdminNavLink>
       <ShotQueueLink />
       <AdminNavLink to="/admin/replay">Shot replay</AdminNavLink>
-      <AdminNavLink to="/admin/reference">Reference photos</AdminNavLink>
+      <AdminNavLink to="/admin/reference" end={false}>
+        Reference photos
+      </AdminNavLink>
       <AdminNavLink to="/admin/spectator">Spectator screen</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">

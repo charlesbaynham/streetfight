@@ -54,6 +54,7 @@ from . import shot_vision
 from .asyncio_triggers import trigger_update_event
 from .identity.config import default_scheme
 from .image_processing import draw_aim_marker
+from .image_processing import is_decodable
 from .image_processing import prepare_for_vision
 from .image_processing import zoom_image
 from .model import AI_REVIEW_STATE_DONE
@@ -546,6 +547,8 @@ def _load_context(shot_id: UUID):
     entries = ranked.ranked[:ESCALATION_MAX_CANDIDATES] if ranked else []
     for number, (user_id, probability) in enumerate(entries, start=1):
         photo = AdminInterface().get_reference_photo(user_id)
+        if not is_decodable(photo):
+            photo = None
         if photo:
             photos[number] = photo
         show = bool(photo) and shown < UPFRONT_REFERENCE_PHOTOS

@@ -41,7 +41,11 @@ const router = createBrowserRouter([
     element: <AdminLogin />,
   },
   {
-    path: "admin/shots",
+    // One route, not two: an optional segment keeps the same element mounted
+    // when the queue writes the shot it settled on into the path, where a
+    // separate "admin/shots/:shotId" route would tear the page down and
+    // rebuild it on the first render. Same for the reference-photo roster.
+    path: "admin/shots/:shotId?",
     element: <ShotQueue />,
   },
   {
@@ -49,7 +53,7 @@ const router = createBrowserRouter([
     element: <ShotReplay />,
   },
   {
-    path: "admin/reference",
+    path: "admin/reference/:userId?",
     element: <ReferencePhotos />,
   },
   {

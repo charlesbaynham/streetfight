@@ -132,6 +132,20 @@ def test_capture_without_an_api_key_still_stores_the_photo(
     assert AdminInterface().get_reference_review(user_in_team)["state"] is None
 
 
+def test_an_empty_capture_is_refused_and_stores_nothing(
+    no_api_key, db_session, admin_api_client, user_in_team
+):
+    """A 0x0 canvas's toDataURL is the literal "data:," -- the camera had no
+    frame yet. Storing it breaks every later consumer of the photo."""
+    response = admin_api_client.post(
+        "/api/admin_capture_reference_photo",
+        json={"user_id": str(user_in_team), "photo": "data:,"},
+    )
+
+    assert response.status_code == 400
+    assert AdminInterface().get_reference_photo(user_in_team) is None
+
+
 def test_a_new_capture_clears_the_previous_review(
     no_api_key, db_session, admin_api_client, player, test_image_string
 ):

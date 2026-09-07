@@ -1,5 +1,13 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useLocation,
+  useNavigate,
+  useParams,
+  useSearchParams,
+} from "react-router-dom";
+
 import { sendAPIRequest } from "./utils";
+import { useNavigateKeepingSearch } from "./urlState";
 import { AdminPage, adminPost } from "./AdminCommon";
 import { getShotFromCache, evictShotFromCache } from "./ShotCache";
 import ShotMap, { haversineMetres } from "./ShotMap";
@@ -767,17 +775,28 @@ function shotJumpLabel(idx, summary) {
   return `${position}${name}${ruled}`;
 }
 
+const QUEUE_PATH = "/admin/shots";
+
+function shotPath(shotId) {
+  return shotId ? `${QUEUE_PATH}/${shotId}` : QUEUE_PATH;
+}
+
 function ShotQueuePanel() {
+  const { shotId: shotIdInPath } = useParams();
+  const [searchParams] = useSearchParams();
+  const { search } = useLocation();
+  const navigate = useNavigate();
+  const navigateKeepingSearch = useNavigateKeepingSearch();
+
   const [shot, setShot] = useState(null);
   const [shotsInQueue, setShotsInQueue] = useState([]);
-  const [currentShotIdx, setCurrentShotIdx] = useState(0);
   // Off by default: the queue's job during a game is only what needs
   // adjudicating. On, it doubles as the history view for reviewing a game.
-  const [showChecked, setShowChecked] = useState(false);
+  const showChecked = searchParams.get("checked") === "1";
   // The contested list is a different queue, not a filter on this one: those
   // shots are all adjudicated already, and are an argument to settle rather
   // than a backlog to drain (roadmap R8).
-  const [contested, setContested] = useState(false);
+  const contested = searchParams.get("mode") === "contested";
   const [appealState, setAppealState] = useState(null);
   // A dropdown of forty entries reading "Shot 12" is barely better than
   // clicking Next forty times: what tells an admin where they are is who fired
@@ -785,6 +804,58 @@ function ShotQueuePanel() {
   // whole queue into the cache, so labelling the jump list costs a read each,
   // not a request each.
   const [shotSummaries, setShotSummaries] = useState({});
+
+  // The path names the *shot*, not its position: the queue changes underneath
+  // an admin who is working it (new shots land, the one on screen leaves as
+  // soon as it is ruled on), so an index in the URL would quietly mean a
+  // different shot a second later. The last position is remembered only for
+  // the case the id cannot be found - ruling on the shot at position 5 should
+  // land on the new position 5 rather than throwing the admin back to the top
+  // of the queue.
+  const lastIdxRef = useRef(0);
+  const idxInPath = shotsInQueue.indexOf(shotIdInPath);
+  const currentShotIdx =
+    shotsInQueue.length === 0
+      ? -1
+      : idxInPath >= 0
+        ? idxInPath
+        : Math.min(lastIdxRef.current, shotsInQueue.length - 1);
+  const currentShotId = shotsInQueue[currentShotIdx];
+
+  useEffect(() => {
+    if (currentShotIdx >= 0) lastIdxRef.current = currentShotIdx;
+  }, [currentShotIdx]);
+
+  // Whatever the panel settled on is what the path should say: a bare
+  // /admin/shots picks up the first shot's id, and a shot that has left the
+  // queue is replaced rather than leaving the path pointing at nothing.
+  // Replaced, not pushed - nobody asked for this move, so it should not
+  // become a stop on the way back.
+  useEffect(() => {
+    if (currentShotId && currentShotId !== shotIdInPath) {
+      navigateKeepingSearch(shotPath(currentShotId), { replace: true });
+    }
+  }, [currentShotId, shotIdInPath, navigateKeepingSearch]);
+
+  // Switching between the queue and the contested list is switching lists,
+  // not filtering one, so the shot in the path belongs to the list being left:
+  // drop it and start at the top of the new one.
+  const switchQueue = useCallback(
+    ({
+      contested: nextContested = contested,
+      showChecked: nextChecked = showChecked,
+    }) => {
+      const params = new URLSearchParams(search);
+      if (nextContested) params.set("mode", "contested");
+      else params.delete("mode");
+      if (nextChecked) params.set("checked", "1");
+      else params.delete("checked");
+      lastIdxRef.current = 0;
+      const query = params.toString();
+      navigate({ pathname: QUEUE_PATH, search: query ? `?${query}` : "" });
+    },
+    [contested, showChecked, search, navigate],
+  );
 
   // On update, get the current list of shot IDs in the queue and pre-load them all
   const update = useCallback(() => {
@@ -798,9 +869,6 @@ function ShotQueuePanel() {
       setShotsInQueue(shot_ids);
 
       const shownIdx = Math.min(currentShotIdx, shot_ids.length - 1);
-      if (shownIdx !== currentShotIdx) {
-        setCurrentShotIdx(shownIdx);
-      }
 
       // The shot on screen first, alone: pre-loading the whole queue alongside
       // it means competing for the connection, and the admin cannot judge a
@@ -901,11 +969,16 @@ function ShotQueuePanel() {
 
   // Every way of moving through the queue clamps the same way, so they are all
   // one function: stepping, jumping ten at a time, and the dropdown alike.
+  // Moving is a navigation, not a setState - the shot on screen is named in
+  // the path, so a reload (or a link pasted to somebody else) lands on the
+  // same one.
   const goToShot = useCallback(
     (idx) => {
-      setCurrentShotIdx(Math.max(0, Math.min(idx, shotsInQueue.length - 1)));
+      const target =
+        shotsInQueue[Math.max(0, Math.min(idx, shotsInQueue.length - 1))];
+      if (target) navigateKeepingSearch(shotPath(target));
     },
-    [shotsInQueue],
+    [shotsInQueue, navigateKeepingSearch],
   );
 
   const nextShot = useCallback(
@@ -993,7 +1066,7 @@ function ShotQueuePanel() {
             type="radio"
             name="queue-mode"
             checked={!contested}
-            onChange={() => setContested(false)}
+            onChange={() => switchQueue({ contested: false })}
           />
           Queue
         </label>
@@ -1002,7 +1075,7 @@ function ShotQueuePanel() {
             type="radio"
             name="queue-mode"
             checked={contested}
-            onChange={() => setContested(true)}
+            onChange={() => switchQueue({ contested: true })}
           />
           Contested
         </label>
@@ -1011,7 +1084,9 @@ function ShotQueuePanel() {
             <input
               type="checkbox"
               checked={showChecked}
-              onChange={(event) => setShowChecked(event.target.checked)}
+              onChange={(event) =>
+                switchQueue({ showChecked: event.target.checked })
+              }
             />
             Show adjudicated shots
           </label>
