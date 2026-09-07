@@ -122,6 +122,30 @@ async def test_the_call_carries_the_frame_the_zoom_and_the_top_reference_photos(
 
 
 @pytest.mark.asyncio
+async def test_an_undecodable_reference_photo_is_treated_as_absent(
+    db_session, shot_from_user_in_team, candidates
+):
+    """A photo stored before the guard existed ("data:,") must not fail the
+    whole escalation; that candidate simply has no photo to show."""
+    store_weak_review(shot_from_user_in_team)
+    db_session.query(User).filter_by(id=candidates[0]).update(
+        {"reference_photo_base64": "data:,"}
+    )
+    db_session.commit()
+    client = FakeVisionClient(reply=verdict_reply("unsure", confidence=0.3))
+
+    await shot_escalation.escalate_shot(shot_from_user_in_team, client)
+
+    stored = stored_escalation(shot_from_user_in_team)
+    assert stored["escalation_state"] == shot_escalation.STATE_DONE
+    by_user = {c["user_id"]: c for c in stored["escalation"]["candidates"]}
+    assert by_user[str(candidates[0])]["reference_photo_available"] is False
+    turns = client.calls[0]["turns"]
+    assert len(turns) == 2 + shot_escalation.UPFRONT_REFERENCE_PHOTOS
+    assert name_of(candidates[0]) not in "".join(t["text"] for t in turns[2:])
+
+
+@pytest.mark.asyncio
 async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
     db_session, shot_from_user_in_team, candidates
 ):
