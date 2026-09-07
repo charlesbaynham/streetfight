@@ -32,24 +32,28 @@
   font-size: 1.4em;
 }
 
+/* ShotThumbnail (ShotHistory.js) renders either this as a bare placeholder
+   div (still loading) or as an <img> inside a wrapper span with the
+   crosshair overlaid - so .image has to look right standalone too, and
+   .photoWrapper carries the same box sizing for the wrapped case, where the
+   span rather than the img is the actual flex child. Letterboxed into
+   whatever height is left, against the gradient rather than a box of its
+   own: an empty dark frame round a landscape photo reads as something
+   failing to load. */
 .image,
-.imagePlaceholder {
+.photoWrapper {
   width: 100%;
   max-width: 30em;
   flex: 1 1 auto;
   min-height: 8em;
-  border-radius: 0.5em;
 }
 
-/* Letterboxed into whatever height is left, against the gradient rather
-   than a box of its own: an empty dark frame round a landscape photo reads
-   as something failing to load. */
 .image {
-  object-fit: contain;
-}
-
-.imagePlaceholder {
+  height: 100%;
+  border-radius: 0.5em;
   background-color: rgba(0, 0, 0, 0.5);
+  object-fit: contain;
+  display: block;
 }
 
 .outcome {

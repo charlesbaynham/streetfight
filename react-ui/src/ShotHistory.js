@@ -185,8 +185,11 @@ function StatusIcon({ status, className }) {
 // marker there is nothing in the picture to say what was actually aimed at -
 // which matters most when the referee (or the AI) called a miss. `object-fit:
 // cover` crops evenly on both sides, so the centre of the photo stays at the
-// centre of the thumbnail.
-function ShotThumbnail({ shotId, className, wrapperClassName }) {
+// centre of the thumbnail. Exported so the "You have been shot" overlay
+// (ShotReceivedOverlay.js) shows the same marked-up view rather than a bare
+// photo - the whole point of the crosshair is letting the player judge the
+// call themselves, which matters most exactly when they've just been hit.
+export function ShotThumbnail({ shotId, className, wrapperClassName }) {
   const [image, setImage] = useState(null);
 
   useEffect(() => {

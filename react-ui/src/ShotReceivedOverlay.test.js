@@ -51,7 +51,9 @@ describe("ShotReceivedOverlay", () => {
 
     expect(screen.getByText("You have been shot")).toBeInTheDocument();
     expect(screen.getByText("by Ann")).toBeInTheDocument();
-    expect(await screen.findByAltText("The shot that hit you")).toHaveAttribute(
+    // Same marked-up view as "My shots" (ShotThumbnail), crosshair included -
+    // the player should be able to judge the call for themselves.
+    expect(await screen.findByAltText("Your shot")).toHaveAttribute(
       "src",
       "abc123",
     );

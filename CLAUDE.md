@@ -268,7 +268,9 @@ Four things from it that are worth knowing even if you never call the agent:
     player must dismiss (2026-09-03): before it, a hit just took a hit point
     off the HUD in silence. It reads the received half of `shotHistoryStore`
     (a received shot with `result === "hit"`), shows the shooter's photograph
-    of them and names the shooter, and acknowledges by shot id in
+    of them - through `ShotHistory.js`'s exported `ShotThumbnail`, so it
+    carries the same crosshair as "My shots" and the player can judge the
+    call themselves - and names the shooter, and acknowledges by shot id in
     `localStorage` so a reload cannot re-show a hit already dismissed.
     Dismissing one also acknowledges every *older* hit, but never a newer
     one, so a fresh phone with a long history costs one tap while a second

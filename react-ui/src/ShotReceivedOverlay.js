@@ -8,10 +8,9 @@ import React, { useEffect, useReducer, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import useSound from "use-sound";
 
-import { openShotHistory } from "./ShotHistory";
+import { ShotThumbnail, openShotHistory } from "./ShotHistory";
 import {
   acknowledgeHit,
-  getShotImage,
   getShots,
   subscribeShots,
   unacknowledgedHits,
@@ -31,7 +30,6 @@ function outcomeText(user) {
 
 export default function ShotReceivedOverlay({ user }) {
   const [shotList, setShotList] = useState(getShots());
-  const [image, setImage] = useState(null);
   // acknowledgeHit doesn't change the store's shots array (it only touches
   // localStorage), so notify() re-delivers the very same reference and a
   // plain setShotList(shots) would bail out of re-rendering (see the
@@ -43,20 +41,6 @@ export default function ShotReceivedOverlay({ user }) {
 
   const shot = unacknowledgedHits(shotList)[0] || null;
   const shotId = shot ? shot.id : null;
-
-  useEffect(() => {
-    if (!shotId) {
-      setImage(null);
-      return undefined;
-    }
-    let cancelled = false;
-    getShotImage(shotId).then((img) => {
-      if (!cancelled) setImage(img);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [shotId]);
 
   const [playHit] = useSound(hitSound);
 
@@ -90,11 +74,11 @@ export default function ShotReceivedOverlay({ user }) {
       {shot.shooter_name ? (
         <p className={styles.shooter}>by {shot.shooter_name}</p>
       ) : null}
-      {image ? (
-        <img className={styles.image} src={image} alt="The shot that hit you" />
-      ) : (
-        <div className={styles.imagePlaceholder} />
-      )}
+      <ShotThumbnail
+        shotId={shot.id}
+        className={styles.image}
+        wrapperClassName={styles.photoWrapper}
+      />
       <p className={styles.outcome}>{outcomeText(user)}</p>
       <button className={styles.okButton} onClick={dismiss}>
         OK
