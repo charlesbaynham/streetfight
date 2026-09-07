@@ -19,8 +19,10 @@
 // photo, read the verdict, move on.
 
 import React, { useCallback, useEffect, useState } from "react";
+import { useParams, useSearchParams } from "react-router-dom";
 
 import { sendAPIRequest } from "./utils";
+import { useNavigateKeepingSearch, usePatchSearchParams } from "./urlState";
 import { AdminPage, adminPost } from "./AdminCommon";
 import UpdateListener from "./UpdateListener";
 import { MyWebcam } from "./MyWebcam";
@@ -574,17 +576,29 @@ function GameSelector({ games, gameId, setGameId }) {
   );
 }
 
+// Which player is being checked is the *place* on this page, so it is a path
+// segment (/admin/reference/<user id>); which game's roster is being worked
+// through is a lens on it, so it is a query parameter carried across as the
+// admin moves between players. Both survive a reload - see src/urlState.js.
+const REFERENCE_PATH = "/admin/reference";
+
 export function ReferencePhotosPanel() {
+  const { userId: selectedId = null } = useParams();
+  const [searchParams] = useSearchParams();
+  const patchSearchParams = usePatchSearchParams();
+  const navigateKeepingSearch = useNavigateKeepingSearch();
+
   const [games, setGames] = useState(null);
-  const [gameId, setGameId] = useState(null);
-  const [rows, setRows] = useState([]);
-  const [selectedId, setSelectedId] = useState(null);
+  // null until the first roster lands, so a link straight to a player can
+  // tell "not loaded yet" from "no such player in this game".
+  const [rows, setRows] = useState(null);
+
+  const gameId =
+    searchParams.get("game") ||
+    (games && games.length > 0 ? games[0].id : null);
 
   useEffect(() => {
-    sendAPIRequest("admin_list_games", null, "GET", (loadedGames) => {
-      setGames(loadedGames);
-      if (loadedGames.length > 0) setGameId(loadedGames[0].id);
-    });
+    sendAPIRequest("admin_list_games", null, "GET", setGames);
   }, []);
 
   const refreshRoster = useCallback(() => {
@@ -602,7 +616,12 @@ export function ReferencePhotosPanel() {
   if (games === null) return <p>Loading games...</p>;
   if (games.length === 0) return <p>No games exist yet - create one first.</p>;
 
-  const selected = rows.find((row) => row.user_id === selectedId);
+  const roster = rows || [];
+  const selected = roster.find((row) => row.user_id === selectedId) || null;
+  // A player named in the path but not in the roster we have: still loading,
+  // or a stale link into a game that has moved on - in which case the roster
+  // is the honest answer rather than a spinner that never stops.
+  const awaiting = selectedId && !selected && rows === null;
 
   return (
     <div>
@@ -610,11 +629,13 @@ export function ReferencePhotosPanel() {
       <UpdateListener update_type="admin" callback={refreshRoster} />
       <h1>Reference photos</h1>
 
-      {selected ? (
+      {awaiting ? (
+        <p className={styles.hint}>Loading player...</p>
+      ) : selected ? (
         <PlayerDetail
           key={selected.user_id}
           row={selected}
-          onClose={() => setSelectedId(null)}
+          onClose={() => navigateKeepingSearch(REFERENCE_PATH)}
           onChanged={refreshRoster}
         />
       ) : (
@@ -624,8 +645,17 @@ export function ReferencePhotosPanel() {
             see whether their outfit decodes to them. Not a shot - nothing here
             touches the game.
           </p>
-          <GameSelector games={games} gameId={gameId} setGameId={setGameId} />
-          <Roster rows={rows} onSelect={setSelectedId} />
+          <GameSelector
+            games={games}
+            gameId={gameId}
+            setGameId={(id) => patchSearchParams({ game: id })}
+          />
+          <Roster
+            rows={roster}
+            onSelect={(userId) =>
+              navigateKeepingSearch(`${REFERENCE_PATH}/${userId}`)
+            }
+          />
         </>
       )}
     </div>

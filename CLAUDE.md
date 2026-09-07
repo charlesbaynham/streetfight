@@ -191,6 +191,22 @@ Four things from it that are worth knowing even if you never call the agent:
   - `src/index.js` — entrypoint (React Router).
   - `src/utils.js` — `sendAPIRequest(...)` fetch wrapper (prefixes `/api/`),
     plus geolocation/camera permission helpers.
+  - `src/urlState.js` — where a page's *place* lives. Three pages keep it in
+    the URL rather than only in React state (`ShotQueue.js`,
+    `ReferencePhotos.js`, `PickOutfit.js`), because they are worked on a phone
+    where a reload is one swipe away and a backgrounded tab gets reaped: a
+    shot index in `useState` costs the admin their position in a forty-shot
+    queue every time. Two hooks — `usePatchSearchParams` merges a patch into
+    the query string (null deletes; other parameters, the join code above all,
+    survive) and `useNavigateKeepingSearch` changes the path while carrying
+    the query across. The split is the convention: *where you are* is a path
+    segment, *what you are looking at it through* — a filter, a game selector,
+    a page number — is a query parameter. Pages **derive** their position from
+    the URL rather than mirroring state into it, so there is one source of
+    truth; a page that needs a route param is mounted at an optional segment
+    (`admin/shots/:shotId?`), not at a second route, which would remount the
+    whole page the first time it wrote its own position. `testUtils.atRoute` /
+    `currentURL` are the test harness for all of this.
   - `src/UpdateListener.js` — SSE client; `registerListener`/`deregisterListener`
     dispatch typed updates ("user", "ticker", ...). It rebuilds the connection
     from scratch rather than trusting the browser's own retry: a `bumpCounter`
@@ -239,9 +255,26 @@ Four things from it that are worth knowing even if you never call the agent:
     That dropdown names each shot's shooter and says whether it is adjudicated,
     read out of `ShotCache` (which `update` has already filled) rather than
     from a request of its own.
+    The shot on screen is named in the path (`/admin/shots/<shot id>`), and
+    the two list filters in the query (`?mode=contested`, `?checked=1`), so a
+    reload comes back to it - `goToShot` navigates rather than setting state.
+    The path names the shot, never its index: the queue changes under an admin
+    who is working it, so an index would silently mean a different shot a
+    moment later. `currentShotIdx` is derived from it, falling back to the
+    last position held when the id has left the queue - which is what makes
+    ruling on shot 5 land on the new shot 5 rather than back at the top.
     `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
     team join code lands on; it shares the colour `Swatch.js` component with
-    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`). Its
+    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    Everything short of claiming an outfit rides in the query string beside
+    the join code - the wardrobe ticks (`w_<channel>`, absent meaning the
+    all-ticked default and empty meaning "unticked the lot", which are
+    different things), the page of options (`page`, `relaxed`), "show me the
+    rest" (`all`) and the outfit being confirmed (`outfit`) - so the tab a QR
+    code opened can be reloaded without dropping the player back to an empty
+    form. The list follows the URL: the fetch effect is guarded on
+    page/relaxed/wardrobe alone, so choosing an outfit does *not* re-post the
+    list out from under the confirm screen. Its
     footer links to `HowItWorks.js` (route `/how-it-works`), a static essay on
     the error-correcting code behind the outfits — currently a placeholder
     skeleton awaiting Charles's prose, marked `PLACEHOLDER START/END`. It opens
@@ -264,7 +297,9 @@ Four things from it that are worth knowing even if you never call the agent:
     one* - the tablet locking itself is how the dashboard disappears, and a
     browser too old for the Wake Lock API is the one case nothing can be done
     about from here.
-    `ReferencePhotos.js` (route `/admin/reference`) is the door kit-check page
+    `ReferencePhotos.js` (route `/admin/reference`, with the player being
+    checked at `/admin/reference/<user id>` and the game in `?game=`) is the
+    door kit-check page
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the
     moment they are handed over - captures a reference photo, and then puts the
