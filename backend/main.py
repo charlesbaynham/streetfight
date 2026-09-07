@@ -902,6 +902,8 @@ async def admin_capture_reference_photo(reference: _ReferencePhoto) -> UUID:
     which case the photo is still stored and the review state simply stays
     null -- capture must never fail because the AI is off.
     """
+    if not image_processing.is_decodable(reference.photo):
+        raise HTTPException(400, "The camera had no frame yet; try again")
     logger.info("Storing a reference photo for user %s", reference.user_id)
     AdminInterface().set_reference_photo(reference.user_id, reference.photo)
     reference_photos.enqueue_review(reference.user_id)

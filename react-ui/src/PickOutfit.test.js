@@ -1,5 +1,12 @@
 import React from "react";
-import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  screen,
+  within,
+} from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
@@ -115,9 +122,14 @@ async function flushMicrotasks(ticks = 5) {
 function renderPickOutfit(initialEntry = "/pick?j=CODE1") {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
+      <LocationDisplay />
       <PickOutfit />
     </MemoryRouter>,
   );
+}
+
+function currentURL() {
+  return screen.getByTestId("location").textContent;
 }
 
 async function goPastHeader() {
@@ -1039,4 +1051,166 @@ test("the curiosity footer links to the essay in a new tab, on the picker and on
   expect(
     screen.getByRole("link", { name: "Interested in what's happening here?" }),
   ).toBeInTheDocument();
+});
+
+// ---------------------------------------------------------------------------
+// Keeping the pick in the URL
+//
+// Everything short of claiming an outfit is one reload away from being lost -
+// and this page is reached by scanning a QR code, so the tab it opens in is
+// exactly the sort a phone throws away when the player switches to WhatsApp to
+// ask which pub everyone is at.
+// ---------------------------------------------------------------------------
+
+describe("keeping the pick in the URL", () => {
+  test("unticking a colour writes the wardrobe into the query string", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult(),
+    });
+
+    renderPickOutfit();
+    await goPastHeader();
+
+    const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+    await actAndFlush(() =>
+      userEvent.click(within(tshirtGroup).getByRole("button", { name: "red" })),
+    );
+
+    expect(currentURL()).toContain("w_tshirt=black");
+    // The other channel is untouched, so it stays absent - which is what
+    // means "everything ticked", rather than being spelled out.
+    expect(currentURL()).not.toContain("w_trousers");
+  });
+
+  test("a reload with a wardrobe and a page in the URL asks for that page of that wardrobe", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult(),
+    });
+
+    renderPickOutfit("/pick?j=CODE1&w_tshirt=black&page=1");
+    await goPastHeader();
+    // Straight to the options, with no second press of "Show me outfits".
+    await screen.findByRole("button", { name: /Choose:/ });
+
+    expect(getLastAPICall("outfit_options").body).toMatchObject({
+      data: "CODE1",
+      page: 1,
+      wardrobe: { tshirt: ["black"], trousers: ["black", "blue"] },
+    });
+  });
+
+  test("a colour the scheme has never heard of is dropped rather than posted", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult(),
+    });
+
+    renderPickOutfit("/pick?j=CODE1&w_tshirt=black,tartan&page=0");
+    await goPastHeader();
+    await screen.findByRole("button", { name: /Choose:/ });
+
+    expect(getLastAPICall("outfit_options").body.wardrobe.tshirt).toEqual([
+      "black",
+    ]);
+  });
+
+  test("asking for outfits, and turning a page, are both a page number in the URL", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: ({ body }) =>
+        makeOptionsResult({ page: body.page, total: 24, page_size: 12 }),
+    });
+
+    renderPickOutfit();
+    await goPastHeader();
+    await showOutfits();
+
+    expect(currentURL()).toContain("page=0");
+
+    // The pagination is behind the nudge - only canonical options are shown
+    // until the player asks for the rest.
+    await showOtherOutfits();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: "Next" })),
+    );
+
+    expect(currentURL()).toContain("page=1");
+    expect(getLastAPICall("outfit_options").body.page).toBe(1);
+  });
+
+  test("a chosen outfit is named in the URL, so a reload comes back to the confirm screen", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult(),
+    });
+
+    renderPickOutfit();
+    await goPastHeader();
+    await showOutfits();
+    await actAndFlush(() =>
+      userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    );
+
+    expect(screen.getByText("One more step to join")).toBeInTheDocument();
+    const url = currentURL();
+    expect(url).toContain("outfit=");
+
+    cleanup();
+    renderPickOutfit(url);
+    await goPastHeader();
+    await screen.findByText("One more step to join");
+
+    // Reading the confirmation again, not having it pre-ticked from before.
+    expect(screen.getByRole("checkbox")).not.toBeChecked();
+    expect(getAPICalls("pick_outfit")).toHaveLength(0);
+  });
+
+  test("an outfit that has since been taken drops back to the list rather than offering it", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult({
+        options: [
+          makeOption({
+            appearance: {
+              tshirt: "red",
+              trousers: "blue",
+              hat: "burgundy",
+              armbands: "lime",
+            },
+          }),
+        ],
+      }),
+    });
+
+    renderPickOutfit(
+      "/pick?j=CODE1&page=0&outfit=armbands-red.hat-burgundy.trousers-black.tshirt-black",
+    );
+    await goPastHeader();
+    await screen.findByRole("button", { name: /Choose:/ });
+
+    expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
+  });
+
+  test("going back to the wardrobe clears the options out of the URL", async () => {
+    installFetchMock({
+      join_options: makeJoinData(),
+      outfit_options: makeOptionsResult(),
+    });
+
+    renderPickOutfit();
+    await goPastHeader();
+    await showOutfits();
+    await actAndFlush(() =>
+      userEvent.click(
+        screen.getByRole("button", { name: /Change what I own/ }),
+      ),
+    );
+
+    expect(currentURL()).not.toContain("page=");
+    expect(
+      screen.getByRole("button", { name: "Show me outfits" }),
+    ).toBeInTheDocument();
+  });
 });

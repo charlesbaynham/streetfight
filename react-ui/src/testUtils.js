@@ -23,6 +23,10 @@
 //                                     emitUpdate()) and drain a few macrotask ticks,
 //                                     all inside one continuous act() call
 //
+// Routing (for pages that keep their place in the URL - see src/urlState.js):
+//   atRoute(path, element, url)  - element mounted at `path`, router at `url`
+//   currentURL()                 - the router's current pathname + search
+//
 // Permissions:
 //   setPermission(name, state) - control navigator.permissions.query's resolved state
 //   grantAllPermissions()      - convenience: geolocation + camera both "granted"
@@ -33,7 +37,9 @@
 // Internal (used by setupTests.js; not normally needed in a test file):
 //   resetTestEnvironment()     - reinstalls every global stub fresh, called before each test
 
-import { act } from "@testing-library/react";
+import React from "react";
+import { act, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 
 // ---------------------------------------------------------------------------
 // Fake fetch Response + route-table-driven fetch mock
@@ -238,6 +244,39 @@ export async function actAndFlush(triggerFn, ticks = 3) {
     }
   });
   return result;
+}
+
+// ---------------------------------------------------------------------------
+// Routing harness
+// ---------------------------------------------------------------------------
+
+// Reports the router's current location, so a test can assert that a page put
+// its position in the URL - rendered alongside every atRoute() page rather
+// than only where it is asserted on, since it costs nothing.
+function LocationProbe() {
+  const location = useLocation();
+  return (
+    <div data-testid="location">{location.pathname + location.search}</div>
+  );
+}
+
+// Mount `element` at route `path`, with the router starting at `url`. A page
+// that derives its place from the URL both reads route params and navigates to
+// change them, so a bare MemoryRouter is not enough: without a matching
+// <Route> the params are always empty and every navigation is a no-op.
+export function atRoute(path, element, url = path) {
+  return (
+    <MemoryRouter initialEntries={[url]}>
+      <LocationProbe />
+      <Routes>
+        <Route path={path} element={element} />
+      </Routes>
+    </MemoryRouter>
+  );
+}
+
+export function currentURL() {
+  return screen.getByTestId("location").textContent;
 }
 
 // ---------------------------------------------------------------------------

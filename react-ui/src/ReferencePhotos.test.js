@@ -5,10 +5,11 @@
 
 import React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
 
 import {
   actAndFlush,
+  atRoute,
+  currentURL,
   emitUpdate,
   getAPICalls,
   getLastAPICall,
@@ -129,13 +130,13 @@ function installReferenceMock(
   });
 }
 
-async function renderPage() {
+// The page keeps the player being checked in the path, so it needs the route
+// it is mounted at in the real app (src/index.js) rather than a bare router.
+const REFERENCE_ROUTE = "/admin/reference/:userId?";
+
+async function renderPage(url = "/admin/reference") {
   await actAndFlush(() =>
-    render(
-      <MemoryRouter>
-        <ReferencePhotos />
-      </MemoryRouter>,
-    ),
+    render(atRoute(REFERENCE_ROUTE, <ReferencePhotos />, url)),
   );
 }
 
@@ -556,5 +557,81 @@ describe("the verdict", () => {
     expect(
       screen.getByText(/Review failed: the model fell over/),
     ).toBeInTheDocument();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Keeping the admin's place in the URL. The door check is worked one-handed
+// with a box of armbands in the other, so a reload should not cost the roster
+// position - let alone the player halfway through being photographed.
+// ---------------------------------------------------------------------------
+
+describe("keeping the place in the URL", () => {
+  test("opening a player names them in the path, and going back to the roster clears it", async () => {
+    installReferenceMock({
+      rows: [
+        makeRow({ user_id: "user-1", name: "Alice" }),
+        makeRow({ user_id: "user-2", name: "Bob" }),
+      ],
+    });
+
+    await renderPage();
+    expect(currentURL()).toBe("/admin/reference");
+
+    await openPlayer("Bob");
+    expect(currentURL()).toBe("/admin/reference/user-2");
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getByRole("button", { name: /Roster/ })),
+    );
+    expect(currentURL()).toBe("/admin/reference");
+  });
+
+  test("landing straight on a player's path opens them, not the roster", async () => {
+    installReferenceMock({
+      rows: [
+        makeRow({ user_id: "user-1", name: "Alice" }),
+        makeRow({ user_id: "user-2", name: "Bob" }),
+      ],
+    });
+
+    await renderPage("/admin/reference/user-2");
+
+    expect(screen.getByRole("heading", { name: /Bob/ })).toBeInTheDocument();
+  });
+
+  test("a player who is not on this roster falls back to it rather than hanging", async () => {
+    installReferenceMock({ rows: [makeRow({ user_id: "user-1" })] });
+
+    await renderPage("/admin/reference/nobody-here");
+
+    expect(screen.getByText(/kit check at the door/)).toBeInTheDocument();
+  });
+
+  test("the game being worked through rides in the query string, and survives opening a player", async () => {
+    installReferenceMock(
+      { rows: [makeRow({ user_id: "user-1", name: "Alice" })] },
+      {
+        admin_list_games: [
+          { id: "game-1", teams: [{ name: "Reds" }] },
+          { id: "game-2", teams: [{ name: "Blues" }] },
+        ],
+      },
+    );
+
+    await renderPage();
+    await actAndFlush(() =>
+      fireEvent.change(screen.getByLabelText(/Game:/), {
+        target: { value: "game-2" },
+      }),
+    );
+
+    expect(currentURL()).toBe("/admin/reference?game=game-2");
+    expect(getLastAPICall("admin_get_reference_photo_status").query).toEqual({
+      game_id: "game-2",
+    });
+
+    await openPlayer("Alice");
+    expect(currentURL()).toBe("/admin/reference/user-1?game=game-2");
   });
 });
