@@ -827,6 +827,19 @@ Three deployment targets share one service definition:
   queue's "Run escalated review" button does. Its result and the review's are
   held in separate state and shown together: comparing the rungs is the whole
   reason to have both on one card.
+- **A session id is not a user id — `get_user_id` resolves it.** A player's
+  identity is the UUID in their signed cookie, and that UUID *is* `users.id`,
+  so a second phone or a cleared cookie jar makes a second, empty player
+  (roadmap R14). `user_aliases` maps a session id to the player it should be
+  served as, and `backend/user_id.py` is the **only** place that mapping is
+  consulted: everything downstream of the dependency — every route, both SSE
+  generators — receives a canonical id, and every id written to the database
+  is canonical. So do not resolve aliases a second time anywhere else, and do
+  not accept a user id from a client without going through `get_user_id`.
+  `AdminInterface.merge_user` is the write side: it re-points every row naming
+  the stray onto the survivor, sums the counts, deletes the stray and records
+  the alias, mirroring `delete_user`'s foreign-key walk. Any new table with a
+  foreign key to `users.id` has to be added to both.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or

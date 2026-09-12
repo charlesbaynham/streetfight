@@ -252,6 +252,7 @@ next commit lands.
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | 10c   | **R9** Manual pass through every feature    | **~7–17 Sept**                | Everything above this line has agent tests, not a human's thumbs. Last gate before the print run and the night. |
 | 10d   | **R13** Fix the dry-run feedback (30 Aug)   | **Before the 19th**          | Twelve issues real guests hit on the 30 Aug dry run, several serious enough to block joining outright. See `docs/dry_run_feedback_2026-08-30.md`. |
+| 10e   | **R14** Reassign a session to a player      | **Shipped; needs a manual test** | A player who joins on a second phone or clears their cookies becomes a new, empty player. The repair used to be deleting them; now the admin can say the two sessions are one person. Charles's hand-test is outstanding — see the entry. |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -1067,6 +1068,65 @@ reasoning per item.
 R9 exists to catch, just surfaced a session early, by real guests, instead of
 by Charles alone.
 
+
+---
+
+### R14 — Reassign a session to a player *(shipped; awaiting Charles's manual test)*
+
+A player's identity **is** their session cookie: the UUID in the signed cookie
+is `users.id` (`backend/user_id.py`, `UserInterface._make_user`). So joining on
+a second phone, or clearing cookies mid-game, mints a brand-new empty `User`
+and orphans the real one — team, outfit slot, reference photo, stats and shot
+history all still attached to a cookie the player no longer has. Until now the
+only repair was `admin_delete_user`, which throws the stray away and leaves the
+new phone still unable to *be* that player.
+
+**Shipped** as an alias table plus one admin action:
+
+- `user_aliases` (`backend/model.py`) maps a session id to the user it should
+  be served as, and `get_user_id` resolves the cookie's UUID through it. That
+  is the only place it is resolved, so every route and both SSE generators see
+  a canonical id and nothing downstream has to know aliases exist. Ids stored
+  in the database are therefore always canonical.
+- `AdminInterface.merge_user` (`backend/admin_interface.py`, beside
+  `delete_user`, which it deliberately mirrors) rewrites **every** row naming
+  the stray to name the survivor — shots fired, shots received, collected
+  items, private and highlighted ticker lines — sums the counts (bullets,
+  appeals), and fills in whatever the survivor is missing from the stray
+  (team, slot, overrides, wardrobe, name, reference photo, the fresher fix,
+  the better weapon). Nothing stays allocated to the stray: its row is then
+  deleted and its session id written into `user_aliases`. Merging into an id
+  that is itself an alias lands on the ultimate survivor.
+- `POST /api/admin_merge_user?user_id=&into_user_id=` and a "Same person as"
+  dropdown plus **Merge** button in each `PlayerRow` on the admin page
+  (`react-ui/src/AdminMode.js`), behind a `window.confirm` naming both
+  players — the direction matters, since the row you act on is the one that
+  disappears.
+
+The new table needs no hand-written `ALTER TABLE` on the droplet:
+`database.load()` runs `create_all()` on every start, and no existing column
+changed.
+
+**Still to do — Charles, by hand, before the 19th.** This is a repair an admin
+will reach for under pressure, with a real player standing there, and the tests
+are agents' rather than thumbs':
+
+1. Join as a player on one phone, pick an outfit, collect some ammo, fire a
+   shot.
+2. Open the app in a fresh browser (or clear site data) so a second, empty
+   player appears in the admin panel; collect an item and fire a shot from
+   *that* session too.
+3. In the admin panel, on the stray's row, pick the real player under "Same
+   person as" and press **Merge**.
+4. Check on the stray phone that it is now the real player — name, team,
+   outfit, ammo — without clearing anything; check the admin panel shows one
+   player holding both shots and both lots of ammo; check the shot queue still
+   names the right shooter on both shots.
+5. Try it once in the wrong direction on two throwaway players, to see what
+   the confirm says and that the outcome is what it describes.
+
+**Depends on:** nothing.
+**Feeds:** R9's manual pass.
 ---
 
 ## Track A — recognition correctness
