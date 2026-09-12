@@ -75,7 +75,7 @@ STATE_ERROR = AI_REVIEW_STATE_ERROR
 
 # A separate knob from the cheap pass's own: an escalation call costs more
 # (reference photos, a stronger model).
-DEFAULT_CONCURRENCY = 2
+DEFAULT_CONCURRENCY = 6
 
 # How far down the ranking to go. Every candidate is potentially a reference
 # photo in the request and the bill scales with the list, so the tail -- which
