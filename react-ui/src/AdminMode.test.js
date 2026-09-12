@@ -133,6 +133,7 @@ function defaultRoutes(fixtures) {
     admin_set_user_name: {},
     admin_add_user_to_team: {},
     admin_delete_user: {},
+    admin_merge_user: {},
     admin_create_game: {},
     admin_dump_images: {},
     admin_demo_game_status: idleDemoStatus(),
@@ -711,6 +712,62 @@ describe("PlayerRow", () => {
     expect(getLastAPICall("admin_delete_user").query).toEqual({
       user_id: "user-pewster",
     });
+  });
+
+  test("Merge asks for confirmation naming both players and posts nothing if declined", async () => {
+    await renderAdmin();
+    showUnnamedPlayers();
+    window.confirm = jest.fn(() => false);
+    const row = playerRowFor("user-noteam");
+
+    userEvent.selectOptions(
+      within(row).getByRole("combobox", { name: "merge into" }),
+      "Alice (Red)",
+    );
+    userEvent.click(within(row).getByRole("button", { name: "Merge" }));
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      "Treat unnamed (user-not) as Alice (Red)? unnamed (user-not)'s row is " +
+        "removed and everything they collected moves to Alice (Red).",
+    );
+    expect(getAPICalls("admin_merge_user")).toHaveLength(0);
+  });
+
+  test("Merge posts admin_merge_user once confirmed, with the row's player as the stray", async () => {
+    await renderAdmin();
+    showUnnamedPlayers();
+    window.confirm = jest.fn(() => true);
+    const row = playerRowFor("user-noteam");
+
+    userEvent.selectOptions(
+      within(row).getByRole("combobox", { name: "merge into" }),
+      "Alice (Red)",
+    );
+    userEvent.click(within(row).getByRole("button", { name: "Merge" }));
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_merge_user")).toBeDefined(),
+    );
+    expect(getAPICalls("admin_merge_user")).toHaveLength(1);
+    expect(getLastAPICall("admin_merge_user").query).toEqual({
+      user_id: "user-noteam",
+      into_user_id: "user-pewster",
+    });
+  });
+
+  test("Merge's dropdown does not offer the row's own player", async () => {
+    await renderAdmin();
+    const row = playerRowFor("user-pewster");
+
+    const options = within(row)
+      .getByRole("combobox", { name: "merge into" })
+      .querySelectorAll("option");
+
+    expect(
+      Array.from(options).some(
+        (option) => option.textContent === "Alice (Red)",
+      ),
+    ).toBe(false);
   });
 });
 

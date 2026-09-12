@@ -327,7 +327,7 @@ function SendTickerMessage({ game_id }) {
 // Rename any user, put them in a team (optionally claiming an identity slot)
 // or delete them outright. Covers players who have opened the app but are not
 // yet in any team, so they don't appear under a game.
-function PlayerRow({ user, teams, freeSlotsByGame }) {
+function PlayerRow({ user, teams, freeSlotsByGame, allUsers }) {
   const nameInput = useRef(null);
 
   // Tracked with state (not a ref) so the slot options follow the team choice
@@ -335,6 +335,7 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
     user.team_id || (teams.length > 0 ? teams[0].id : ""),
   );
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [mergeTargetId, setMergeTargetId] = useState("");
 
   const team = teams.find((t) => t.id === user.team_id);
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);
@@ -416,9 +417,52 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
         }}
       >
         Delete
+      </button>{" "}
+      <select
+        aria-label="merge into"
+        value={mergeTargetId}
+        onChange={(e) => setMergeTargetId(e.target.value)}
+      >
+        <option value="">(same person as...)</option>
+        {allUsers
+          .filter((other) => other.id !== user.id)
+          .map((other) => (
+            <option key={other.id} value={other.id}>
+              {playerLabel(other, teams)}
+            </option>
+          ))}
+      </select>
+      <button
+        onClick={() => {
+          if (!mergeTargetId) return;
+          const survivor = allUsers.find((other) => other.id === mergeTargetId);
+          if (
+            window.confirm(
+              `Treat ${playerLabel(user, teams)} as ${playerLabel(survivor, teams)}? ` +
+                `${playerLabel(user, teams)}'s row is removed and everything they ` +
+                `collected moves to ${playerLabel(survivor, teams)}.`,
+            )
+          ) {
+            adminPost("admin_merge_user", {
+              user_id: user.id,
+              into_user_id: mergeTargetId,
+            });
+          }
+        }}
+        disabled={!mergeTargetId}
+      >
+        Merge
       </button>
     </li>
   );
+}
+
+// A player's row/option label: name when they have one, else something that
+// tells two nameless strays apart by the id an admin can see on the row.
+function playerLabel(user, teams) {
+  const team = teams.find((t) => t.id === user.team_id);
+  const name = user.name || `unnamed (${user.id.slice(0, 8)})`;
+  return team ? `${name} (${team.name})` : name;
 }
 
 // Fires the thirty-player sample game one shot at a time (backend/demo_game.py)
@@ -636,6 +680,7 @@ function AdminPanel() {
               user={user}
               teams={allTeams}
               freeSlotsByGame={freeSlotsByGame}
+              allUsers={users}
             />
           ))}
       </ul>
