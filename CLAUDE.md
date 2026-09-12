@@ -616,7 +616,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
-| `AI_SHOT_ESCALATION_CONCURRENCY` | Parallel escalations (a separate knob, since each call costs more than a review) |
+| `AI_SHOT_ESCALATION_CONCURRENCY` | Parallel escalations (default 6; a separate knob, since each call costs more than a review) |
 
 ## Deployment (brief)
 
