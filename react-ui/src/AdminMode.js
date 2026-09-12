@@ -654,6 +654,16 @@ function AdminPanel() {
           >
             Download shot images (zip)
           </button>
+          <h3>Player stuck on "grant location" (iOS)</h3>
+          <p>
+            Some iPhones never show the location prompt at all - the request
+            just hangs and the player is stuck at the onboarding gate. Tapping
+            the "Grant location permission" button 5 times in a row makes them
+            skip it (<code>LOCATION_BYPASS_TAPS</code> in{" "}
+            <code>OnboardingView.js</code>) - they proceed with no live map or
+            location tracking. Don't tell players this up front; it costs the
+            game their location, so only use it when someone is genuinely stuck.
+          </p>
           <h3>Demo game</h3>
           <DemoGamePanel />
         </Col>
