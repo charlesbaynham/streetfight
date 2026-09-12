@@ -39,15 +39,19 @@ def test_send_public_ticker_message(mock_session, mock_ticker):
     )
 
 
-def test_send_private_user_ticker_message(mock_session, mock_ticker):
+def test_send_private_user_ticker_message(mock_session, mock_ticker, monkeypatch):
     game_id = uuid4()
     user_id = uuid4()
     supporting_strings = {"user": "Alice", "team": "Red"}
 
-    # Modify TICKER_MESSAGES to test private user message
-    TICKER_MESSAGES[TickerMessageType.USER_JOINED_TEAM] = (
-        TickerTarget.PRIVATE_USER,
-        "{user} has joined team {team}",
+    # Modify TICKER_MESSAGES to test private user message. Through
+    # monkeypatch, so the shared table is restored at teardown - it is a
+    # module global, and a message type left pointing at another target
+    # breaks whichever later test sends it.
+    monkeypatch.setitem(
+        TICKER_MESSAGES,
+        TickerMessageType.USER_JOINED_TEAM,
+        (TickerTarget.PRIVATE_USER, "{user} has joined team {team}"),
     )
 
     send_ticker_message(
@@ -78,14 +82,18 @@ def test_send_ticker_message_missing_game_id(mock_session):
         )
 
 
-def test_send_ticker_message_missing_user_id(mock_session):
+def test_send_ticker_message_missing_user_id(mock_session, monkeypatch):
     game_id = uuid4()
     supporting_strings = {"user": "Alice", "team": "Red"}
 
-    # Modify TICKER_MESSAGES to test private user message
-    TICKER_MESSAGES[TickerMessageType.USER_JOINED_TEAM] = (
-        TickerTarget.PRIVATE_USER,
-        "{user} has joined team {team}",
+    # Modify TICKER_MESSAGES to test private user message. Through
+    # monkeypatch, so the shared table is restored at teardown - it is a
+    # module global, and a message type left pointing at another target
+    # breaks whichever later test sends it.
+    monkeypatch.setitem(
+        TICKER_MESSAGES,
+        TickerMessageType.USER_JOINED_TEAM,
+        (TickerTarget.PRIVATE_USER, "{user} has joined team {team}"),
     )
 
     with pytest.raises(
@@ -114,15 +122,17 @@ def test_send_ticker_message_missing_format_string_value(mock_session):
         )
 
 
-def test_send_private_team_ticker_message_not_implemented(mock_session):
+def test_send_private_team_ticker_message_not_implemented(mock_session, monkeypatch):
     game_id = uuid4()
     team_id = uuid4()
     supporting_strings = {"user": "Alice", "team": "Red"}
 
-    # Modify TICKER_MESSAGES to test private team message
-    TICKER_MESSAGES[TickerMessageType.USER_JOINED_TEAM] = (
-        TickerTarget.PRIVATE_TEAM,
-        "{user} has joined team {team}",
+    # Modify TICKER_MESSAGES to test private team message, restored at
+    # teardown - see above.
+    monkeypatch.setitem(
+        TICKER_MESSAGES,
+        TickerMessageType.USER_JOINED_TEAM,
+        (TickerTarget.PRIVATE_TEAM, "{user} has joined team {team}"),
     )
 
     with pytest.raises(
