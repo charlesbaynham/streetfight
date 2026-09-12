@@ -127,6 +127,7 @@ function defaultRoutes(fixtures) {
     admin_set_ai_escalation: {},
     admin_set_ai_resolve_everything: {},
     admin_reset_game: {},
+    admin_delete_game: {},
     admin_create_team: {},
     admin_set_team_name: {},
     admin_send_custom_ticker_message: {},
@@ -474,6 +475,36 @@ describe("GamePanel", () => {
         keep_weapons: "false",
       }),
     );
+  });
+
+  test("Delete game entirely asks for confirmation naming team/player counts and does nothing if declined", async () => {
+    await renderAdmin();
+    window.confirm = jest.fn(() => false);
+
+    userEvent.click(
+      screen.getByRole("button", { name: "Delete game entirely" }),
+    );
+
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringContaining("2 team(s) and 2 player(s)"),
+    );
+    expect(getAPICalls("admin_delete_game")).toHaveLength(0);
+  });
+
+  test("Delete game entirely posts admin_delete_game once confirmed", async () => {
+    await renderAdmin();
+    window.confirm = jest.fn(() => true);
+
+    userEvent.click(
+      screen.getByRole("button", { name: "Delete game entirely" }),
+    );
+
+    await waitFor(() =>
+      expect(getLastAPICall("admin_delete_game")).toBeDefined(),
+    );
+    expect(getLastAPICall("admin_delete_game").query).toEqual({
+      game_id: "game-1",
+    });
   });
 
   test("adding a team posts admin_create_team with the typed name and clears the input", async () => {
