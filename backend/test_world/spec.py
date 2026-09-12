@@ -206,18 +206,32 @@ CENTROID_RESTORE_PER_S = 0.0078
 
 # Which pub each team starts at, chosen to force the inter-team proximity the
 # photographs need. Distances measured from backend/venues.py:
-#   Pimlico/Victoria      QUEENS_ARMS <-> WARWICK          42 m
+#   Pimlico/Victoria      SANCTUARY_HOUSE <-> BLUE_BOAR    25 m
 #   Millbank/Horseferry   WHITE_HORSE <-> BARLEY_MOW       58 m
-#   Vauxhall              MUNICH_CRICKET_CLUB       140 m from Grafton Arms
+#   Vauxhall              SPEAKER                   143 m from Grafton Arms
 #   Smith Square          GREENCOAT_BOY             the isolated one
 # The two close pairs interleave completely, deliberately: their members are
 # nearer to the other team's players than the location term can separate.
+#
+# Remapped 12 Sept 2026, when the final nineteen-pub list dropped the Queen's
+# Arms, the Warwick and Munich Cricket Club. The geometry each slot was picked
+# for is preserved - a tight pair, a loose pair, one 140-odd m from a
+# neighbour, one isolated - so a regenerated world exercises the same
+# resolvability questions. Two things did move: the tight pair is 25 m rather
+# than 42, which is as close as the new list gets and if anything harder, and
+# the team names no longer describe the district their pub is in (Sanctuary
+# House and the Blue Boar are both on Tothill Street). The names are labels in
+# a synthetic world, so that costs nothing.
+#
+# The committed world.json predates this and still spells the old names in its
+# `start_landmark` fields; nothing resolves those against the venue, so it
+# keeps working until somebody regenerates.
 TEAM_START_LANDMARKS: Dict[str, str] = {
-    "Pimlico": "QUEENS_ARMS",
-    "Victoria": "WARWICK",
+    "Pimlico": "SANCTUARY_HOUSE",
+    "Victoria": "BLUE_BOAR",
     "Millbank": "WHITE_HORSE",
     "Horseferry": "BARLEY_MOW",
-    "Vauxhall": "MUNICH_CRICKET_CLUB",
+    "Vauxhall": "SPEAKER",
     "Smith Square": "GREENCOAT_BOY",
 }
 

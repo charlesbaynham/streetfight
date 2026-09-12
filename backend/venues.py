@@ -188,8 +188,8 @@ WESTMINSTER = Venue(
         # streets are where they actually are rather than where they looked
         # good. A placeholder for a hand-drawn map (roadmap #12), and now an
         # incomplete one: it was traced with only the ten surveyed pubs
-        # marked, and the real pub list is nineteen. The streets are still
-        # right; twelve of the pubs are simply not labelled on it. Redrawing
+        # marked, and the real pub list is eighteen. The streets are still
+        # right; eleven of the pubs are simply not labelled on it. Redrawing
         # it against the list below is outstanding - see roadmap #12.
         #
         # The play area is defined by three things - House Absolute at the
@@ -208,7 +208,7 @@ WESTMINSTER = Venue(
         # ninety pixels of blur; this trades some zoom for something legible.
         corner_width_km=0.2,
     ),
-    # The nineteen pubs Charles has actually chosen to play, plus House
+    # The eighteen pubs Charles has actually chosen to play, plus House
     # Absolute and the three landmarks everybody navigates by. Superseded the
     # ten-pub OpenStreetMap survey shortlist on 12 Sept 2026.
     #
@@ -218,7 +218,7 @@ WESTMINSTER = Venue(
     # which is the same order as the location term's own uncertainty.
     #
     # NOTE these pubs are *not all drawn on the current map* - it was traced
-    # from the ten-pub shortlist. Twelve of the nineteen therefore have no
+    # from the ten-pub shortlist. Eleven of the eighteen therefore have no
     # marker on the drawing an admin places a circle against. Every one is
     # inside the crop (tests/test_venues.py checks that), so a circle at one
     # still lands somewhere the players can see, but it will not be labelled.
@@ -233,9 +233,8 @@ WESTMINSTER = Venue(
         "WINDSOR_CASTLE": (51.495169, -0.137798),  # 23 Francis Street
         "GREENCOAT_BOY": (51.496300, -0.135863),  # Greencoat Place
         "SPEAKER": (51.496905, -0.132260),  # 46 Great Peter Street
-        # Middle, around Victoria Street and Strutton Ground
+        # Middle, around Strutton Ground
         "GRAFTON_ARMS": (51.497468, -0.134108),  # 2 Strutton Ground
-        "IVY_VICTORIA": (51.497390, -0.137656),  # 66 Victoria Street
         # North, around Broadway, Tothill Street and Petty France
         "BUCKINGHAM_ARMS": (51.499159, -0.136793),  # 62 Petty France
         "FEATHERS": (51.499240, -0.132990),  # 18-20 Broadway
@@ -251,16 +250,19 @@ WESTMINSTER = Venue(
         "BIG_BEN": (51.50073, -0.12462),
         "WESTMINSTER_ABBEY": (51.49940, -0.12764),
         "PARLIAMENT": (51.49900, -0.12460),
-        # Dropped from the pub list, kept as bare coordinates because the
-        # deterministic test world's seeded team start positions name them
-        # (backend/test_world/spec.py TEAM_START_LANDMARKS), and its
-        # world.json - an hour of telemetry and ten photographed scenes - was
-        # generated against them. Renaming these would mean regenerating that
-        # world, which means regenerating its images, which costs real money.
-        # Remove them the next time the world is regenerated anyway.
-        "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
-        "QUEENS_ARMS": (51.492593, -0.139175),
-        "WARWICK": (51.492414, -0.139704),
+        # Dropped from the pub list on 12 Sept 2026 and commented out rather
+        # than deleted, because the committed test world was generated against
+        # them: world.json's per-team `start_landmark` still spells these
+        # names. Nothing resolves that field against this dict - it is printed
+        # by `python -m backend.test_world world`, and the positions
+        # themselves were baked into the telemetry - so the demo game and the
+        # shot replay are unaffected. Regenerating the world uses the names in
+        # `backend/test_world/spec.py`, which were remapped onto the new list
+        # in the same change. Uncommenting one of these is how a game would
+        # be played at it again.
+        # "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
+        # "QUEENS_ARMS": (51.492593, -0.139175),
+        # "WARWICK": (51.492414, -0.139704),
     },
 )
 

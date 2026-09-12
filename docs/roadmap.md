@@ -240,7 +240,7 @@ next commit lands.
 | 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the kit hexes on arrival       | Shipped 29 Aug               | Delivered, photographed and measured. The hat and armband palettes in `config.py` are now the real colours, not the simulated ones. |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
-| 3     | **#12** Redraw the Westminster map          | Partly shipped 28 Aug; **redraw outstanding** | Play area fixed, drawn map active, resort venue retired. #7 unblocked. **Reopened 12 Sept:** the final nineteen-pub list replaced the ten the map was traced from, so twelve pubs have no marker. Needs a redraw against the new list before the 19th. |
+| 3     | **#12** Redraw the Westminster map          | Partly shipped 28 Aug; **redraw outstanding** | Play area fixed, drawn map active, resort venue retired. #7 unblocked. **Reopened 12 Sept:** the final eighteen-pub list replaced the ten the map was traced from, so eleven pubs have no marker. Needs a redraw against the new list before the 19th. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
@@ -486,23 +486,24 @@ licensed within 1.5 km of House Absolute was pulled from OpenStreetMap and
 ranked by distance: 98 pubs and 48 bars. The ten inside the #12 crop became
 landmarks on the Westminster venue.
 
-**The list is now final (12 Sept).** Charles chose the nineteen pubs the game
-will actually use, and they have replaced the ten-pub shortlist in
-`backend/venues.py`. Seven of the ten survive; Munich Cricket Club, the
-Queen's Arms and the Warwick are out (the last two were outside the play area
-in spirit anyway, down at Warwick Way), and twelve are new — most of them
-north of Victoria Street, around Broadway, Tothill Street and Petty France,
-which the old shortlist barely touched.
+**The list is now final (12 Sept).** Charles chose the pubs the game will
+actually use, and they have replaced the ten-pub shortlist in
+`backend/venues.py`. **Eighteen** of them: seven of the old ten survive, and
+eleven are new — most north of Victoria Street, around Broadway, Tothill
+Street and Petty France, which the old shortlist barely touched. Munich
+Cricket Club, the Queen's Arms and the Warwick are out (the last two were
+outside the play area in spirit anyway, down at Warwick Way) and are commented
+out in the venue rather than deleted.
+
+The Ivy Victoria was on the first draft of the list and came off it: it is a
+brasserie rather than a pub. The White Horse and Bower is in and thriving —
+Charles was there this week, after its refurbishment.
 
 Every entry was checked against OpenStreetMap and corroborated by a web search
-for its street and postcode: all nineteen are real and open. The coordinates
+for its street and postcode: all eighteen are real and open. The coordinates
 that came with the list were **not** used — they ran 4–230 m out, median about
 140 m, which is the same order as the location term's own uncertainty and
 would have quietly degraded identification. OSM's coordinates are in instead.
-Two entries are worth flagging: **The Ivy Victoria** is a brasserie rather than
-a pub, and **the White Horse and Bower** has only just reopened after a long
-refurbishment closure, so it is the one whose Saturday-night hours are worth
-confirming by phone.
 
 **What is still open is the part that was always the gate:** no landlord has
 been asked yet, and no opening hours are recorded. Getting a yes from four
@@ -558,15 +559,15 @@ the same venue if it keeps the framing, since the reference points are the
 crop corners. **Lower priority than anything with a date on it.**
 
 **Outstanding: redraw it against the final pub list (reopened 12 Sept).** The
-nineteen pubs the game will actually use have replaced the ten this map was
+eighteen pubs the game will actually use have replaced the ten this map was
 traced from (#6). Seven of the ten survive, so the drawing is not wrong — the
 streets and the river are still where they belong, and every new pub is inside
-the crop — but **twelve of the nineteen have no marker or label on it**, and
+the crop — but **eleven of the eighteen have no marker or label on it**, and
 three pubs it does label are no longer in play. An admin placing a circle at,
 say, the Two Chairmen gets a circle on a blank piece of street.
 
 What that needs: rerun the #12 pipeline with the new list, which is what the
-`draw-venue-map` skill already does — re-fetch the skeleton, mark the nineteen,
+`draw-venue-map` skill already does — re-fetch the skeleton, mark the eighteen,
 and ask for the same trace. The framing must not move: the reference points are
 the crop's own corners, so keeping 1300 × 1300 m centred on House Absolute
 means the new image drops straight in with no georeferencing work. **Trace, do
@@ -577,13 +578,15 @@ thing its accuracy.
 Worth doing before the 19th, but it does not block a game: the circles land in
 the right place either way, they are just unlabelled.
 
-**Landmarks** are now those nineteen pubs, plus House Absolute, Big Ben,
-Westminster Abbey and Parliament, plus three bare coordinates — Munich Cricket
-Club, the Queen's Arms and the Warwick — which are no longer pubs in play and
-are kept only because the deterministic test world's seeded team start
-positions name them (`backend/test_world/spec.py`). Its `world.json` was
-generated against those names, and regenerating the world means regenerating
-its images, which costs real money; they go the next time that happens anyway.
+**Landmarks** are now those eighteen pubs, plus House Absolute, Big Ben,
+Westminster Abbey and Parliament. Munich Cricket Club, the Queen's Arms and
+the Warwick are commented out just below them, since the committed
+`world.json` still spells those names in its `start_landmark` fields — nothing
+resolves that field against the venue, so the demo game and the shot replay
+are unaffected. The test world's own start positions
+(`backend/test_world/spec.py`) were remapped onto pubs that are still in play,
+so a regenerated world exercises the same geometry: a 25 m pair, a 58 m pair,
+one 143 m from a neighbour and one isolated.
 
 A test now checks the other half of a venue that Python could not see for
 itself: that `VenueMap.image` names a key `react-ui/src/mapImages.js` actually
