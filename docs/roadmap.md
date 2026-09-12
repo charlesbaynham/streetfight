@@ -245,6 +245,7 @@ next commit lands.
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
+| 6c    | **R14** Pubs excluded as targets            | **Before the 19th**          | Total gap surfaced by the 2024 chat log: nothing today stops a candidate standing in a pub from being named a valid target. Same "candidates, not evidence" fix shape as #5. |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
@@ -1130,6 +1131,73 @@ are agents' rather than thumbs':
 ---
 
 ## Track A — recognition correctness
+
+### R14 — Pubs are safe havens, but nothing in shot adjudication knows it *(proposed — high priority)*
+
+**Symptom, from the 2024 game chat.** Pubs were announced as safe zones on the
+night purely as a spoken rule ("Remember pubs are safe havens, no violence at
+pubs") with nothing behind it in the app. Players shot while inside a pub
+disputed the hit with no way to check either side's claim: *"I can't have been
+killed, I'm in a pub!"*, *"I was totally in the pub area"*, *"You can't kill
+people from inside the pub though, so your shots don't count if that's the
+case"* — adjudicated live, by eye, by whoever was holding the queue at the
+time. This is exactly the kind of dispute the recognition pipeline and the
+admin queue exist to settle deterministically instead.
+
+**Current state (checked against the code, not assumed).** The gap is total:
+
+- `backend/venues.py`'s `Venue.landmarks` is a flat name → `(lat, long)` point
+  map. Pubs are told apart from other landmarks only by a `# Not pubs` code
+  comment — nothing machine-readable — and no landmark carries a radius.
+- `backend/circles.py` and the `CircleTypes` in `admin_interface.py`
+  (`EXCLUSION` / `NEXT` / `BOTH` / `DROP`) give a game exactly one
+  admin-placed exclusion circle. Nothing auto-derives a safe circle from the
+  pub list.
+- `shot_identification.eligible_candidates()` filters candidates only on
+  `identity_slot is not None` — no location check at all. The separate
+  location *term* (`location_likelihood_ratios`) only ever weights a
+  candidate's plausibility up or down; being at any location, pub included,
+  can never remove a candidate from consideration (it's evidence, not a
+  filter — see the "score candidates, not codewords" principle under #5).
+- Neither the cheap-pass prompt (`shot_vision.build_prompt`) nor the
+  escalation prompt (`shot_escalation.py`, `REFERENCE_BACKGROUND_CLAUSE`)
+  mentions location or venues at all — both ask only about garment colours.
+- `submit_shot` (`backend/user_interface.py`) checks only that the shooter is
+  alive and has ammo. No pub/haven check anywhere in `admin_interface.py` or
+  `item_actions.py` either.
+- The data needed already exists and is thrown away: `Shot.location_context`
+  stores every nearby player's GPS fix at the moment of the shot
+  (`parse_location_context`), which is exactly what "was this candidate
+  within the pub's radius at shot time?" needs.
+
+**The fix, and a design tension worth flagging before building it.** Being
+inside a pub is a *rule*, not evidence — a candidate who was in a pub cannot
+be the target, full stop, unlike GPS proximity which only ever nudges a score.
+So this wants a hard exclusion, not another likelihood term:
+
+1. Give pub landmarks geometry — a radius, whether a single constant for all
+   of them or per-pub — so "inside the pub" is checkable at all.
+2. Exclude any candidate whose fix in `location_context` places them inside a
+   pub's radius at the shot's own `shot_epoch` from the candidate list
+   entirely — before the cheap pass's `identification_payload` or the
+   escalation's GPS-ranked candidate list are ever built. That satisfies "a
+   pub location rules someone out" without handing the vision model location
+   data to reason about itself, which would break the module's existing,
+   deliberate split (the model reads garments; Python decides everything
+   positional). Charles asked for this to be "in the prompt" — read literally
+   that means the vision model judging pub membership, which the codebase's
+   existing architecture argues against; recommend the deterministic
+   candidate-list filter above instead and confirm before building either way.
+3. Surface the exclusion in the admin review UI (`identification_payload`)
+   so a ruled-out candidate reads as *"was at [pub name] at time of shot"*
+   rather than silently vanishing from the ranking — an admin re-checking a
+   contested shot needs to see why someone isn't in the list.
+4. Decide whether the shooter firing *from* inside a pub is also disallowed
+   (a second, related complaint in the chat, about a shooter's hand/phone
+   reaching across a pub boundary) — likely a `submit_shot` check against the
+   shooter's own fix, separate from the target-side fix above.
+
+See open question 7 below for the radius decision this needs before #2 can be built.
 
 ### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
 
@@ -3301,3 +3369,9 @@ Answers to these change the shape of the work, not just its order.
    appeal window before applying it — needs no unwind at all, but delays every
    knockout by the length of the window, which in a game measured in seconds
    is its own problem, so it was not built.
+7. **What radius counts as "inside the pub" for R14?** A pub landmark today is
+   a bare point with no size. Needs either one constant safe-radius applied to
+   every pub, or a per-pub value — and a decision on how it interacts with fix
+   accuracy (`accuracy`/σ_fix already downweights a bad fix elsewhere; a fix
+   that is honestly uncertain shouldn't silently clear someone standing at the
+   pub door).
