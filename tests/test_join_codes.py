@@ -12,6 +12,7 @@ from backend.identity.config import hex_for
 from backend.join_codes import JoinCodeModel
 from backend.join_codes import make_join_url
 from backend.join_codes import make_team_join_url
+from backend.model import Game
 from backend.model import Item
 from backend.model import Shot
 from backend.model import Team
@@ -601,3 +602,64 @@ def test_admin_delete_team_removes_shots_from_players_who_switched_out(
 def test_admin_delete_team_unknown_404(admin_api_client, db_session):
     response = admin_api_client.post(f"/api/admin_delete_team?team_id={get_uuid()}")
     assert response.status_code == 404
+
+
+# ---------------------------------------------------------------------------
+# admin_delete_game
+# ---------------------------------------------------------------------------
+
+
+def test_admin_delete_game(
+    admin_api_client,
+    db_session,
+    one_game,
+    two_users_in_different_teams,
+    test_image_string,
+):
+    from backend.items import ItemModel
+
+    user_a, user_b = two_users_in_different_teams
+    team_a = db_session.get(User, user_a).team_id
+    team_b = db_session.get(User, user_b).team_id
+
+    # A collects an item and fires a shot; a general ticker line is posted too
+    item = ItemModel(
+        id=get_uuid(),
+        itype="ammo",
+        data={"num": 3},
+        collected_only_once=True,
+        collected_as_team=False,
+    ).sign()
+    UserInterface(user_a).collect_item(item.to_base64())
+    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_a).submit_shot(test_image_string)
+
+    admin_api_client.post(
+        f"/api/admin_send_custom_ticker_message?game_id={one_game}&message=hello"
+    )
+
+    response = admin_api_client.post(f"/api/admin_delete_game?game_id={one_game}")
+    assert response.is_success
+
+    db_session.expire_all()
+
+    # The game, both its teams and both players are gone, along with their
+    # shots, items and the game's ticker
+    assert db_session.get(Game, one_game) is None
+    assert db_session.get(Team, team_a) is None
+    assert db_session.get(Team, team_b) is None
+    assert db_session.get(User, user_a) is None
+    assert db_session.get(User, user_b) is None
+    assert db_session.query(Shot).filter_by(game_id=one_game).count() == 0
+    assert db_session.get(Item, item.id) is None
+    assert db_session.query(TickerEntry).filter_by(game_id=one_game).count() == 0
+
+
+def test_admin_delete_game_unknown_404(admin_api_client, db_session):
+    response = admin_api_client.post(f"/api/admin_delete_game?game_id={get_uuid()}")
+    assert response.status_code == 404
+
+
+def test_admin_delete_game_requires_admin_auth(api_client, one_game):
+    response = api_client.post(f"/api/admin_delete_game?game_id={one_game}")
+    assert response.status_code in (401, 403)

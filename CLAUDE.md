@@ -181,7 +181,25 @@ Four things from it that are worth knowing even if you never call the agent:
     `outfit`) — one function decides what "what somebody is wearing" looks
     like, so the door check and the queue can't drift apart.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
-  - `items.py` / `item_actions.py` — collectible items and their effects.
+  - `items.py` / `item_actions.py` — collectible items and their effects. Note
+    that **ammo is the only type that can be collected on behalf of a team**:
+    `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
+    team handler for armour, medpacks or weapons, so asking for one raises
+    `NotImplementedError`.
+  - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
+    cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
+    `image_templates/`, and every code minted is recorded in `qr_codes.csv`.
+  - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
+    portrait A4 poster per pub, each carrying a single ammo code worth two
+    bullets to every member of the first team that scans it
+    (`collected_as_team=True`, `collected_only_once=False`, so one sheet serves
+    every team once). The pages are deliberately anonymous — nothing says which
+    pub a sheet is for, so they can be dealt out in any order without keeping a
+    register. The QR's position is **measured, not chosen**: the artwork is a
+    drawn A4 page with no ink-free square bigger than a fifth of its width, so
+    `QR_POCKET` is the one gap a readable code fits in without covering the
+    handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
+    a re-drawn picture fails a test rather than a print run.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
@@ -598,7 +616,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
-| `AI_SHOT_ESCALATION_CONCURRENCY` | Parallel escalations (a separate knob, since each call costs more than a review) |
+| `AI_SHOT_ESCALATION_CONCURRENCY` | Parallel escalations (default 6; a separate knob, since each call costs more than a review) |
 
 ## Deployment (brief)
 
@@ -809,6 +827,19 @@ Three deployment targets share one service definition:
   queue's "Run escalated review" button does. Its result and the review's are
   held in separate state and shown together: comparing the rungs is the whole
   reason to have both on one card.
+- **A session id is not a user id — `get_user_id` resolves it.** A player's
+  identity is the UUID in their signed cookie, and that UUID *is* `users.id`,
+  so a second phone or a cleared cookie jar makes a second, empty player
+  (roadmap R14). `user_aliases` maps a session id to the player it should be
+  served as, and `backend/user_id.py` is the **only** place that mapping is
+  consulted: everything downstream of the dependency — every route, both SSE
+  generators — receives a canonical id, and every id written to the database
+  is canonical. So do not resolve aliases a second time anywhere else, and do
+  not accept a user id from a client without going through `get_user_id`.
+  `AdminInterface.merge_user` is the write side: it re-points every row naming
+  the stray onto the survivor, sums the counts, deletes the stray and records
+  the alias, mirroring `delete_user`'s foreign-key walk. Any new table with a
+  foreign key to `users.id` has to be added to both.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or

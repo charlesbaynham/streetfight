@@ -490,6 +490,12 @@ async def admin_delete_team(team_id: UUID) -> None:
     AdminInterface().delete_team(team_id)
 
 
+@admin_method(path="/admin_delete_game", method="POST")
+async def admin_delete_game(game_id: UUID) -> None:
+    logger.info("admin_delete_game %s", game_id)
+    AdminInterface().delete_game(game_id)
+
+
 @admin_method(path="/admin_add_user_to_team", method="POST")
 async def admin_add_user_to_team(
     user_id: UUID, team_id: UUID, slot: Optional[int] = None
@@ -1027,6 +1033,18 @@ async def admin_delete_user(user_id: UUID):
     joining on the wrong phone or browser."""
     logger.info("admin_delete_user %s", user_id)
     AdminInterface().delete_user(user_id)
+
+
+@admin_method(path="/admin_merge_user", method="POST")
+async def admin_merge_user(user_id: UUID, into_user_id: UUID):
+    """Fold a stray session into the player it actually belongs to - the
+    repair for someone who joined on a second phone or cleared their cookies,
+    orphaning the real player behind a fresh, empty ``User``. Everything the
+    stray accrued (items, shots, bullets, ...) moves onto the survivor, and
+    the stray's session cookie is aliased so every future request it makes is
+    served as the survivor."""
+    logger.info("admin_merge_user %s into %s", user_id, into_user_id)
+    AdminInterface().merge_user(user_id, into_user_id)
 
 
 @admin_method(path="/admin_set_user_name", method="POST")

@@ -6,6 +6,9 @@ from uuid import uuid4 as get_uuid
 from fastapi import Request
 from fastapi import WebSocket
 
+from .database import session_scope
+from .model import UserAlias
+
 no_cookie_clients = {}
 no_cookie_lock = RLock()
 
@@ -45,7 +48,18 @@ async def get_user_id(*, request: Request = None, websocket: WebSocket = None) -
                 parsed_uuid,
             )
 
-    return parsed_uuid
+    return resolve_alias(parsed_uuid)
+
+
+def resolve_alias(session_id: UUID) -> UUID:
+    """Redirect a merged-away session id to the user it now belongs to
+    (``AdminInterface.merge_user``), so every route and both SSE generators
+    get the canonical id for free rather than each having to know about
+    aliases.
+    """
+    with session_scope() as session:
+        alias = session.get(UserAlias, session_id)
+        return alias.user_id if alias is not None else session_id
 
 
 def assign_new_ID(request: Request, temp_id) -> UUID:

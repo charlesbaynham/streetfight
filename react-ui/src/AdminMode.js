@@ -264,6 +264,30 @@ function GamePanel({ game }) {
         </label>
       </p>
 
+      <p>
+        <button
+          onClick={() => {
+            const numPlayers = game.teams.reduce(
+              (total, team) => total + team.users.length,
+              0,
+            );
+            if (
+              window.confirm(
+                `Delete this entire game? This permanently deletes its ` +
+                  `${game.teams.length} team(s) and ${numPlayers} player(s), ` +
+                  `along with every shot, item and ticker message. Any join ` +
+                  `links already sent out will stop working. This cannot be ` +
+                  `undone.`,
+              )
+            ) {
+              adminPost("admin_delete_game", { game_id: game.id });
+            }
+          }}
+        >
+          Delete game entirely
+        </button>
+      </p>
+
       <Row>
         <Col md>
           <h3>Teams</h3>
@@ -327,7 +351,7 @@ function SendTickerMessage({ game_id }) {
 // Rename any user, put them in a team (optionally claiming an identity slot)
 // or delete them outright. Covers players who have opened the app but are not
 // yet in any team, so they don't appear under a game.
-function PlayerRow({ user, teams, freeSlotsByGame }) {
+function PlayerRow({ user, teams, freeSlotsByGame, allUsers }) {
   const nameInput = useRef(null);
 
   // Tracked with state (not a ref) so the slot options follow the team choice
@@ -335,6 +359,7 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
     user.team_id || (teams.length > 0 ? teams[0].id : ""),
   );
   const [selectedSlot, setSelectedSlot] = useState("");
+  const [mergeTargetId, setMergeTargetId] = useState("");
 
   const team = teams.find((t) => t.id === user.team_id);
   const selectedTeam = teams.find((t) => t.id === selectedTeamId);
@@ -416,9 +441,52 @@ function PlayerRow({ user, teams, freeSlotsByGame }) {
         }}
       >
         Delete
+      </button>{" "}
+      <select
+        aria-label="merge into"
+        value={mergeTargetId}
+        onChange={(e) => setMergeTargetId(e.target.value)}
+      >
+        <option value="">(same person as...)</option>
+        {allUsers
+          .filter((other) => other.id !== user.id)
+          .map((other) => (
+            <option key={other.id} value={other.id}>
+              {playerLabel(other, teams)}
+            </option>
+          ))}
+      </select>
+      <button
+        onClick={() => {
+          if (!mergeTargetId) return;
+          const survivor = allUsers.find((other) => other.id === mergeTargetId);
+          if (
+            window.confirm(
+              `Treat ${playerLabel(user, teams)} as ${playerLabel(survivor, teams)}? ` +
+                `${playerLabel(user, teams)}'s row is removed and everything they ` +
+                `collected moves to ${playerLabel(survivor, teams)}.`,
+            )
+          ) {
+            adminPost("admin_merge_user", {
+              user_id: user.id,
+              into_user_id: mergeTargetId,
+            });
+          }
+        }}
+        disabled={!mergeTargetId}
+      >
+        Merge
       </button>
     </li>
   );
+}
+
+// A player's row/option label: name when they have one, else something that
+// tells two nameless strays apart by the id an admin can see on the row.
+function playerLabel(user, teams) {
+  const team = teams.find((t) => t.id === user.team_id);
+  const name = user.name || `unnamed (${user.id.slice(0, 8)})`;
+  return team ? `${name} (${team.name})` : name;
 }
 
 // Fires the thirty-player sample game one shot at a time (backend/demo_game.py)
@@ -636,6 +704,7 @@ function AdminPanel() {
               user={user}
               teams={allTeams}
               freeSlotsByGame={freeSlotsByGame}
+              allUsers={users}
             />
           ))}
       </ul>
@@ -654,6 +723,16 @@ function AdminPanel() {
           >
             Download shot images (zip)
           </button>
+          <h3>Player stuck on "grant location" (iOS)</h3>
+          <p>
+            Some iPhones never show the location prompt at all - the request
+            just hangs and the player is stuck at the onboarding gate. Tapping
+            the "Grant location permission" button 5 times in a row makes them
+            skip it (<code>LOCATION_BYPASS_TAPS</code> in{" "}
+            <code>OnboardingView.js</code>) - they proceed with no live map or
+            location tracking. Don't tell players this up front; it costs the
+            game their location, so only use it when someone is genuinely stuck.
+          </p>
           <h3>Demo game</h3>
           <DemoGamePanel />
         </Col>

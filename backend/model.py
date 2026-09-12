@@ -404,6 +404,21 @@ class User(Base):
         self.last_seen = datetime.datetime.now()
 
 
+class UserAlias(Base):
+    """Redirects a stray session cookie to the surviving ``User`` it was
+    merged into (``AdminInterface.merge_user``) - the repair for a player who
+    joined on a second phone or cleared their cookies. ``get_user_id``
+    resolves every request's cookie UUID through this table, so a merge takes
+    effect on the stray's very next request with no cookie of their own to
+    change.
+    """
+
+    __tablename__ = "user_aliases"
+
+    session_id = Column(UUIDType, primary_key=True)
+    user_id = Column(UUIDType, ForeignKey("users.id"), nullable=False, index=True)
+
+
 class ItemType(str, enum.Enum):
     AMMO = "ammo"
     MEDPACK = "medpack"

@@ -240,11 +240,12 @@ next commit lands.
 | 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the kit hexes on arrival       | Shipped 29 Aug               | Delivered, photographed and measured. The hat and armband palettes in `config.py` are now the real colours, not the simulated ones. |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
-| 3     | **#12** Redraw the Westminster map          | Shipped 28 Aug               | Play area fixed, drawn map active, resort venue retired. #7 unblocked. A hand-drawn replacement is still wanted but no longer blocks anything. |
+| 3     | **#12** Redraw the Westminster map          | Partly shipped 28 Aug; **redraw outstanding** | Play area fixed, drawn map active, resort venue retired. #7 unblocked. **Reopened 12 Sept:** the final nineteen-pub list replaced the ten the map was traced from, so eleven pubs have no marker. Needs a redraw against the new list before the 19th. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
 | 6b    | **#5** Score candidates, not codewords       | **Before the 19th**          | Promoted from 13. Auto-actions are required, and they cannot work while identification decodes against the code. |
+| 6c    | **R14** Pubs excluded as targets            | **Before the 19th**          | Total gap surfaced by the 2024 chat log: nothing today stops a candidate standing in a pub from being named a valid target. Same "candidates, not evidence" fix shape as #5. |
 | 7     | **#4** False hits                           | Before the 19th *if it fits* | The one recognition item worth rushing; if it slips, run with auto-actions off.                                |
 | 8     | **R1** Offline replay harness               | With #4                      | What makes #4 tractable in the time available rather than guesswork.                                           |
 | 9     | **R5** Capture GPS accuracy and heading      | Shipped                      | Telemetry not recorded on the night is lost forever. The only post-game item with a real deadline. Both halves in, plus a map of each shot in the review queue. |
@@ -252,6 +253,7 @@ next commit lands.
 | 10b   | **R7** Reference photo as a kit check       | Shipped 27 Aug               | The manual gate needs no software; the vision dry run does. Upside only — the door check happens either way.   |
 | 10c   | **R9** Manual pass through every feature    | **~7–17 Sept**                | Everything above this line has agent tests, not a human's thumbs. Last gate before the print run and the night. |
 | 10d   | **R13** Fix the dry-run feedback (30 Aug)   | **Before the 19th**          | Twelve issues real guests hit on the 30 Aug dry run, several serious enough to block joining outright. See `docs/dry_run_feedback_2026-08-30.md`. |
+| 10e   | **R14** Reassign a session to a player      | **Shipped; needs a manual test** | A player who joins on a second phone or clears their cookies becomes a new, empty player. The repair used to be deleting them; now the admin can say the two sessions are one person. Charles's hand-test is outstanding — see the entry. |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -483,19 +485,41 @@ contain the list — custom Maps lists come under the separate "Saved" product,
 and even then the Norbiton list was not among them; seven Westminster pubs sat
 at the top of the default list instead. Rather than rely on that, everything
 licensed within 1.5 km of House Absolute was pulled from OpenStreetMap and
-ranked by distance: 98 pubs and 48 bars. The ten inside the #12 crop are now
+ranked by distance: 98 pubs and 48 bars. The ten inside the #12 crop became
 landmarks on the Westminster venue.
+
+**The list is now final (12 Sept).** Charles chose the pubs the game will
+actually use, and they have replaced the ten-pub shortlist in
+`backend/venues.py`. **Nineteen** of them: eight of the old ten survive, and
+eleven are new — most north of Victoria Street, around Broadway, Tothill
+Street and Petty France, which the old shortlist barely touched. The Queen's
+Arms and the Warwick are out (both were outside the play area in spirit
+anyway, down at Warwick Way) and are commented out in the venue rather than
+deleted. Munich Cricket Club was dropped with them and then put back — it is a
+Bavarian beer hall with an Oompah band, which is its own argument.
+
+The Ivy Victoria was on the first draft of the list and came off it: it is a
+brasserie rather than a pub. The White Horse and Bower is in and thriving —
+Charles was there this week, after its refurbishment.
+
+Every entry was checked against OpenStreetMap and corroborated by a web search
+for its street and postcode: all nineteen are real and open. The coordinates
+that came with the list were **not** used — they ran 4–230 m out, median about
+140 m, which is the same order as the location term's own uncertainty and
+would have quietly degraded identification. OSM's coordinates are in instead.
 
 **What is still open is the part that was always the gate:** no landlord has
 been asked yet, and no opening hours are recorded. Getting a yes from four
 pubs is still worth more than a longer list.
+
+**And the list has outrun the map** — see #12, which is reopened as a result.
 
 **Lands in:** `backend/venues.py` as landmarks on the Westminster venue.
 **Feeds:** #8, #12.
 
 ---
 
-### #12 — Redraw the map for Westminster *(shipped)*
+### #12 — Redraw the map for Westminster *(traced map shipped; redraw outstanding)*
 
 **Shipped 28 Aug.** `ACTIVE_VENUE` is `VENUES["westminster"]`; the resort test
 venue is retired to a commented-out line beside Kingston, and its `TODO` is
@@ -537,9 +561,35 @@ model's. Now a nice-to-have rather than a blocker — it can drop straight into
 the same venue if it keeps the framing, since the reference points are the
 crop corners. **Lower priority than anything with a date on it.**
 
-**Landmarks** are the ten surveyed pubs inside the crop, plus House Absolute,
-Big Ben, Westminster Abbey and Parliament — everything actually drawn on the
-map, so an admin cannot place a circle somewhere invisible.
+**Outstanding: redraw it against the final pub list (reopened 12 Sept).** The
+nineteen pubs the game will actually use have replaced the ten this map was
+traced from (#6). Eight of the ten survive, so the drawing is not wrong — the
+streets and the river are still where they belong, and every new pub is inside
+the crop — but **eleven of the nineteen have no marker or label on it**, and
+two pubs it does label are no longer in play. An admin placing a circle at,
+say, the Two Chairmen gets a circle on a blank piece of street.
+
+What that needs: rerun the #12 pipeline with the new list, which is what the
+`draw-venue-map` skill already does — re-fetch the skeleton, mark the nineteen,
+and ask for the same trace. The framing must not move: the reference points are
+the crop's own corners, so keeping 1300 × 1300 m centred on House Absolute
+means the new image drops straight in with no georeferencing work. **Trace, do
+not illustrate** — see the paragraph above on what happens otherwise, and
+remember that asking a good result for four small corrections cost the whole
+thing its accuracy.
+
+Worth doing before the 19th, but it does not block a game: the circles land in
+the right place either way, they are just unlabelled.
+
+**Landmarks** are now those nineteen pubs, plus House Absolute, Big Ben,
+Westminster Abbey and Parliament. The Queen's Arms and the Warwick are
+commented out just below them, since the committed `world.json` still spells
+those names in its `start_landmark` fields — nothing resolves that field
+against the venue, so the demo game and the shot replay are unaffected. The
+test world's own start positions (`backend/test_world/spec.py`) were remapped
+onto pubs that are still in play, so a regenerated world exercises the same
+geometry: a 25 m pair, a 58 m pair, one 140 m from a neighbour and one
+isolated.
 
 A test now checks the other half of a venue that Python could not see for
 itself: that `VenueMap.image` names a key `react-ui/src/mapImages.js` actually
@@ -734,8 +784,19 @@ and the Millbank government blocks are most of the eastern half.
    `backend/generate_qr_items.py` plus the templates in
    `backend/image_templates/`. Add the "this is a game, ring this number" line
    from #7 to the template.
-2. **Pub handouts** (#6) — probably a different format: something a bar will
-   actually keep on display.
+2. **Pub handouts** (#6) — **tooling shipped 12 Sept**:
+   `backend/generate_pub_pages.py` (`npm run pubgen -- --count 19`) writes a
+   PDF of portrait A4 posters, one page and one code per pub, reusing the
+   `reusable bullets.png` artwork from last time. Each code is ammo worth
+   **two bullets to every member** of the first team to scan it, claimable
+   once per team and once by every team. The pages say nothing about which pub
+   they are for, so no register has to be kept.
+
+   Two things to get right when the run happens: mint with the **live**
+   `SECRET_KEY` and `WEBSITE_URL` or every scan fails on the signature (point
+   `DATABASE_URL` at a throwaway sqlite file while doing it — the generator
+   opens whatever it is given, and mints nothing into it), and print **at
+   actual size** rather than "fit to page", which shrinks the QR.
 3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
    their join code. Each player already knows this, having picked it via
    `/pick`; the print step reads it off each player's picked
@@ -1008,9 +1069,135 @@ reasoning per item.
 R9 exists to catch, just surfaced a session early, by real guests, instead of
 by Charles alone.
 
+
+---
+
+### R14 — Reassign a session to a player *(shipped; awaiting Charles's manual test)*
+
+A player's identity **is** their session cookie: the UUID in the signed cookie
+is `users.id` (`backend/user_id.py`, `UserInterface._make_user`). So joining on
+a second phone, or clearing cookies mid-game, mints a brand-new empty `User`
+and orphans the real one — team, outfit slot, reference photo, stats and shot
+history all still attached to a cookie the player no longer has. Until now the
+only repair was `admin_delete_user`, which throws the stray away and leaves the
+new phone still unable to *be* that player.
+
+**Shipped** as an alias table plus one admin action:
+
+- `user_aliases` (`backend/model.py`) maps a session id to the user it should
+  be served as, and `get_user_id` resolves the cookie's UUID through it. That
+  is the only place it is resolved, so every route and both SSE generators see
+  a canonical id and nothing downstream has to know aliases exist. Ids stored
+  in the database are therefore always canonical.
+- `AdminInterface.merge_user` (`backend/admin_interface.py`, beside
+  `delete_user`, which it deliberately mirrors) rewrites **every** row naming
+  the stray to name the survivor — shots fired, shots received, collected
+  items, private and highlighted ticker lines — sums the counts (bullets,
+  appeals), and fills in whatever the survivor is missing from the stray
+  (team, slot, overrides, wardrobe, name, reference photo, the fresher fix,
+  the better weapon). Nothing stays allocated to the stray: its row is then
+  deleted and its session id written into `user_aliases`. Merging into an id
+  that is itself an alias lands on the ultimate survivor.
+- `POST /api/admin_merge_user?user_id=&into_user_id=` and a "Same person as"
+  dropdown plus **Merge** button in each `PlayerRow` on the admin page
+  (`react-ui/src/AdminMode.js`), behind a `window.confirm` naming both
+  players — the direction matters, since the row you act on is the one that
+  disappears.
+
+The new table needs no hand-written `ALTER TABLE` on the droplet:
+`database.load()` runs `create_all()` on every start, and no existing column
+changed.
+
+**Still to do — Charles, by hand, before the 19th.** This is a repair an admin
+will reach for under pressure, with a real player standing there, and the tests
+are agents' rather than thumbs':
+
+1. Join as a player on one phone, pick an outfit, collect some ammo, fire a
+   shot.
+2. Open the app in a fresh browser (or clear site data) so a second, empty
+   player appears in the admin panel; collect an item and fire a shot from
+   *that* session too.
+3. In the admin panel, on the stray's row, pick the real player under "Same
+   person as" and press **Merge**.
+4. Check on the stray phone that it is now the real player — name, team,
+   outfit, ammo — without clearing anything; check the admin panel shows one
+   player holding both shots and both lots of ammo; check the shot queue still
+   names the right shooter on both shots.
+5. Try it once in the wrong direction on two throwaway players, to see what
+   the confirm says and that the outcome is what it describes.
+
+**Depends on:** nothing.
+**Feeds:** R9's manual pass.
 ---
 
 ## Track A — recognition correctness
+
+### R14 — Pubs are safe havens, but nothing in shot adjudication knows it *(proposed — high priority)*
+
+**Symptom, from the 2024 game chat.** Pubs were announced as safe zones on the
+night purely as a spoken rule ("Remember pubs are safe havens, no violence at
+pubs") with nothing behind it in the app. Players shot while inside a pub
+disputed the hit with no way to check either side's claim: *"I can't have been
+killed, I'm in a pub!"*, *"I was totally in the pub area"*, *"You can't kill
+people from inside the pub though, so your shots don't count if that's the
+case"* — adjudicated live, by eye, by whoever was holding the queue at the
+time. This is exactly the kind of dispute the recognition pipeline and the
+admin queue exist to settle deterministically instead.
+
+**Current state (checked against the code, not assumed).** The gap is total:
+
+- `backend/venues.py`'s `Venue.landmarks` is a flat name → `(lat, long)` point
+  map. Pubs are told apart from other landmarks only by a `# Not pubs` code
+  comment — nothing machine-readable — and no landmark carries a radius.
+- `backend/circles.py` and the `CircleTypes` in `admin_interface.py`
+  (`EXCLUSION` / `NEXT` / `BOTH` / `DROP`) give a game exactly one
+  admin-placed exclusion circle. Nothing auto-derives a safe circle from the
+  pub list.
+- `shot_identification.eligible_candidates()` filters candidates only on
+  `identity_slot is not None` — no location check at all. The separate
+  location *term* (`location_likelihood_ratios`) only ever weights a
+  candidate's plausibility up or down; being at any location, pub included,
+  can never remove a candidate from consideration (it's evidence, not a
+  filter — see the "score candidates, not codewords" principle under #5).
+- Neither the cheap-pass prompt (`shot_vision.build_prompt`) nor the
+  escalation prompt (`shot_escalation.py`, `REFERENCE_BACKGROUND_CLAUSE`)
+  mentions location or venues at all — both ask only about garment colours.
+- `submit_shot` (`backend/user_interface.py`) checks only that the shooter is
+  alive and has ammo. No pub/haven check anywhere in `admin_interface.py` or
+  `item_actions.py` either.
+- The data needed already exists and is thrown away: `Shot.location_context`
+  stores every nearby player's GPS fix at the moment of the shot
+  (`parse_location_context`), which is exactly what "was this candidate
+  within the pub's radius at shot time?" needs.
+
+**The fix, and a design tension worth flagging before building it.** Being
+inside a pub is a *rule*, not evidence — a candidate who was in a pub cannot
+be the target, full stop, unlike GPS proximity which only ever nudges a score.
+So this wants a hard exclusion, not another likelihood term:
+
+1. Give pub landmarks geometry — a radius, whether a single constant for all
+   of them or per-pub — so "inside the pub" is checkable at all.
+2. Exclude any candidate whose fix in `location_context` places them inside a
+   pub's radius at the shot's own `shot_epoch` from the candidate list
+   entirely — before the cheap pass's `identification_payload` or the
+   escalation's GPS-ranked candidate list are ever built. That satisfies "a
+   pub location rules someone out" without handing the vision model location
+   data to reason about itself, which would break the module's existing,
+   deliberate split (the model reads garments; Python decides everything
+   positional). Charles asked for this to be "in the prompt" — read literally
+   that means the vision model judging pub membership, which the codebase's
+   existing architecture argues against; recommend the deterministic
+   candidate-list filter above instead and confirm before building either way.
+3. Surface the exclusion in the admin review UI (`identification_payload`)
+   so a ruled-out candidate reads as *"was at [pub name] at time of shot"*
+   rather than silently vanishing from the ranking — an admin re-checking a
+   contested shot needs to see why someone isn't in the list.
+4. Decide whether the shooter firing *from* inside a pub is also disallowed
+   (a second, related complaint in the chat, about a shooter's hand/phone
+   reaching across a pub boundary) — likely a `submit_shot` check against the
+   shooter's own fix, separate from the target-side fix above.
+
+See open question 7 below for the radius decision this needs before #2 can be built.
 
 ### #4 — CharlesBot calls clear misses "hit" *(the one worth rushing)*
 
@@ -2043,7 +2230,7 @@ an admin turns either toggle on. Both read the same toggles `_decide` already
 does. `shot_escalation.enqueue_escalation` is now idempotent per shot
 (`_tasks` keyed by shot id), since the early call and the head's own call can
 land on the same shot before `ai_escalation_state` is written; a separate
-semaphore (`AI_SHOT_ESCALATION_CONCURRENCY`, default 2) bounds how many run
+semaphore (`AI_SHOT_ESCALATION_CONCURRENCY`, default 6) bounds how many run
 at once. Strict queue order is untouched — only the head is ever *resolved*.
 Accepted cost: a shot escalated early can be made moot by an earlier ruling
 before it reaches the head, wasting that call.
@@ -3182,3 +3369,9 @@ Answers to these change the shape of the work, not just its order.
    appeal window before applying it — needs no unwind at all, but delays every
    knockout by the length of the window, which in a game measured in seconds
    is its own problem, so it was not built.
+7. **What radius counts as "inside the pub" for R14?** A pub landmark today is
+   a bare point with no size. Needs either one constant safe-radius applied to
+   every pub, or a per-pub value — and a decision on how it interacts with fix
+   accuracy (`accuracy`/σ_fix already downweights a bad fix elsewhere; a fix
+   that is honestly uncertain shouldn't silently clear someone standing at the
+   pub door).
