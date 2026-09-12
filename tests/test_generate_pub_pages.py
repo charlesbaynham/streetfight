@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pytest
 from click.testing import CliRunner
 from fastapi.exceptions import HTTPException
@@ -113,3 +114,21 @@ def test_cli_writes_one_pdf_page_per_pub(tmp_path):
     assert result.exit_code == 0, result.output
     assert "Wrote 3 page(s)" in result.output
     assert out.stat().st_size > 0
+
+
+def test_label_lets_the_admin_match_a_page_to_its_qr_codes_csv_row():
+    """The tag+index printed on the page is the same pair logged for it.
+
+    generate_qr_items.py prints this on every drop card so the admin can
+    line a physical page up with its qr_codes.csv row without scanning it;
+    the pub pages need the same mark.
+    """
+    url = "https://example.com/?d=test"
+    blank = np.array(pub.render_page(url))
+    labelled = np.array(pub.render_page(url, "pub7"))
+
+    assert not np.array_equal(blank, labelled), "label was not drawn"
+
+    _, (_, oy), _ = pub._layout()
+    # Nothing outside the top margin - the artwork or the QR - may change.
+    assert np.array_equal(blank[oy:], labelled[oy:])

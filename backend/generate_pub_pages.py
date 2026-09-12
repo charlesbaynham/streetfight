@@ -39,6 +39,7 @@ from typing import Tuple
 import click
 import qrcode
 from PIL import Image
+from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
 from .generate_qr_items import IMAGES_DIR
@@ -127,8 +128,18 @@ def make_qr(url: str, pocket_px: int) -> Image.Image:
     return qr.make_image(fill_color="black", back_color="white").convert("RGB")
 
 
-def render_page(url: str) -> Image.Image:
-    """One A4 portrait page: the artwork, with ``url`` as a QR in its pocket."""
+def render_page(url: str, label: str = "") -> Image.Image:
+    """One A4 portrait page: the artwork, with ``url`` as a QR in its pocket.
+
+    ``label`` (the same ``tag`` + index that lands beside this code's row in
+    qr_codes.csv) is printed top-left, in the page margin - the same "match
+    it to the log without scanning it" mark generate_qr_items.py puts on
+    every drop card. The margin is blank there regardless of which axis
+    the artwork's scale is bound by: :func:`_layout` fits the artwork inside
+    ``PAGE_W - 2 * MARGIN`` and ``PAGE_H - 2 * MARGIN``, so its top edge never
+    starts above ``y = MARGIN``, and the full-width strip above that is
+    always free of ink to print on.
+    """
     scale, origin, (px, py, side) = _layout()
 
     art = _artwork()
@@ -141,6 +152,9 @@ def render_page(url: str) -> Image.Image:
 
     qr = make_qr(url, side)
     page.paste(qr, (px + (side - qr.width) // 2, py + (side - qr.height) // 2))
+
+    if label:
+        ImageDraw.Draw(page).text((MARGIN // 4, MARGIN // 4), label, fill="black")
 
     return page
 
@@ -222,7 +236,7 @@ def generate(count: int, num: int, outfile: str, tag: str, log: bool):
         raise click.ClickException("Nothing to print: --count must be at least 1.")
 
     urls = mint_pub_items(count, num)
-    pages = [render_page(url) for url in urls]
+    pages = [render_page(url, f"{tag}{i}") for i, url in enumerate(urls)]
 
     pages[0].save(
         outfile, "PDF", resolution=DPI, save_all=True, append_images=pages[1:]
