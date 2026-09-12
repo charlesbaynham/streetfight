@@ -186,8 +186,11 @@ WESTMINSTER = Venue(
     map=VenueMap(
         # Drawn in the Kingston style from an OpenStreetMap tracing, so the
         # streets are where they actually are rather than where they looked
-        # good. A placeholder for a hand-drawn map (roadmap #12), but an
-        # accurate one: every pub below sits on its correct street.
+        # good. A placeholder for a hand-drawn map (roadmap #12), and now an
+        # incomplete one: it was traced with only the ten surveyed pubs
+        # marked, and the real pub list is nineteen. The streets are still
+        # right; twelve of the pubs are simply not labelled on it. Redrawing
+        # it against the list below is outstanding - see roadmap #12.
         #
         # The play area is defined by three things - House Absolute at the
         # exact centre, the crop symmetric about it, and Big Ben inside the
@@ -205,24 +208,59 @@ WESTMINSTER = Venue(
         # ninety pixels of blur; this trades some zoom for something legible.
         corner_width_km=0.2,
     ),
-    # Everything drawn on the map, so an admin can only place a circle
-    # somewhere the players can actually see. The ten pubs are those from the
-    # "New Norbiton" survey that fall inside the crop.
+    # The nineteen pubs Charles has actually chosen to play, plus House
+    # Absolute and the three landmarks everybody navigates by. Superseded the
+    # ten-pub OpenStreetMap survey shortlist on 12 Sept 2026.
+    #
+    # Coordinates are OpenStreetMap's, not the ones that came with the list:
+    # every pub was corroborated by name, street and postcode, and the
+    # list's own coordinates turned out to be 4-230 m out (median ~140 m),
+    # which is the same order as the location term's own uncertainty.
+    #
+    # NOTE these pubs are *not all drawn on the current map* - it was traced
+    # from the ten-pub shortlist. Twelve of the nineteen therefore have no
+    # marker on the drawing an admin places a circle against. Every one is
+    # inside the crop (tests/test_venues.py checks that), so a circle at one
+    # still lands somewhere the players can see, but it will not be labelled.
+    # Redrawing the map against this list is roadmap #12's outstanding half.
     landmarks={
-        "WHITE_HORSE": (51.495027, -0.130857),
-        "BARLEY_MOW": (51.495077, -0.131687),
-        "SPEAKER": (51.496905, -0.132260),
-        "ROYAL_OAK": (51.494215, -0.132538),
-        "MARQUIS_OF_GRANBY": (51.495177, -0.127175),
-        "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
-        "GRAFTON_ARMS": (51.497468, -0.134108),
-        "GREENCOAT_BOY": (51.496300, -0.135863),
-        "QUEENS_ARMS": (51.492593, -0.139175),
-        "WARWICK": (51.492414, -0.139704),
+        # South, around Horseferry Road and Millbank
+        "ROYAL_OAK": (51.494215, -0.132538),  # 2 Regency Street
+        "LOOSE_BOX": (51.494706, -0.131336),  # 51 Horseferry Road
+        "WHITE_HORSE": (51.495027, -0.130857),  # 86 Horseferry Road
+        "BARLEY_MOW": (51.495077, -0.131687),  # 104 Horseferry Road
+        "MARQUIS_OF_GRANBY": (51.495177, -0.127175),  # 41 Romney Street
+        "WINDSOR_CASTLE": (51.495169, -0.137798),  # 23 Francis Street
+        "GREENCOAT_BOY": (51.496300, -0.135863),  # Greencoat Place
+        "SPEAKER": (51.496905, -0.132260),  # 46 Great Peter Street
+        # Middle, around Victoria Street and Strutton Ground
+        "GRAFTON_ARMS": (51.497468, -0.134108),  # 2 Strutton Ground
+        "IVY_VICTORIA": (51.497390, -0.137656),  # 66 Victoria Street
+        # North, around Broadway, Tothill Street and Petty France
+        "BUCKINGHAM_ARMS": (51.499159, -0.136793),  # 62 Petty France
+        "FEATHERS": (51.499240, -0.132990),  # 18-20 Broadway
+        "ADAM_AND_EVE": (51.499460, -0.135622),  # 81 Petty France
+        "SANCTUARY_HOUSE": (51.499520, -0.131822),  # 33 Tothill Street
+        "BLUE_BOAR": (51.499544, -0.132180),  # 41-47 Tothill Street
+        "OLD_STAR": (51.499940, -0.133724),  # 66 Broadway
+        "WESTMINSTER_ARMS": (51.500555, -0.129813),  # 9 Storey's Gate
+        "TWO_CHAIRMEN": (51.500631, -0.131621),  # 39 Dartmouth Street
+        "ST_STEPHENS_TAVERN": (51.501146, -0.125595),  # 10 Bridge Street
+        # Not pubs
         "HOUSE_ABSOLUTE": (51.4958738, -0.1309233),
         "BIG_BEN": (51.50073, -0.12462),
         "WESTMINSTER_ABBEY": (51.49940, -0.12764),
         "PARLIAMENT": (51.49900, -0.12460),
+        # Dropped from the pub list, kept as bare coordinates because the
+        # deterministic test world's seeded team start positions name them
+        # (backend/test_world/spec.py TEAM_START_LANDMARKS), and its
+        # world.json - an hour of telemetry and ten photographed scenes - was
+        # generated against them. Renaming these would mean regenerating that
+        # world, which means regenerating its images, which costs real money.
+        # Remove them the next time the world is regenerated anyway.
+        "MUNICH_CRICKET_CLUB": (51.498199, -0.132467),
+        "QUEENS_ARMS": (51.492593, -0.139175),
+        "WARWICK": (51.492414, -0.139704),
     },
 )
 
