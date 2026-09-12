@@ -7,6 +7,7 @@ thresholds, and that a failure lands the shot back with the admin rather than
 anywhere else.
 """
 
+import asyncio
 import json
 
 import pytest
@@ -803,3 +804,109 @@ def test_the_escalation_replay_passes_the_reasoning_effort_override_through(
 
     assert response.is_success
     get_client.assert_called_once_with(reasoning_effort="high")
+
+
+# -- enqueue idempotency and concurrency -------------------------------------
+
+
+class BlockingVisionClient(FakeVisionClient):
+    """A client whose call blocks on an event, so a test can hold a task in
+    flight and observe what happens while it is still running."""
+
+    def __init__(self, event: asyncio.Event, reply=None):
+        super().__init__(reply=reply)
+        self._event = event
+
+    async def complete(self, turns, schema):
+        await self._event.wait()
+        return await super().complete(turns, schema)
+
+
+@pytest.mark.asyncio
+async def test_enqueue_escalation_twice_in_flight_returns_the_same_task(
+    db_session, shot_from_user_in_team, candidates
+):
+    store_weak_review(shot_from_user_in_team)
+    event = asyncio.Event()
+    client = BlockingVisionClient(event, reply=verdict_reply("miss"))
+
+    first = shot_escalation.enqueue_escalation(shot_from_user_in_team, client)
+    second = shot_escalation.enqueue_escalation(shot_from_user_in_team, client)
+
+    assert first is second
+    assert len(shot_escalation._tasks) == 1
+
+    event.set()
+    await first
+
+
+@pytest.mark.asyncio
+async def test_a_finished_escalation_can_be_re_enqueued(
+    db_session, shot_from_user_in_team, candidates
+):
+    store_weak_review(shot_from_user_in_team)
+
+    first = shot_escalation.enqueue_escalation(
+        shot_from_user_in_team, FakeVisionClient(reply=verdict_reply("miss"))
+    )
+    await first
+
+    second = shot_escalation.enqueue_escalation(
+        shot_from_user_in_team, FakeVisionClient(reply=verdict_reply("miss"))
+    )
+
+    assert second is not first
+    await second
+
+
+@pytest.mark.asyncio
+async def test_the_semaphore_bounds_concurrent_escalation_calls(
+    monkeypatch, db_session, shot_from_user_in_team, candidates, test_image_string
+):
+    monkeypatch.setenv("AI_SHOT_ESCALATION_CONCURRENCY", "1")
+    monkeypatch.setattr(shot_escalation, "_semaphore", None)
+
+    store_weak_review(shot_from_user_in_team)
+    event = asyncio.Event()
+    running = 0
+    max_running = 0
+
+    class TrackingClient(FakeVisionClient):
+        async def complete(self, turns, schema):
+            nonlocal running, max_running
+            running += 1
+            max_running = max(max_running, running)
+            await event.wait()
+            running -= 1
+            return await super().complete(turns, schema)
+
+    # A second shot, from a different shooter, needing its own escalation --
+    # the semaphore is process-wide, not per-shot.
+    second_shooter = UserInterface(candidates[0])
+    second_shooter.award_ammo(1)
+    second_shooter.set_weapon_data(1, 6)
+    second_shooter.submit_shot(test_image_string)
+    second_shot = next(
+        shot_id
+        for shot_id in AdminInterface().get_shots_ids()
+        if shot_id != shot_from_user_in_team
+    )
+    store_weak_review(second_shot)
+
+    task_a = asyncio.create_task(
+        shot_escalation.escalate_shot(
+            shot_from_user_in_team, TrackingClient(reply=verdict_reply("miss"))
+        )
+    )
+    task_b = asyncio.create_task(
+        shot_escalation.escalate_shot(
+            second_shot, TrackingClient(reply=verdict_reply("miss"))
+        )
+    )
+
+    await asyncio.sleep(0.05)
+    assert max_running == 1
+
+    event.set()
+    await task_a
+    await task_b

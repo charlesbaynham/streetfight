@@ -293,20 +293,13 @@ class AdminInterface:
             raise HTTPException(404, f"Shot {shot_id} not found")
         return row[0]
 
-    @db_scoped
-    def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
-        """The oldest unchecked shot in a game, or None if the queue is empty.
-
-        Ordered by (time_created, id): timestamps have 1s resolution, so the id
-        breaks ties deterministically. Selects columns only -- never
-        image_base64, which the auto-action drain has no use for.
-        ``location_context`` is here because the drain's identification step
-        builds its location term from it (backend.shot_identification), and the
-        escalation columns because the drain's ladder reads them to decide
-        whether this head is still waiting on a stronger model
-        (backend.shot_escalation).
+    def _queue_query(self):
+        """The unchecked-shot column projection shared by get_queue_head/
+        get_queue_entry/get_queue -- never image_base64. Callers add their own
+        filter (game_id, or shot id). Ordered by (time_created, id): timestamps
+        have 1s resolution, so the id breaks ties deterministically.
         """
-        row = (
+        return (
             self._session.query(
                 Shot.id,
                 Shot.time_created,
@@ -317,11 +310,34 @@ class AdminInterface:
                 Shot.ai_escalation,
                 Shot.location_context,
             )
-            .filter_by(game_id=game_id, checked=False)
+            .filter_by(checked=False)
             .order_by(Shot.time_created, Shot.id)
-            .first()
         )
+
+    @db_scoped
+    def get_queue_head(self, game_id: UUID) -> Optional[QueueHead]:
+        """The oldest unchecked shot in a game, or None if the queue is empty."""
+        row = self._queue_query().filter(Shot.game_id == game_id).first()
         return QueueHead(*row) if row else None
+
+    @db_scoped
+    def get_queue_entry(self, shot_id: UUID) -> Optional[QueueHead]:
+        """One shot's queue row, or None if it does not exist or is checked.
+        Used by backend.shot_auto_actions.escalate_early to act on a shot
+        before it reaches the head.
+        """
+        row = self._queue_query().filter(Shot.id == shot_id).first()
+        return QueueHead(*row) if row else None
+
+    @db_scoped
+    def get_queue(self, game_id: UUID) -> List[QueueHead]:
+        """Every unchecked shot of a game, oldest first -- for the backlog
+        sweep (backend.shot_auto_actions.escalate_backlog).
+        """
+        return [
+            QueueHead(*row)
+            for row in self._queue_query().filter(Shot.game_id == game_id).all()
+        ]
 
     @db_scoped
     def get_games(self) -> List[GameModel]:

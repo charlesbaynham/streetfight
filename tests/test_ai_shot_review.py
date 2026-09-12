@@ -284,6 +284,19 @@ async def test_a_completed_review_runs_the_auto_action_drain(
     spy.assert_called_once_with(game_of(shot_from_user_in_team))
 
 
+@pytest.mark.asyncio
+async def test_a_completed_review_starts_an_early_escalation(
+    mocker, db_session, shot_from_user_in_team
+):
+    spy = mocker.patch("backend.ai_shot_review.shot_auto_actions.escalate_early")
+
+    await ai_shot_review.review_shot(
+        shot_from_user_in_team, FakeVisionClient(hit_reply())
+    )
+
+    spy.assert_called_once_with(shot_from_user_in_team, game_of(shot_from_user_in_team))
+
+
 def test_without_an_api_key_nothing_is_queued(
     no_api_key, db_session, shot_from_user_in_team
 ):

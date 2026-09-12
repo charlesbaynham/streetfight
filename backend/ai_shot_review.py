@@ -49,19 +49,19 @@ _tasks = set()
 _semaphore: Optional[asyncio.Semaphore] = None
 
 
-def _concurrency() -> int:
-    raw = os.getenv("AI_SHOT_REVIEW_CONCURRENCY")
+def concurrency_from_env(name: str, default: int) -> int:
+    """An ``int`` concurrency limit from an env var, falling back on ``default``
+    if it is unset or unparseable. Shared with backend.shot_escalation, which
+    sizes its own semaphore the same way from a different variable.
+    """
+    raw = os.getenv(name)
     if not raw:
-        return DEFAULT_CONCURRENCY
+        return default
     try:
         return max(1, int(raw))
     except ValueError:
-        logger.warning(
-            "Ignoring unparseable AI_SHOT_REVIEW_CONCURRENCY=%r; using %s",
-            raw,
-            DEFAULT_CONCURRENCY,
-        )
-        return DEFAULT_CONCURRENCY
+        logger.warning("Ignoring unparseable %s=%r; using %s", name, raw, default)
+        return default
 
 
 def _get_semaphore() -> asyncio.Semaphore:
@@ -72,7 +72,9 @@ def _get_semaphore() -> asyncio.Semaphore:
     """
     global _semaphore
     if _semaphore is None:
-        _semaphore = asyncio.Semaphore(_concurrency())
+        _semaphore = asyncio.Semaphore(
+            concurrency_from_env("AI_SHOT_REVIEW_CONCURRENCY", DEFAULT_CONCURRENCY)
+        )
     return _semaphore
 
 
@@ -253,6 +255,14 @@ async def review_shot(shot_id: UUID, client=None) -> None:
     except Exception:
         logger.exception("Could not store the review of shot %s", shot_id)
         return
+
+    # This shot may need a second opinion of its own, whatever position it
+    # holds in the queue -- started now rather than waiting for it to become
+    # the head. Guarded so this function keeps its "never raises" contract.
+    try:
+        shot_auto_actions.escalate_early(shot_id, game_id)
+    except Exception:
+        logger.exception("Early escalation of shot %s failed", shot_id)
 
     # A completed review may have made the queue head resolvable. Guarded so
     # this function keeps its "never raises" contract.

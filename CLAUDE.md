@@ -598,6 +598,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `OPENROUTER_TIMEOUT_SECONDS` | Per-request timeout for the vision call      |
 | `OPENROUTER_REASONING_EFFORT` | Reasoning-effort override (none/minimal/low/medium/high/xhigh/max); unset = no override sent |
 | `AI_SHOT_REVIEW_CONCURRENCY` | Parallel reviews when draining a backlog     |
+| `AI_SHOT_ESCALATION_CONCURRENCY` | Parallel escalations (a separate knob, since each call costs more than a review) |
 
 ## Deployment (brief)
 
@@ -738,7 +739,11 @@ Three deployment targets share one service definition:
   (its default), *nothing reaches a human until it has looked*, with no second
   model to set up. Point `OPENROUTER_ESCALATION_MODEL` at a genuinely stronger
   model to make escalation a real second opinion rather than the same model
-  asked twice. Every way the weak reading fails to
+  asked twice. Escalations now start as soon as a shot's cheap reading lands and
+  needs one (`shot_auto_actions.escalate_early`), not only at the queue head,
+  bounded by `AI_SHOT_ESCALATION_CONCURRENCY`; either toggle turning on also
+  sweeps the backlog (`escalate_backlog`). Strict queue order is unaffected —
+  only the head is ever *resolved*. Every way the weak reading fails to
   settle a shot — unconfident, fits nobody (`inconsistent`), a tie, an
   unrecognised outcome, or too little read to name anybody — escalates. So
   the readable-channel test (4, or 3 including armbands) no longer picks who
