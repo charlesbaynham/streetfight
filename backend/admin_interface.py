@@ -31,6 +31,7 @@ from .model import APPEALS_PER_GAME
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
+from .model import Item
 from .model import ItemType
 from .model import Shot
 from .model import ShotModel
@@ -547,6 +548,38 @@ class AdminInterface:
 
         trigger_update_event("shots", game_id)
         trigger_update_event("ticker", game_id)
+
+    @db_scoped
+    def delete_game(self, game_id: UUID) -> None:
+        """Remove a game entirely: every team, every player, every shot and
+        item, the ticker, the lot. The last resort for a game created by
+        mistake or definitively finished with.
+
+        Cascades the same way ``delete_team`` does, one level up - each team
+        goes via ``delete_team`` (which removes its players via
+        ``delete_user``), leaving only what the game owns directly: items
+        never picked up, and whatever ticker lines survived the players who
+        would have owned them.
+
+        Raises:
+            HTTPException: 404 if the game is not found
+        """
+        logger.info("AdminInterface - delete_game %s", game_id)
+
+        game = self._get_game_orm(game_id)
+
+        for team in list(game.teams):
+            self.delete_team(team.id)
+
+        for item in self._session.query(Item).filter_by(game_id=game_id).all():
+            self._session.delete(item)
+
+        for ticker_entry in (
+            self._session.query(TickerEntry).filter_by(game_id=game_id).all()
+        ):
+            self._session.delete(ticker_entry)
+
+        self._session.delete(game)
 
     @db_scoped
     def _get_game_ticker(self, game_id: UUID) -> Ticker:

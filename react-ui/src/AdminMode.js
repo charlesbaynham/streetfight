@@ -264,6 +264,30 @@ function GamePanel({ game }) {
         </label>
       </p>
 
+      <p>
+        <button
+          onClick={() => {
+            const numPlayers = game.teams.reduce(
+              (total, team) => total + team.users.length,
+              0,
+            );
+            if (
+              window.confirm(
+                `Delete this entire game? This permanently deletes its ` +
+                  `${game.teams.length} team(s) and ${numPlayers} player(s), ` +
+                  `along with every shot, item and ticker message. Any join ` +
+                  `links already sent out will stop working. This cannot be ` +
+                  `undone.`,
+              )
+            ) {
+              adminPost("admin_delete_game", { game_id: game.id });
+            }
+          }}
+        >
+          Delete game entirely
+        </button>
+      </p>
+
       <Row>
         <Col md>
           <h3>Teams</h3>
