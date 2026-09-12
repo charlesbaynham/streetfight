@@ -38,6 +38,7 @@ from .model import Team
 from .model import TeamModel
 from .model import TickerEntry
 from .model import User
+from .model import UserAlias
 from .model import UserModel
 from .shot_identification import identification_payload
 from .ticker import Ticker
@@ -1006,21 +1007,164 @@ class AdminInterface:
         user.team = None
         self._session.delete(user)
 
+        self._announce_user_removed(f"{user_name} has left the game", game_id, user_id)
+
+    def _announce_user_removed(
+        self, message: str, game_id: Optional[UUID], user_id: UUID
+    ):
+        """Shared tail of ``delete_user`` and ``merge_user``: post ``message``
+        to the game ticker (if there is a game to post it to) and bump the
+        same update events joining a team does, so open dashboards and the
+        removed session's own client refresh.
+        """
         if game_id:
             # Posting the message also touches the game's ticker tag and
             # commits the session, mirroring add_user_to_team's announcement
-            tk.send_generic_message(
-                game_id, f"{user_name} has left the game", session=self._session
-            )
+            tk.send_generic_message(game_id, message, session=self._session)
         else:
             self._session.commit()
 
-        # Their queued shots vanished from the queue, and any client session
-        # still holding this user id needs to find out it is gone
+        # Any client session still holding this user id needs to find out it
+        # is gone (or, for a merge, that it should re-fetch as the survivor)
         if game_id:
             trigger_update_event("shots", game_id)
             trigger_update_event("ticker", game_id)
         trigger_update_event("user", user_id)
+
+    @db_scoped
+    def merge_user(self, user_id: UUID, into_user_id: UUID):
+        """Fold a stray session into the player it actually belongs to - the
+        repair for someone who joined on a second phone or cleared their
+        cookies and so was minted a second, empty ``User``.
+
+        Every row naming ``user_id`` is rewritten to name the survivor:
+        countable state (bullets, appeals) is summed, single-valued state
+        (name, identity, location, reference photo, weapon, team/slot) takes
+        the survivor's value and falls back to the stray's only where the
+        survivor has none, and hit points take the higher of the two. A
+        ``UserAlias`` row is left behind mapping the stray's session id to the
+        survivor, so ``get_user_id`` sends every future request bearing that
+        cookie straight to the survivor - existing aliases pointing at the
+        stray are re-pointed too, so merging into an id that is itself an
+        alias still lands on the ultimate survivor. Reuses ``delete_user``'s
+        announcement tail once the stray's row is gone.
+
+        Raises:
+            HTTPException: 400 if the two ids resolve to the same user,
+                404 if either user does not exist.
+        """
+        logger.info("AdminInterface - merge_user %s into %s", user_id, into_user_id)
+
+        alias = self._session.get(UserAlias, into_user_id)
+        if alias is not None:
+            into_user_id = alias.user_id
+
+        if into_user_id == user_id:
+            raise HTTPException(400, "Cannot merge a user into themselves")
+
+        stray = self._get_user_orm(user_id)
+        survivor = self._get_user_orm(into_user_id)
+
+        stray_id = stray.id
+        survivor_id = survivor.id
+        stray_name = stray.name or "A player"
+
+        # Items: the survivor keeps what they already hold, since the
+        # user<->item association table's composite primary key would
+        # collide if both rows named the survivor.
+        survivor_item_ids = {item.id for item in survivor.items}
+        for item in list(stray.items):
+            stray.items.remove(item)
+            if item.id not in survivor_item_ids:
+                survivor.items.append(item)
+
+        self._session.query(Shot).filter_by(user_id=stray_id).update(
+            {"user_id": survivor_id}
+        )
+        self._session.query(Shot).filter_by(target_user_id=stray_id).update(
+            {"target_user_id": survivor_id}
+        )
+        self._session.query(TickerEntry).filter_by(private_user_id=stray_id).update(
+            {"private_user_id": survivor_id}
+        )
+        self._session.query(TickerEntry).filter_by(highlight_user_id=stray_id).update(
+            {"highlight_user_id": survivor_id}
+        )
+
+        survivor.num_bullets += stray.num_bullets
+        survivor.appeals_remaining += stray.appeals_remaining
+        survivor.hit_points = max(survivor.hit_points, stray.hit_points)
+
+        if stray.shot_damage > survivor.shot_damage or (
+            stray.shot_damage == survivor.shot_damage
+            and stray.shot_timeout < survivor.shot_timeout
+        ):
+            survivor.shot_damage = stray.shot_damage
+            survivor.shot_timeout = stray.shot_timeout
+
+        if survivor.name is None and stray.name is not None:
+            survivor.name = stray.name
+        if survivor.identity_slot is None and stray.identity_slot is not None:
+            survivor.identity_slot = stray.identity_slot
+        if survivor.identity_overrides is None and stray.identity_overrides is not None:
+            survivor.identity_overrides = stray.identity_overrides
+        if survivor.identity_wardrobe is None and stray.identity_wardrobe is not None:
+            survivor.identity_wardrobe = stray.identity_wardrobe
+
+        if (
+            survivor.reference_photo_base64 is None
+            and stray.reference_photo_base64 is not None
+        ):
+            survivor.reference_photo_base64 = stray.reference_photo_base64
+            survivor.reference_review_state = stray.reference_review_state
+            survivor.reference_review = stray.reference_review
+
+        if stray.location_timestamp is not None and (
+            survivor.location_timestamp is None
+            or stray.location_timestamp > survivor.location_timestamp
+        ):
+            survivor.latitude = stray.latitude
+            survivor.longitude = stray.longitude
+            survivor.location_timestamp = stray.location_timestamp
+            survivor.location_accuracy = stray.location_accuracy
+
+        # Team: go through the same team.users.append() join_team itself
+        # uses, and send the same ticker announcement add_user_to_team does,
+        # so dashboards see one consistent join rather than a silent
+        # reassignment. Done on self._session directly rather than by calling
+        # add_user_to_team, which would open a second, concurrent session on
+        # the same rows this transaction hasn't committed yet.
+        if survivor.team_id is None and stray.team_id is not None:
+            team = stray.team
+            stray.team = None
+            team.users.append(survivor)
+            tk.send_ticker_message(
+                tk.TickerMessageType.USER_JOINED_TEAM,
+                {"user": survivor.name, "team": team.name},
+                game_id=team.game_id,
+                session=self._session,
+            )
+
+        # Re-point any alias that already pointed at the stray, then alias
+        # the stray's session to the survivor, so a merge chain always
+        # resolves in one hop.
+        self._session.query(UserAlias).filter_by(user_id=stray_id).update(
+            {"user_id": survivor_id}
+        )
+        self._session.add(UserAlias(session_id=stray_id, user_id=survivor_id))
+
+        stray.team = None
+        self._session.delete(stray)
+
+        game_id = survivor.team.game_id if survivor.team else None
+        survivor_name = survivor.name or "another player"
+        self._announce_user_removed(
+            f"{stray_name} rejoined as {survivor_name}", game_id, stray_id
+        )
+
+        # The survivor's own clients have just gained the stray's shots,
+        # items and ammo, so they need to re-fetch too
+        trigger_update_event("user", survivor_id)
 
     @db_scoped
     def get_all_shots(self) -> List[ShotModel]:

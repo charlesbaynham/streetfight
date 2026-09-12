@@ -1029,6 +1029,18 @@ async def admin_delete_user(user_id: UUID):
     AdminInterface().delete_user(user_id)
 
 
+@admin_method(path="/admin_merge_user", method="POST")
+async def admin_merge_user(user_id: UUID, into_user_id: UUID):
+    """Fold a stray session into the player it actually belongs to - the
+    repair for someone who joined on a second phone or cleared their cookies,
+    orphaning the real player behind a fresh, empty ``User``. Everything the
+    stray accrued (items, shots, bullets, ...) moves onto the survivor, and
+    the stray's session cookie is aliased so every future request it makes is
+    served as the survivor."""
+    logger.info("admin_merge_user %s into %s", user_id, into_user_id)
+    AdminInterface().merge_user(user_id, into_user_id)
+
+
 @admin_method(path="/admin_set_user_name", method="POST")
 async def admin_set_user_name(user_id: UUID, name: str):
     logger.info("admin_set_user_name")
