@@ -2162,7 +2162,7 @@ an admin turns either toggle on. Both read the same toggles `_decide` already
 does. `shot_escalation.enqueue_escalation` is now idempotent per shot
 (`_tasks` keyed by shot id), since the early call and the head's own call can
 land on the same shot before `ai_escalation_state` is written; a separate
-semaphore (`AI_SHOT_ESCALATION_CONCURRENCY`, default 2) bounds how many run
+semaphore (`AI_SHOT_ESCALATION_CONCURRENCY`, default 6) bounds how many run
 at once. Strict queue order is untouched — only the head is ever *resolved*.
 Accepted cost: a shot escalated early can be made moot by an earlier ruling
 before it reaches the head, wasting that call.
