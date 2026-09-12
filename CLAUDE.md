@@ -181,7 +181,25 @@ Four things from it that are worth knowing even if you never call the agent:
     `outfit`) — one function decides what "what somebody is wearing" looks
     like, so the door check and the queue can't drift apart.
   - `ticker.py` / `ticker_message_dispatcher.py` — in-game announcements.
-  - `items.py` / `item_actions.py` — collectible items and their effects.
+  - `items.py` / `item_actions.py` — collectible items and their effects. Note
+    that **ammo is the only type that can be collected on behalf of a team**:
+    `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
+    team handler for armour, medpacks or weapons, so asking for one raises
+    `NotImplementedError`.
+  - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
+    cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
+    `image_templates/`, and every code minted is recorded in `qr_codes.csv`.
+  - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
+    portrait A4 poster per pub, each carrying a single ammo code worth two
+    bullets to every member of the first team that scans it
+    (`collected_as_team=True`, `collected_only_once=False`, so one sheet serves
+    every team once). The pages are deliberately anonymous — nothing says which
+    pub a sheet is for, so they can be dealt out in any order without keeping a
+    register. The QR's position is **measured, not chosen**: the artwork is a
+    drawn A4 page with no ink-free square bigger than a fifth of its width, so
+    `QR_POCKET` is the one gap a readable code fits in without covering the
+    handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
+    a re-drawn picture fails a test rather than a print run.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.

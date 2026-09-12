@@ -782,8 +782,19 @@ and the Millbank government blocks are most of the eastern half.
    `backend/generate_qr_items.py` plus the templates in
    `backend/image_templates/`. Add the "this is a game, ring this number" line
    from #7 to the template.
-2. **Pub handouts** (#6) — probably a different format: something a bar will
-   actually keep on display.
+2. **Pub handouts** (#6) — **tooling shipped 12 Sept**:
+   `backend/generate_pub_pages.py` (`npm run pubgen -- --count 19`) writes a
+   PDF of portrait A4 posters, one page and one code per pub, reusing the
+   `reusable bullets.png` artwork from last time. Each code is ammo worth
+   **two bullets to every member** of the first team to scan it, claimable
+   once per team and once by every team. The pages say nothing about which pub
+   they are for, so no register has to be kept.
+
+   Two things to get right when the run happens: mint with the **live**
+   `SECRET_KEY` and `WEBSITE_URL` or every scan fails on the signature (point
+   `DATABASE_URL` at a throwaway sqlite file while doing it — the generator
+   opens whatever it is given, and mints nothing into it), and print **at
+   actual size** rather than "fit to page", which shrinks the QR.
 3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
    their join code. Each player already knows this, having picked it via
    `/pick`; the print step reads it off each player's picked
