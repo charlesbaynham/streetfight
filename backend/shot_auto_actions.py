@@ -60,6 +60,18 @@ re-reads the head and carries on. The drain is called after a review completes
 (backend.ai_shot_review), after an escalation completes
 (backend.shot_escalation) and after each admin resolution (backend.main); never
 from inside hit_user/mark_shot_missed themselves, which would recurse.
+
+**Escalations start as soon as the reading lands, not at the head.**
+:func:`escalate_early` (called from backend.ai_shot_review.review_shot) and
+:func:`escalate_backlog` (called when an admin flips a toggle) both start a
+shot's escalation the moment `_decide` would put it on the escalate rung,
+whatever position it holds in the queue -- gated on the same auto-actions and
+escalation toggles `process_queue_head` reads. Safe because
+`_decide_escalated` re-validates a finished escalation against the roster once
+the shot reaches the head, and strict ordering is unaffected -- only the head
+is ever *resolved*, this only changes when a needed escalation *starts*.
+Accepted cost: a shot escalated early can be made moot by an earlier ruling
+before it ever reaches the head, wasting that call.
 """
 
 import json
@@ -169,6 +181,57 @@ def process_queue_head(game_id: UUID) -> None:
                 head.id,
                 e.detail,
             )
+
+
+def _needs_escalation(entry, game_id: UUID) -> bool:
+    """Whether this entry's reading lands on the escalate rung right now.
+    ``resolve_everything`` is always False here: this only ever starts an
+    escalation, never forces a fallback.
+    """
+    return _decide(entry, game_id, False) == (_ESCALATE, None)
+
+
+def escalate_early(shot_id: UUID, game_id: UUID) -> None:
+    """Start a shot's escalation as soon as its reading needs one, whatever
+    position it holds in the queue. Gated on both toggles; idempotent, since
+    `_decide` stops returning `_ESCALATE` once `ai_escalation_state` is set.
+    """
+    from .admin_interface import AdminInterface
+
+    admin = AdminInterface()
+    if not admin.is_ai_auto_actions_enabled(
+        game_id
+    ) or not admin.is_ai_escalation_enabled(game_id):
+        return
+
+    entry = admin.get_queue_entry(shot_id)
+    if entry is None:
+        return
+
+    if _needs_escalation(entry, game_id):
+        from . import shot_escalation
+
+        shot_escalation.enqueue_escalation(entry.id)
+
+
+def escalate_backlog(game_id: UUID) -> None:
+    """The same sweep as :func:`escalate_early`, but for every unchecked shot
+    of a game -- run when an admin flips a toggle on, to catch shots fired
+    while it was off.
+    """
+    from .admin_interface import AdminInterface
+
+    admin = AdminInterface()
+    if not admin.is_ai_auto_actions_enabled(
+        game_id
+    ) or not admin.is_ai_escalation_enabled(game_id):
+        return
+
+    from . import shot_escalation
+
+    for entry in admin.get_queue(game_id):
+        if _needs_escalation(entry, game_id):
+            shot_escalation.enqueue_escalation(entry.id)
 
 
 def _stored_review(head) -> Optional[dict]:

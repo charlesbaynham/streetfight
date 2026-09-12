@@ -642,10 +642,13 @@ async def admin_set_ai_auto_actions(game_id: UUID, enabled: bool):
 
     Independent of the review toggle: reviews only annotate, this flag decides
     whether confident verdicts resolve the head of the queue. Switching it on
-    also drains an already-reviewed confident head that was waiting for it.
+    also starts escalations for the whole reviewed backlog that needs one
+    (shot_auto_actions.escalate_backlog) before draining an already-reviewed
+    confident head that was waiting for it.
     """
     AdminInterface().set_ai_auto_actions_enabled(game_id, enabled)
     if enabled:
+        shot_auto_actions.escalate_backlog(game_id)
         shot_auto_actions.process_queue_head(game_id)
     return {"enabled": enabled}
 
@@ -656,12 +659,15 @@ async def admin_set_ai_escalation(game_id: UUID, enabled: bool):
 
     A kill switch inside auto-actions rather than a third opt-in: with it off,
     a shot the ladder wants escalated waits for the admin instead, exactly as
-    it does with no escalation model configured. Switching it on also drains a
-    head that has been sitting on the escalate rung, so it gets its second
-    opinion now rather than whenever the queue next moves.
+    it does with no escalation model configured. Switching it on also starts
+    escalations for the whole backlog that needs one
+    (shot_auto_actions.escalate_backlog), so a head that has been sitting on
+    the escalate rung gets its second opinion now rather than whenever the
+    queue next moves.
     """
     AdminInterface().set_ai_escalation_enabled(game_id, enabled)
     if enabled:
+        shot_auto_actions.escalate_backlog(game_id)
         shot_auto_actions.process_queue_head(game_id)
     return {"enabled": enabled}
 

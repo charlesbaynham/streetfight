@@ -73,6 +73,10 @@ STATE_PENDING = AI_REVIEW_STATE_PENDING
 STATE_DONE = AI_REVIEW_STATE_DONE
 STATE_ERROR = AI_REVIEW_STATE_ERROR
 
+# A separate knob from the cheap pass's own: an escalation call costs more
+# (reference photos, a stronger model).
+DEFAULT_CONCURRENCY = 2
+
 # How far down the ranking to go. Every candidate is potentially a reference
 # photo in the request and the bill scales with the list, so the tail -- which
 # the prior already says is unlikely -- is not worth paying for.
@@ -109,8 +113,28 @@ ACTION_MISS = "miss"
 ACTION_BYSTANDER = "bystander"
 
 # asyncio only holds a weak reference to a running task, so keep our own or an
-# escalation can be collected mid-flight.
-_tasks = set()
+# escalation can be collected mid-flight. Keyed by shot id, not a bare set: a
+# shot can be offered to enqueue_escalation twice in one drain (escalate_early,
+# then process_queue_head), and a still-running task must be handed back
+# rather than started twice.
+_tasks: dict = {}
+
+_semaphore: Optional[asyncio.Semaphore] = None
+
+
+def _get_semaphore() -> asyncio.Semaphore:
+    """Bound concurrent escalation calls, sized from
+    ``AI_SHOT_ESCALATION_CONCURRENCY``. Only :func:`escalate_shot` -- the live
+    queue's path -- is bounded by it; the replay workbench is unbounded.
+    """
+    global _semaphore
+    if _semaphore is None:
+        from .ai_shot_review import concurrency_from_env
+
+        _semaphore = asyncio.Semaphore(
+            concurrency_from_env("AI_SHOT_ESCALATION_CONCURRENCY", DEFAULT_CONCURRENCY)
+        )
+    return _semaphore
 
 
 class EscalationError(ValueError):
@@ -120,11 +144,15 @@ class EscalationError(ValueError):
 def enqueue_escalation(shot_id: UUID, client=None) -> Optional[asyncio.Task]:
     """Schedule an escalation of one shot. None if the feature is not set up.
 
-    Returning None is the safety valve: with no vision at all (or no event
-    loop) the shot simply waits for the admin, exactly as it did before this
-    rung existed. ``OPENROUTER_ESCALATION_MODEL`` defaults to the recognition
-    model, so ``OPENROUTER_API_KEY`` is the only thing that can make this None.
+    Idempotent: a still-running task for this shot is returned rather than
+    starting a second one. Returning None is the safety valve: with no vision
+    at all (or no event loop) the shot simply waits for the admin, exactly as
+    it did before this rung existed.
     """
+    existing = _tasks.get(shot_id)
+    if existing is not None and not existing.done():
+        return existing
+
     client = client or get_escalation_client()
     if client is None:
         logger.info(
@@ -141,8 +169,13 @@ def enqueue_escalation(shot_id: UUID, client=None) -> Optional[asyncio.Task]:
         logger.warning("Not escalating shot %s: no running event loop", shot_id)
         return None
 
-    _tasks.add(task)
-    task.add_done_callback(_tasks.discard)
+    _tasks[shot_id] = task
+
+    def _discard(t, shot_id=shot_id, task=task):
+        if _tasks.get(shot_id) is task:
+            _tasks.pop(shot_id, None)
+
+    task.add_done_callback(_discard)
     return task
 
 
@@ -720,7 +753,8 @@ async def escalate_shot(shot_id: UUID, client=None) -> None:
     state = STATE_DONE
     payload = None
     try:
-        payload = await run_escalation(shot_id, client)
+        async with _get_semaphore():
+            payload = await run_escalation(shot_id, client)
         logger.info(
             "Shot %s escalated: %s (%s, confidence %s)",
             shot_id,

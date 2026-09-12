@@ -232,7 +232,8 @@ async def test_an_unreadable_hit_is_never_auto_bystandered(
 
     shot = shot_row(db_session, shot_from_user_in_team)
     assert shot.checked is False
-    enqueue.assert_called_once_with(shot_from_user_in_team)
+    # The real enqueue_escalation dedupes by shot id; this mock does not.
+    assert {c.args[0] for c in enqueue.call_args_list} == {shot_from_user_in_team}
 
 
 @pytest.mark.asyncio
@@ -1239,7 +1240,8 @@ def test_enabling_escalation_escalates_a_head_that_was_waiting(
     )
 
     assert response.is_success
-    enqueue.assert_called_once_with(shot_from_user_in_team)
+    # The real enqueue_escalation dedupes by shot id; this mock does not.
+    assert {c.args[0] for c in enqueue.call_args_list} == {shot_from_user_in_team}
 
 
 # -- nothing reaches the admin without the stronger model first --------------
@@ -1404,3 +1406,196 @@ def test_with_escalation_off_an_uncertain_head_still_waits_for_the_admin(
 
     assert shot_row(db_session, shot_from_user_in_team).checked is False
     enqueue.assert_not_called()
+
+
+# -- escalating before the head (escalate_early / escalate_backlog) --------
+
+
+def fire_second_shot(user_id, test_image_string):
+    """A second shot from the same shooter, for a not-the-head fixture."""
+    ui = UserInterface(user_id)
+    ui.award_ammo(1)
+    ui.submit_shot(test_image_string)
+    return AdminInterface().get_shots_ids()[-1]
+
+
+def test_escalate_early_enqueues_for_a_shot_that_is_not_the_head(
+    mocker,
+    db_session,
+    shot_from_user_in_team,
+    user_in_team,
+    test_image_string,
+    target_with_slot,
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    second_shot = fire_second_shot(user_in_team, test_image_string)
+    # Both shots land in the same 1s-resolution second; pin their times so the
+    # first fired is unambiguously the head.
+    set_shot_time(db_session, shot_from_user_in_team, datetime(2026, 1, 1, 12, 0, 0))
+    set_shot_time(db_session, second_shot, datetime(2026, 1, 1, 12, 0, 1))
+    assert AdminInterface().get_queue_head(game_id).id == shot_from_user_in_team
+
+    store_done_review(second_shot, partly_read_reply(("armbands",)))
+    shot_auto_actions.escalate_early(second_shot, game_id)
+
+    enqueue.assert_called_once_with(second_shot)
+    # The head itself is untouched: escalate_early never resolves anything.
+    assert shot_row(db_session, shot_from_user_in_team).checked is False
+
+
+def test_escalate_early_does_nothing_with_auto_actions_off(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    AdminInterface().set_ai_shot_review_enabled(game_id, True)
+    # ai_auto_actions_enabled left at its default (off).
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+
+    shot_auto_actions.escalate_early(shot_from_user_in_team, game_id)
+
+    enqueue.assert_not_called()
+
+
+def test_escalate_early_does_nothing_with_escalation_off(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+
+    shot_auto_actions.escalate_early(shot_from_user_in_team, game_id)
+
+    enqueue.assert_not_called()
+
+
+def test_escalate_early_does_nothing_for_a_reading_the_weak_pass_resolves(
+    mocker, db_session, shot_from_user_in_team, target_with_slot
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, confident_hit_reply())
+
+    shot_auto_actions.escalate_early(shot_from_user_in_team, game_id)
+
+    enqueue.assert_not_called()
+
+
+def test_escalate_early_does_nothing_for_a_shot_already_escalated(
+    mocker, db_session, shot_from_user_in_team
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_PENDING)
+
+    shot_auto_actions.escalate_early(shot_from_user_in_team, game_id)
+
+    enqueue.assert_not_called()
+
+
+def test_escalate_backlog_enqueues_every_unchecked_shot_that_needs_one(
+    mocker,
+    db_session,
+    shot_from_user_in_team,
+    user_in_team,
+    test_image_string,
+    target_with_slot,
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    second_shot = fire_second_shot(user_in_team, test_image_string)
+    enable_ai(game_id)
+    # The head resolves on its own; the second shot needs a second opinion.
+    store_done_review(shot_from_user_in_team, confident_hit_reply())
+    store_done_review(second_shot, partly_read_reply(("armbands",)))
+
+    shot_auto_actions.escalate_backlog(game_id)
+
+    enqueue.assert_called_once_with(second_shot)
+
+
+def test_escalate_backlog_does_nothing_with_either_toggle_off(
+    mocker,
+    db_session,
+    shot_from_user_in_team,
+    user_in_team,
+    test_image_string,
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    second_shot = fire_second_shot(user_in_team, test_image_string)
+    AdminInterface().set_ai_shot_review_enabled(game_id, True)
+    AdminInterface().set_ai_auto_actions_enabled(game_id, True)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_done_review(second_shot, partly_read_reply(("armbands",)))
+
+    shot_auto_actions.escalate_backlog(game_id)
+
+    enqueue.assert_not_called()
+
+
+def test_enabling_escalation_via_the_route_sweeps_the_whole_backlog(
+    mocker,
+    db_session,
+    admin_api_client,
+    shot_from_user_in_team,
+    user_in_team,
+    test_image_string,
+    target_with_slot,
+):
+    enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
+    game_id = game_of(shot_from_user_in_team)
+    second_shot = fire_second_shot(user_in_team, test_image_string)
+    enable_ai(game_id)
+    AdminInterface().set_ai_escalation_enabled(game_id, False)
+    # The head resolves on its own; the second shot needs a second opinion.
+    store_done_review(shot_from_user_in_team, confident_hit_reply())
+    store_done_review(second_shot, partly_read_reply(("armbands",)))
+
+    response = admin_api_client.post(
+        f"/api/admin_set_ai_escalation?game_id={game_id}&enabled=true"
+    )
+
+    assert response.is_success
+    # The real enqueue_escalation dedupes by shot id; this mock does not.
+    assert {c.args[0] for c in enqueue.call_args_list} == {second_shot}
+
+
+def test_get_queue_entry_returns_the_named_shot(
+    db_session, shot_from_user_in_team, user_in_team
+):
+    entry = AdminInterface().get_queue_entry(shot_from_user_in_team)
+
+    assert entry.id == shot_from_user_in_team
+    assert entry.user_id == user_in_team
+    assert not hasattr(entry, "image_base64")
+
+
+def test_get_queue_entry_is_none_for_a_checked_shot(db_session, shot_from_user_in_team):
+    game_id = game_of(shot_from_user_in_team)
+    enable_ai(game_id)
+    AdminInterface().mark_shot_missed(shot_from_user_in_team)
+
+    assert AdminInterface().get_queue_entry(shot_from_user_in_team) is None
+
+
+def test_get_queue_returns_every_unchecked_shot_oldest_first(
+    db_session, shot_from_user_in_team, user_in_team, test_image_string
+):
+    second_shot = fire_second_shot(user_in_team, test_image_string)
+    # Both shots land in the same 1s-resolution second; pin their times so the
+    # order asserted below is not left to the id tiebreak.
+    set_shot_time(db_session, shot_from_user_in_team, datetime(2026, 1, 1, 12, 0, 0))
+    set_shot_time(db_session, second_shot, datetime(2026, 1, 1, 12, 0, 1))
+
+    queue = AdminInterface().get_queue(game_of(shot_from_user_in_team))
+
+    assert [entry.id for entry in queue] == [shot_from_user_in_team, second_shot]

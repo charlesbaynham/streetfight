@@ -2082,6 +2082,20 @@ case that still cannot escalate is a head with **no usable review at all**
 candidate ranking from that reading; retries (below) make it rare, and
 teaching escalation to run on a flat GPS-only ranking is the open follow-up.
 
+**Parallelised, 2026-09-12.** Escalations used to fire only for the queue
+head, serialising a busy game on the slowest LLM call. `shot_auto_actions.
+escalate_early` now starts a shot's escalation as soon as its cheap reading
+lands and needs one (called from `ai_shot_review.review_shot`), whatever
+position it holds in the queue; `escalate_backlog` does the same sweep when
+an admin turns either toggle on. Both read the same toggles `_decide` already
+does. `shot_escalation.enqueue_escalation` is now idempotent per shot
+(`_tasks` keyed by shot id), since the early call and the head's own call can
+land on the same shot before `ai_escalation_state` is written; a separate
+semaphore (`AI_SHOT_ESCALATION_CONCURRENCY`, default 2) bounds how many run
+at once. Strict queue order is untouched — only the head is ever *resolved*.
+Accepted cost: a shot escalated early can be made moot by an earlier ruling
+before it reaches the head, wasting that call.
+
 **Retry, 29 Aug.** A vision call that errors or answers off-schema is now
 retried up to twice before being stored as an error
 (`ai_shot_review.REVIEW_ATTEMPTS = 3`, `_review_with_retries`) — that is
