@@ -97,3 +97,11 @@
   border-color: #c0392b;
   font-weight: bold;
 }
+
+/* The sign-up link's QR card. It reuses JoinQRCodes' card, which is sized for
+   a screen somebody is scanning off, so it only needs centring here. */
+.signupCard {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.8em;
+}

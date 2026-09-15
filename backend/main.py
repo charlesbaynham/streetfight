@@ -1269,6 +1269,15 @@ async def admin_join_qr_codes(game_id: UUID) -> dict:
         return identity_admin.build_join_codes(game_id)
 
 
+@admin_method(path="/admin_game_join_url", method="GET")
+async def admin_game_join_url(game_id: UUID) -> dict:
+    """The game's sign-up link on its own - the link and QR that go out over
+    WhatsApp. Unlike ``/admin_join_qr_codes`` this needs no teams and writes
+    nothing."""
+    with _identity_admin_errors():
+        return identity_admin.game_join_url(game_id)
+
+
 @admin_method(path="/admin_team_cards_pdf", method="GET")
 async def admin_team_cards_pdf(game_id: UUID):
     """The printable team cards (backend/team_cards.py): one A4 page per
