@@ -1,18 +1,32 @@
 """Allocating blocks of slots to teams so that one channel reads as the team.
 
+**Retired (roadmap R15, 2026-09-15).** The per-team hat policy described below
+is no longer the game's. Pinning a team to a hat colour meant teams had to be
+allocated before anybody could pick an outfit, and allocating teams needs a
+final list of who is actually coming -- which does not exist until the night.
+The hat is now a free *provided* channel like the armband, the game is one
+pool, and teams are scanned in at the door instead.
+
+What survives here is :func:`assign_team_colours`, which gives each team a
+**display** colour for the spectator screen's dots and roster: pinned once,
+never re-shuffled, constraining no outfit. :func:`allocate_team_slots` has no
+caller outside its own tests. The reasoning below is kept as the record of why
+the hat was chosen and of what freeing it gives up -- read it in the past
+tense.
+
 The decoder does not care which slot a player holds -- any two correctly-read
 garments identify them (plan §4). But *people* care: at 30m, in the dark, a
 player wants to know "friend or foe" without mentally decoding four colours
-against a printed key. So the pre-allocation deliberately spends one channel
+against a printed key. So the pre-allocation deliberately spent one channel
 (:data:`~backend.identity.config.TEAM_CHANNEL`, the hat) on that: every member
-of a team is handed a slot whose hat is the same colour, and no two teams share
-a hat colour.
+of a team was handed a slot whose hat was the same colour, and no two teams
+shared a hat colour.
 
-That costs nothing in error-correction terms -- the slots handed out are still
-distinct codewords of the same scheme -- it merely constrains *which* of the
-usable slots each team draws from.
+That cost nothing in error-correction terms -- the slots handed out were still
+distinct codewords of the same scheme -- it merely constrained *which* of the
+usable slots each team drew from.
 
-The constraint has a hard ceiling: a hat colour only covers as many slots as
+The constraint had a hard ceiling: a hat colour only covers as many slots as
 there are codewords carrying it. The code is MDS and every channel wears a full
 seven colours, so each hat colour lands on exactly ``q**k / q`` = seven of the
 49 codewords -- an even split, whatever the colours physically are. Black gets
@@ -20,11 +34,11 @@ six of them rather than seven for one reason only: slot 0, the all-zero
 codeword, is never handed out (plan §11.1) and its hat symbol is black. Nothing
 about the palettes causes that, so the bought kit (2026-08-29) does not change
 it; moving black off symbol 0 in ``HAT_PALETTE`` would, and would only move the
-missing slot onto whatever took its place. Past that ceiling a team needs a
+missing slot onto whatever took its place. Past that ceiling a team needed a
 second colour, and :func:`allocate_team_slots` gives it one *whole* extra
-colour rather than sharing a part-used one, so a hat colour still names exactly
-one team. Slots are emitted primary-colour-first, so a team that never fills its
-block never reaches the second colour at all.
+colour rather than sharing a part-used one, so a hat colour still named exactly
+one team. Slots are emitted primary-colour-first, so a team that never filled
+its block never reached the second colour at all.
 
 This module is pure: slots, labels and schemes only, no database (the
 package-wide rule -- see :mod:`backend.identity.overrides`).

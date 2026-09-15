@@ -1115,6 +1115,18 @@ preference.
 
 ### 12.6 Simulation: what the team channel and free choice cost *with real wardrobes*
 
+> **Retired (2026-09-15, roadmap R15).** There is no team channel any more. The
+> hat pin forced team allocation to happen before anybody could pick an outfit,
+> and allocating teams needs a final list of who is coming — which does not
+> exist until the night. The hat is now a provided channel like the armband,
+> chosen per player by the allocator, and players are scanned into a team at
+> the door instead. So **"Which channel should carry the team"** below is the
+> record of the reasoning rather than current policy, and **"The team partition
+> removes §12.5's capacity tax"** no longer applies at all: with no partition
+> the game is one 48-slot pool gated game-wide, which is precisely the
+> unstructured free choice §12.5 priced. Nothing below is rewritten — the
+> numbers are what the decision knowingly gave up, and worth keeping for that.
+
 §12.5 priced free choice as a pure packing problem: uniformly random picks over
 the whole outfit space. That is the right way to isolate the capacity tax, but it
 answers a question one step removed from the one #10 actually faces, because it

@@ -47,6 +47,14 @@ usually one wrong key.
 `check` proves the seed determines the world completely: it builds twice and
 compares. Run it if you touched anything under `backend/test_world/`.
 
+⚠️ **`check` is expected to fail right now (roadmap R15, 2026-09-15).** Freeing
+the hat from the team changed what the allocator offers every player, so the
+committed `world.json` and every photograph generated against it predate the
+current picks. The next full regeneration will **re-clothe the whole cast** —
+a large `generate` bill rather than a handful of images. Dry-run it and put the
+number in front of Charles before spending. Until that run lands, a failing
+`check` is that change, not a bug.
+
 ### 3–4. Select and describe the scenes, then review every prompt
 
 `scenes` picks the ten shots out of the encounter pool and writes the prompt
@@ -142,3 +150,8 @@ edits you made to the game first.
 CLAUDE.md. If a change there is agreed, it invalidates every reference photo
 whose prompt names a colour that moved, and `generate` will price exactly those
 back in. Dry-run it and put the number in front of Charles before spending.
+
+The same arithmetic applies to anything that changes what the *allocator*
+offers, which is the more expensive case: it re-dresses players wholesale
+rather than one colour at a time. R15 freeing the hat is exactly that — see
+the note under step 1–2 above.

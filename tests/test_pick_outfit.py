@@ -54,11 +54,17 @@ def fresh_player(api_client_factory):
 
 
 def team_join_url_and_colour(admin_api_client, game_id, team_id):
-    """Generate join codes (pinning the team's hat colour) and pull out this
-    team's team-code URL and the colour it was pinned to."""
+    """Generate join codes and pull out this team's door-code URL and the
+    display colour it was given."""
     body = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={game_id}").json()
     entry = next(t for t in body["teams"] if UUID(t["team_id"]) == team_id)
     return entry["encoded_url"], entry["team_colour"]
+
+
+def game_join_url(admin_api_client, game_id):
+    """The game-wide sign-up link (roadmap R15)."""
+    body = admin_api_client.get(f"/api/admin_join_qr_codes?game_id={game_id}").json()
+    return body["game_url"]
 
 
 def join_options_call(client, url):
@@ -95,8 +101,7 @@ def test_canonical_option_ranks_above_a_much_rarer_overridden_one():
     the whole ~245-outfit space with nobody else in the game, so both a
     0-override and a 1-override tier are guaranteed to exist.
     """
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
-    options = outfit_options(SCHEME, team_colour, {}, [], get_uuid(), THRESHOLD)
+    options = outfit_options(SCHEME, {}, [], get_uuid(), THRESHOLD)
 
     canonical_idx = [i for i, o in enumerate(options) if o.overrides_needed == 0]
     overridden_idx = [i for i, o in enumerate(options) if o.overrides_needed == 1]
@@ -140,8 +145,7 @@ def test_every_offered_colour_has_a_swatch_and_a_rarity_estimate():
 def test_rarity_breaks_ties_within_an_override_tier():
     """Within a tier, rarer outfits rank higher - checked as a monotonicity
     invariant across the whole ranked list rather than one hand-picked pair."""
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
-    options = outfit_options(SCHEME, team_colour, {}, [], get_uuid(), THRESHOLD)
+    options = outfit_options(SCHEME, {}, [], get_uuid(), THRESHOLD)
 
     tiers = {o.overrides_needed for o in options}
     assert len(tiers) > 1  # otherwise this test can't be exercising the tie-break
@@ -152,23 +156,30 @@ def test_rarity_breaks_ties_within_an_override_tier():
 
 
 def test_options_are_wearable_from_wardrobe_and_clear_threshold():
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
     wardrobe = {"tshirt": ["black", "blue"], "trousers": ["black"]}
-    options = outfit_options(SCHEME, team_colour, wardrobe, [], get_uuid(), THRESHOLD)
+    options = outfit_options(SCHEME, wardrobe, [], get_uuid(), THRESHOLD)
 
     assert options  # sanity: this wardrobe does yield some options
     for o in options:
         assert o.appearance["tshirt"] in wardrobe["tshirt"]
         assert o.appearance["trousers"] in wardrobe["trousers"]
-        assert o.appearance["hat"] == team_colour
         assert o.min_distance >= THRESHOLD
+
+
+def test_the_hat_is_the_allocators_to_choose_like_the_armband():
+    """The hat used to be pinned to the team; since roadmap R15 it is a
+    provided channel like the armband, so across an open wardrobe the
+    options wear every hat colour, not one."""
+    options = outfit_options(SCHEME, {}, [], get_uuid(), THRESHOLD)
+
+    hats = {o.appearance[TEAM_CHANNEL] for o in options}
+    assert hats == set(SCHEME.channels.by_name(TEAM_CHANNEL).labels)
 
 
 def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
     """An absent/empty wardrobe entry for a channel opens up its whole
     palette rather than offering nothing (plan C4)."""
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
-    options = outfit_options(SCHEME, team_colour, {}, [], get_uuid(), THRESHOLD)
+    options = outfit_options(SCHEME, {}, [], get_uuid(), THRESHOLD)
 
     tshirts = {o.appearance["tshirt"] for o in options}
     trousers = {o.appearance["trousers"] for o in options}
@@ -177,28 +188,26 @@ def test_empty_wardrobe_entry_means_no_constraint_not_no_options():
 
 
 def test_options_never_share_a_wardrobe_combination():
-    """The armband is ours to assign, not the player's to choose (roadmap
-    #10 revision): across the whole open wardrobe space, no two returned
-    options share a tshirt+trousers pair."""
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
-    options = outfit_options(SCHEME, team_colour, {}, [], get_uuid(), THRESHOLD)
+    """The hat and the armband are ours to assign, not the player's to
+    choose (roadmap #10 revision, R15): across the whole open wardrobe
+    space, no two returned options share a tshirt+trousers pair."""
+    options = outfit_options(SCHEME, {}, [], get_uuid(), THRESHOLD)
 
     combos = [(o.appearance["tshirt"], o.appearance["trousers"]) for o in options]
     assert len(combos) == len(set(combos))
 
 
-def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
+def test_collapsed_survivor_is_the_best_ranked_of_its_provided_group():
     """Pin the wardrobe to a single tshirt+trousers pair, so every raw
-    candidate before collapsing differs only in armband colour, and check
-    the one option kept really is the best of that 7-armband-wide group
+    candidate before collapsing differs only in hat and armband colour, and
+    check the one option kept really is the best of that 49-wide group
     (fewest overrides needed against a real slot), not just the first seen.
     """
-    team_colour = SCHEME.channels.by_name(TEAM_CHANNEL).labels[0]
     tshirt = SCHEME.channels.by_name("tshirt").labels[0]
     trousers = palette_for_channel("trousers")[0]
     wardrobe = {"tshirt": [tshirt], "trousers": [trousers]}
 
-    options = outfit_options(SCHEME, team_colour, wardrobe, [], get_uuid(), 0)
+    options = outfit_options(SCHEME, wardrobe, [], get_uuid(), 0)
     assert len(options) == 1
     survivor = options[0]
     assert (survivor.appearance["tshirt"], survivor.appearance["trousers"]) == (
@@ -206,11 +215,11 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
         trousers,
     )
 
-    def overrides_needed_for(armband):
+    def overrides_needed_for(hat, armband):
         appearance = {
             "tshirt": tshirt,
             "trousers": trousers,
-            TEAM_CHANNEL: team_colour,
+            TEAM_CHANNEL: hat,
             PROVIDED_CHANNEL: armband,
         }
         word = tuple(
@@ -221,7 +230,8 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
         return len(overrides_for(word, slot, SCHEME))
 
     best_possible = min(
-        overrides_needed_for(armband)
+        overrides_needed_for(hat, armband)
+        for hat in SCHEME.channels.by_name(TEAM_CHANNEL).labels
         for armband in SCHEME.channels.by_name(PROVIDED_CHANNEL).labels
     )
     assert survivor.overrides_needed == best_possible
@@ -235,7 +245,7 @@ def test_collapsed_survivor_is_the_best_ranked_of_its_armband_group():
 def test_join_options_serves_palette_and_channel_notes_and_creates_no_user_row(
     api_client_factory, admin_api_client, db_session, one_game, one_team
 ):
-    url, colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
+    url, _colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
     player = fresh_player(api_client_factory)
     user_id = UUID(player.get("/api/my_id").json())
 
@@ -243,9 +253,9 @@ def test_join_options_serves_palette_and_channel_notes_and_creates_no_user_row(
 
     assert response.is_success
     body = response.json()
-    assert body["team_colour"] == colour
-    assert body["team_channel"] == TEAM_CHANNEL
-    assert body["provided_channel"] == PROVIDED_CHANNEL
+    assert UUID(body["game_id"]) == one_game
+    assert UUID(body["team_id"]) == one_team
+    assert set(body["provided_channels"]) == {TEAM_CHANNEL, PROVIDED_CHANNEL}
     assert set(body["wardrobe_channels"]) == {"tshirt", "trousers"}
     assert body["you"] is None
 
@@ -308,8 +318,23 @@ def test_join_options_reports_the_team_already_joined_not_the_one_scanned(
     assert body["joined_other_team"] is True
     assert body["team_id"] == str(team_a)
     assert body["team_name"] == entry_a["team_name"]
-    assert body["team_colour"] == entry_a["team_colour"]
     assert body["you"]["slot"] == picked.json()["slot"]
+
+
+def test_join_options_for_a_game_code_names_no_team(
+    api_client_factory, admin_api_client, one_game, one_team
+):
+    """The sign-up link (roadmap R15) puts nobody in a team, and the page
+    must not pretend otherwise."""
+    url = game_join_url(admin_api_client, one_game)
+    player = fresh_player(api_client_factory)
+
+    body = join_options_call(player, url).json()
+
+    assert UUID(body["game_id"]) == one_game
+    assert body["team_id"] is None
+    assert body["team_name"] is None
+    assert body["joined_other_team"] is False
 
 
 # ---------------------------------------------------------------------------
@@ -359,13 +384,13 @@ def test_wardrobe_that_cannot_clear_threshold_returns_empty_then_relaxed_finds_d
     assert first_pick.is_success
     taken_appearance = first_pick.json()["effective_appearance"]
     t0, r0 = taken_appearance["tshirt"], taken_appearance["trousers"]
-    r1 = next(c for c in palette_for_channel("trousers") if c != r0)
 
-    # This wardrobe can only ever differ from the first player on trousers
-    # and armband (tshirt is pinned to the same colour), so its ceiling is
-    # distance 2 - distance 3 is structurally unreachable.
+    # This wardrobe can only ever differ from the first player on the hat
+    # and the armband (both wardrobe channels are pinned to the same
+    # colours), so its ceiling is distance 2 - distance 3 is structurally
+    # unreachable.
     second_player = fresh_player(api_client_factory)
-    wardrobe = {"tshirt": [t0], "trousers": [r0, r1]}
+    wardrobe = {"tshirt": [t0], "trousers": [r0]}
 
     strict = outfit_options_call(second_player, url, wardrobe, relaxed=False).json()
     assert strict["options"] == []
@@ -381,7 +406,10 @@ def test_three_teammates_declaring_only_black_all_get_distinct_outfits(
     api_client_factory, admin_api_client, one_game, one_team
 ):
     """plan §12.6: the design never refuses a player, even when three
-    teammates all declare the same (maximally common) wardrobe."""
+    teammates all declare the same (maximally common) wardrobe. With the
+    hat and the armband both ours to vary (roadmap R15), black/black
+    players are told apart by the two garments we hand them, at the relaxed
+    distance of two."""
     url, _colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
     wardrobe = {"tshirt": ["black"], "trousers": ["black"]}
 
@@ -390,12 +418,9 @@ def test_three_teammates_declaring_only_black_all_get_distinct_outfits(
         player = fresh_player(api_client_factory)
         body = outfit_options_call(player, url, wardrobe, relaxed=True).json()
         assert body["options"], f"player {i} was refused an outfit"
+        assert body["exhausted"] is False
         if i > 0:
-            # With every teammate restricted to black/black, only the first
-            # player (nobody else placed yet) can clear even the relaxed
-            # gate - everyone after that only gets anything via the
-            # never-refuse fallback.
-            assert body["exhausted"] is True
+            assert all(o["min_distance"] == 2 for o in body["options"])
 
         pick = pick_outfit_call(
             player, url, wardrobe, appearance=body["options"][0]["appearance"]
@@ -475,6 +500,103 @@ def test_pick_outfit_idempotent_revisit_sends_no_second_ticker_message(
         if "joined team" in t.message
     ]
     assert len(join_messages) == 1
+
+
+def test_pick_outfit_via_game_code_signs_up_with_no_team(
+    api_client_factory, admin_api_client, db_session, one_game, one_team
+):
+    """The sign-up flow (roadmap R15): an outfit is claimed in the *game*,
+    and the team is left for the door. No "joined team" ticker line, since
+    nobody joined one."""
+    url = game_join_url(admin_api_client, one_game)
+    player = fresh_player(api_client_factory)
+    user_id = UUID(player.get("/api/my_id").json())
+
+    options = outfit_options_call(player, url, wardrobe={}).json()["options"]
+    response = pick_outfit_call(
+        player, url, wardrobe={}, appearance=options[0]["appearance"]
+    )
+    assert response.is_success
+    assert response.json()["team_name"] is None
+
+    db_session.expire_all()
+    user = db_session.get(User, user_id)
+    assert user.game_id == one_game
+    assert user.team_id is None
+    assert user.identity_slot == response.json()["slot"]
+
+    join_messages = [
+        t.message
+        for t in db_session.query(TickerEntry).filter_by(game_id=one_game).all()
+        if "joined team" in t.message
+    ]
+    assert join_messages == []
+
+
+def test_pick_outfit_via_team_code_joins_the_game_and_the_team(
+    api_client_factory, admin_api_client, db_session, one_game, one_team
+):
+    """A late arrival scanning the door code with no outfit picks one and
+    joins the team in one pass."""
+    url, _colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
+    player = fresh_player(api_client_factory)
+    user_id = UUID(player.get("/api/my_id").json())
+
+    options = outfit_options_call(player, url, wardrobe={}).json()["options"]
+    response = pick_outfit_call(
+        player, url, wardrobe={}, appearance=options[0]["appearance"]
+    )
+    assert response.is_success
+
+    db_session.expire_all()
+    user = db_session.get(User, user_id)
+    assert user.game_id == one_game
+    assert user.team_id == one_team
+
+
+def test_a_game_code_signup_counts_against_a_later_pickers_distance_gate(
+    api_client_factory, admin_api_client, one_game, one_team
+):
+    """Slots are unique per game, team or no team: the outfit a team-less
+    signup holds is neither offered again nor allowed within the distance
+    gate of the next player, whichever code they scan."""
+    game_url = game_join_url(admin_api_client, one_game)
+    team_url, _colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
+
+    first = fresh_player(api_client_factory)
+    options = outfit_options_call(first, game_url, wardrobe={}).json()["options"]
+    taken = pick_outfit_call(
+        first, game_url, wardrobe={}, appearance=options[0]["appearance"]
+    )
+    assert taken.is_success
+
+    second = fresh_player(api_client_factory)
+    later = outfit_options_call(second, team_url, wardrobe={}).json()["options"]
+    assert all(o["appearance"] != taken.json()["effective_appearance"] for o in later)
+    assert all(o["slot"] != taken.json()["slot"] for o in later)
+    assert all(o["min_distance"] >= THRESHOLD for o in later)
+
+
+def test_pick_outfit_revisit_with_a_slot_but_no_team_is_idempotent(
+    api_client_factory, admin_api_client, one_game, one_team
+):
+    """Whichever code a signed-up player opens the picker with, the outfit
+    they hold is what they get back - the team is the door scan's business
+    (``/join_game``), not the picker's."""
+    game_url = game_join_url(admin_api_client, one_game)
+    team_url, _colour = team_join_url_and_colour(admin_api_client, one_game, one_team)
+    player = fresh_player(api_client_factory)
+
+    options = outfit_options_call(player, game_url, wardrobe={}).json()["options"]
+    first = pick_outfit_call(
+        player, game_url, wardrobe={}, appearance=options[0]["appearance"]
+    )
+    assert first.is_success
+
+    again = pick_outfit_call(player, team_url, wardrobe={}, appearance={})
+    assert again.is_success
+    assert again.json()["slot"] == first.json()["slot"]
+    assert again.json()["team_name"] is None
 
 
 def test_pick_outfit_requires_confirmation(

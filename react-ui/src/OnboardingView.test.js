@@ -88,7 +88,7 @@ test("the team step waits for a team, and the game step doesn't show yet", async
   await renderOnboarding(soloUser({ name: "Bob" }));
 
   expect(
-    screen.getByText("Scan your team's join QR code with your camera app..."),
+    screen.getByText(/scan a team's QR code with your camera app/),
   ).toBeInTheDocument();
   expect(
     screen.queryByText("Wait for game to start..."),
@@ -259,7 +259,7 @@ test("tapping the location button five times in a row bypasses it, and unlocks t
   expect(isDone(bypassedText)).toBe(true);
   expect(isWarn(bypassedText)).toBe(true);
   expect(
-    screen.getByText("Scan your team's join QR code with your camera app..."),
+    screen.getByText(/scan a team's QR code with your camera app/),
   ).toBeInTheDocument();
 });
 
@@ -284,7 +284,7 @@ test("clicking the location step requests geolocation and marks itself done when
 
   await waitFor(() => expect(isDone("Grant location permission:")).toBe(true));
   expect(
-    screen.getByText("Scan your team's join QR code with your camera app..."),
+    screen.getByText(/scan a team's QR code with your camera app/),
   ).toBeInTheDocument();
 });
 

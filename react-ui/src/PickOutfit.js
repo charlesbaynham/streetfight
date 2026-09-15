@@ -1,8 +1,11 @@
-// The outfit-picking page a player lands on after scanning a *team* join
-// code (as opposed to a per-slot code, which still claims a fixed outfit
-// straight away - see JoinFromQueryParams). They declare what they own, are
-// offered a ranked list of outfits that are both wearable and distinguishable
-// from everyone already placed, pick one, confirm it, and lock it in. See
+// The outfit-picking page a player lands on after scanning the game's
+// sign-up link, or a team's door code before they have an outfit (as opposed
+// to a per-slot code, which still claims a fixed outfit straight away - see
+// JoinFromQueryParams). They declare what they own, are offered a ranked list
+// of outfits that are both wearable and distinguishable from everyone already
+// placed, pick one, confirm it, and lock it in. A game code puts them in the
+// game with no team - the team is scanned in at the door on the night
+// (roadmap R15) - while a team code joins the team as part of the pick. See
 // docs/roadmap.md's #10 entry and backend/identity_admin.py's outfit_options
 // for the ranking rationale behind the flow below.
 //
@@ -29,7 +32,7 @@ import Popup from "./Popup";
 import { sendAPIRequest } from "./utils";
 import { usePatchSearchParams } from "./urlState";
 import { NameEntry } from "./OnboardingView";
-import { Swatch, hexFor } from "./Swatch";
+import { Swatch } from "./Swatch";
 
 import styles from "./PickOutfit.module.css";
 
@@ -91,11 +94,11 @@ async function postJSON(endpoint, body) {
 }
 
 function Header({ joinData, showWardrobePrompt }) {
-  const hex = hexFor(
-    joinData.channels,
-    joinData.team_channel,
-    joinData.team_colour,
-  );
+  // The garments we hand out at the door, named so the player knows why the
+  // form below never asks about them.
+  const provided = (joinData.provided_channels || [])
+    .map((name) => channelLabel(name).toLowerCase())
+    .join(" and ");
   return (
     <div className={styles.header}>
       {/* The backend has already swapped this whole block to the team the
@@ -103,11 +106,11 @@ function Header({ joinData, showWardrobePrompt }) {
       {joinData.joined_other_team ? (
         <p className={styles.alreadyJoinedNote}>You already joined a team:</p>
       ) : null}
-      <h1>Team {joinData.team_name}</h1>
-      <Swatch hex={hex} label={joinData.team_colour} size="large" />
+      {/* A game code names no team: the sign-up link is the same for
+          everybody, and teams are dealt at the door. */}
+      <h1>{joinData.team_name ? `Team ${joinData.team_name}` : "Sign up"}</h1>
       <p>
-        We'll bring your {joinData.team_colour}{" "}
-        {channelLabel(joinData.team_channel).toLowerCase()} on the night.
+        We'll hand you a {provided} on the night.
         {showWardrobePrompt ? " Tell us what else you'll be wearing." : null}
       </p>
     </div>
@@ -357,11 +360,20 @@ function ConfirmScreen({
   );
 }
 
-function ResultScreen({ appearance, wardrobeChannels, channels }) {
+function ResultScreen({ appearance, wardrobeChannels, channels, teamName }) {
   const navigate = useNavigate();
   return (
     <div className={styles.resultScreen}>
       <h2>You're set</h2>
+      {/* Signed up through the game link, so no team yet: say what happens
+          next, or this screen reads as the end of the story and the door
+          scan comes as a surprise (roadmap R15). */}
+      {teamName ? null : (
+        <p className={styles.nextStepNote}>
+          You're signed up. On the night, scan a team code at the door to join a
+          team.
+        </p>
+      )}
       <div className={styles.resultGarments}>
         {wardrobeChannels.map((name) => {
           const channel = channels.find((c) => c.name === name);
@@ -934,7 +946,7 @@ function PickOutfit() {
       </Popup>
       <div className={styles.innerContainer}>
         {!code ? (
-          <p>No invite link found - ask your team for the join link again.</p>
+          <p>No invite link found - ask for the sign-up link again.</p>
         ) : loadError ? (
           <p className={styles.errorText}>{loadError}</p>
         ) : !joinData ? (
@@ -951,6 +963,7 @@ function PickOutfit() {
                 appearance={result.effective_appearance}
                 wardrobeChannels={joinData.wardrobe_channels}
                 channels={joinData.channels}
+                teamName={result.team_name}
               />
             ) : (
               <PickOutfitForm

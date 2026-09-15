@@ -93,11 +93,11 @@ describe("/pick (PickOutfit)", () => {
   test("mounts and shows the team header once join_options resolves", async () => {
     installFetchMock({
       join_options: {
+        game_id: "game-1",
         team_id: "team-1",
         team_name: "Reds",
-        team_colour: "red",
-        team_channel: "hat",
-        provided_channel: "armbands",
+        joined_other_team: false,
+        provided_channels: ["hat", "armbands"],
         wardrobe_channels: ["tshirt", "trousers"],
         channels: [
           { name: "tshirt", labels: ["black"], hex: { black: "#222222" } },
