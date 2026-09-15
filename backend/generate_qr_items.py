@@ -29,14 +29,22 @@ IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 ITEM_TYPES = [i.value for i in ItemType]
 
 
-def make_qr_grid(
+def build_qr_grid(
     qr_data: Iterable,
-    output_file_path: str,
     num_x=4,
     num_y=2,
     tag: str = "",
     base_image: Union[str, Path] = None,
-):
+    label_offset: int = 0,
+) -> Image.Image:
+    """The sheet of cards as an image: ``num_x`` x ``num_y`` codes taken from
+    ``qr_data``, each stamped with ``tag`` and its index so a card can be
+    matched to its row in ``qr_codes.csv`` without scanning it.
+
+    ``label_offset`` is added to that index, so a run that spreads its codes
+    over several sheets can keep numbering where the last sheet stopped and
+    stay in step with the log.
+    """
     # Create an eighth-sized image
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
@@ -113,10 +121,63 @@ def make_qr_grid(
             )
 
             # Add a text tag
-            draw.text((box_x + 10, box_y + 10), tag + f"{i}", fill="black")
+            draw.text(
+                (box_x + 10, box_y + 10), tag + f"{i + label_offset}", fill="black"
+            )
 
-        # show
-        im.save(output_file_path, "PNG")
+        return im.copy()
+
+
+def make_qr_grid(
+    qr_data: Iterable,
+    output_file_path: str,
+    num_x=4,
+    num_y=2,
+    tag: str = "",
+    base_image: Union[str, Path] = None,
+):
+    build_qr_grid(qr_data, num_x, num_y, tag=tag, base_image=base_image).save(
+        output_file_path, "PNG"
+    )
+
+
+def random_tag(length: int = 6) -> str:
+    """A short random mark for a batch of codes, printed on every card of it
+    and written beside every one of its rows in ``qr_codes.csv``."""
+    import random
+    import string
+
+    characters = string.ascii_letters + string.digits
+    return "".join(random.choice(characters) for _ in range(length))
+
+
+def base_image_path(itype: str, num, damage) -> Optional[Path]:
+    """The artwork for this kind of card, if there is any.
+
+    Weapons are drawn by their damage and everything else by how much of it
+    the card awards, so a 2-bullet ammo card looks different from a 10.
+    """
+    if itype == "weapon":
+        path = Path(IMAGES_DIR, f"{itype}_{damage}.png")
+    else:
+        path = Path(IMAGES_DIR, f"{itype}_{num}.png")
+
+    if not path.exists():
+        logger.warning("No base image found for %s", itype)
+        return None
+
+    return path
+
+
+def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, asteam):
+    """Append the codes minted to ``qr_codes.csv``, the record of every code
+    that has ever been printed."""
+    with open(QR_LOGFILE, "a") as f:
+        for i, encoded_url in enumerate(urls):
+            item = ItemModel.from_base64(encoded_url)
+            f.write(
+                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
+            )
 
 
 @click.command()
@@ -206,27 +267,12 @@ def generate(
     Generates an A4 grid of QR codes that can be scanned to collect an item
     """
 
-    def generate_random_string(length):
-        import random
-        import string
-
-        characters = string.ascii_letters + string.digits
-        return "".join(random.choice(characters) for _ in range(length))
-
     if not tag:
-        tag = generate_random_string(6)
+        tag = random_tag()
 
     tag = slugify_string(tag)
 
-    # Get path to base image if one exists
-    if type == "weapon":
-        path_to_base_image = Path(IMAGES_DIR, f"{type}_{damage}.png")
-    else:
-        path_to_base_image = Path(IMAGES_DIR, f"{type}_{num}.png")
-
-    if not path_to_base_image.exists():
-        logger.warning("No base image found for %s", type)
-        path_to_base_image = None
+    path_to_base_image = base_image_path(type, num, damage)
 
     if not outfile:
         filename = f"qrcodes_{tag}_{type}_{num}.png"
@@ -250,12 +296,7 @@ def generate(
     make_qr_grid(iter(qr_data), outfile, x, y, tag=tag, base_image=path_to_base_image)
 
     if log:
-        with open(QR_LOGFILE, "a") as f:
-            for i, encoded_url in enumerate(qr_data):
-                item = ItemModel.from_base64(encoded_url)
-                f.write(
-                    f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
-                )
+        log_items(qr_data, tag, num, damage, timeout, onceonly, asteam)
 
 
 if __name__ == "__main__":
