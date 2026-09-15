@@ -371,9 +371,15 @@ Four things from it that are worth knowing even if you never call the agent:
     own shots is ruled on - seeded silently from the first list it sees, so a
     reload replays nothing. Those `.wav`s were synthesised (numpy → `wave`),
     so replacing one is just dropping a better file over it.
-    `AdminPrintables.js` (route `/admin/printables`) is everything that gets
-    printed, in one page: team cards, pub certificates and drop-card sheets,
-    each a panel with its own controls and one big button. The two panels that
+    `AdminPrintables.js` (route `/admin/printables`) is everything a game
+    night needs handed out, in one page: team cards, pub certificates and
+    drop-card sheets, each a panel with its own controls and one big button,
+    and above them the **sign-up link** - the one thing here that is sent
+    rather than printed, so it is a QR and a copyable link (`JoinQRCodes.js`'s
+    exported `JoinCard`) and not a PDF. It reads `GET /admin_game_join_url`
+    rather than `/admin_join_qr_codes`, which refuses a game with no teams and
+    pins team colours on the way past - neither of which the sign-up link,
+    wanted days before any team exists, has any use for. The two panels that
     mint codes say above the button how many a press mints, since a second
     press is a second set rather than a re-download of the first.
     `ReferencePhotos.js` (route `/admin/reference`, with the player being

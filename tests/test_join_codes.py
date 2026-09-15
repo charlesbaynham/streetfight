@@ -836,3 +836,42 @@ def test_admin_delete_game_unknown_404(admin_api_client, db_session):
 def test_admin_delete_game_requires_admin_auth(api_client, one_game):
     response = api_client.post(f"/api/admin_delete_game?game_id={one_game}")
     assert response.status_code in (401, 403)
+
+
+# ---------------------------------------------------------------------------
+# admin_game_join_url
+# ---------------------------------------------------------------------------
+
+
+def test_admin_game_join_url_works_before_any_team_exists(admin_api_client, one_game):
+    """The sign-up link is wanted days before the teams exist (R15), which is
+    exactly when admin_join_qr_codes 400s."""
+    response = admin_api_client.get(f"/api/admin_game_join_url?game_id={one_game}")
+
+    assert response.is_success
+    code = JoinCodeModel.from_base64(response.json()["game_url"])
+    assert code.validate_signature() is None
+    assert code.game_id == one_game
+    assert code.team_id is None
+    assert code.slot is None
+
+
+def test_admin_game_join_url_leaves_team_colours_alone(
+    admin_api_client, db_session, one_game, team_factory
+):
+    team = team_factory()
+
+    admin_api_client.get(f"/api/admin_game_join_url?game_id={one_game}")
+
+    db_session.expire_all()
+    assert db_session.get(Team, team).identity_colour is None
+
+
+def test_admin_game_join_url_unknown_game_404(admin_api_client):
+    response = admin_api_client.get(f"/api/admin_game_join_url?game_id={get_uuid()}")
+    assert response.status_code == 404
+
+
+def test_admin_game_join_url_requires_admin_auth(api_client, one_game):
+    response = api_client.get(f"/api/admin_game_join_url?game_id={one_game}")
+    assert response.status_code in (401, 403)

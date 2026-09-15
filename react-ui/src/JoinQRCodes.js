@@ -55,7 +55,7 @@ export default function JoinQRCodes({ game_id }) {
   );
 }
 
-function JoinCard({ label, url, title }) {
+export function JoinCard({ label, url, title }) {
   return (
     <div className={styles.card}>
       <h4>{title}</h4>

@@ -1005,6 +1005,25 @@ def build_join_codes(game_id: UUID) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# GET /admin_game_join_url
+# ---------------------------------------------------------------------------
+
+
+def game_join_url(game_id: UUID) -> dict:
+    """Just the game's sign-up link (roadmap R15), with no teams involved.
+
+    :func:`build_join_codes` also returns this, but it refuses a game with no
+    teams and pins every team's display colour on the way past. The sign-up
+    link is the one thing that is wanted *before* any of that exists - it is
+    what goes out over WhatsApp days before the night - so it gets its own
+    read-only endpoint rather than a side effect and a precondition it has no
+    use for.
+    """
+    AdminInterface().get_teams_for_game(game_id)  # 404s if the game is missing
+    return {"game_url": make_game_join_url(game_id)}
+
+
+# ---------------------------------------------------------------------------
 # POST /admin_identity_suggest
 # ---------------------------------------------------------------------------
 

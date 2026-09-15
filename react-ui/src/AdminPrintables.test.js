@@ -14,6 +14,7 @@ const GAMES = [makeGame({ id: "game-1" })];
 function renderPage() {
   installFetchMock({
     admin_list_games: GAMES,
+    admin_game_join_url: { game_url: "https://example.com/?j=signup" },
     admin_team_cards_pdf: "%PDF-fake",
     admin_pub_pages_pdf: "%PDF-fake",
     admin_item_sheets_pdf: "%PDF-fake",
@@ -139,4 +140,24 @@ test("the panel says how many codes a press mints, so a second press is a choice
   expect(
     panel("Drop cards").getByText("Mints 24 new codes when you press this."),
   ).toBeInTheDocument();
+});
+
+// The sign-up link goes out over WhatsApp, so what the page owes is a link to
+// paste and a QR to scan off another screen - not a PDF.
+test("the sign-up link panel shows the game's join URL as text and as a QR", async () => {
+  renderPage();
+  await actAndFlush(() => {});
+
+  const call = getLastAPICall("admin_game_join_url");
+  expect(call.method).toBe("GET");
+  expect(call.query).toEqual({ game_id: "game-1" });
+
+  const signup = panel("Sign-up link");
+  expect(signup.getByLabelText(/Join link text/)).toHaveValue(
+    "https://example.com/?j=signup",
+  );
+  expect(signup.getByLabelText(/^Join link for/)).toHaveAttribute(
+    "href",
+    "https://example.com/?j=signup",
+  );
 });

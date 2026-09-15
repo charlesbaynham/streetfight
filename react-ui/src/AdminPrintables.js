@@ -1,5 +1,7 @@
-// Everything that gets printed for a game night, in one place, built by the
-// running server (backend/printables.py, backend/team_cards.py).
+// Everything a game night needs handed out, in one place, built by the
+// running server (backend/printables.py, backend/team_cards.py) - the three
+// printables, and above them the sign-up link, which is the one that is sent
+// rather than printed.
 //
 // Before this page two of the three printables were CLIs run from a checkout,
 // which is the wrong machine: a code is signed with the SECRET_KEY that minted
@@ -17,6 +19,7 @@
 import React, { useEffect, useState } from "react";
 
 import { AdminPage, adminDownload } from "./AdminCommon";
+import { JoinCard } from "./JoinQRCodes";
 import { sendAPIRequest } from "./utils";
 
 import styles from "./AdminPrintables.module.css";
@@ -29,6 +32,83 @@ const TEAM_COLLECTABLE_TYPES = ["ammo"];
 const ITEM_TYPES = ["ammo", "medpack", "armour", "weapon"];
 
 const CARDS_PER_SHEET = 8;
+
+// The games to choose between, newest-first as the server gives them, with
+// the first one selected. Two panels need this, so it is a hook rather than a
+// copy in each.
+function useGameChoice() {
+  const [games, setGames] = useState(null);
+  const [gameId, setGameId] = useState("");
+
+  useEffect(() => {
+    sendAPIRequest("admin_list_games", null, "GET", (loaded) => {
+      setGames(loaded);
+      if (loaded.length > 0) setGameId((current) => current || loaded[0].id);
+    });
+  }, []);
+
+  return { games, gameId, setGameId };
+}
+
+function GameChooser({ games, gameId, setGameId }) {
+  return (
+    <>
+      <Field label="Game">
+        <select
+          className={styles.input}
+          value={gameId}
+          onChange={(e) => setGameId(e.target.value)}
+        >
+          {(games || []).map((game) => (
+            <option key={game.id} value={game.id}>
+              {game.id.slice(0, 8)} (
+              {game.teams.map((t) => t.name).join(", ") || "no teams"})
+            </option>
+          ))}
+        </select>
+      </Field>
+      {games && games.length === 0 ? (
+        <p className={styles.hint}>No games exist yet - create one first.</p>
+      ) : null}
+    </>
+  );
+}
+
+// The sign-up link, which is the one thing here that is *not* printed: it goes
+// out over WhatsApp days before the night, so what is wanted is a link to
+// paste and a QR to scan off another screen, never a PDF. It needs no teams
+// (that is the whole point of R15 - sign up first, team on the night), so it
+// comes from /admin_game_join_url rather than the join-code generator, which
+// refuses a game with no teams yet.
+function SignUpLink() {
+  const { games, gameId, setGameId } = useGameChoice();
+  const [url, setUrl] = useState(null);
+
+  useEffect(() => {
+    setUrl(null);
+    if (!gameId) return;
+    sendAPIRequest("admin_game_join_url", { game_id: gameId }, "GET", (data) =>
+      setUrl(data.game_url),
+    );
+  }, [gameId]);
+
+  return (
+    <section className={styles.panel} aria-label="Sign-up link">
+      <h3 className={styles.panelTitle}>Sign-up link</h3>
+      <p className={styles.blurb}>
+        The link everybody gets before the night: it takes them through picking
+        a name and an outfit, and leaves them in the game with no team. They
+        scan a team card at the door to get a team.
+      </p>
+      <GameChooser games={games} gameId={gameId} setGameId={setGameId} />
+      {url ? (
+        <div className={styles.signupCard}>
+          <JoinCard label="the game" url={url} title="Sign up" />
+        </div>
+      ) : null}
+    </section>
+  );
+}
 
 // One printable: what it is, the controls for it, and what happened last time
 // the button was pressed. The verdict is words rather than a colour alone -
@@ -89,15 +169,7 @@ function Field({ label, hint, children }) {
 // One A4 page per team, carrying that team's door code. No side effects worth
 // worrying about, so this one is a GET.
 function TeamCards() {
-  const [games, setGames] = useState(null);
-  const [gameId, setGameId] = useState("");
-
-  useEffect(() => {
-    sendAPIRequest("admin_list_games", null, "GET", (loaded) => {
-      setGames(loaded);
-      if (loaded.length > 0) setGameId((current) => current || loaded[0].id);
-    });
-  }, []);
+  const { games, gameId, setGameId } = useGameChoice();
 
   return (
     <Printable
@@ -114,23 +186,7 @@ function TeamCards() {
         )
       }
     >
-      <Field label="Game">
-        <select
-          className={styles.input}
-          value={gameId}
-          onChange={(e) => setGameId(e.target.value)}
-        >
-          {(games || []).map((game) => (
-            <option key={game.id} value={game.id}>
-              {game.id.slice(0, 8)} (
-              {game.teams.map((t) => t.name).join(", ") || "no teams"})
-            </option>
-          ))}
-        </select>
-      </Field>
-      {games && games.length === 0 ? (
-        <p className={styles.hint}>No games exist yet - create one first.</p>
-      ) : null}
+      <GameChooser games={games} gameId={gameId} setGameId={setGameId} />
     </Printable>
   );
 }
@@ -304,8 +360,10 @@ export function PrintablesPanel() {
       <h2>Printables</h2>
       <p className={styles.blurb}>
         Print at <b>actual size</b>, not "fit to page" - the QR codes are sized
-        in millimetres so they scan from across a room.
+        in millimetres so they scan from across a room. The sign-up link at the
+        top is the exception: it is sent, not printed.
       </p>
+      <SignUpLink />
       <TeamCards />
       <PubPages />
       <ItemSheets />
