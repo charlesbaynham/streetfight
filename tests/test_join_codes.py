@@ -10,6 +10,7 @@ from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 from backend.identity.config import hex_for
 from backend.join_codes import JoinCodeModel
+from backend.join_codes import make_game_join_url
 from backend.join_codes import make_join_url
 from backend.join_codes import make_team_join_url
 from backend.model import Game
@@ -131,6 +132,29 @@ def test_team_and_slot_codes_sign_differently():
     # the signature is bound to which kind it is, not just the ids.
     forged = slot_code.model_copy()
     forged.slot = None
+    assert forged.validate_signature() == "Signature mismatch"
+
+
+def test_game_join_code_roundtrip_and_tamper():
+    game_id = get_uuid()
+    url = make_game_join_url(game_id)
+
+    decoded = JoinCodeModel.from_base64(url)
+    assert decoded.game_id == game_id
+    assert decoded.team_id is None
+    assert decoded.slot is None
+    assert decoded.validate_signature() is None
+
+    # A game code can't be turned into a team code by naming a team, nor a
+    # team code into a game code by dropping its team.
+    forged = decoded.model_copy()
+    forged.team_id = get_uuid()
+    assert forged.validate_signature() == "Signature mismatch"
+
+    team_code = JoinCodeModel(game_id=game_id, team_id=get_uuid(), slot=None).sign()
+    assert team_code.sig != decoded.sig
+    forged = team_code.model_copy()
+    forged.team_id = None
     assert forged.validate_signature() == "Signature mismatch"
 
 
@@ -324,6 +348,130 @@ def test_join_game_team_code_needs_pick_and_writes_nothing(
     assert user.identity_slot is None
 
 
+def test_join_game_game_code_needs_pick_and_names_no_team(
+    api_client, db_session, one_game
+):
+    user_id = scanner_id(api_client)
+
+    response = api_client.post(
+        "/api/join_game", json={"data": make_game_join_url(one_game)}
+    )
+
+    assert response.is_success
+    data = response.json()
+    assert data["needs_pick"] is True
+    assert data["team_id"] is None
+    assert data["team_name"] is None
+
+    db_session.expire_all()
+    assert db_session.get(User, user_id).game_id is None
+
+
+def test_join_game_unknown_game_code_404(api_client, db_session):
+    response = api_client.post(
+        "/api/join_game", json={"data": make_game_join_url(get_uuid())}
+    )
+    assert response.status_code == 404
+
+
+def signed_up(db_session, user_id, game_id, slot=SLOT):
+    """A player who came through the sign-up link: an outfit in the game,
+    no team (roadmap R15)."""
+    user = db_session.get(User, user_id)
+    user.game_id = game_id
+    user.identity_slot = slot
+    db_session.commit()
+
+
+def join_messages(db_session, game_id):
+    return [
+        t.message
+        for t in db_session.query(TickerEntry).filter_by(game_id=game_id).all()
+        if "joined team" in t.message
+    ]
+
+
+def test_join_game_team_code_puts_a_signed_up_player_in_the_team_keeping_the_outfit(
+    api_client, db_session, one_game, one_team
+):
+    """The door scan."""
+    user_id = scanner_id(api_client)
+    signed_up(db_session, user_id, one_game)
+
+    response = api_client.post(
+        "/api/join_game", json={"data": make_team_join_url(one_game, one_team)}
+    )
+
+    assert response.is_success
+    data = response.json()
+    assert data["joined"] is True
+    assert "needs_pick" not in data
+    assert data["slot"] == SLOT
+
+    db_session.expire_all()
+    user = db_session.get(User, user_id)
+    assert user.team_id == one_team
+    assert user.game_id == one_game
+    assert user.identity_slot == SLOT
+    assert len(join_messages(db_session, one_game)) == 1
+
+
+def test_join_game_rescanning_the_same_team_is_a_no_op(
+    api_client, db_session, one_game, one_team
+):
+    user_id = scanner_id(api_client)
+    signed_up(db_session, user_id, one_game)
+    url = make_team_join_url(one_game, one_team)
+
+    assert api_client.post("/api/join_game", json={"data": url}).is_success
+    again = api_client.post("/api/join_game", json={"data": url})
+
+    assert again.is_success
+    assert again.json()["joined"] is True
+    db_session.expire_all()
+    assert db_session.get(User, user_id).team_id == one_team
+    assert len(join_messages(db_session, one_game)) == 1
+
+
+def test_join_game_scanning_another_team_moves_the_player(
+    api_client, db_session, one_game, team_factory
+):
+    """The repair for scanning the wrong card at a crowded door."""
+    team_a, team_b = team_factory(), team_factory()
+    user_id = scanner_id(api_client)
+    signed_up(db_session, user_id, one_game)
+
+    api_client.post(
+        "/api/join_game", json={"data": make_team_join_url(one_game, team_a)}
+    )
+    moved = api_client.post(
+        "/api/join_game", json={"data": make_team_join_url(one_game, team_b)}
+    )
+
+    assert moved.is_success
+    db_session.expire_all()
+    user = db_session.get(User, user_id)
+    assert user.team_id == team_b
+    assert user.identity_slot == SLOT
+    assert len(join_messages(db_session, one_game)) == 2
+
+
+def test_join_game_team_code_of_another_game_400(
+    api_client, db_session, game_factory, one_game, one_team
+):
+    other_game = game_factory()
+    user_id = scanner_id(api_client)
+    signed_up(db_session, user_id, one_game)
+
+    response = api_client.post(
+        "/api/join_game", json={"data": make_team_join_url(other_game, one_team)}
+    )
+
+    assert response.status_code == 400
+    db_session.expire_all()
+    assert db_session.get(User, user_id).team_id is None
+
+
 # ---------------------------------------------------------------------------
 # admin_add_user_to_team slot picker
 # ---------------------------------------------------------------------------
@@ -358,6 +506,7 @@ def test_admin_add_user_to_team_without_slot(
     db_session.expire_all()
     user = db_session.get(User, user_id)
     assert user.team_id == one_team
+    assert user.game_id == one_game
     assert user.identity_slot is None
 
 
@@ -398,6 +547,13 @@ def test_admin_join_qr_codes_one_code_per_team_distinct_colours(
     body = response.json()
     assert body["team_channel"] == TEAM_CHANNEL
 
+    # The sign-up link: one per game, naming no team
+    game_code = JoinCodeModel.from_base64(body["game_url"])
+    assert game_code.validate_signature() is None
+    assert game_code.game_id == one_game
+    assert game_code.team_id is None
+    assert game_code.slot is None
+
     teams = body["teams"]
     assert {UUID(t["team_id"]) for t in teams} == {team_a, team_b}
 
@@ -411,10 +567,9 @@ def test_admin_join_qr_codes_one_code_per_team_distinct_colours(
         assert code.slot is None
 
         assert team["team_colour_hex"] == hex_for(TEAM_CHANNEL, team["team_colour"])
-        assert team["capacity"] > 0
         colours.append(team["team_colour"])
 
-    # No two teams share a hat colour
+    # No two teams share a display colour
     assert len(set(colours)) == 2
 
     # And the colours were actually pinned to the teams in the database
@@ -653,6 +808,24 @@ def test_admin_delete_game(
     assert db_session.query(Shot).filter_by(game_id=one_game).count() == 0
     assert db_session.get(Item, item.id) is None
     assert db_session.query(TickerEntry).filter_by(game_id=one_game).count() == 0
+
+
+def test_admin_delete_game_removes_players_who_never_joined_a_team(
+    admin_api_client, db_session, one_game, user_factory
+):
+    """A sign-up with no team (roadmap R15) belongs to no team's cascade."""
+    user_id = user_factory()
+    user = db_session.get(User, user_id)
+    user.game_id = one_game
+    user.identity_slot = SLOT
+    db_session.commit()
+
+    response = admin_api_client.post(f"/api/admin_delete_game?game_id={one_game}")
+    assert response.is_success
+
+    db_session.expire_all()
+    assert db_session.get(Game, one_game) is None
+    assert db_session.get(User, user_id) is None
 
 
 def test_admin_delete_game_unknown_404(admin_api_client, db_session):

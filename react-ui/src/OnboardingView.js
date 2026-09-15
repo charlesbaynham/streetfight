@@ -235,17 +235,19 @@ function OnboardingView({ user }) {
         />,
       );
 
-    const outfit =
-      user.identity_slot !== null && user.identity_slot !== undefined
-        ? ` — outfit #${user.identity_slot}`
-        : "";
+    const hasOutfit =
+      user.identity_slot !== null && user.identity_slot !== undefined;
+    const outfit = hasOutfit ? ` — outfit #${user.identity_slot}` : "";
 
+    // Teams are scanned in at the door (roadmap R15): a player who signed
+    // up through the game link arrives here with an outfit and no team.
     if (locationStepDone)
       actionItems.push(
         <ActionItem
           text={
             !teamName
-              ? "Scan your team's join QR code with your camera app..."
+              ? (hasOutfit ? "Outfit picked. " : "") +
+                "At the door, scan a team's QR code with your camera app to join a team..."
               : `You are in team "${teamName}"` + outfit
           }
           done={inTeam}

@@ -20,11 +20,10 @@ import {
 
 function makeJoinData(overrides = {}) {
   return {
+    game_id: "game-1",
     team_id: "team-1",
     team_name: "Reds",
-    team_colour: "burgundy",
-    team_channel: "hat",
-    provided_channel: "armbands",
+    provided_channels: ["hat", "armbands"],
     wardrobe_channels: ["tshirt", "trousers"],
     channels: [
       {
@@ -679,6 +678,69 @@ test("a locked-in player can go to the game before it starts", async () => {
   await actAndFlush(() => userEvent.click(button));
 
   expect(currentURL()).toBe("/");
+});
+
+test("the sign-up link names no team and says the team comes at the door", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      team_id: null,
+      team_name: null,
+      you: makeYou({ team_name: null }),
+    }),
+  });
+
+  renderPickOutfit();
+
+  expect(
+    await screen.findByRole("heading", { name: "Sign up" }),
+  ).toBeInTheDocument();
+  expect(screen.queryByText(/Team /)).not.toBeInTheDocument();
+  expect(
+    screen.getByText(/We'll hand you a hat and armbands on the night/),
+  ).toBeInTheDocument();
+});
+
+test("a player signed up with no team is told to scan a team code at the door", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      team_id: null,
+      team_name: null,
+      you: makeYou({
+        team_name: null,
+        slot: 3,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+    user_info: () => ({ active: false }),
+  });
+
+  renderPickOutfit();
+
+  expect(
+    await screen.findByText(/scan a team code at the door/),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Go to the game" }),
+  ).toBeInTheDocument();
+});
+
+test("a player who picked through a team code is not told to scan another", async () => {
+  installFetchMock({
+    join_options: makeJoinData({
+      you: makeYou({
+        slot: 3,
+        effective_appearance: makeOption().appearance,
+      }),
+    }),
+    user_info: () => ({ active: false }),
+  });
+
+  renderPickOutfit();
+
+  await screen.findByText("Locked in - please screenshot this page!");
+  expect(
+    screen.queryByText(/scan a team code at the door/),
+  ).not.toBeInTheDocument();
 });
 
 test("another team's link, tapped after picking, names the team already joined", async () => {

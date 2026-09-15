@@ -1,12 +1,24 @@
 """Materialise the cast into a database, through the real picking code.
 
 Nothing here shortcuts the game's own logic. Teams are made with
-``AdminInterface``, their hat colours are pinned by the real
-``build_join_codes``, and every player picks an outfit through
-``join_options`` -> ``outfit_options_page`` -> ``pick_outfit`` exactly as a
-phone would. That is the point: a fixture that wrote rows straight into the
+``AdminInterface``, their display colours are pinned by the real
+``build_join_codes`` (they were the team's hat colour until roadmap R15 freed
+the hat; now they only colour the spectator screen), and every player picks an
+outfit through ``join_options`` -> ``outfit_options_page`` -> ``pick_outfit``
+exactly as a phone would. That is the point: a fixture that wrote rows straight into the
 tables would not exercise the allocator, and the allocator is one of the
 things a thirty-player game is meant to test.
+
+**Since R15 (2026-09-15) the hat is free**, so the allocator draws every pick
+from a wider set and this cast comes out dressed differently from the committed
+``data/world.json`` and the photographs generated against it. That is
+deliberately *not* pinned back: the fixture's whole value is that it picks
+through the real allocator, so it follows the allocator rather than freezing an
+answer the game no longer gives. The world and its images want regenerating
+with the ``regenerate-test-world-images`` skill -- expect a whole-cast
+re-clothing rather than a few images, so dry-run ``generate`` first. Until that
+run lands, ``python -m backend.test_world check`` fails, and that failure is
+this change rather than a bug.
 
 The three picking behaviours are the plan's, and they differ only in what the
 player claims to own:

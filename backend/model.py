@@ -261,11 +261,13 @@ class Team(Base):
     users = relationship("User", lazy=True, back_populates="team")
     shots = relationship("Shot", lazy=True, back_populates="team")
 
-    # The label this team wears in TEAM_CHANNEL, pinned the first time its
-    # join code is generated. Stored rather than derived: it used to be
-    # re-derived from allocate_team_slots(scheme, len(teams), slots_per_team,
-    # ...) on every call, so adding a new team silently re-coloured every
-    # team that had already picked. None until a join code has been built.
+    # A display colour for the team - the spectator screen's dots and roster
+    # (react-ui/src/SpectatorView.js) - drawn from TEAM_CHANNEL's palette and
+    # pinned the first time the game's join codes are generated. It used to be
+    # the hat colour every member of the team wore; since the sign-up rework
+    # (roadmap R15) the hat is chosen per player by the allocator and this
+    # constrains nobody's outfit. Stored rather than derived so that adding a
+    # team never re-colours the others. None until join codes have been built.
     identity_colour = Column(String, nullable=True)
 
 
@@ -297,6 +299,15 @@ class User(Base):
     time_created = Column(DateTime, server_default=func.now())
     last_seen = Column(DateTime, default=func.now())
     name = Column(String)
+
+    # A player belongs to a game before they belong to a team (roadmap R15):
+    # signing up through the game-wide join link claims an outfit in the game
+    # with no team at all, and the team is scanned in at the door on the
+    # night. Every writer that sets team_id sets this to the team's game too,
+    # so the two never disagree; a player with a game and no team is one who
+    # has signed up but not yet arrived.
+    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=True, index=True)
+    game = relationship("Game", lazy="joined", foreign_keys=game_id)
 
     team_id = Column(UUIDType, ForeignKey("teams.id"))
     team = relationship(
@@ -366,13 +377,6 @@ class User(Base):
             return False
 
         return self.team.game.active
-
-    @property
-    def game_id(self) -> Optional[UUID]:
-        if not self.team:
-            return None
-
-        return self.team.game.id
 
     @classmethod
     def calculate_state(cls, team, hit_points, time_of_death):
@@ -536,7 +540,8 @@ class UserModel(pydantic.BaseModel):
     location_timestamp: Optional[float] = None
     location_accuracy: Optional[float] = None
 
-    # These are retrieved from the Game associated with the Team this user is in
+    # The game the player signed up to - set before, and independently of,
+    # team_id (see User.game_id)
     game_id: Optional[UUID] = None
     active: bool
     state: UserState

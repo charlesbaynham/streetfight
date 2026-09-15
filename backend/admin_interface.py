@@ -355,6 +355,10 @@ class AdminInterface:
         return TeamModel.model_validate(self._get_team_orm(team_id))
 
     @db_scoped
+    def get_game_model(self, game_id: UUID) -> GameModel:
+        return GameModel.model_validate(self._get_game_orm(game_id))
+
+    @db_scoped
     def get_teams_for_game(self, game_id: UUID) -> List[TeamModel]:
         """Teams of a game, oldest first (with id as a same-second tiebreak) -
         a stable order for the join-code partition. 404s if the game doesn't
@@ -372,16 +376,18 @@ class AdminInterface:
 
     @db_scoped
     def get_users_for_game(self, game_id: UUID) -> List[UserModel]:
-        """Every user on a team belonging to ``game_id``. 404s if the game
-        doesn't exist. Used by the identity admin report/suggest logic
+        """Every user in ``game_id`` - in a team or not: a player who signed
+        up through the game link and has not scanned a team in yet is still
+        on the roster, and still holds an outfit. 404s if the game doesn't
+        exist. Used by the identity admin report/suggest logic
         (backend/identity_admin.py), which needs the whole game's roster to
-        compute pairwise distances and slot uniqueness.
+        compute pairwise distances and slot uniqueness, and by shot
+        identification, which filters the team-less out itself
+        (``shot_identification.rank_candidates``).
         """
         self._get_game_orm(game_id)  # 404 if the game doesn't exist
 
-        users = (
-            self._session.query(User).join(Team).filter(Team.game_id == game_id).all()
-        )
+        users = self._session.query(User).filter(User.game_id == game_id).all()
         return [UserModel.model_validate(u) for u in users]
 
     @db_scoped
@@ -570,6 +576,11 @@ class AdminInterface:
 
         for team in list(game.teams):
             self.delete_team(team.id)
+
+        # Signed up but never scanned a team in (roadmap R15): no team owns
+        # them, so the cascade above never reaches them.
+        for user in self._session.query(User).filter_by(game_id=game_id).all():
+            self.delete_user(user.id)
 
         for item in self._session.query(Item).filter_by(game_id=game_id).all():
             self._session.delete(item)
@@ -941,8 +952,8 @@ class AdminInterface:
                 User.identity_slot,
                 User.identity_overrides,
             )
-            .join(Team, User.team_id == Team.id)
-            .filter(Team.game_id == game_id)
+            .outerjoin(Team, User.team_id == Team.id)
+            .filter(User.game_id == game_id)
             .order_by(Team.name, User.name)
             .all()
         )
@@ -1137,6 +1148,8 @@ class AdminInterface:
 
         if survivor.name is None and stray.name is not None:
             survivor.name = stray.name
+        if survivor.game_id is None and stray.game_id is not None:
+            survivor.game_id = stray.game_id
         if survivor.identity_slot is None and stray.identity_slot is not None:
             survivor.identity_slot = stray.identity_slot
         if survivor.identity_overrides is None and stray.identity_overrides is not None:
@@ -1170,6 +1183,7 @@ class AdminInterface:
         if survivor.team_id is None and stray.team_id is not None:
             team = stray.team
             stray.team = None
+            survivor.game_id = team.game_id
             team.users.append(survivor)
             tk.send_ticker_message(
                 tk.TickerMessageType.USER_JOINED_TEAM,
