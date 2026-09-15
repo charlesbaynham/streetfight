@@ -90,7 +90,9 @@ load_env_vars()
 setup_logging()
 
 from . import ai_shot_review
+from . import generate_pub_pages
 from . import image_processing
+from . import printables
 from . import reference_photos
 from . import shot_auto_actions
 from . import shot_escalation
@@ -1278,10 +1280,70 @@ async def admin_team_cards_pdf(game_id: UUID):
     pdf = team_cards.render_pdf(
         [(team["team_name"], team["encoded_url"]) for team in codes["teams"]]
     )
+    return _pdf_response(pdf, "team_cards.pdf")
+
+
+# The other two printables (backend/printables.py). POST rather than GET
+# because each call *mints fresh codes* and records them: a link a browser is
+# free to prefetch would put phantom batches in qr_codes.csv and hand the
+# admin a sheet that is not the one the log describes. The team cards above
+# re-render the codes a game already has, so they stay a plain download link.
+
+
+@admin_method(path="/admin_item_sheets_pdf", method="POST")
+async def admin_item_sheets_pdf(
+    itype: str,
+    num: int,
+    sheets: int = 1,
+    damage: int = 1,
+    timeout: float = 6,
+    collected_only_once: bool = True,
+    collected_as_team: bool = False,
+    tag: str = "",
+):
+    """The drop cards: sheets of eight item codes, to be cut up and hidden."""
+    logger.info("admin_item_sheets_pdf - %s", locals())
+
+    try:
+        pdf = printables.item_sheets_pdf(
+            itype,
+            num,
+            sheets=sheets,
+            damage=damage,
+            timeout=timeout,
+            collected_only_once=collected_only_once,
+            collected_as_team=collected_as_team,
+            tag=tag,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, f"item_cards_{itype}.pdf")
+
+
+@admin_method(path="/admin_pub_pages_pdf", method="POST")
+async def admin_pub_pages_pdf(
+    count: int,
+    num_bullets: int = generate_pub_pages.BULLETS_PER_TEAM_MEMBER,
+    tag: str = "pub",
+):
+    """The pub certificates: one A4 poster per pub, each a team-wide ammo
+    code the first team to scan it collects for everybody."""
+    logger.info("admin_pub_pages_pdf - %s", locals())
+
+    try:
+        pdf = printables.pub_pages_pdf(count, num_bullets=num_bullets, tag=tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, "pub_pages.pdf")
+
+
+def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(
         content=pdf,
         media_type="application/pdf",
-        headers={"Content-Disposition": 'attachment; filename="team_cards.pdf"'},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

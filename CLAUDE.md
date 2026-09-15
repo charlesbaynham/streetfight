@@ -209,6 +209,22 @@ Four things from it that are worth knowing even if you never call the agent:
     `QR_POCKET` is the one gap a readable code fits in without covering the
     handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
     a re-drawn picture fails a test rather than a print run.
+  - `printables.py` — the printables the admin page builds on demand
+    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets
+    and the pub certificates, from the *same* functions the two CLIs call, so
+    a sheet printed from a phone and one printed from a terminal are the same
+    sheet. The reason it exists is the signature: a code is signed with the
+    `SECRET_KEY` that minted it and carries that machine's `WEBSITE_URL`, so a
+    run done from a checkout whose `.env` has drifted is a stack of paper
+    nobody at the party can scan, and the failure only shows up when somebody
+    in a pub points a phone at it. Building them in the server makes both
+    right by construction. Its two endpoints are **POST**, unlike the team
+    cards' GET, because each call mints *fresh* codes and records them in
+    `qr_codes.csv`: a link a browser is free to prefetch would put phantom
+    batches in the log and hand the admin a sheet the log does not describe.
+    That log sits beside the source tree, which on a deployment is a read-only
+    Nix store path, so failing to write it is a warning rather than a lost
+    print run.
   - `team_cards.py` — the **team** cards (roadmap R15): one A4 portrait page
     per team, a Ministry of War "notice of conscription" carrying that team's
     door code, which players scan on the night to join a team. Same toolchain
@@ -355,6 +371,11 @@ Four things from it that are worth knowing even if you never call the agent:
     own shots is ruled on - seeded silently from the first list it sees, so a
     reload replays nothing. Those `.wav`s were synthesised (numpy → `wave`),
     so replacing one is just dropping a better file over it.
+    `AdminPrintables.js` (route `/admin/printables`) is everything that gets
+    printed, in one page: team cards, pub certificates and drop-card sheets,
+    each a panel with its own controls and one big button. The two panels that
+    mint codes say above the button how many a press mints, since a second
+    press is a second set rather than a re-download of the first.
     `ReferencePhotos.js` (route `/admin/reference`, with the player being
     checked at `/admin/reference/<user id>` and the game in `?game=`) is the
     door kit-check page

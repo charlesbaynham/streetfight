@@ -1,0 +1,99 @@
+/* One column of big targets, following ReferencePhotos.module.css: this is
+   worked on a phone next to a printer, not at a desk. Status tones match
+   AdminIdentity.module.css so a success and a failure read the same across
+   the admin pages. */
+
+.panel {
+  border: 1px solid #adb5bd;
+  border-radius: 0.5em;
+  background: #f8f9fa;
+  padding: 0.8em;
+  margin: 0.8em 0;
+}
+
+.panelTitle {
+  margin: 0 0 0.2em 0;
+}
+
+.blurb {
+  color: #444;
+  margin-bottom: 0.6em;
+}
+
+.hint {
+  color: #666;
+  font-size: 0.85em;
+}
+
+.warning {
+  background: #fdf3d8;
+  border: 1px solid #d9a441;
+  border-radius: 0.4em;
+  padding: 0.4em 0.6em;
+  margin: 0.6em 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0.6em;
+}
+
+.fieldLabel {
+  font-weight: 600;
+}
+
+.input {
+  min-height: 2.6em;
+  padding: 0.3em 0.5em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.4em;
+  background: white;
+}
+
+.toggle {
+  display: block;
+  min-height: 2.4em;
+  margin-bottom: 0.3em;
+}
+
+/* The primary action: comfortably past the 44px touch minimum, because it is
+   pressed one-handed. */
+.action {
+  display: block;
+  width: 100%;
+  min-height: 3.5em;
+  margin-top: 0.4em;
+  border: 1px solid #2f6f3e;
+  border-radius: 0.5em;
+  background: #d6f5df;
+  font-weight: bold;
+}
+
+.action:disabled {
+  background: #eeeeee;
+  border-color: #aaaaaa;
+  color: #777;
+}
+
+.status {
+  display: inline-block;
+  margin-top: 0.5em;
+  padding: 0.15em 0.6em;
+  border-radius: 1em;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+  font-size: 0.85em;
+}
+
+.statusGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  font-weight: bold;
+}
+
+.statusBad {
+  background: #fbdddd;
+  border-color: #c0392b;
+  font-weight: bold;
+}

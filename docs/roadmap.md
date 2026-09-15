@@ -803,7 +803,9 @@ and the Millbank government blocks are most of the eastern half.
 1. **Drop codes** for the new locations (#7) — existing tooling:
    `backend/generate_qr_items.py` plus the templates in
    `backend/image_templates/`. Add the "this is a game, ring this number" line
-   from #7 to the template.
+   from #7 to the template. Since 15 Sept the same sheets can be minted from
+   the admin's **Printables** page (`/admin/printables`) instead of the CLI,
+   which is how to get them signed by the box the game runs on.
 2. **Pub handouts** (#6) — **tooling shipped 12 Sept**:
    `backend/generate_pub_pages.py` (`npm run pubgen -- --count 19`) writes a
    PDF of portrait A4 posters, one page and one code per pub, reusing the
@@ -817,6 +819,12 @@ and the Millbank government blocks are most of the eastern half.
    `DATABASE_URL` at a throwaway sqlite file while doing it — the generator
    opens whatever it is given, and mints nothing into it), and print **at
    actual size** rather than "fit to page", which shrinks the QR.
+
+   The signature half of that is now answered by construction: the admin's
+   **Printables** page (`/admin/printables`, `backend/printables.py`) builds
+   the same PDF on the running server, so the codes carry that deployment's
+   `SECRET_KEY` and `WEBSITE_URL` whatever is in the .env of whoever is
+   printing. The CLI still works for a run done from a checkout.
 3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
    their join code. Each player already knows this, having picked it via
    `/pick`; the print step reads it off each player's picked
@@ -826,7 +834,7 @@ and the Millbank government blocks are most of the eastern half.
 
 4. **Team cards** (R15, shipped 15 Sept) - `backend/team_cards.py` via
    `GET /admin_team_cards_pdf?game_id=`, downloaded from the admin's
-   `JoinQRCodes.js`: one A4 portrait page per team, drawn as a Ministry of War
+   `JoinQRCodes.js` or the **Printables** page: one A4 portrait page per team, drawn as a Ministry of War
    notice of conscription, carrying that team's door code. These are what
    turns a signed-up player into a member of a team on the night, so one per
    team is the minimum and a spare each is cheap.

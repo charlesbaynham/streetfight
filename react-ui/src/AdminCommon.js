@@ -17,11 +17,13 @@ export function adminPost(endpoint, params, callback = null) {
   return sendAPIRequest(endpoint, params, "POST", callback);
 }
 
-// POST wrapper for admin actions whose response body is a file rather than
-// JSON. Saves the response as a normal browser download; failures show up in
-// the AdminErrorLog box like any other admin request.
-export function adminDownload(endpoint, params, filename) {
-  return sendAPIRequest(endpoint, params, "POST").then(async (response) => {
+// Wrapper for admin actions whose response body is a file rather than JSON.
+// Saves the response as a normal browser download; failures show up in the
+// AdminErrorLog box like any other admin request. POST by default, since most
+// of these build something: a GET a browser is free to prefetch is only safe
+// for a download with no side effects.
+export function adminDownload(endpoint, params, filename, method = "POST") {
+  return sendAPIRequest(endpoint, params, method).then(async (response) => {
     if (!response.ok) return response;
 
     const blob = await response.blob();
@@ -180,6 +182,7 @@ export function AdminNav() {
         Reference photos
       </AdminNavLink>
       <AdminNavLink to="/admin/spectator">Spectator screen</AdminNavLink>
+      <AdminNavLink to="/admin/printables">Printables</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">
         Identity overrides
