@@ -348,6 +348,7 @@ export function makeUser(overrides = {}) {
     shot_timeout: 6,
     identity_slot: null,
     outfit_wardrobe: null,
+    outfit_provided: null,
     ...overrides,
   };
 }

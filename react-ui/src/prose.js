@@ -172,9 +172,19 @@ const prose = {
     compassPermission: "Grant compass permission:",
     // Lowercase, unlike pickOutfit.channelDisplayNames - this reads as part
     // of a sentence ("white t-shirt"), not a fieldset legend.
-    garmentNames: { tshirt: "t-shirt" },
+    garmentNames: { tshirt: "t-shirt", armbands: "armband" },
     outfitNotChosen: "Outfit not chosen",
     outfitChosen: (summary) => <>Outfit: {summary}</>,
+    // The hat and armband, said the way they are handed over - "at the door"
+    // and not "provided", since that is where and when the player meets them.
+    // The label is its own entry so a test can find the row by it without
+    // copying the words out of here.
+    doorKitLabel: "At the door:",
+    outfitProvided: (summary) => (
+      <>
+        {prose.onboardingView.doorKitLabel} {summary}
+      </>
+    ),
     joinTeamPrompt: (hasOutfit) =>
       (hasOutfit ? "Outfit picked. " : "") +
       "Join a team by scanning the QR code on the night...",

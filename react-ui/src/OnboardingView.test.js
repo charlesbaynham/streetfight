@@ -24,11 +24,16 @@ function soloUser(overrides = {}) {
   return makeUser({ team_id: null, team_name: null, ...overrides });
 }
 
-// The shape /user_info's outfit_wardrobe comes back in - see
-// backend.user_interface._wardrobe_appearance.
+// The shape /user_info's outfit_wardrobe and outfit_provided come back in -
+// see backend.user_interface._outfit_appearance.
 const WHITE_GREEN_OUTFIT = {
   tshirt: { colour: "white", hex: "#ffffff" },
   trousers: { colour: "green", hex: "#3f7d3f" },
+};
+
+const NAVY_LIME_KIT = {
+  hat: { colour: "navy", hex: "#1b2a4a" },
+  armbands: { colour: "lime", hex: "#a6d63c" },
 };
 
 // OnboardingView checks permissions on mount via two `.then()`-chained async
@@ -171,6 +176,38 @@ test("once an outfit is picked, the outfit step shows a done checkmark and the g
     "Outfit: white t-shirt & green trousers",
   );
   expect(isDone("Outfit:")).toBe(true);
+});
+
+// The hat and armband are handed over at the door, so the player can't see
+// them anywhere else until they arrive - the front page is where they wait.
+test("the hat and armband are named and swatched on a row of their own", async () => {
+  await renderOnboarding(
+    soloUser({
+      name: "Bob",
+      outfit_wardrobe: WHITE_GREEN_OUTFIT,
+      outfit_provided: NAVY_LIME_KIT,
+    }),
+  );
+
+  const button = stepButton(prose.onboardingView.doorKitLabel);
+  const text = button.textContent.replace(/\s+/g, " ").trim();
+  expect(text).toContain("navy hat");
+  // "armband", not the channel name "armbands" the database spells it with.
+  expect(text).toContain(`lime ${prose.onboardingView.garmentNames.armbands}`);
+  expect(within(button).getByTitle("navy")).toHaveStyle({
+    background: "#1b2a4a",
+  });
+  expect(within(button).getByTitle("lime")).toHaveStyle({
+    background: "#a6d63c",
+  });
+});
+
+test("with no outfit claimed there is no door-kit row to show", async () => {
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  expect(
+    screen.queryByText(prose.onboardingView.doorKitLabel),
+  ).not.toBeInTheDocument();
 });
 
 test("the outfit step shows a colour swatch for each garment, like the outfit picker", async () => {

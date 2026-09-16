@@ -193,13 +193,19 @@ def appeal_refusal(shot: Shot, user: User, party: str) -> Optional[str]:
     return None
 
 
-def _wardrobe_appearance(user: User) -> Optional[dict]:
-    """``{channel_name: {"colour", "hex"}}`` for the garments a player
-    supplies themselves -- everything except the hat and armband handed out
-    at the door (``TEAM_CHANNEL`` / ``PROVIDED_CHANNEL``) -- decoded from
-    their identity slot plus any overrides. ``None`` until an outfit is
+def _outfit_appearance(user: User) -> Tuple[Optional[dict], Optional[dict]]:
+    """``{channel_name: {"colour", "hex"}}`` twice over: the garments a player
+    supplies themselves, then the hat and armband we hand them at the door
+    (``TEAM_CHANNEL`` / ``PROVIDED_CHANNEL``), both decoded from their
+    identity slot plus any overrides. ``(None, None)`` until an outfit is
     picked. The hex rides along so the front page can draw a swatch without
     a second round trip for the palette.
+
+    The split is kept because the two halves ask different things of the
+    player -- one is what they must turn up wearing, the other is what to
+    expect to be handed -- but both are theirs to know: since R15 the hat is
+    allocated per player rather than pinned to their team, so nothing else
+    on the front page tells them what colours are coming.
 
     Mirrors ``identity_admin.appearance_payload``'s decode, but stays down
     here in the pure ``backend.identity`` package rather than importing
@@ -208,22 +214,25 @@ def _wardrobe_appearance(user: User) -> Optional[dict]:
     of call that would trip the cycle.
     """
     if user.identity_slot is None:
-        return None
+        return None, None
     scheme = default_scheme()
     overrides = json.loads(user.identity_overrides) if user.identity_overrides else {}
     codeword = scheme.codeword_of_slot(user.identity_slot)
     word = effective_word(codeword, overrides, scheme.channels)
-    provided = {TEAM_CHANNEL, PROVIDED_CHANNEL}
+    at_the_door = {TEAM_CHANNEL, PROVIDED_CHANNEL}
     wardrobe = {}
+    provided = {}
     for channel, symbol in zip(scheme.channels, word):
-        if channel.name in provided or symbol is None:
+        if symbol is None:
             continue
         colour = channel.index_to_label(symbol)
-        wardrobe[channel.name] = {
+        garment = {
             "colour": colour,
             "hex": hex_for(channel.name, colour),
         }
-    return wardrobe
+        target = provided if channel.name in at_the_door else wardrobe
+        target[channel.name] = garment
+    return wardrobe, provided
 
 
 def touch_user(user_interface: "UserInterface"):
@@ -388,7 +397,7 @@ class UserInterface:
         if not u:
             return None
         model = UserModel.model_validate(u)
-        model.outfit_wardrobe = _wardrobe_appearance(u)
+        model.outfit_wardrobe, model.outfit_provided = _outfit_appearance(u)
         return model
 
     @db_scoped
