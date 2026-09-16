@@ -374,8 +374,9 @@ Four things from it that are worth knowing even if you never call the agent:
     other two, with every player whose overrides put them *off* a codeword
     marked in orange on the unlit cell they actually occupy (anonymously —
     it is the whole roster) and a dotted crosshair through the reader's own. That endpoint also carries the reader's *own* outfit — the
-    only place in the app that tells a player which hat and armband they will
-    be handed — and their three nearest neighbours, **named** and labelled on
+    hat and armband included, as the waiting page does
+    (`OnboardingView.js`'s "At the door" row, from `/user_info`'s
+    `outfit_provided`) — and their three nearest neighbours, **named** and labelled on
     the grid: knowing who you could be mistaken for is the part of the scheme
     a player can act on. Note that half of any codeword's neighbours sit at
     exactly the minimum distance (24 of the other 48), so those three are a
@@ -1035,6 +1036,16 @@ Three deployment targets share one service definition:
   puts them inside that channel's question rather than in one shared list. Keep
   the two in step — identification scores what the player said against what the
   model said, so they must mean the same thing by a colour name.
+- **A channel is a part of the body, not a dress code.** The same argument one
+  rung up: `tshirt` means whatever is on the torso and `trousers` whatever is on
+  the legs, so a player in a skirt still answers the trousers question and a
+  player in a dress answers both with the one colour. `/pick` says so in its
+  labels (`prose.pickOutfit.channelDisplayNames`), and both vision prompts say
+  so through `shot_vision.ONE_PIECE_CLAUSE` — the cheap pass in its channel
+  descriptions and beneath the questions, the escalation
+  (`shot_escalation.build_escalation_prompt`) beside the candidate list, whose
+  outfits are printed in those same channel names. Reword one and reword the
+  others.
 - **No channel is spent on the team** (roadmap R15, 2026-09-15). The hat used
   to be pinned per team so players could read friend from foe at thirty metres;
   that meant teams had to be allocated before anybody could pick an outfit,

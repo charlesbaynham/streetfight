@@ -128,12 +128,12 @@ function NameEntry({ user, className, onNameSet = null }) {
 export { NameEntry };
 
 // A swatch (same component the colour picker uses) beside each garment,
-// e.g. [🟩] "white t-shirt" & [🟢] "green trousers" - just the garments the
-// player supplies themselves (identity_admin's wardrobe channels); the hat
-// and armband are handed out at the door, so naming them here would describe
-// kit the player has no say over.
-function OutfitSummary({ wardrobe }) {
-  return Object.entries(wardrobe).map(([channel, { colour, hex }], i) => (
+// e.g. [🟩] "white t-shirt" & [🟢] "green trousers". Both halves of an outfit
+// are drawn with it: the garments the player supplies themselves
+// (identity_admin's wardrobe channels) and the hat and armband we hand out at
+// the door, which get a row each - see getActionItems.
+function OutfitSummary({ garments }) {
+  return Object.entries(garments).map(([channel, { colour, hex }], i) => (
     <span key={channel} className={styles.outfitGarment}>
       {i > 0 ? " & " : ""}
       <Swatch hex={hex} label={colour} size="large" />
@@ -182,6 +182,8 @@ function OnboardingView({ user }) {
     const inTeam = user.team_name !== null;
     const teamName = user.team_name;
     const hasOutfit = !!user.outfit_wardrobe;
+    const hasProvided =
+      !!user.outfit_provided && Object.keys(user.outfit_provided).length > 0;
 
     const actionItems = [<NameEntry user={user} key={"name"} />];
 
@@ -191,7 +193,7 @@ function OnboardingView({ user }) {
           text={
             hasOutfit
               ? prose.onboardingView.outfitChosen(
-                  <OutfitSummary wardrobe={user.outfit_wardrobe} />,
+                  <OutfitSummary garments={user.outfit_wardrobe} />,
                 )
               : prose.onboardingView.outfitNotChosen
           }
@@ -200,6 +202,25 @@ function OnboardingView({ user }) {
           key={"outfit"}
         />,
       );
+      // The hat and armband, which we hand over at the door rather than
+      // leave to the player's own wardrobe. A row of its own, because a row
+      // is a fixed height with its text centred in it and a second line
+      // inside the outfit row above would overflow it; and nothing to do on
+      // it, because there is nothing to do but know. Worth saying at all
+      // because since R15 the hat is allocated per player rather than pinned
+      // to their team, so this and the essay are the only places a player is
+      // told which colours are coming.
+      if (hasProvided)
+        actionItems.push(
+          <ActionItem
+            text={prose.onboardingView.outfitProvided(
+              <OutfitSummary garments={user.outfit_provided} />,
+            )}
+            done={true}
+            doable={false}
+            key={"provided"}
+          />,
+        );
       actionItems.push(
         <ActionItem
           text={prose.onboardingView.webcamPermission}

@@ -142,7 +142,9 @@ def test_user_in_team(user_in_team):
 
 
 def test_outfit_wardrobe_is_none_before_an_outfit_is_picked(user_in_team):
-    assert UserInterface(user_in_team).get_user_model().outfit_wardrobe is None
+    model = UserInterface(user_in_team).get_user_model()
+    assert model.outfit_wardrobe is None
+    assert model.outfit_provided is None
 
 
 def test_outfit_wardrobe_reports_the_players_own_garments(user_in_team, db_session):
@@ -159,9 +161,28 @@ def test_outfit_wardrobe_reports_the_players_own_garments(user_in_team, db_sessi
     }
     # The hat and armband are handed out at the door, not chosen by the
     # player, so they're excluded even though the slot names a colour for
-    # them too.
+    # them too - they ride along separately (see below).
     assert TEAM_CHANNEL not in wardrobe
     assert PROVIDED_CHANNEL not in wardrobe
+
+
+def test_outfit_provided_reports_the_kit_handed_over_at_the_door(
+    user_in_team, db_session
+):
+    """The front page has to tell a waiting player which hat and armband are
+    coming: since R15 they are allocated per player rather than pinned to the
+    team, so nothing else on that screen says."""
+    db_session.query(User).filter_by(id=user_in_team).update({"identity_slot": SLOT_A})
+    db_session.commit()
+
+    provided = UserInterface(user_in_team).get_user_model().outfit_provided
+
+    canonical = SCHEME.appearance_of_slot(SLOT_A)
+    assert provided == {
+        name: {"colour": colour, "hex": hex_for(name, colour)}
+        for name, colour in canonical.items()
+        if name in (TEAM_CHANNEL, PROVIDED_CHANNEL)
+    }
 
 
 # -- who the AI thinks the shooter shot -------------------------------------

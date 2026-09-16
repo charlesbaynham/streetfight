@@ -154,6 +154,24 @@ def test_prompt_says_where_the_armbands_are_and_how_big():
     assert "5-10 cm" in section
 
 
+def test_prompt_asks_about_the_body_not_the_garment():
+    """A player in a dress picks one colour for both halves of themselves.
+
+    /pick asks for "T-shirt / top" and "Trousers / shorts / skirt", so a white
+    dress is declared as a white top and a white bottom. The model has to read
+    it the same way, or the two garments it names disagree with the two the
+    player claimed and identification scores the outfit against the wrong word.
+    """
+    prompt = sv.build_prompt()
+    tshirt = prompt.split("tshirt (")[1].split("Can you clearly")[0]
+    trousers = prompt.split("trousers (")[1].split("Can you clearly")[0]
+
+    assert "torso" in tshirt
+    assert "legs" in trousers
+    assert "skirt" in trousers
+    assert sv.ONE_PIECE_CLAUSE in prompt
+
+
 # -- parsing ----------------------------------------------------------------
 
 

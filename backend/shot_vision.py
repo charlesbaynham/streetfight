@@ -117,11 +117,33 @@ ARMBANDS_PLACEMENT = (
     "sometimes pushed down onto the forearms"
 )
 
+# The two garments the player supplies themselves, so the question is about a
+# part of the body rather than a dress code -- somebody in a skirt still has a
+# "trousers" colour. Players are asked in the same terms on /pick
+# (prose.pickOutfit.channelDisplayNames: "T-shirt / top", "Trousers / shorts /
+# skirt"), and identification scores what the model said against what the
+# player said, so the two have to mean the same thing by a channel. The worked
+# example is red because red is in both channels' palettes: an example naming a
+# colour the model is not offered for one of them undoes the point of it.
+ONE_PIECE_CLAUSE = (
+    "The tshirt and trousers questions are about the torso and the legs, not "
+    "about two separate garments. A single garment covering both -- a dress, a "
+    "robe, a jumpsuit, a coat worn down to the knees -- is the answer to both "
+    "questions: somebody in a plain red dress is wearing a red tshirt and red "
+    "trousers."
+)
+
 # Human-readable channel names for the prompt. The keys must stay in step with
 # identity.config.DEFAULT_CHANNEL_NAMES.
 CHANNEL_DESCRIPTIONS = {
-    "tshirt": "the t-shirt or top on their torso",
-    "trousers": "the trousers, jeans or shorts on their legs",
+    "tshirt": (
+        "whatever they are wearing on their torso -- a t-shirt, top, shirt, "
+        "jumper or the upper half of a dress"
+    ),
+    "trousers": (
+        "whatever they are wearing on their legs -- trousers, jeans, shorts, "
+        "a skirt or the lower half of a dress"
+    ),
     "hat": "the hat or headwear on their head",
     "armbands": f"the coloured armbands -- {ARMBANDS_PLACEMENT}",
 }
@@ -417,6 +439,8 @@ are usually other people in the frame -- passers-by who are not in the game. \
 Ignore everyone except the person the shot hit.
 
 {chr(10).join(questions)}
+
+{ONE_PIECE_CLAUSE}
 
 Answering "{UNKNOWN}" is a correct and useful answer. It is much better than a \
 guess: a wrong colour is worse than no colour. Give each answer a confidence \

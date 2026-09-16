@@ -171,6 +171,10 @@ async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
     # The reference photos share backdrops by accident of where they were
     # taken, so the prompt says the backdrop means nothing either way.
     assert shot_escalation.REFERENCE_BACKGROUND_CLAUSE in prompt
+    # A candidate in a dress is listed as a tshirt colour and a trousers
+    # colour, which only matches the photograph if the model reads those two
+    # as the torso and the legs rather than as two separate garments.
+    assert shot_vision.ONE_PIECE_CLAUSE in prompt
 
 
 @pytest.mark.asyncio
