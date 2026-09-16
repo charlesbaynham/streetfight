@@ -7,7 +7,10 @@ from fastapi.exceptions import HTTPException
 from backend import shot_escalation
 from backend import shot_vision
 from backend.admin_interface import AdminInterface
+from backend.identity.config import PROVIDED_CHANNEL
+from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
+from backend.identity.config import hex_for
 from backend.model import User
 from backend.user_interface import UserInterface
 
@@ -136,6 +139,29 @@ def test_can_give_multiple_ammo(user_in_team):
 
 def test_user_in_team(user_in_team):
     assert UserInterface(user_in_team).get_user_model().team_id is not None
+
+
+def test_outfit_wardrobe_is_none_before_an_outfit_is_picked(user_in_team):
+    assert UserInterface(user_in_team).get_user_model().outfit_wardrobe is None
+
+
+def test_outfit_wardrobe_reports_the_players_own_garments(user_in_team, db_session):
+    db_session.query(User).filter_by(id=user_in_team).update({"identity_slot": SLOT_A})
+    db_session.commit()
+
+    wardrobe = UserInterface(user_in_team).get_user_model().outfit_wardrobe
+
+    canonical = SCHEME.appearance_of_slot(SLOT_A)
+    assert wardrobe == {
+        name: {"colour": colour, "hex": hex_for(name, colour)}
+        for name, colour in canonical.items()
+        if name not in (TEAM_CHANNEL, PROVIDED_CHANNEL)
+    }
+    # The hat and armband are handed out at the door, not chosen by the
+    # player, so they're excluded even though the slot names a colour for
+    # them too.
+    assert TEAM_CHANNEL not in wardrobe
+    assert PROVIDED_CHANNEL not in wardrobe
 
 
 # -- who the AI thinks the shooter shot -------------------------------------

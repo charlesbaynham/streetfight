@@ -95,11 +95,6 @@ async function postJSON(endpoint, body) {
 }
 
 function Header({ joinData, showWardrobePrompt }) {
-  // The garments we hand out at the door, named so the player knows why the
-  // form below never asks about them.
-  const provided = (joinData.provided_channels || [])
-    .map((name) => channelLabel(name).toLowerCase())
-    .join(" and ");
   return (
     <div className={styles.header}>
       {/* The backend has already swapped this whole block to the team the
@@ -114,10 +109,7 @@ function Header({ joinData, showWardrobePrompt }) {
           ? p.teamHeading(joinData.team_name)
           : p.signUpHeading}
       </h1>
-      <p>
-        {p.providedNote(provided)}
-        {showWardrobePrompt ? p.wardrobePrompt : null}
-      </p>
+      {showWardrobePrompt ? <p>{p.wardrobePrompt}</p> : null}
     </div>
   );
 }

@@ -17,8 +17,10 @@ import {
   setPermission,
   makeUser,
   actAndFlush,
+  proseFragment,
 } from "./testUtils";
 import { setLocationBypass } from "./utils";
+import prose from "./prose";
 
 // WebcamView, MapView and FullscreenButton are heavy children that fight
 // jsdom (real camera/canvas access, react-zoom-pan-pinch, add-to-homescreen).
@@ -77,7 +79,7 @@ test("shows Loading... before user_info has resolved", async () => {
   // the test output.
   jest.spyOn(console, "dir").mockImplementation(() => {});
   await actAndFlush(renderUserMode);
-  expect(screen.getByText("Loading...")).toBeInTheDocument();
+  expect(screen.getByText(prose.userMode.loading)).toBeInTheDocument();
 
   await flushPendingEffects();
 });
@@ -89,11 +91,13 @@ test("shows onboarding when the player has no name, even though everything else 
 
   await waitFor(() =>
     expect(
-      screen.getByPlaceholderText("Enter your name..."),
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
     ).toBeInTheDocument(),
   );
   await flushPendingEffects();
-  expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.bulletCount.ammoLabel)),
+  ).not.toBeInTheDocument();
 });
 
 test("shows onboarding when the game is not active, even though everything else is ready", async () => {
@@ -103,11 +107,13 @@ test("shows onboarding when the game is not active, even though everything else 
 
   await waitFor(() =>
     expect(
-      screen.getByPlaceholderText("Enter your name..."),
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
     ).toBeInTheDocument(),
   );
   await flushPendingEffects();
-  expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.bulletCount.ammoLabel)),
+  ).not.toBeInTheDocument();
 });
 
 test("shows onboarding when permissions aren't granted, even though everything else is ready", async () => {
@@ -117,11 +123,13 @@ test("shows onboarding when permissions aren't granted, even though everything e
 
   await waitFor(() =>
     expect(
-      screen.getByPlaceholderText("Enter your name..."),
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
     ).toBeInTheDocument(),
   );
   await flushPendingEffects();
-  expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.bulletCount.ammoLabel)),
+  ).not.toBeInTheDocument();
 });
 
 test("shows the in-game HUD when location was bypassed instead of granted", async () => {
@@ -132,7 +140,11 @@ test("shows the in-game HUD when location was bypassed instead of granted", asyn
   installFetchMock({ user_info: readyUser(), user_shots: [] });
   await actAndFlush(renderUserMode);
 
-  await waitFor(() => expect(screen.getByText(/Ammo:/)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.getByText(proseFragment(prose.bulletCount.ammoLabel)),
+    ).toBeInTheDocument(),
+  );
   await flushPendingEffects();
 });
 
@@ -141,10 +153,16 @@ test("shows the in-game HUD for a living player once everything is satisfied", a
   installFetchMock({ user_info: readyUser(), user_shots: [] });
   await actAndFlush(renderUserMode);
 
-  await waitFor(() => expect(screen.getByText(/Ammo:/)).toBeInTheDocument());
+  await waitFor(() =>
+    expect(
+      screen.getByText(proseFragment(prose.bulletCount.ammoLabel)),
+    ).toBeInTheDocument(),
+  );
   await flushPendingEffects();
   expect(screen.getByTestId("webcam-view")).toBeInTheDocument();
-  expect(screen.getByAltText("Fire button")).toBeInTheDocument();
+  expect(
+    screen.getByAltText(prose.fireButton.fireButtonAlt),
+  ).toBeInTheDocument();
   // CrosshairImage has no alt text of its own; confirm via the fire button's
   // sibling instead - the fire button's presence already implies "alive".
   await flushPendingEffects();
@@ -169,19 +187,29 @@ test("a knocked-out player gets the knocked-out view, no fire button, and standa
   await actAndFlush(renderUserMode);
 
   await waitFor(() =>
-    expect(screen.getByText("You are knocked out")).toBeInTheDocument(),
+    expect(
+      screen.getByText(prose.guideImages.knockedOutTitle),
+    ).toBeInTheDocument(),
   );
   await flushPendingEffects();
-  expect(screen.queryByAltText("Fire button")).not.toBeInTheDocument();
-  expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByAltText(prose.fireButton.fireButtonAlt),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.bulletCount.ammoLabel)),
+  ).not.toBeInTheDocument();
 
-  const scoreboardButton = screen.getByRole("button", { name: /Show scores/ });
+  const scoreboardButton = screen.getByRole("button", {
+    name: proseFragment(prose.scoreboard.showScoresButton),
+  });
   expect(scoreboardButton.className).toMatch(/standalone/);
 
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /My shots/ }).className).toMatch(
-      /standalone/,
-    ),
+    expect(
+      screen.getByRole("button", {
+        name: proseFragment(prose.shotHistory.listTitle),
+      }).className,
+    ).toMatch(/standalone/),
   );
   // shotHistoryStore is a singleton not reset between tests; flush its
   // refreshShots() fetch fully so no update lands after this test ends.
@@ -204,19 +232,27 @@ test("a dead player gets the dead image, no fire button, and standalone scoreboa
   await actAndFlush(renderUserMode);
 
   await waitFor(() =>
-    expect(screen.getByAltText("You Died")).toBeInTheDocument(),
+    expect(screen.getByAltText(prose.guideImages.deadAlt)).toBeInTheDocument(),
   );
   await flushPendingEffects();
-  expect(screen.queryByAltText("Fire button")).not.toBeInTheDocument();
-  expect(screen.queryByText(/Ammo:/)).not.toBeInTheDocument();
+  expect(
+    screen.queryByAltText(prose.fireButton.fireButtonAlt),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.bulletCount.ammoLabel)),
+  ).not.toBeInTheDocument();
 
-  const scoreboardButton = screen.getByRole("button", { name: /Show scores/ });
+  const scoreboardButton = screen.getByRole("button", {
+    name: proseFragment(prose.scoreboard.showScoresButton),
+  });
   expect(scoreboardButton.className).toMatch(/standalone/);
 
   await waitFor(() =>
-    expect(screen.getByRole("button", { name: /My shots/ }).className).toMatch(
-      /standalone/,
-    ),
+    expect(
+      screen.getByRole("button", {
+        name: proseFragment(prose.shotHistory.listTitle),
+      }).className,
+    ).toMatch(/standalone/),
   );
   await flushPendingEffects();
 });
@@ -227,12 +263,16 @@ test("firing the fire button changes the trigger passed to the webcam view", asy
   await actAndFlush(renderUserMode);
 
   await waitFor(() =>
-    expect(screen.getByAltText("Fire button")).toBeInTheDocument(),
+    expect(
+      screen.getByAltText(prose.fireButton.fireButtonAlt),
+    ).toBeInTheDocument(),
   );
   await flushPendingEffects();
   expect(screen.getByTestId("webcam-view").dataset.trigger).toBe("0");
 
-  fireEvent.click(screen.getByAltText("Fire button").closest("button"));
+  fireEvent.click(
+    screen.getByAltText(prose.fireButton.fireButtonAlt).closest("button"),
+  );
 
   await waitFor(() =>
     expect(screen.getByTestId("webcam-view").dataset.trigger).toBe("1"),
@@ -273,7 +313,7 @@ test("permissions are rechecked every 5s, and granting them moves the player off
 
   await waitFor(() =>
     expect(
-      screen.getByPlaceholderText("Enter your name..."),
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
     ).toBeInTheDocument(),
   );
   await flushPendingEffects();
@@ -282,9 +322,15 @@ test("permissions are rechecked every 5s, and granting them moves the player off
 
   // The recheck interval fires every 5s; give waitFor plenty of virtual time
   // (it drives jest's fake timers itself) to get past that boundary.
-  await waitFor(() => expect(screen.getByText(/Ammo:/)).toBeInTheDocument(), {
-    timeout: 8000,
-  });
+  await waitFor(
+    () =>
+      expect(
+        screen.getByText(proseFragment(prose.bulletCount.ammoLabel)),
+      ).toBeInTheDocument(),
+    {
+      timeout: 8000,
+    },
+  );
 
   // Other permission-recheck rounds may still be settling (in-flight from
   // before permissions were granted); flush them before the test ends.

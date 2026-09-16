@@ -2,6 +2,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 
 import { VenueMapView } from "./MapView";
 import { mapGeometry } from "./venue";
+import prose from "./prose";
 
 // The venue used to derive a real geometry object - same shape as
 // ShotMap.test.js's fixture, since VenueMapView just wants whatever
@@ -41,13 +42,15 @@ test("tapping the corner map pops it out", () => {
   renderMap({ onExpandedChange });
 
   expect(
-    screen.queryByRole("button", { name: "Close map" }),
+    screen.queryByRole("button", { name: prose.mapView.closeMapLabel }),
   ).not.toBeInTheDocument();
 
   fireEvent.click(clickCatcher());
 
   expect(onExpandedChange).toHaveBeenLastCalledWith(true);
-  expect(screen.getByRole("button", { name: "Close map" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: prose.mapView.closeMapLabel }),
+  ).toBeInTheDocument();
 });
 
 // The dry-run report: "zooming on the map is reliably terrible". Root cause
@@ -64,7 +67,9 @@ test("tapping the map again once popped out does not collapse it", () => {
   fireEvent.click(clickCatcher());
 
   expect(onExpandedChange).toHaveBeenLastCalledWith(true);
-  expect(screen.getByRole("button", { name: "Close map" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: prose.mapView.closeMapLabel }),
+  ).toBeInTheDocument();
 });
 
 test("the explicit close button collapses a popped-out map", () => {
@@ -72,13 +77,17 @@ test("the explicit close button collapses a popped-out map", () => {
   renderMap({ onExpandedChange });
 
   fireEvent.click(clickCatcher());
-  expect(screen.getByRole("button", { name: "Close map" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: prose.mapView.closeMapLabel }),
+  ).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole("button", { name: "Close map" }));
+  fireEvent.click(
+    screen.getByRole("button", { name: prose.mapView.closeMapLabel }),
+  );
 
   expect(onExpandedChange).toHaveBeenLastCalledWith(false);
   expect(
-    screen.queryByRole("button", { name: "Close map" }),
+    screen.queryByRole("button", { name: prose.mapView.closeMapLabel }),
   ).not.toBeInTheDocument();
 });
 
@@ -87,12 +96,12 @@ test("an always-expanded map (admin view) shows no close button and ignores taps
   renderMap({ alwaysExpanded: true, onExpandedChange });
 
   expect(
-    screen.queryByRole("button", { name: "Close map" }),
+    screen.queryByRole("button", { name: prose.mapView.closeMapLabel }),
   ).not.toBeInTheDocument();
 
   fireEvent.click(clickCatcher());
 
   expect(
-    screen.queryByRole("button", { name: "Close map" }),
+    screen.queryByRole("button", { name: prose.mapView.closeMapLabel }),
   ).not.toBeInTheDocument();
 });

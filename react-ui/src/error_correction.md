@@ -1,0 +1,17 @@
+# Clothes, colours, and error correction
+
+We are using machine vision to figure out who has shot whom based on a photograph of them. But, our photos will be blurry, might be taken in the dark, might be far away, and people will be activly trying not to be photographed. That makes the job hard.
+
+To fix this, we try to make the algorithm's life easier by using something that is easier to see: big blocks of colours. You have been asked to choose from 7 possible colours for both your trousers and your shirt. On the night, Gaby and I will also give you a hat and an armband for a total of four different pieces of clothing. That means there's 7^4 = 2401 possible combinations, each of which could identify a single person.
+
+However, we don't have 2401 friends. And, it's not very helpful to pick colours such that even a single mistake is enough to trick the computer into thinking the photo is of someone else. We would prefer to choose particular outfits for everyone, such that even if the computer gets one colour wrong or can't see your hat, it can still figure out who you are.
+
+This is the field of _error correction_. Simple "Hamming code" error correction was developed in the 50s and was used to correct errors in computer memory, which used to go wrong much more often back then. The more modern Reed-Soloman algorithm extends this to encodings that have more than just two possible symbols (i.e. rather than a bit that is 0 or 1, we have a hat that can be one of 7 colours) and is used from correcting for scratched CDs to sending messages to Voyager 1, billions of km away.
+
+We are using a **[4, 2, 3]** Reed Soloman scheme - n=4 symbols (trousers, shirt, armbands, hat); k=2 free channels (we can lose two channels and still identify the player) with a d=3 "Hamming distance" - the minimum number of errors that we would need to make to misidentify a player. This means that we can only fit 49 players in our game, but that we can still identify you even if we can only see two of the four items of clothing.
+
+That's still not quite enough however: it turns out that colour matching blurry photos is hard, and we often make more than 2 mistakes. To iron out these edge cases, we also use a Bayesian calculation to guess the probability of who the person in the photo is, based on their last know location and proximity to the shooter along with the probability of having made mistakes in the vision. As a final resort, we rank the top candidates in order of probibility and then compare the photo against reference photos that we took when you joined the party, using a large language model.
+
+And when it still can't tell? It sends it to Gaby and me in the pub, just like before.
+
+And when WE get it wrong??? Well that's when you press the escalate button to challenge our ruling.

@@ -24,6 +24,7 @@ from starlette.responses import Response
 from starlette.responses import StreamingResponse
 
 from . import demo_game
+from . import how_it_works as how_it_works_payload
 from . import identity_admin
 from . import identity_demo
 from .admin_interface import CircleTypes
@@ -403,6 +404,17 @@ async def pick_outfit(
         return identity_admin.pick_outfit(
             user_id, code, request.wardrobe, request.appearance, request.confirmed
         )
+
+
+@router.get("/how_it_works")
+async def how_it_works(user_id=Depends(get_user_id)) -> dict:
+    """The figures on the ``/how-it-works`` essay, for this reader.
+
+    Non-mutating, and unauthenticated beyond the session cookie everyone
+    already has: the page is linked from the outfit picker and a reader who
+    has picked nothing still gets the general figures.
+    """
+    return how_it_works_payload.how_it_works(user_id)
 
 
 class _EncodedItem(BaseModel):

@@ -280,6 +280,19 @@ export function currentURL() {
 }
 
 // ---------------------------------------------------------------------------
+// Prose
+// ---------------------------------------------------------------------------
+
+// A substring matcher built from a string in prose.js, for copy that sits
+// inside a larger sentence or beside other markup. Tests address a screen
+// through prose.js rather than copying the words out of it: the wording is
+// Charles's to change, and a test about behaviour should not fail when he
+// does.
+export function proseFragment(text) {
+  return new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+}
+
+// ---------------------------------------------------------------------------
 // Permissions API stub
 // ---------------------------------------------------------------------------
 
@@ -334,6 +347,7 @@ export function makeUser(overrides = {}) {
     shot_damage: 1,
     shot_timeout: 6,
     identity_slot: null,
+    outfit_wardrobe: null,
     ...overrides,
   };
 }

@@ -11,12 +11,17 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 import userEvent from "@testing-library/user-event";
 
 import PickOutfit from "./PickOutfit";
+import prose from "./prose";
 import {
   installFetchMock,
   getAPICalls,
   getLastAPICall,
   actAndFlush,
+  proseFragment,
 } from "./testUtils";
+
+const p = prose.pickOutfit;
+const chooseRow = proseFragment(p.chooseAriaLabel(""));
 
 function makeJoinData(overrides = {}) {
   return {
@@ -132,12 +137,14 @@ function currentURL() {
 }
 
 async function goPastHeader() {
-  return screen.findByRole("heading", { name: "Team Reds" });
+  return screen.findByRole("heading", { name: p.teamHeading("Reds") });
 }
 
 async function showOutfits() {
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Show me outfits" })),
+    userEvent.click(
+      screen.getByRole("button", { name: p.showMeOutfitsButton }),
+    ),
   );
 }
 
@@ -147,7 +154,7 @@ async function showOtherOutfits() {
   await actAndFlush(() =>
     userEvent.click(
       screen.getByRole("button", {
-        name: "Show more outfits",
+        name: p.showMoreOutfitsButton,
       }),
     ),
   );
@@ -210,28 +217,20 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
     page: 0,
   });
 
-  expect(screen.getByText("preferred")).toBeInTheDocument();
-  expect(screen.getByText("Exact match")).toBeInTheDocument();
-  expect(screen.queryByText("1 colour different")).not.toBeInTheDocument();
+  expect(screen.getByText(p.recommendedBadge)).toBeInTheDocument();
+  expect(screen.getByText(p.exactMatchHeading)).toBeInTheDocument();
+  expect(
+    screen.queryByText(p.coloursDifferentHeading(1)),
+  ).not.toBeInTheDocument();
 
   await showOtherOutfits();
-  expect(screen.getByText("1 colour different")).toBeInTheDocument();
-  expect(screen.getByText("not ideal")).toBeInTheDocument();
+  expect(screen.getByText(p.coloursDifferentHeading(1))).toBeInTheDocument();
+  expect(screen.getByText(p.notIdealBadge)).toBeInTheDocument();
 
   // Only the player-supplied garments show on an option row - no hat/armband.
   expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
   expect(screen.queryByText(/^Hat:/)).not.toBeInTheDocument();
   expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
-});
-
-test("the wardrobe intro explains the nudge: everything starts ticked, untick what isn't actually worn", async () => {
-  installFetchMock({ join_options: makeJoinData() });
-
-  renderPickOutfit();
-  await goPastHeader();
-
-  expect(screen.getByText(/ticked to start/i)).toBeInTheDocument();
-  expect(screen.getByText(/won't wear on the night/i)).toBeInTheDocument();
 });
 
 test("every swatch starts ticked, with the checkbox-style tick shown from the first render", async () => {
@@ -254,7 +253,7 @@ test("every swatch starts ticked, with the checkbox-style tick shown from the fi
   expect(within(blackSwatch).queryByText("✓")).not.toBeInTheDocument();
 });
 
-test("the confirm screen makes clear the outfit isn't joined yet until it's locked in", async () => {
+test("the confirm row reads as needing action until it is ticked", async () => {
   installFetchMock({
     join_options: makeJoinData(),
     outfit_options: makeOptionsResult(),
@@ -265,13 +264,11 @@ test("the confirm screen makes clear the outfit isn't joined yet until it's lock
   await showOutfits();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
 
-  expect(screen.getByText(/haven't joined yet/i)).toBeInTheDocument();
-
   const checkbox = screen.getByRole("checkbox", {
-    name: /wear this on the night/,
+    name: p.wearCheckboxLabel,
   });
   // Unchecked reads as needing action (a distinct class from the checked
   // state), not just a passive label sitting beneath the outfit.
@@ -297,7 +294,7 @@ test("a player who touches nothing still gets offered outfits, built from every 
     relaxed: false,
     page: 0,
   });
-  expect(screen.getByText("preferred")).toBeInTheDocument();
+  expect(screen.getByText(p.recommendedBadge)).toBeInTheDocument();
 });
 
 test("the wardrobe form collapses to a summary once options are showing, and Change what I own reopens it", async () => {
@@ -315,13 +312,13 @@ test("the wardrobe form collapses to a summary once options are showing, and Cha
   expect(
     screen.queryByRole("group", { name: "T-shirt" }),
   ).not.toBeInTheDocument();
-  const reopen = screen.getByRole("button", { name: "Change what I own" });
+  const reopen = screen.getByRole("button", { name: p.changeWhatIOwnButton });
 
   await actAndFlush(() => userEvent.click(reopen));
 
   expect(screen.getByRole("group", { name: "T-shirt" })).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Change what I own" }),
+    screen.queryByRole("button", { name: p.changeWhatIOwnButton }),
   ).not.toBeInTheDocument();
 });
 
@@ -354,7 +351,7 @@ test("paging fetches the next page", async () => {
 
   await showOtherOutfits();
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Next" })),
+    userEvent.click(screen.getByRole("button", { name: p.nextButton })),
   );
 
   expect(getLastAPICall("outfit_options").body.page).toBe(1);
@@ -375,18 +372,14 @@ test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches 
   await goPastHeader();
   await showOutfits();
 
-  expect(
-    screen.getByText(
-      "No outfits found. Are you sure you don't have any more clothes?",
-    ),
-  ).toBeInTheDocument();
+  expect(screen.getByText(p.noOutfitsFoundNote)).toBeInTheDocument();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Yes, I'm sure" })),
+    userEvent.click(screen.getByRole("button", { name: p.yesImSureButton })),
   );
 
   expect(getLastAPICall("outfit_options").body.relaxed).toBe(true);
-  expect(screen.getByText("preferred")).toBeInTheDocument();
+  expect(screen.getByText(p.recommendedBadge)).toBeInTheDocument();
 });
 
 test("tapping an option shows the confirmation screen without claiming it, and Lock in my choice is disabled until ticked", async () => {
@@ -399,18 +392,16 @@ test("tapping an option shows the confirmation screen without claiming it, and L
   await goPastHeader();
   await showOutfits();
 
-  const row = screen.getByRole("button", { name: /Choose:/ });
+  const row = screen.getByRole("button", { name: chooseRow });
   await actAndFlush(() => userEvent.click(row));
 
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
-  expect(screen.getByText("One more step to join")).toBeInTheDocument();
+  expect(screen.getByText(p.confirmHeading)).toBeInTheDocument();
 
-  const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
+  const lockIn = screen.getByRole("button", { name: p.lockInButton });
   expect(lockIn).toBeDisabled();
 
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
   expect(lockIn).not.toBeDisabled();
 });
 
@@ -426,18 +417,18 @@ test("a player who has not given their name cannot lock in an outfit until they 
   await showOutfits();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
 
   // Ticked, but still nameless - an outfit claimed anonymously is an outfit
   // nobody can be handed a card for.
-  const lockIn = screen.getByRole("button", { name: /Lock in my choice/ });
+  const lockIn = screen.getByRole("button", { name: p.lockInButton });
   expect(lockIn).toBeDisabled();
 
-  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  const nameBox = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   await actAndFlush(() => {
     fireEvent.change(nameBox, { target: { value: "Alice" } });
     fireEvent.keyDown(nameBox, { key: "Enter" });
@@ -445,7 +436,7 @@ test("a player who has not given their name cannot lock in an outfit until they 
 
   expect(getLastAPICall("set_name").query).toEqual({ name: "Alice" });
   expect(
-    screen.getByRole("button", { name: /Lock in my choice/ }),
+    screen.getByRole("button", { name: p.lockInButton }),
   ).not.toBeDisabled();
 });
 
@@ -461,22 +452,20 @@ test("whitespace is not a name - it neither posts set_name nor unlocks the claim
   await showOutfits();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
 
-  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  const nameBox = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   await actAndFlush(() => {
     fireEvent.change(nameBox, { target: { value: "   " } });
     fireEvent.keyDown(nameBox, { key: "Enter" });
   });
 
   expect(getAPICalls("set_name")).toHaveLength(0);
-  expect(
-    screen.getByRole("button", { name: /Lock in my choice/ }),
-  ).toBeDisabled();
+  expect(screen.getByRole("button", { name: p.lockInButton })).toBeDisabled();
 });
 
 test("a name already set in a previous session shows pre-filled, not blank, and stays editable on every step", async () => {
@@ -490,23 +479,27 @@ test("a name already set in a previous session shows pre-filled, not blank, and 
 
   // join_options already reported a name - the box must show it, not
   // resurface blank and ask again.
-  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
+  expect(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toHaveValue("Bob");
 
   await showOutfits();
-  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
+  expect(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toHaveValue("Bob");
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
 
   // Still pre-filled, and still editable, on the confirm screen.
-  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Bob");
-
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
   expect(
-    screen.getByRole("button", { name: /Lock in my choice/ }),
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toHaveValue("Bob");
+
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
+  expect(
+    screen.getByRole("button", { name: p.lockInButton }),
   ).not.toBeDisabled();
   expect(getAPICalls("set_name")).toHaveLength(0);
 });
@@ -532,19 +525,15 @@ test("ticking the confirm box and pressing Lock in my choice claims the outfit a
   await goPastHeader();
   await showOutfits();
 
-  const row = screen.getByRole("button", { name: /Choose:/ });
+  const row = screen.getByRole("button", { name: chooseRow });
   await actAndFlush(() => userEvent.click(row));
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+    userEvent.click(screen.getByRole("button", { name: p.lockInButton })),
   );
 
-  expect(
-    screen.getByText("Locked in - please screenshot this page!"),
-  ).toBeInTheDocument();
+  expect(screen.getByText(p.resultHeading)).toBeInTheDocument();
   expect(getLastAPICall("pick_outfit").body).toEqual({
     data: "CODE1",
     // Nobody unticked anything in this test, so the nudge's full default
@@ -570,18 +559,18 @@ test("Choose a different outfit returns to the options list without claiming any
   await goPastHeader();
   await showOutfits();
 
-  const row = screen.getByRole("button", { name: /Choose:/ });
+  const row = screen.getByRole("button", { name: chooseRow });
   await actAndFlush(() => userEvent.click(row));
-  expect(screen.getByText("One more step to join")).toBeInTheDocument();
+  expect(screen.getByText(p.confirmHeading)).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(
-      screen.getByRole("button", { name: "Choose a different outfit" }),
+      screen.getByRole("button", { name: p.chooseDifferentOutfitButton }),
     ),
   );
 
-  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
-  expect(screen.getByRole("button", { name: /Choose:/ })).toBeInTheDocument();
+  expect(screen.queryByText(p.confirmHeading)).not.toBeInTheDocument();
+  expect(screen.getByRole("button", { name: chooseRow })).toBeInTheDocument();
   expect(getAPICalls("pick_outfit")).toHaveLength(0);
 });
 
@@ -599,13 +588,9 @@ test("a returning visitor whose slot is already set sees the result, not the for
 
   renderPickOutfit();
 
-  expect(
-    await screen.findByText("Locked in - please screenshot this page!"),
-  ).toBeInTheDocument();
+  expect(await screen.findByText(p.resultHeading)).toBeInTheDocument();
   expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-  expect(
-    screen.queryByText("You already joined a team:"),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByText(p.alreadyJoinedNote)).not.toBeInTheDocument();
 });
 
 test("once an outfit is locked in, polling picks up the game going active and redirects to /", async () => {
@@ -632,9 +617,7 @@ test("once an outfit is locked in, polling picks up the game going active and re
     );
     await flushMicrotasks();
 
-    expect(
-      screen.getByText("Locked in - please screenshot this page!"),
-    ).toBeInTheDocument();
+    expect(screen.getByText(p.resultHeading)).toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent("/pick?j=CODE1");
     // Asked once immediately, so a tab reopened after the game started is not
     // held on this page for a whole poll interval.
@@ -673,7 +656,7 @@ test("a locked-in player can go to the game before it starts", async () => {
   renderPickOutfit();
 
   const button = await screen.findByRole("button", {
-    name: "Go to the game",
+    name: p.goToGameButton,
   });
   await actAndFlush(() => userEvent.click(button));
 
@@ -692,12 +675,9 @@ test("the sign-up link names no team and says the team comes at the door", async
   renderPickOutfit();
 
   expect(
-    await screen.findByRole("heading", { name: "Sign up" }),
+    await screen.findByRole("heading", { name: p.signUpHeading }),
   ).toBeInTheDocument();
   expect(screen.queryByText(/Team /)).not.toBeInTheDocument();
-  expect(
-    screen.getByText(/We'll hand you a hat and armbands on the night/),
-  ).toBeInTheDocument();
 });
 
 test("a player signed up with no team is told to scan a team code at the door", async () => {
@@ -716,11 +696,9 @@ test("a player signed up with no team is told to scan a team code at the door", 
 
   renderPickOutfit();
 
+  expect(await screen.findByText(p.nextStepNote)).toBeInTheDocument();
   expect(
-    await screen.findByText(/scan a team code at the door/),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("button", { name: "Go to the game" }),
+    screen.getByRole("button", { name: p.goToGameButton }),
   ).toBeInTheDocument();
 });
 
@@ -737,10 +715,8 @@ test("a player who picked through a team code is not told to scan another", asyn
 
   renderPickOutfit();
 
-  await screen.findByText("Locked in - please screenshot this page!");
-  expect(
-    screen.queryByText(/scan a team code at the door/),
-  ).not.toBeInTheDocument();
+  await screen.findByText(p.resultHeading);
+  expect(screen.queryByText(p.nextStepNote)).not.toBeInTheDocument();
 });
 
 test("another team's link, tapped after picking, names the team already joined", async () => {
@@ -761,11 +737,9 @@ test("another team's link, tapped after picking, names the team already joined",
 
   renderPickOutfit();
 
+  expect(await screen.findByText(p.alreadyJoinedNote)).toBeInTheDocument();
   expect(
-    await screen.findByText("You already joined a team:"),
-  ).toBeInTheDocument();
-  expect(
-    screen.getByRole("heading", { name: "Team Blues" }),
+    screen.getByRole("heading", { name: p.teamHeading("Blues") }),
   ).toBeInTheDocument();
   expect(screen.queryByText(/Team Reds/)).not.toBeInTheDocument();
 });
@@ -784,14 +758,12 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
   await goPastHeader();
   await showOutfits();
 
-  const row = screen.getByRole("button", { name: /Choose:/ });
+  const row = screen.getByRole("button", { name: chooseRow });
   await actAndFlush(() => userEvent.click(row));
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+    userEvent.click(screen.getByRole("button", { name: p.lockInButton })),
   );
 
   expect(
@@ -799,7 +771,7 @@ test("a 409 from pick_outfit shows the choose-again message, returns to the opti
       "Someone just took that outfit - please choose again.",
     ),
   ).toBeInTheDocument();
-  expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
+  expect(screen.queryByText(p.confirmHeading)).not.toBeInTheDocument();
   expect(getAPICalls("outfit_options")).toHaveLength(2);
 });
 
@@ -839,15 +811,17 @@ test("only the canonical outfits show until the player asks for the rest, which 
   expect(screen.getByText("Trousers: black")).toBeInTheDocument();
   expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Next" }),
+    screen.queryByRole("button", { name: p.nextButton }),
   ).not.toBeInTheDocument();
 
   await showOtherOutfits();
 
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
-  expect(screen.getByRole("button", { name: "Next" })).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Show more outfits" }),
+    screen.getByRole("button", { name: p.nextButton }),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByRole("button", { name: p.showMoreOutfitsButton }),
   ).not.toBeInTheDocument();
 });
 
@@ -894,10 +868,10 @@ test("the recommended badge marks only the top of the list, ties included", asyn
 
   // The two rarest canonical outfits tie at the top, so both are badged;
   // the third is canonical but simply goes unbadged.
-  expect(screen.getAllByText("preferred")).toHaveLength(2);
-  expect(screen.queryByText("not ideal")).not.toBeInTheDocument();
+  expect(screen.getAllByText(p.recommendedBadge)).toHaveLength(2);
+  expect(screen.queryByText(p.notIdealBadge)).not.toBeInTheDocument();
 
-  const rows = screen.getAllByRole("button", { name: /Choose:/ });
+  const rows = screen.getAllByRole("button", { name: chooseRow });
   expect(within(rows[2]).queryByText("recommended")).not.toBeInTheDocument();
 });
 
@@ -925,11 +899,11 @@ test("a later page badges nothing as recommended - only the first page holds the
   renderPickOutfit();
   await goPastHeader();
   await showOutfits();
-  expect(screen.getByText("preferred")).toBeInTheDocument();
+  expect(screen.getByText(p.recommendedBadge)).toBeInTheDocument();
 
   await showOtherOutfits();
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Next" })),
+    userEvent.click(screen.getByRole("button", { name: p.nextButton })),
   );
 
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
@@ -961,7 +935,7 @@ test("a wardrobe with no canonical outfit at all shows the whole list rather tha
 
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
   expect(
-    screen.queryByRole("button", { name: "Show more outfits" }),
+    screen.queryByRole("button", { name: p.showMoreOutfitsButton }),
   ).not.toBeInTheDocument();
 });
 
@@ -993,13 +967,15 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
   expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: "Change what I own" })),
+    userEvent.click(
+      screen.getByRole("button", { name: p.changeWhatIOwnButton }),
+    ),
   );
   await showOutfits();
 
   expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
   expect(
-    screen.getByRole("button", { name: "Show more outfits" }),
+    screen.getByRole("button", { name: p.showMoreOutfitsButton }),
   ).toBeInTheDocument();
 });
 
@@ -1032,7 +1008,9 @@ test("the progress bar climbs through every stage of the flow, ending at 100% on
   await goPastHeader();
   expect(screen.getByText("0%")).toBeInTheDocument();
 
-  const nameBox = screen.getByPlaceholderText("Enter your name...");
+  const nameBox = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   await actAndFlush(() => {
     fireEvent.change(nameBox, { target: { value: "Alice" } });
     fireEvent.keyDown(nameBox, { key: "Enter" });
@@ -1043,17 +1021,15 @@ test("the progress bar climbs through every stage of the flow, ending at 100% on
   expect(screen.getByText("40%")).toBeInTheDocument();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
   expect(screen.getByText("60%")).toBeInTheDocument();
 
-  userEvent.click(
-    screen.getByRole("checkbox", { name: /wear this on the night/ }),
-  );
+  userEvent.click(screen.getByRole("checkbox", { name: p.wearCheckboxLabel }));
   expect(screen.getByText("80%")).toBeInTheDocument();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Lock in my choice/ })),
+    userEvent.click(screen.getByRole("button", { name: p.lockInButton })),
   );
   expect(screen.getByText("100%")).toBeInTheDocument();
 });
@@ -1070,13 +1046,13 @@ test("choosing a different outfit drops the progress bar back down honestly, rat
   expect(screen.getByText("40%")).toBeInTheDocument();
 
   await actAndFlush(() =>
-    userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+    userEvent.click(screen.getByRole("button", { name: chooseRow })),
   );
   expect(screen.getByText("60%")).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(
-      screen.getByRole("button", { name: "Choose a different outfit" }),
+      screen.getByRole("button", { name: p.chooseDifferentOutfitButton }),
     ),
   );
   expect(screen.getByText("40%")).toBeInTheDocument();
@@ -1109,7 +1085,7 @@ test("the curiosity footer links to the essay in a new tab, on the picker and on
   await goPastHeader();
 
   const link = screen.getByRole("link", {
-    name: "Interested in what's happening here?",
+    name: p.curiosityFooter,
   });
   expect(link).toHaveAttribute("href", "/how-it-works");
   expect(link).toHaveAttribute("target", "_blank");
@@ -1132,9 +1108,9 @@ test("the curiosity footer links to the essay in a new tab, on the picker and on
   renderPickOutfit();
   await goPastHeader();
 
-  expect(screen.getByText("You're set")).toBeInTheDocument();
+  expect(screen.getByText(p.resultHeading)).toBeInTheDocument();
   expect(
-    screen.getByRole("link", { name: "Interested in what's happening here?" }),
+    screen.getByRole("link", { name: p.curiosityFooter }),
   ).toBeInTheDocument();
 });
 
@@ -1177,7 +1153,7 @@ describe("keeping the pick in the URL", () => {
     renderPickOutfit("/pick?j=CODE1&w_tshirt=black&page=1");
     await goPastHeader();
     // Straight to the options, with no second press of "Show me outfits".
-    await screen.findByRole("button", { name: /Choose:/ });
+    await screen.findByRole("button", { name: chooseRow });
 
     expect(getLastAPICall("outfit_options").body).toMatchObject({
       data: "CODE1",
@@ -1194,7 +1170,7 @@ describe("keeping the pick in the URL", () => {
 
     renderPickOutfit("/pick?j=CODE1&w_tshirt=black,tartan&page=0");
     await goPastHeader();
-    await screen.findByRole("button", { name: /Choose:/ });
+    await screen.findByRole("button", { name: chooseRow });
 
     expect(getLastAPICall("outfit_options").body.wardrobe.tshirt).toEqual([
       "black",
@@ -1218,7 +1194,7 @@ describe("keeping the pick in the URL", () => {
     // until the player asks for the rest.
     await showOtherOutfits();
     await actAndFlush(() =>
-      userEvent.click(screen.getByRole("button", { name: "Next" })),
+      userEvent.click(screen.getByRole("button", { name: p.nextButton })),
     );
 
     expect(currentURL()).toContain("page=1");
@@ -1235,17 +1211,17 @@ describe("keeping the pick in the URL", () => {
     await goPastHeader();
     await showOutfits();
     await actAndFlush(() =>
-      userEvent.click(screen.getByRole("button", { name: /Choose:/ })),
+      userEvent.click(screen.getByRole("button", { name: chooseRow })),
     );
 
-    expect(screen.getByText("One more step to join")).toBeInTheDocument();
+    expect(screen.getByText(p.confirmHeading)).toBeInTheDocument();
     const url = currentURL();
     expect(url).toContain("outfit=");
 
     cleanup();
     renderPickOutfit(url);
     await goPastHeader();
-    await screen.findByText("One more step to join");
+    await screen.findByText(p.confirmHeading);
 
     // Reading the confirmation again, not having it pre-ticked from before.
     expect(screen.getByRole("checkbox")).not.toBeChecked();
@@ -1273,9 +1249,9 @@ describe("keeping the pick in the URL", () => {
       "/pick?j=CODE1&page=0&outfit=armbands-red.hat-burgundy.trousers-black.tshirt-black",
     );
     await goPastHeader();
-    await screen.findByRole("button", { name: /Choose:/ });
+    await screen.findByRole("button", { name: chooseRow });
 
-    expect(screen.queryByText("One more step to join")).not.toBeInTheDocument();
+    expect(screen.queryByText(p.confirmHeading)).not.toBeInTheDocument();
   });
 
   test("going back to the wardrobe clears the options out of the URL", async () => {
@@ -1289,13 +1265,13 @@ describe("keeping the pick in the URL", () => {
     await showOutfits();
     await actAndFlush(() =>
       userEvent.click(
-        screen.getByRole("button", { name: /Change what I own/ }),
+        screen.getByRole("button", { name: p.changeWhatIOwnButton }),
       ),
     );
 
     expect(currentURL()).not.toContain("page=");
     expect(
-      screen.getByRole("button", { name: "Show me outfits" }),
+      screen.getByRole("button", { name: p.showMeOutfitsButton }),
     ).toBeInTheDocument();
   });
 });

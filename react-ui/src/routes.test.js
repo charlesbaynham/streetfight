@@ -25,6 +25,7 @@ import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
 import AdminLogin from "./AdminLogin";
 import { AdminPage } from "./AdminCommon";
+import prose from "./prose";
 
 // The map and webcam are heavy (geolocation watches, canvas, camera streams)
 // and not what this smoke test is checking - every route that uses them is
@@ -85,7 +86,7 @@ describe("/ (UserMode)", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText("Loading...")).toBeInTheDocument();
+    expect(screen.getByText(prose.userMode.loading)).toBeInTheDocument();
   });
 });
 
@@ -116,7 +117,9 @@ describe("/pick (PickOutfit)", () => {
     );
 
     expect(
-      screen.getByRole("heading", { name: "Team Reds" }),
+      screen.getByRole("heading", {
+        name: prose.pickOutfit.teamHeading("Reds"),
+      }),
     ).toBeInTheDocument();
   });
 });
@@ -130,9 +133,7 @@ describe("/how-it-works (HowItWorks)", () => {
     );
 
     expect(
-      screen.getByRole("heading", {
-        name: "Clothes, colours, and error correction",
-      }),
+      screen.getByRole("heading", { name: prose.howItWorks.heading }),
     ).toBeInTheDocument();
   });
 });

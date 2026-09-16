@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 
 import OnboardingView from "./OnboardingView";
 import {
@@ -8,13 +14,22 @@ import {
   setPermission,
   makeUser,
   actAndFlush,
+  proseFragment,
 } from "./testUtils";
+import prose from "./prose";
 
 // A user with no team, for the steps that gate on webcam/location before a
 // team even matters.
 function soloUser(overrides = {}) {
   return makeUser({ team_id: null, team_name: null, ...overrides });
 }
+
+// The shape /user_info's outfit_wardrobe comes back in - see
+// backend.user_interface._wardrobe_appearance.
+const WHITE_GREEN_OUTFIT = {
+  tshirt: { colour: "white", hex: "#ffffff" },
+  trousers: { colour: "green", hex: "#3f7d3f" },
+};
 
 // OnboardingView checks permissions on mount via two `.then()`-chained async
 // functions (isCameraPermissionGranted / isLocationPermissionGranted), each
@@ -55,10 +70,14 @@ test("with no name set, only the name entry is shown", async () => {
     makeUser({ name: null, team_id: null, team_name: null }),
   );
 
-  expect(screen.getByPlaceholderText("Enter your name...")).toBeInTheDocument();
-  expect(screen.queryByText(/Grant webcam permission/)).not.toBeInTheDocument();
   expect(
-    screen.queryByText(/Grant location permission/),
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.onboardingView.webcamPermission)),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText(proseFragment(prose.onboardingView.locationPermission)),
   ).not.toBeInTheDocument();
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
 });
@@ -66,10 +85,10 @@ test("with no name set, only the name entry is shown", async () => {
 test("the webcam step appears once the player has a name, with no later steps yet", async () => {
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  expect(stepButton("Grant webcam permission:")).toBeInTheDocument();
-  expect(isDone("Grant webcam permission:")).toBe(false);
+  expect(stepButton(prose.onboardingView.webcamPermission)).toBeInTheDocument();
+  expect(isDone(prose.onboardingView.webcamPermission)).toBe(false);
   expect(
-    screen.queryByText(/Grant location permission/),
+    screen.queryByText(proseFragment(prose.onboardingView.locationPermission)),
   ).not.toBeInTheDocument();
 });
 
@@ -77,9 +96,11 @@ test("the location step appears once webcam permission is granted", async () => 
   setPermission("camera", "granted");
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  expect(isDone("Grant webcam permission:")).toBe(true);
-  expect(stepButton("Grant location permission:")).toBeInTheDocument();
-  expect(isDone("Grant location permission:")).toBe(false);
+  expect(isDone(prose.onboardingView.webcamPermission)).toBe(true);
+  expect(
+    stepButton(prose.onboardingView.locationPermission),
+  ).toBeInTheDocument();
+  expect(isDone(prose.onboardingView.locationPermission)).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
 });
 
@@ -88,10 +109,10 @@ test("the team step waits for a team, and the game step doesn't show yet", async
   await renderOnboarding(soloUser({ name: "Bob" }));
 
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(proseFragment(prose.onboardingView.joinTeamPrompt(false))),
   ).toBeInTheDocument();
   expect(
-    screen.queryByText("Wait for game to start..."),
+    screen.queryByText(prose.onboardingView.waitForGame),
   ).not.toBeInTheDocument();
 });
 
@@ -101,8 +122,12 @@ test("the team step shows the team name once assigned, and the game step then ap
     makeUser({ name: "Bob", team_id: "team-9", team_name: "Blue Team" }),
   );
 
-  expect(screen.getByText('You are in team "Blue Team"')).toBeInTheDocument();
-  expect(screen.getByText("Wait for game to start...")).toBeInTheDocument();
+  expect(
+    screen.getByText(prose.onboardingView.inTeam("Blue Team")),
+  ).toBeInTheDocument();
+  expect(
+    screen.getByText(prose.onboardingView.waitForGame),
+  ).toBeInTheDocument();
 });
 
 test("the team step mentions the outfit when the player has an identity slot", async () => {
@@ -113,18 +138,59 @@ test("the team step mentions the outfit when the player has an identity slot", a
       team_id: "team-9",
       team_name: "Blue Team",
       identity_slot: 7,
+      outfit_wardrobe: WHITE_GREEN_OUTFIT,
     }),
   );
 
   expect(
-    screen.getByText('You are in team "Blue Team" — outfit #7'),
+    screen.getByText(prose.onboardingView.inTeam("Blue Team", 7)),
   ).toBeInTheDocument();
+});
+
+test("with no outfit picked, the outfit step says so and is not marked done", async () => {
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  expect(stepButton(prose.onboardingView.outfitNotChosen)).toBeInTheDocument();
+  expect(isDone(prose.onboardingView.outfitNotChosen)).toBe(false);
+});
+
+// The sentence is split across several elements (a swatch sits between the
+// colour and the garment name, per garment), so it can't be found as one
+// getByText match - "Outfit:" is the row's own direct text and is enough to
+// find the button; the rest is checked via its normalised textContent.
+test("once an outfit is picked, the outfit step shows a done checkmark and the garments", async () => {
+  await renderOnboarding(
+    soloUser({
+      name: "Bob",
+      outfit_wardrobe: WHITE_GREEN_OUTFIT,
+    }),
+  );
+
+  const button = stepButton("Outfit:");
+  expect(button.textContent.replace(/\s+/g, " ").trim()).toBe(
+    "Outfit: white t-shirt & green trousers",
+  );
+  expect(isDone("Outfit:")).toBe(true);
+});
+
+test("the outfit step shows a colour swatch for each garment, like the outfit picker", async () => {
+  await renderOnboarding(
+    soloUser({ name: "Bob", outfit_wardrobe: WHITE_GREEN_OUTFIT }),
+  );
+
+  const button = stepButton("Outfit:");
+  const whiteSwatch = within(button).getByTitle("white");
+  const greenSwatch = within(button).getByTitle("green");
+  expect(whiteSwatch).toHaveStyle({ background: "#ffffff" });
+  expect(greenSwatch).toHaveStyle({ background: "#3f7d3f" });
 });
 
 test("the name box is pre-filled with an existing name", async () => {
   await renderOnboarding(makeUser({ name: "Zara" }));
 
-  expect(screen.getByPlaceholderText("Enter your name...")).toHaveValue("Zara");
+  expect(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toHaveValue("Zara");
 });
 
 test("clicking the name button POSTs set_name with the typed name", async () => {
@@ -133,9 +199,12 @@ test("clicking the name button POSTs set_name with the typed name", async () => 
     makeUser({ name: null, team_id: null, team_name: null }),
   );
 
-  fireEvent.change(screen.getByPlaceholderText("Enter your name..."), {
-    target: { value: "Newname" },
-  });
+  fireEvent.change(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+    {
+      target: { value: "Newname" },
+    },
+  );
   fireEvent.click(screen.getByRole("button"));
 
   await waitFor(() => expect(getLastAPICall("set_name")).toBeDefined());
@@ -151,7 +220,9 @@ test("pressing Enter in the name box POSTs set_name with the typed name", async 
     makeUser({ name: null, team_id: null, team_name: null }),
   );
 
-  const input = screen.getByPlaceholderText("Enter your name...");
+  const input = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   fireEvent.change(input, { target: { value: "EnterName" } });
   fireEvent.keyDown(input, { key: "Enter" });
 
@@ -165,7 +236,9 @@ test("leaving the name box (blur) POSTs set_name, with no button tap or Enter ne
     makeUser({ name: null, team_id: null, team_name: null }),
   );
 
-  const input = screen.getByPlaceholderText("Enter your name...");
+  const input = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   fireEvent.change(input, { target: { value: "BlurName" } });
   fireEvent.blur(input);
 
@@ -179,7 +252,9 @@ test("blurring an empty name box does not POST set_name", async () => {
     makeUser({ name: null, team_id: null, team_name: null }),
   );
 
-  fireEvent.blur(screen.getByPlaceholderText("Enter your name..."));
+  fireEvent.blur(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  );
 
   expect(getLastAPICall("set_name")).toBeUndefined();
 });
@@ -192,7 +267,9 @@ test("a saved name shows a checkmark, not just a colour change", async () => {
   // The name entry's own action button swaps to the same checkmark icon
   // every other done onboarding step uses, instead of always showing the
   // return arrow.
-  const input = screen.getByPlaceholderText("Enter your name...");
+  const input = screen.getByPlaceholderText(
+    prose.onboardingView.namePlaceholder,
+  );
   const icon = input.parentElement.querySelector("img");
   expect(icon.getAttribute("src")).toContain("check-solid");
 });
@@ -203,9 +280,9 @@ test("steps already satisfied on mount render as done without any click", async 
     makeUser({ name: "Ann", team_id: "team-1", team_name: "Alpha" }),
   );
 
-  expect(isDone("Grant webcam permission:")).toBe(true);
-  expect(isDone("Grant location permission:")).toBe(true);
-  expect(isDone('You are in team "Alpha"')).toBe(true);
+  expect(isDone(prose.onboardingView.webcamPermission)).toBe(true);
+  expect(isDone(prose.onboardingView.locationPermission)).toBe(true);
+  expect(isDone(prose.onboardingView.inTeam("Alpha"))).toBe(true);
 });
 
 // --- Tests below this point actually click through the webcam/location
@@ -220,13 +297,15 @@ test("clicking the location step and being denied leaves it not done and shows a
   await renderOnboarding(soloUser({ name: "Bob" }));
 
   await actAndFlush(() =>
-    fireEvent.click(stepButton("Grant location permission:")),
+    fireEvent.click(stepButton(prose.onboardingView.locationPermission)),
   );
 
   expect(window.navigator.geolocation.getCurrentPosition).toHaveBeenCalled();
-  expect(isDone("Grant location permission:")).toBe(false);
+  expect(isDone(prose.onboardingView.locationPermission)).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
-  expect(screen.getByText(/Couldn't get your location/)).toBeInTheDocument();
+  expect(
+    screen.getByText(proseFragment(prose.onboardingView.locationError)),
+  ).toBeInTheDocument();
 });
 
 test("tapping the location button fewer than five times does not bypass it", async () => {
@@ -236,13 +315,13 @@ test("tapping the location button fewer than five times does not bypass it", asy
   // bug where the permission prompt never appears at all.
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  const button = stepButton("Grant location permission:");
+  const button = stepButton(prose.onboardingView.locationPermission);
   fireEvent.click(button);
   fireEvent.click(button);
   fireEvent.click(button);
   fireEvent.click(button);
 
-  expect(isDone("Grant location permission:")).toBe(false);
+  expect(isDone(prose.onboardingView.locationPermission)).toBe(false);
   expect(screen.queryByText(/team/i)).not.toBeInTheDocument();
 });
 
@@ -250,29 +329,33 @@ test("tapping the location button five times in a row bypasses it, and unlocks t
   setPermission("camera", "granted");
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  const button = stepButton("Grant location permission:");
+  const button = stepButton(prose.onboardingView.locationPermission);
   for (let i = 0; i < 5; i++) {
     fireEvent.click(button);
   }
 
-  const bypassedText = /Location skipped/;
+  const bypassedText = proseFragment(prose.onboardingView.locationSkipped);
   expect(isDone(bypassedText)).toBe(true);
   expect(isWarn(bypassedText)).toBe(true);
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(proseFragment(prose.onboardingView.joinTeamPrompt(false))),
   ).toBeInTheDocument();
 });
 
 test("clicking the webcam step requests camera access and marks itself done", async () => {
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  expect(isDone("Grant webcam permission:")).toBe(false);
-  fireEvent.click(stepButton("Grant webcam permission:"));
+  expect(isDone(prose.onboardingView.webcamPermission)).toBe(false);
+  fireEvent.click(stepButton(prose.onboardingView.webcamPermission));
 
-  await waitFor(() => expect(isDone("Grant webcam permission:")).toBe(true));
+  await waitFor(() =>
+    expect(isDone(prose.onboardingView.webcamPermission)).toBe(true),
+  );
   expect(window.navigator.mediaDevices.getUserMedia).toHaveBeenCalled();
   // Once webcam is done, the location step should appear next.
-  expect(stepButton("Grant location permission:")).toBeInTheDocument();
+  expect(
+    stepButton(prose.onboardingView.locationPermission),
+  ).toBeInTheDocument();
 });
 
 test("clicking the location step requests geolocation and marks itself done when granted", async () => {
@@ -280,11 +363,13 @@ test("clicking the location step requests geolocation and marks itself done when
   mockGeolocationSuccess();
   await renderOnboarding(soloUser({ name: "Bob" }));
 
-  fireEvent.click(stepButton("Grant location permission:"));
+  fireEvent.click(stepButton(prose.onboardingView.locationPermission));
 
-  await waitFor(() => expect(isDone("Grant location permission:")).toBe(true));
+  await waitFor(() =>
+    expect(isDone(prose.onboardingView.locationPermission)).toBe(true),
+  );
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(proseFragment(prose.onboardingView.joinTeamPrompt(false))),
   ).toBeInTheDocument();
 });
 
@@ -294,7 +379,7 @@ test("getCurrentPosition is called with a timeout, so a stuck fix cannot hang th
   await renderOnboarding(soloUser({ name: "Bob" }));
 
   await actAndFlush(() =>
-    fireEvent.click(stepButton("Grant location permission:")),
+    fireEvent.click(stepButton(prose.onboardingView.locationPermission)),
   );
 
   const options =
