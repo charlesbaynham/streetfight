@@ -21,6 +21,7 @@ import {
   setLocationBypass,
 } from "./utils";
 
+import { Swatch } from "./Swatch";
 import styles from "./OnboardingView.module.css";
 import prose from "./prose";
 
@@ -38,6 +39,11 @@ import prose from "./prose";
 // in utils.js.
 const LOCATION_BYPASS_TAPS = 5;
 
+// pending marks a row the player cannot act on but which is not finished
+// either - they have done their part and are now waiting on something else.
+// It draws the waiting as a light running round the row (see .pending in the
+// stylesheet), because a screen with nothing moving on it reads as a screen
+// that has crashed.
 const ActionItem = ({
   text,
   done,
@@ -45,13 +51,15 @@ const ActionItem = ({
   doable = true,
   animateReposition = true,
   warn = false,
+  pending = false,
 }) => (
   <button
     onClick={onClick}
     className={
       styles.stackedItem +
       (done ? " " + styles.done : "") +
-      (warn ? " " + styles.warn : "")
+      (warn ? " " + styles.warn : "") +
+      (pending ? " " + styles.pending : "")
     }
   >
     <motion.div layout={animateReposition}>
@@ -118,6 +126,21 @@ function NameEntry({ user, className, onNameSet = null }) {
 
 export { NameEntry };
 
+// A swatch (same component the colour picker uses) beside each garment,
+// e.g. [🟩] "white t-shirt" & [🟢] "green trousers" - just the garments the
+// player supplies themselves (identity_admin's wardrobe channels); the hat
+// and armband are handed out at the door, so naming them here would describe
+// kit the player has no say over.
+function OutfitSummary({ wardrobe }) {
+  return Object.entries(wardrobe).map(([channel, { colour, hex }], i) => (
+    <span key={channel} className={styles.outfitGarment}>
+      {i > 0 ? " & " : ""}
+      <Swatch hex={hex} label={colour} size="large" />
+      {colour} {prose.onboardingView.garmentNames[channel] || channel}
+    </span>
+  ));
+}
+
 function OnboardingView({ user }) {
   const [webcamPermissionGranted, setWebcamPermissionGranted] = useState(false);
   const [locationPermissionGranted, setLocationPermissionGranted] =
@@ -157,10 +180,25 @@ function OnboardingView({ user }) {
     const hasName = user.name;
     const inTeam = user.team_name !== null;
     const teamName = user.team_name;
+    const hasOutfit = !!user.outfit_wardrobe;
 
     const actionItems = [<NameEntry user={user} key={"name"} />];
 
-    if (hasName)
+    if (hasName) {
+      actionItems.push(
+        <ActionItem
+          text={
+            hasOutfit
+              ? prose.onboardingView.outfitChosen(
+                  <OutfitSummary wardrobe={user.outfit_wardrobe} />,
+                )
+              : prose.onboardingView.outfitNotChosen
+          }
+          done={hasOutfit}
+          doable={hasOutfit}
+          key={"outfit"}
+        />,
+      );
       actionItems.push(
         <ActionItem
           text={prose.onboardingView.webcamPermission}
@@ -174,7 +212,7 @@ function OnboardingView({ user }) {
           key={"webcam"}
         />,
       );
-    else return actionItems;
+    } else return actionItems;
 
     if (webcamPermissionGranted) {
       actionItems.push(
@@ -235,9 +273,6 @@ function OnboardingView({ user }) {
         />,
       );
 
-    const hasOutfit =
-      user.identity_slot !== null && user.identity_slot !== undefined;
-
     // Teams are scanned in at the door (roadmap R15): a player who signed
     // up through the game link arrives here with an outfit and no team.
     if (locationStepDone)
@@ -261,6 +296,7 @@ function OnboardingView({ user }) {
           text={prose.onboardingView.waitForGame}
           done={false}
           doable={false}
+          pending={true}
           key={"game"}
         />,
       );

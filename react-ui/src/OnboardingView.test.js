@@ -1,4 +1,10 @@
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 
 import OnboardingView from "./OnboardingView";
 import {
@@ -15,6 +21,13 @@ import {
 function soloUser(overrides = {}) {
   return makeUser({ team_id: null, team_name: null, ...overrides });
 }
+
+// The shape /user_info's outfit_wardrobe comes back in - see
+// backend.user_interface._wardrobe_appearance.
+const WHITE_GREEN_OUTFIT = {
+  tshirt: { colour: "white", hex: "#ffffff" },
+  trousers: { colour: "green", hex: "#3f7d3f" },
+};
 
 // OnboardingView checks permissions on mount via two `.then()`-chained async
 // functions (isCameraPermissionGranted / isLocationPermissionGranted), each
@@ -88,7 +101,7 @@ test("the team step waits for a team, and the game step doesn't show yet", async
   await renderOnboarding(soloUser({ name: "Bob" }));
 
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(/Join a team by scanning the QR code on the night/),
   ).toBeInTheDocument();
   expect(
     screen.queryByText("Wait for game to start..."),
@@ -113,12 +126,51 @@ test("the team step mentions the outfit when the player has an identity slot", a
       team_id: "team-9",
       team_name: "Blue Team",
       identity_slot: 7,
+      outfit_wardrobe: WHITE_GREEN_OUTFIT,
     }),
   );
 
   expect(
     screen.getByText('You are in team "Blue Team" — outfit #7'),
   ).toBeInTheDocument();
+});
+
+test("with no outfit picked, the outfit step says so and is not marked done", async () => {
+  await renderOnboarding(soloUser({ name: "Bob" }));
+
+  expect(stepButton("Outfit not chosen")).toBeInTheDocument();
+  expect(isDone("Outfit not chosen")).toBe(false);
+});
+
+// The sentence is split across several elements (a swatch sits between the
+// colour and the garment name, per garment), so it can't be found as one
+// getByText match - "Outfit:" is the row's own direct text and is enough to
+// find the button; the rest is checked via its normalised textContent.
+test("once an outfit is picked, the outfit step shows a done checkmark and the garments", async () => {
+  await renderOnboarding(
+    soloUser({
+      name: "Bob",
+      outfit_wardrobe: WHITE_GREEN_OUTFIT,
+    }),
+  );
+
+  const button = stepButton("Outfit:");
+  expect(button.textContent.replace(/\s+/g, " ").trim()).toBe(
+    "Outfit: white t-shirt & green trousers",
+  );
+  expect(isDone("Outfit:")).toBe(true);
+});
+
+test("the outfit step shows a colour swatch for each garment, like the outfit picker", async () => {
+  await renderOnboarding(
+    soloUser({ name: "Bob", outfit_wardrobe: WHITE_GREEN_OUTFIT }),
+  );
+
+  const button = stepButton("Outfit:");
+  const whiteSwatch = within(button).getByTitle("white");
+  const greenSwatch = within(button).getByTitle("green");
+  expect(whiteSwatch).toHaveStyle({ background: "#ffffff" });
+  expect(greenSwatch).toHaveStyle({ background: "#3f7d3f" });
 });
 
 test("the name box is pre-filled with an existing name", async () => {
@@ -259,7 +311,7 @@ test("tapping the location button five times in a row bypasses it, and unlocks t
   expect(isDone(bypassedText)).toBe(true);
   expect(isWarn(bypassedText)).toBe(true);
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(/Join a team by scanning the QR code on the night/),
   ).toBeInTheDocument();
 });
 
@@ -284,7 +336,7 @@ test("clicking the location step requests geolocation and marks itself done when
 
   await waitFor(() => expect(isDone("Grant location permission:")).toBe(true));
   expect(
-    screen.getByText(/scan a team's QR code with your camera app/),
+    screen.getByText(/Join a team by scanning the QR code on the night/),
   ).toBeInTheDocument();
 });
 

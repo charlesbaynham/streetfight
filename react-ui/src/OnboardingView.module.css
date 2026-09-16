@@ -6,6 +6,11 @@
   width: 100vw;
   height: 100%;
   color: white;
+  /* Swatch's theming hooks (see Swatch.module.css) - set here, same values
+     as PickOutfit.module.css, so a swatch reads on black instead of the
+     light-background defaults. */
+  --swatch-border: rgba(255, 255, 255, 0.6);
+  --swatch-fg: rgba(255, 255, 255, 0.85);
 }
 
 .innerContainer {
@@ -106,6 +111,18 @@ button.stackedItem {
   transform: translateX(-55%) translateY(-50%);
 }
 
+.outfitGarment {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3em;
+  /* An inline-flex box's own baseline (used to place it on the surrounding
+     text's line) falls back to its bottom edge when, as here, align-items
+     centres everything instead of baseline-aligning it - so without this the
+     box hangs off the text baseline rather than sitting level with it, worse
+     the taller the swatch inside it is. */
+  vertical-align: middle;
+}
+
 .locationError {
   width: 80vw;
   max-width: 150mm;
@@ -124,4 +141,64 @@ button.stackedItem {
 .logo img {
   max-width: 50vw;
   max-height: 40vh;
+}
+
+/* A row the player cannot act on, waiting on somebody else (the last one:
+   "wait for the game to start"). A comet of light runs round its perimeter,
+   because this is the one screen a player sits and stares at, and a page with
+   nothing moving on it is indistinguishable from a page that has died.
+   The ring is a conic gradient clipped to a border-width band by the
+   mask/exclude pair; ::after is the same thing blurred, which is the glow.
+   Animating the sweep needs --glow-angle registered - a browser without
+   @property renders the static floor of the gradient, a faint outline, which
+   is a fair thing to fall back to. */
+@property --glow-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+.pending::before,
+.pending::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12mm;
+  padding: 0.7mm;
+  background: conic-gradient(
+    from var(--glow-angle),
+    rgba(255, 255, 255, 0.12) 0deg,
+    rgba(255, 255, 255, 0.12) 240deg,
+    rgba(255, 255, 255, 0.35) 310deg,
+    rgba(255, 255, 255, 0.95) 352deg,
+    rgba(255, 255, 255, 0.12) 360deg
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  animation: glowSweep 3.5s linear infinite;
+}
+
+.pending::after {
+  filter: blur(1.2mm);
+  opacity: 0.8;
+}
+
+@keyframes glowSweep {
+  to {
+    --glow-angle: 360deg;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pending::before,
+  .pending::after {
+    animation: none;
+  }
 }

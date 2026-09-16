@@ -63,7 +63,7 @@ const prose = {
   mapView: {
     mapAlt: "Map",
     closeMapLabel: "Close map",
-    closeMapSymbol: "×",
+    closeMapSymbol: "x",
   },
   // @section onboardingView
   onboardingView: {
@@ -79,7 +79,7 @@ const prose = {
     // of a sentence ("white t-shirt"), not a fieldset legend.
     garmentNames: { tshirt: "t-shirt" },
     outfitNotChosen: "Outfit not chosen",
-    outfitChosen: (summary) => `Outfit: ${summary}`,
+    outfitChosen: (summary) => <>Outfit: {summary}</>,
     joinTeamPrompt: (hasOutfit) =>
       (hasOutfit ? "Outfit picked. " : "") +
       "Join a team by scanning the QR code on the night...",

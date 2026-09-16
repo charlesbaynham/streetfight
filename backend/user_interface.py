@@ -20,6 +20,11 @@ from . import asyncio_triggers
 from .asyncio_triggers import get_trigger_event
 from .database import session_scope
 from .database_scope_provider import DatabaseScopeProvider
+from .identity.config import PROVIDED_CHANNEL
+from .identity.config import TEAM_CHANNEL
+from .identity.config import default_scheme
+from .identity.config import hex_for
+from .identity.overrides import effective_word
 from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
@@ -188,6 +193,39 @@ def appeal_refusal(shot: Shot, user: User, party: str) -> Optional[str]:
     return None
 
 
+def _wardrobe_appearance(user: User) -> Optional[dict]:
+    """``{channel_name: {"colour", "hex"}}`` for the garments a player
+    supplies themselves -- everything except the hat and armband handed out
+    at the door (``TEAM_CHANNEL`` / ``PROVIDED_CHANNEL``) -- decoded from
+    their identity slot plus any overrides. ``None`` until an outfit is
+    picked. The hex rides along so the front page can draw a swatch without
+    a second round trip for the palette.
+
+    Mirrors ``identity_admin.appearance_payload``'s decode, but stays down
+    here in the pure ``backend.identity`` package rather than importing
+    ``identity_admin``: that module pulls in ``AdminInterface``, which itself
+    imports this one, and the front page's ``/user_info`` is exactly the kind
+    of call that would trip the cycle.
+    """
+    if user.identity_slot is None:
+        return None
+    scheme = default_scheme()
+    overrides = json.loads(user.identity_overrides) if user.identity_overrides else {}
+    codeword = scheme.codeword_of_slot(user.identity_slot)
+    word = effective_word(codeword, overrides, scheme.channels)
+    provided = {TEAM_CHANNEL, PROVIDED_CHANNEL}
+    wardrobe = {}
+    for channel, symbol in zip(scheme.channels, word):
+        if channel.name in provided or symbol is None:
+            continue
+        colour = channel.index_to_label(symbol)
+        wardrobe[channel.name] = {
+            "colour": colour,
+            "hex": hex_for(channel.name, colour),
+        }
+    return wardrobe
+
+
 def touch_user(user_interface: "UserInterface"):
     logger.debug("Touching user %s", user_interface.user_id)
     user = (
@@ -347,7 +385,11 @@ class UserInterface:
     @db_scoped
     def get_user_model(self) -> UserModel:
         u = self.get_user()
-        return UserModel.model_validate(u) if u else None
+        if not u:
+            return None
+        model = UserModel.model_validate(u)
+        model.outfit_wardrobe = _wardrobe_appearance(u)
+        return model
 
     @db_scoped
     def get_team_id(self) -> UUID:
