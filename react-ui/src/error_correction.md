@@ -11,3 +11,7 @@ This is the field of _error correction_. Simple "Hamming code" error correction 
 We are using a **[4, 2, 3]** Reed Soloman scheme - n=4 symbols (trousers, shirt, armbands, hat); k=2 free channels (we can lose two channels and still identify the player) with a d=3 "Hamming distance" - the minimum number of errors that we would need to make to misidentify a player. This means that we can only fit 49 players in our game, but that we can still identify you even if we can only see two of the four items of clothing.
 
 That's still not quite enough however: it turns out that colour matching blurry photos is hard, and we often make more than 2 mistakes. To iron out these edge cases, we also use a Bayesian calculation to guess the probability of who the person in the photo is, based on their last know location and proximity to the shooter along with the probability of having made mistakes in the vision. As a final resort, we rank the top candidates in order of probibility and then compare the photo against reference photos that we took when you joined the party, using a large language model.
+
+And when it still can't tell? It sends it to Gaby and me in the pub, just like before.
+
+And when WE get it wrong??? Well that's when you press the escalate button to challenge our ruling.
