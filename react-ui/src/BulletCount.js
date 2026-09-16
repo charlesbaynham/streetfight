@@ -4,6 +4,7 @@ import TemporaryOverlay from "./TemporaryOverlay";
 import CollectItemFromQueryParam from "./CollectItemsFromQueryParams";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton } from "./ShotHistory";
+import prose from "./prose";
 
 import styles from "./BulletCount.module.css";
 

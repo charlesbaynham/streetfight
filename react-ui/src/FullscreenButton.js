@@ -10,6 +10,7 @@ import {
   isStandalone,
 } from "./AddToHomeScreen";
 import { useCallback, useEffect, useState } from "react";
+import prose from "./prose";
 
 // const TIME_BETWEEN_INSTALL_PROMPTS = 5 * 60 * 1000; // 5 mins
 const TIME_BETWEEN_INSTALL_PROMPTS = 0; // Always prompt
@@ -79,7 +80,7 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
       {isInstalled ? null : (
         <motion.div className={styles.buttonContainer}>
           <button onClick={toggleFullscreen}>
-            <img src={fullscreenImg} alt="Fullscreen" />
+            <img src={fullscreenImg} alt={prose.fullscreenButton.fullscreenAlt} />
           </button>
           <motion.img
             className={styles.fullscreenHint}
@@ -90,7 +91,7 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
               duration: 3,
             }}
             src={hintImg}
-            alt="This app is better in fullscreen"
+            alt={prose.fullscreenButton.fullscreenHintAlt}
           />
         </motion.div>
       )}

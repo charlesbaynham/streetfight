@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import Popup from "./Popup";
 import { sendAPIRequest } from "./utils";
+import prose from "./prose";
 
 // A custom hook that builds on useLocation to parse
 // the query string for you.
@@ -49,7 +50,9 @@ function JoinFromQueryParams() {
                 detail = (await response.json()).detail;
               } catch (e) {}
               setErrorMessage(
-                typeof detail === "string" ? detail : "Could not join the game",
+                typeof detail === "string"
+                  ? detail
+                  : prose.joinFromQueryParams.joinFailed,
               );
               setErrorVisible(true);
               navigate("/");
@@ -70,7 +73,7 @@ function JoinFromQueryParams() {
             }
           })
           .catch((_) => {
-            setErrorMessage("Could not join the game");
+            setErrorMessage(prose.joinFromQueryParams.joinFailed);
             setErrorVisible(true);
             navigate("/");
           });

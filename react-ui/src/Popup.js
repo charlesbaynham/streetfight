@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 
 import styles from "./Popup.module.css";
 import buttonImg from "./images/exit-button.svg";
+import prose from "./prose";
 
 const variants = {
   open: { opacity: 1 },
@@ -89,7 +90,7 @@ function Popup({ children, visible, setVisible }) {
         {moreBelow ? (
           <button
             className={styles.scrollHint}
-            aria-label="Scroll down for more"
+            aria-label={prose.popup.scrollHintLabel}
             onClick={scrollToBottom}
           >
             <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">

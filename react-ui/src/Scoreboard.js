@@ -3,6 +3,7 @@ import { sendAPIRequest } from "./utils";
 
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
+import prose from "./prose";
 
 import styles from "./Scoreboard.module.css";
 
@@ -32,10 +33,10 @@ function Scoreboard() {
         <table className={styles.scoretable}>
           <thead>
             <tr>
-              <th>Player</th>
-              <th>Team</th>
-              <th>Armour</th>
-              <th>Damage</th>
+              <th>{prose.scoreboard.playerHeader}</th>
+              <th>{prose.scoreboard.teamHeader}</th>
+              <th>{prose.scoreboard.armourHeader}</th>
+              <th>{prose.scoreboard.damageHeader}</th>
             </tr>
           </thead>
           <tbody>
@@ -75,7 +76,7 @@ export function ButtonAndScoreboard({ standalone = false }) {
             setShowScores(true);
           }}
         >
-          Show scores &gt;&gt;
+          {prose.scoreboard.showScoresButton}
         </button>
       </p>
 
