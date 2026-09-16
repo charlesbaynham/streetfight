@@ -251,7 +251,15 @@ Four things from it that are worth knowing even if you never call the agent:
     where inline markup cannot be split out of the sentence. Admin pages are
     deliberately *not* in it, and neither is text the backend supplies (ticker
     messages, error `detail`s, colour and player names). A new player-facing
-    string belongs there, not inline in the component.
+    string belongs there, not inline in the component. **Tests address a
+    screen through `prose.js` too, never through a copy of the words**
+    (`expect(screen.getByText(prose.pickOutfit.resultHeading))`, and
+    `testUtils.proseFragment(...)` where the copy sits inside a larger
+    sentence): a test about behaviour must not fail because Charles reworded
+    a button. A test whose *only* assertion is what some copy says has no
+    behaviour in it and does not belong in the suite at all — conditional
+    rendering is behaviour, a fixed sentence is not. Admin pages keep their
+    strings inline, so their tests reasonably quote them.
   - `src/urlState.js` — where a page's *place* lives. Three pages keep it in
     the URL rather than only in React state (`ShotQueue.js`,
     `ReferencePhotos.js`, `PickOutfit.js`), because they are worked on a phone
@@ -341,9 +349,27 @@ Four things from it that are worth knowing even if you never call the agent:
     form. The list follows the URL: the fetch effect is guarded on
     page/relaxed/wardrobe alone, so choosing an outfit does *not* re-post the
     list out from under the confirm screen. Its
-    footer links to `HowItWorks.js` (route `/how-it-works`), a static essay on
-    the error-correcting code behind the outfits — currently a placeholder
-    skeleton awaiting Charles's prose, marked `PLACEHOLDER START/END`. It opens
+    footer links to `HowItWorks.js` (route `/how-it-works`), the essay on the
+    error-correcting code behind the outfits, pitched at the interested
+    layman. Its prose lives in `prose.howItWorks.content` as a sequence of
+    paragraph and **figure** blocks; the figures themselves are
+    `HowItWorksFigures.js`. Two of the three (F1, a real shot photograph
+    against what CharlesBot read off it; F2, two outfits one garment apart)
+    are commissioned artwork and render as loud dashed placeholders until
+    their SVG lands — `docs/how_it_works_figures.md` holds the briefs and
+    names the archive photograph chosen for F1. The third is drawn from
+    `GET /api/how_it_works` (`backend/how_it_works.py`) rather than bundled,
+    so a palette edit or a change to the code's parameters cannot leave a
+    published essay lying: it is the 49 codewords as lit cells of a 2401-cell
+    square, one per row and per column because any two garments determine the
+    other two. That endpoint also carries the reader's *own* outfit — the
+    only place in the app that tells a player which hat and armband they will
+    be handed — and their three nearest neighbours, **named** and labelled on
+    the grid: knowing who you could be mistaken for is the part of the scheme
+    a player can act on. Note that half of any codeword's neighbours sit at
+    exactly the minimum distance (24 of the other 48), so those three are a
+    sample of a tie rather than a ranking, which is why `closest_count` rides
+    alongside them and the page says how many share that distance. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
     `SpectatorView.js` (route `/admin/spectator`) is the big-screen dashboard
     for people who are not playing - a laptop wired to a TV, left alone all

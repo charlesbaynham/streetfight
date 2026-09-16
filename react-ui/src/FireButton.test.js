@@ -3,6 +3,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react";
 import FireButton from "./FireButton";
 import { makeUser } from "./testUtils";
 import { getPlaySpy } from "./testMocks/useSound";
+import prose from "./prose";
 
 import fireButtonImg from "./images/firebutton.svg";
 import fireButtonImgNoAmmo from "./images/firebutton_no_ammo.svg";
@@ -15,7 +16,7 @@ import fireButtonImgCooldown from "./images/firebutton_cooldown.svg";
 jest.mock("./modernizr", () => ({ vibrate: true }));
 
 function getButton() {
-  return screen.getByRole("button", { name: "Fire button" });
+  return screen.getByRole("button", { name: prose.fireButton.fireButtonAlt });
 }
 
 describe("FireButton - disabled states", () => {
@@ -24,7 +25,7 @@ describe("FireButton - disabled states", () => {
       <FireButton user={makeUser({ team_id: null })} onClick={jest.fn()} />,
     );
     expect(getButton()).toBeDisabled();
-    expect(screen.getByAltText("Fire button").src).toContain(
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
       fireButtonImgNoAmmo,
     );
   });
@@ -34,7 +35,7 @@ describe("FireButton - disabled states", () => {
       <FireButton user={makeUser({ num_bullets: 0 })} onClick={jest.fn()} />,
     );
     expect(getButton()).toBeDisabled();
-    expect(screen.getByAltText("Fire button").src).toContain(
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
       fireButtonImgNoAmmo,
     );
   });
@@ -44,7 +45,7 @@ describe("FireButton - disabled states", () => {
       <FireButton user={makeUser({ shot_damage: 0 })} onClick={jest.fn()} />,
     );
     expect(getButton()).toBeDisabled();
-    expect(screen.getByAltText("Fire button").src).toContain(
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
       fireButtonImgNoAmmo,
     );
   });
@@ -52,7 +53,9 @@ describe("FireButton - disabled states", () => {
   test("enabled with the normal image when team, bullets and weapon all hold", () => {
     render(<FireButton user={makeUser()} onClick={jest.fn()} />);
     expect(getButton()).toBeEnabled();
-    expect(screen.getByAltText("Fire button").src).toContain(fireButtonImg);
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
+      fireButtonImg,
+    );
   });
 });
 
@@ -87,7 +90,7 @@ describe("FireButton - firing", () => {
     fireEvent.click(getButton());
 
     expect(getButton()).toBeDisabled();
-    expect(screen.getByAltText("Fire button").src).toContain(
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
       fireButtonImgCooldown,
     );
   });
@@ -104,7 +107,7 @@ describe("FireButton - firing", () => {
       jest.advanceTimersByTime(5999);
     });
     expect(getButton()).toBeDisabled();
-    expect(screen.getByAltText("Fire button").src).toContain(
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
       fireButtonImgCooldown,
     );
 
@@ -112,7 +115,9 @@ describe("FireButton - firing", () => {
       jest.advanceTimersByTime(1);
     });
     expect(getButton()).toBeEnabled();
-    expect(screen.getByAltText("Fire button").src).toContain(fireButtonImg);
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
+      fireButtonImg,
+    );
   });
 
   test("a shorter shot_timeout (Eat-a-bullet, 1s) re-enables sooner than the default 6s", () => {

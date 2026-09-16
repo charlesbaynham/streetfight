@@ -5,6 +5,7 @@ import Scoreboard, { ButtonAndScoreboard } from "./Scoreboard";
 import { UpdateSSEConnection } from "./UpdateListener";
 import { installFetchMock, getAPICalls, emitUpdate } from "./testUtils";
 import styles from "./Scoreboard.module.css";
+import prose from "./prose";
 
 function scoreRow(overrides = {}) {
   return {
@@ -132,19 +133,21 @@ describe("ButtonAndScoreboard", () => {
     expect(screen.queryByRole("table")).not.toBeInTheDocument();
     expect(getAPICalls("get_scoreboard")).toHaveLength(0);
 
-    fireEvent.click(screen.getByText("Show scores >>"));
+    fireEvent.click(screen.getByText(prose.scoreboard.showScoresButton));
 
     expect(await screen.findByText("Alice")).toBeInTheDocument();
   });
 
   test("the standalone prop adds its style class to the button", () => {
     render(<ButtonAndScoreboard standalone />);
-    expect(screen.getByText("Show scores >>")).toHaveClass(styles.standalone);
+    expect(screen.getByText(prose.scoreboard.showScoresButton)).toHaveClass(
+      styles.standalone,
+    );
   });
 
   test("without standalone, the button does not have the standalone class", () => {
     render(<ButtonAndScoreboard />);
-    expect(screen.getByText("Show scores >>")).not.toHaveClass(
+    expect(screen.getByText(prose.scoreboard.showScoresButton)).not.toHaveClass(
       styles.standalone,
     );
   });

@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 
 import NewItems from "./NewItems";
 import { installFetchMock, getLastAPICall, actAndFlush } from "./testUtils";
+import prose from "./prose";
 
 test("the weapon item type offers a dropdown of named weapons, not raw number fields", async () => {
   installFetchMock({
@@ -27,9 +28,11 @@ test("the weapon item type offers a dropdown of named weapons, not raw number fi
   // "No weapon" is meaningless as a loot drop - it's only ever a player's
   // per-slot state, never something to hand out.
   expect(
-    screen.queryByRole("option", { name: "No weapon" }),
+    screen.queryByRole("option", { name: prose.weapons.noWeapon }),
   ).not.toBeInTheDocument();
-  expect(screen.getByRole("option", { name: "Pewster" })).toBeInTheDocument();
+  expect(
+    screen.getByRole("option", { name: prose.weapons.pewster }),
+  ).toBeInTheDocument();
 });
 
 test("picking a named weapon posts its damage/timeout pair as the item data", async () => {
@@ -49,7 +52,7 @@ test("picking a named weapon posts its damage/timeout pair as the item data", as
   await actAndFlush(() =>
     userEvent.selectOptions(
       screen.getByText("weapon:").nextSibling,
-      "Tracka-Tracka",
+      prose.weapons.trackaTracka,
     ),
   );
 

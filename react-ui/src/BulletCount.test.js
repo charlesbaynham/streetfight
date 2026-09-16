@@ -7,9 +7,11 @@ import TemporaryOverlay from "./TemporaryOverlay";
 import { makeUser, installFetchMock, getAPICalls } from "./testUtils";
 import { getGunImgFromUser } from "./utils";
 import styles from "./BulletCount.module.css";
+import prose from "./prose";
 
 import bullet from "./images/art/bullet.png";
 import armourImg from "./images/art/helmet.png";
+
 import cross from "./images/cross.svg";
 import medkit from "./images/art/medkit.png";
 
@@ -58,7 +60,7 @@ function everAppeared(img) {
 describe("ammo display", () => {
   test.each([1, 2, 3])("shows %i bullet icon(s) with no count text", (n) => {
     const { container } = renderBulletCount(makeUser({ num_bullets: n }));
-    const ammoPara = hudLine(container, "Ammo:");
+    const ammoPara = hudLine(container, prose.bulletCount.ammoLabel);
     const imgs = ammoPara.querySelectorAll("img");
     expect(imgs).toHaveLength(n);
     imgs.forEach((img) => expect(img.src).toContain(bullet));
@@ -67,7 +69,7 @@ describe("ammo display", () => {
 
   test("shows a single bullet icon plus a count above 3", () => {
     const { container } = renderBulletCount(makeUser({ num_bullets: 5 }));
-    const ammoPara = hudLine(container, "Ammo:");
+    const ammoPara = hudLine(container, prose.bulletCount.ammoLabel);
     const imgs = ammoPara.querySelectorAll("img");
     expect(imgs).toHaveLength(1);
     expect(imgs[0].src).toContain(bullet);
@@ -76,7 +78,7 @@ describe("ammo display", () => {
 
   test("shows a cross at 0 bullets", () => {
     const { container } = renderBulletCount(makeUser({ num_bullets: 0 }));
-    const ammoPara = hudLine(container, "Ammo:");
+    const ammoPara = hudLine(container, prose.bulletCount.ammoLabel);
     const imgs = ammoPara.querySelectorAll("img");
     expect(imgs).toHaveLength(1);
     expect(imgs[0].src).toContain(cross);
@@ -86,7 +88,7 @@ describe("ammo display", () => {
 describe("armour display", () => {
   test("shows hit_points - 1 armour icons", () => {
     const { container } = renderBulletCount(makeUser({ hit_points: 4 }));
-    const armourPara = hudLine(container, "Armour:");
+    const armourPara = hudLine(container, prose.bulletCount.armourLabel);
     const imgs = armourPara.querySelectorAll("img");
     expect(imgs).toHaveLength(3);
     imgs.forEach((img) => expect(img.src).toContain(armourImg));
@@ -94,7 +96,7 @@ describe("armour display", () => {
 
   test.each([1, 0])("shows a cross when hit_points is %i", (hp) => {
     const { container } = renderBulletCount(makeUser({ hit_points: hp }));
-    const armourPara = hudLine(container, "Armour:");
+    const armourPara = hudLine(container, prose.bulletCount.armourLabel);
     const imgs = armourPara.querySelectorAll("img");
     expect(imgs).toHaveLength(1);
     expect(imgs[0].src).toContain(cross);

@@ -11,6 +11,7 @@ import ShotReceivedOverlay from "./ShotReceivedOverlay";
 import * as shotHistoryStore from "./shotHistoryStore";
 import { getPlaySpy } from "./testMocks/useSound";
 import { installFetchMock, makeShot, makeUser } from "./testUtils";
+import prose from "./prose";
 
 // The real modernizr module detects vibrate support once, at import time,
 // against jsdom's real navigator - too early for testUtils' stubbed
@@ -49,15 +50,20 @@ describe("ShotReceivedOverlay", () => {
 
     render(<ShotReceivedOverlay user={makeUser({ hit_points: 2 })} />);
 
-    expect(screen.getByText("You have been shot")).toBeInTheDocument();
-    expect(screen.getByText("by Ann")).toBeInTheDocument();
-    // Same marked-up view as "My shots" (ShotThumbnail), crosshair included -
+    expect(
+      screen.getByText(prose.shotReceivedOverlay.headline),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(prose.shotReceivedOverlay.shooterBy("Ann")),
+    ).toBeInTheDocument();
+    // Same marked-up view as prose.shotHistory.listTitle (ShotThumbnail), crosshair included -
     // the player should be able to judge the call for themselves.
-    expect(await screen.findByAltText("Your shot")).toHaveAttribute(
-      "src",
-      "abc123",
-    );
-    expect(screen.getByText("2 hit points left")).toBeInTheDocument();
+    expect(
+      await screen.findByAltText(prose.shotHistory.yourShotAlt),
+    ).toHaveAttribute("src", "abc123");
+    expect(
+      screen.getByText(prose.shotReceivedOverlay.hitPointsLeft(2)),
+    ).toBeInTheDocument();
     expect(getPlaySpy()).toHaveBeenCalledTimes(1);
     expect(navigator.vibrate).toHaveBeenCalledWith([200, 100, 200, 100, 400]);
   });
@@ -72,17 +78,23 @@ describe("ShotReceivedOverlay", () => {
 
     render(<ShotReceivedOverlay user={makeUser()} />);
 
-    expect(screen.getByText("You have been shot")).toBeInTheDocument();
+    expect(
+      screen.getByText(prose.shotReceivedOverlay.headline),
+    ).toBeInTheDocument();
     expect(screen.queryByText(/^by /)).not.toBeInTheDocument();
   });
 
   test.each([
-    ["knocked out", { state: "knocked out" }, "You are knocked out"],
-    ["dead", { state: "dead" }, "You are dead"],
+    [
+      "knocked out",
+      { state: "knocked out" },
+      prose.shotReceivedOverlay.knockedOut,
+    ],
+    ["dead", { state: "dead" }, prose.shotReceivedOverlay.dead],
     [
       "alive with 1 hit point",
       { state: "alive", hit_points: 1 },
-      "1 hit point left",
+      prose.shotReceivedOverlay.hitPointsLeft(1),
     ],
   ])("says what the shot did: %s", async (_case, overrides, expected) => {
     const shot = makeShot({ direction: "received", result: "hit" });
@@ -108,10 +120,16 @@ describe("ShotReceivedOverlay", () => {
     await seedShots({ received: [shot] });
 
     const { unmount } = render(<ShotReceivedOverlay user={makeUser()} />);
-    expect(screen.getByText("You have been shot")).toBeInTheDocument();
+    expect(
+      screen.getByText(prose.shotReceivedOverlay.headline),
+    ).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(screen.queryByText("You have been shot")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: prose.shotReceivedOverlay.okButton }),
+    );
+    expect(
+      screen.queryByText(prose.shotReceivedOverlay.headline),
+    ).not.toBeInTheDocument();
 
     unmount();
     const { container } = render(<ShotReceivedOverlay user={makeUser()} />);
@@ -127,8 +145,12 @@ describe("ShotReceivedOverlay", () => {
     await seedShots({ received: [older] });
 
     render(<ShotReceivedOverlay user={makeUser()} />);
-    fireEvent.click(screen.getByRole("button", { name: "OK" }));
-    expect(screen.queryByText("You have been shot")).not.toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: prose.shotReceivedOverlay.okButton }),
+    );
+    expect(
+      screen.queryByText(prose.shotReceivedOverlay.headline),
+    ).not.toBeInTheDocument();
 
     // A second shot lands, newer than the one just dismissed - it must still
     // get its own overlay rather than being swept up by the dismissal.
@@ -140,7 +162,9 @@ describe("ShotReceivedOverlay", () => {
     await seedShots({ received: [newer, older] });
 
     await waitFor(() =>
-      expect(screen.getByText("You have been shot")).toBeInTheDocument(),
+      expect(
+        screen.getByText(prose.shotReceivedOverlay.headline),
+      ).toBeInTheDocument(),
     );
     // Sound plays again for the new shot (once per shot shown).
     expect(getPlaySpy()).toHaveBeenCalledTimes(2);
@@ -154,9 +178,15 @@ describe("ShotReceivedOverlay", () => {
     window.addEventListener("streetfight:open-shot-history", openListener);
 
     render(<ShotReceivedOverlay user={makeUser()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Appeal this shot" }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: prose.shotReceivedOverlay.appealButton,
+      }),
+    );
 
-    expect(screen.queryByText("You have been shot")).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(prose.shotReceivedOverlay.headline),
+    ).not.toBeInTheDocument();
     expect(openListener).toHaveBeenCalledTimes(1);
     expect(openListener.mock.calls[0][0].detail).toEqual({ shotId: shot.id });
 

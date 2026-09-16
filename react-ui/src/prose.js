@@ -40,19 +40,117 @@ const prose = {
   // @section howItWorks
   howItWorks: {
     heading: "Clothes, colours, and error correction",
-    // PLACEHOLDER START - scaffolding awaiting Charles's essay. Unlike the
-    // rest of this file, the essay is long-form, so `content` is a sequence
-    // of blocks rather than one string: a "paragraph" is plain text (or JSX,
-    // where a sentence needs markup - same rule as everywhere else in this
-    // file), and a "diagram" carries a JSX figure - an image, an inline SVG,
-    // whatever the point needs - plus its caption.
+    // The essay is long-form, so `content` is a sequence of blocks rather
+    // than one string: a "paragraph" is plain text (or JSX, where a sentence
+    // needs markup - same rule as everywhere else in this file), and a
+    // "figure" names one of the components in HowItWorksFigures.js and
+    // carries its caption. The figures are numbered F1-F3 in
+    // docs/how_it_works_figures.md, which is also where the briefs for the
+    // two commissioned ones live.
     content: [
       {
         type: "paragraph",
-        text: "I haven't written this yet! So you'll have to ask me. Though if you want, you could google Hamming distances and Reed-Solomon codes. And then ask me why I don't get a proper job.",
+        text: "We are using machine vision to figure out who has shot whom based on a photograph of them. But, our photos will be blurry, might be taken in the dark, might be far away, and people will be actively trying not to be photographed. That makes the job hard.",
+      },
+      {
+        type: "figure",
+        figure: "cameraRead",
+        caption:
+          "A real shot from the trial game. The computer is not trying to recognise a face - it is trying to read four colours off you, and here it got one of them wrong and still knew who you were.",
+      },
+      {
+        type: "paragraph",
+        text: "To fix this, we try to make the algorithm's life easier by using something that is easier to see: big blocks of colours. You have been asked to choose from 7 possible colours for both your trousers and your shirt. On the night, Gaby and I will also give you a hat and an armband for a total of four different pieces of clothing. That means there's 7^4 = 2401 possible combinations, each of which could identify a single person.",
+      },
+      {
+        type: "paragraph",
+        text: "However, we don't have 2401 friends. And, it's not very helpful to pick colours such that even a single mistake is enough to trick the computer into thinking the photo is of someone else. We would prefer to choose particular outfits for everyone, such that even if the computer gets one colour wrong or can't see your hat, it can still figure out who you are.",
+      },
+      {
+        type: "figure",
+        figure: "spotTheDifference",
+        caption:
+          "Two players one garment apart: misread a single hat and the machine names the wrong person. Spread the same two outfits three garments apart and one mistake changes nothing.",
+      },
+      {
+        type: "paragraph",
+        text: (
+          <>
+            This is the field of <em>error correction</em>. Simple "Hamming
+            code" error correction was developed in the 50s and was used to
+            correct errors in computer memory, which used to go wrong much more
+            often back then. The more modern Reed-Solomon algorithm extends this
+            to encodings that have more than just two possible symbols (i.e.
+            rather than a bit that is 0 or 1, we have a hat that can be one of 7
+            colours) and is used from correcting for scratched CDs to sending
+            messages to Voyager 1, billions of km away.
+          </>
+        ),
+      },
+      {
+        type: "paragraph",
+        text: 'We are using a [4, 2, 3] Reed-Solomon scheme - n=4 symbols (trousers, shirt, armbands, hat); k=2, meaning any two of your four garments are enough to say who you are and the other two are the safety net; and a d=3 "Hamming distance" - the minimum number of errors that we would need to make to misidentify a player. This means that we can only fit 48 players in our game (49 outfits, one of which is black from head to toe and never handed out), but that we can still identify you even if we can only see two of the four items of clothing.',
+      },
+      {
+        type: "figure",
+        figure: "codewordGrid",
+        caption:
+          "Every outfit anyone could wear, as one cell of a square: across, the hat and armband we hand out; down, the shirt and trousers you chose. The 49 we actually use are lit - and because any two garments determine the other two, exactly one is lit in each row and each column.",
+      },
+      {
+        type: "paragraph",
+        text: "That's still not quite enough however: it turns out that colour matching blurry photos is hard, and we often make more than 2 mistakes. To iron out these edge cases, we also use a Bayesian calculation to guess the probability of who the person in the photo is, based on their last known location and proximity to the shooter along with the probability of having made mistakes in the vision. As a final resort, we rank the top candidates in order of probability and then compare the photo against reference photos that we took when you joined the party, using a large language model.",
       },
     ],
+    // PLACEHOLDER START - the two commissioned figures. Delete this tag, the
+    // notes below and FigurePlaceholder once the artwork has landed.
+    placeholderTag: "Figure to come",
     // PLACEHOLDER END
+    figures: {
+      cameraRead: {
+        placeholder:
+          "The photograph, the four colours read off it, and who that turned out to be.",
+      },
+      spotTheDifference: {
+        placeholder:
+          "Two players one garment apart, and the same two spread three apart.",
+      },
+      codewordGrid: {
+        across: (garments) => `across: the ${garments} we hand you`,
+        youLabel: (name) => name || "you",
+        down: (garments) => `down: the ${garments} you chose`,
+        alt: (used, total) =>
+          `A square of ${total} possible outfits with ${used} of them marked, one in each row and each column.`,
+      },
+    },
+    yourOutfit: {
+      heading: "Which brings us to you",
+      // The garments are named as they are handed over, not as the database
+      // spells them.
+      garmentNames: {
+        tshirt: "t-shirt",
+        trousers: "trousers",
+        hat: "hat",
+        armbands: "armband",
+      },
+      garmentName: (name) =>
+        prose.howItWorks.yourOutfit.garmentNames[name] || name,
+      garment: (name, colour) =>
+        `${colour || "?"} ${prose.howItWorks.yourOutfit.garmentNames[name] || name}`,
+      weHandYou: "At the door we will hand you:",
+      youPicked: "You chose:",
+      noneYet:
+        "Pick an outfit and this page will tell you which hat and armband you are getting, and how close anyone else comes to wearing what you are.",
+      neighboursHeading: "Who is dressed like you?",
+      neighbourName: (name) => name || "somebody",
+      // The count matters: about half the scheme sits at exactly the minimum
+      // distance, so naming three without saying how many share that distance
+      // would claim a ranking that does not exist.
+      neighboursIntro: (distance, count) =>
+        `${count === 1 ? "One player is" : `${count} players are`} ${distance} garments away from you. Somebody would have to get all ${distance} of those colours wrong at once to mistake you for them. Here are your three closest:`,
+      apart: (distance) =>
+        distance === 1 ? "1 garment apart" : `${distance} garments apart`,
+    },
     backToGame: "Back to the game",
   },
   // @section joinFromQueryParams

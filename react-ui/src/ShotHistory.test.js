@@ -25,7 +25,9 @@ import {
   getLastAPICall,
   installFetchMock,
   makeShot,
+  proseFragment,
 } from "./testUtils";
+import prose from "./prose";
 
 import checkImg from "./images/check-solid.svg";
 import crossImg from "./images/cross.svg";
@@ -52,19 +54,33 @@ afterEach(async () => {
   await act(() => new Promise((resolve) => setTimeout(resolve, 0)));
 });
 
+// An appeal reason's key is the API contract; its wording is not.
+const firedReason = (key) =>
+  prose.shotHistory.appealReasonsFired.find(([k]) => k === key)[1];
+const receivedReason = (key) =>
+  prose.shotHistory.appealReasonsReceived.find(([k]) => k === key)[1];
+
 describe("shotStatus", () => {
   test("checked + hit with a target name", () => {
     expect(
       shotStatus(
         makeShot({ checked: true, result: "hit", target_name: "Ann" }),
       ),
-    ).toEqual({ state: "hit", icon: checkImg, label: "Hit Ann!" });
+    ).toEqual({
+      state: "hit",
+      icon: checkImg,
+      label: prose.shotHistory.hitLabel("Ann"),
+    });
   });
 
   test("checked + hit without a target name", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: "hit", target_name: null })),
-    ).toEqual({ state: "hit", icon: checkImg, label: "Hit!" });
+    ).toEqual({
+      state: "hit",
+      icon: checkImg,
+      label: prose.shotHistory.hitLabel(null),
+    });
   });
 
   test("checked + refunded", () => {
@@ -72,7 +88,7 @@ describe("shotStatus", () => {
       {
         state: "refunded",
         icon: returnImg,
-        label: "Ammo refunded",
+        label: prose.shotHistory.ammoRefunded,
       },
     );
   });
@@ -83,8 +99,8 @@ describe("shotStatus", () => {
     ).toEqual({
       state: "invalidated",
       icon: returnImg,
-      label: "Invalidated",
-      sublabel: "You were knocked out before this shot could be checked",
+      label: prose.shotHistory.invalidated,
+      sublabel: prose.shotHistory.invalidatedSublabel,
     });
   });
 
@@ -92,7 +108,7 @@ describe("shotStatus", () => {
     expect(shotStatus(makeShot({ checked: true, result: "miss" }))).toEqual({
       state: "miss",
       icon: crossImg,
-      label: "Missed",
+      label: prose.shotHistory.missed,
     });
   });
 
@@ -102,21 +118,29 @@ describe("shotStatus", () => {
     ).toEqual({
       state: "bystander",
       emoji: "😲",
-      label: "You shot a bystander!",
-      sublabel: "Not a player - no damage done",
+      label: prose.shotHistory.shotBystander,
+      sublabel: prose.shotHistory.shotBystanderSublabel,
     });
   });
 
   test("legacy checked shot (result: null) with a target name infers a hit", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: null, target_name: "Ann" })),
-    ).toEqual({ state: "hit", icon: checkImg, label: "Hit Ann!" });
+    ).toEqual({
+      state: "hit",
+      icon: checkImg,
+      label: prose.shotHistory.hitLabel("Ann"),
+    });
   });
 
   test("legacy checked shot (result: null) without a target name infers a miss", () => {
     expect(
       shotStatus(makeShot({ checked: true, result: null, target_name: null })),
-    ).toEqual({ state: "miss", icon: crossImg, label: "Missed" });
+    ).toEqual({
+      state: "miss",
+      icon: crossImg,
+      label: prose.shotHistory.missed,
+    });
   });
 
   test("unchecked with a completed AI review shows the suggestion and is escalated", () => {
@@ -131,8 +155,8 @@ describe("shotStatus", () => {
     ).toEqual({
       state: "escalated",
       emoji: "🤖",
-      label: "CharlesBot thinks: miss",
-      sublabel: "Escalated to referee",
+      label: prose.shotHistory.charlesBotThinks("miss"),
+      sublabel: prose.shotHistory.escalatedSublabel,
     });
   });
 
@@ -146,7 +170,7 @@ describe("shotStatus", () => {
           ai_target_name: "Ann",
         }),
       ).label,
-    ).toBe("CharlesBot thinks: hit on Ann");
+    ).toBe(prose.shotHistory.charlesBotHitOn("Ann"));
   });
 
   test("a suggested hit with nobody identified says so rather than naming a guess", () => {
@@ -159,7 +183,7 @@ describe("shotStatus", () => {
           ai_target_name: null,
         }),
       ).label,
-    ).toBe("CharlesBot thinks: hit - can't tell who");
+    ).toBe(prose.shotHistory.charlesBotHitUnknown);
   });
 
   test.each([
@@ -177,7 +201,7 @@ describe("shotStatus", () => {
     expect(shotStatus(makeShot({ checked: false, ...overrides }))).toEqual({
       state: "unreviewed",
       emoji: "⏳",
-      label: "Not reviewed yet",
+      label: prose.shotHistory.notReviewed,
     });
   });
 });
@@ -249,10 +273,14 @@ describe("ShotHistoryButton", () => {
       </>,
     );
 
-    fireEvent.click(screen.getByRole("button", { name: /My shots/ }));
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: proseFragment(prose.shotHistory.listTitle),
+      }),
+    );
 
     expect(
-      await screen.findByRole("heading", { name: "My shots" }),
+      await screen.findByRole("heading", { name: prose.shotHistory.listTitle }),
     ).toBeInTheDocument();
   });
 });
@@ -301,7 +329,9 @@ describe("ShotNotifierBubble (via ShotHistoryController)", () => {
 
     fireEvent.click(container.querySelector(".bubble"));
 
-    expect(screen.getByText(/All shots/)).toBeInTheDocument();
+    expect(
+      screen.getByText(proseFragment(prose.shotHistory.backButton)),
+    ).toBeInTheDocument();
     // Marking the shot seen as a side effect of opening it does not hide the
     // bubble any more - there's no linger timer to expire either.
     expect(container.querySelector(".bubble")).toBeInTheDocument();
@@ -363,7 +393,7 @@ describe("ShotHistoryController", () => {
     );
 
     act(() => openShotHistory());
-    await screen.findByRole("heading", { name: "My shots" });
+    await screen.findByRole("heading", { name: prose.shotHistory.listTitle });
 
     await waitFor(() =>
       expect(shotHistoryStore.countUnseenShots(shots)).toBe(0),
@@ -398,8 +428,12 @@ describe("ShotHistoryController", () => {
 
     await waitFor(() => expect(screen.getByText("2")).toBeInTheDocument());
 
-    fireEvent.click(screen.getByRole("button", { name: /My shots/ }));
-    await screen.findByRole("heading", { name: "My shots" });
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: proseFragment(prose.shotHistory.listTitle),
+      }),
+    );
+    await screen.findByRole("heading", { name: prose.shotHistory.listTitle });
 
     // The popup is open and the shots are recorded as seen in localStorage...
     await waitFor(() =>
@@ -422,16 +456,26 @@ describe("ShotHistoryController", () => {
 
     act(() => openShotHistory(shot.id));
 
-    expect(await screen.findByText("Hit Ann!")).toBeInTheDocument();
-    expect(screen.getByText(/All shots/)).toBeInTheDocument();
-    expect(screen.queryByText("My shots")).not.toBeInTheDocument();
+    expect(
+      await screen.findByText(prose.shotHistory.hitLabel("Ann")),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(proseFragment(prose.shotHistory.backButton)),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(prose.shotHistory.listTitle),
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByText(/All shots/));
+    fireEvent.click(
+      screen.getByText(proseFragment(prose.shotHistory.backButton)),
+    );
 
     expect(
-      await screen.findByRole("heading", { name: "My shots" }),
+      await screen.findByRole("heading", { name: prose.shotHistory.listTitle }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/All shots/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(proseFragment(prose.shotHistory.backButton)),
+    ).not.toBeInTheDocument();
   });
 
   test("the detail view names the weapon that fired the shot, when it recognises the pairing", async () => {
@@ -450,7 +494,9 @@ describe("ShotHistoryController", () => {
     act(() => openShotHistory(shot.id));
 
     expect(
-      await screen.findByText("Fired with Tracka-Tracka"),
+      await screen.findByText(
+        prose.shotHistory.firedWith(prose.weapons.trackaTracka),
+      ),
     ).toBeInTheDocument();
   });
 
@@ -465,8 +511,10 @@ describe("ShotHistoryController", () => {
 
     act(() => openShotHistory(shot.id));
 
-    await screen.findByText(/All shots/);
-    expect(screen.queryByText(/Fired with/)).not.toBeInTheDocument();
+    await screen.findByText(proseFragment(prose.shotHistory.backButton));
+    expect(
+      screen.queryByText(proseFragment(prose.shotHistory.firedWith(""))),
+    ).not.toBeInTheDocument();
   });
 
   test("closing the popup clears the selected shot, so reopening shows the list", async () => {
@@ -479,19 +527,25 @@ describe("ShotHistoryController", () => {
     );
 
     act(() => openShotHistory(shot.id));
-    expect(await screen.findByText(/All shots/)).toBeInTheDocument();
+    expect(
+      await screen.findByText(proseFragment(prose.shotHistory.backButton)),
+    ).toBeInTheDocument();
 
     fireEvent.click(container.querySelector(".exitButton"));
     await waitFor(() =>
-      expect(screen.queryByText(/All shots/)).not.toBeInTheDocument(),
+      expect(
+        screen.queryByText(proseFragment(prose.shotHistory.backButton)),
+      ).not.toBeInTheDocument(),
     );
 
     act(() => openShotHistory());
 
     expect(
-      await screen.findByRole("heading", { name: "My shots" }),
+      await screen.findByRole("heading", { name: prose.shotHistory.listTitle }),
     ).toBeInTheDocument();
-    expect(screen.queryByText(/All shots/)).not.toBeInTheDocument();
+    expect(
+      screen.queryByText(proseFragment(prose.shotHistory.backButton)),
+    ).not.toBeInTheDocument();
   });
 
   test("thumbnails request each shot's image and render it once resolved", async () => {
@@ -517,7 +571,7 @@ describe("ShotHistoryController", () => {
 
     // Scoped to the row thumbnails (class "thumbnail") rather than
     // getAllByAltText, since both shots are also unseen and the notifier
-    // bubble renders its own "Your shot"-alt image for the latest one.
+    // bubble renders its own prose.shotHistory.yourShotAlt-alt image for the latest one.
     await waitFor(() => {
       const srcs = Array.from(container.querySelectorAll("img.thumbnail"))
         .map((img) => img.getAttribute("src"))
@@ -573,7 +627,7 @@ describe("ShotHistoryController", () => {
     await act(() => shotHistoryStore.refreshShots());
     act(() => openShotHistory());
 
-    await screen.findByRole("heading", { name: "My shots" });
+    await screen.findByRole("heading", { name: prose.shotHistory.listTitle });
     expect(container.querySelector("img.crosshair")).not.toBeInTheDocument();
   });
 });
@@ -738,13 +792,15 @@ describe("appeals", () => {
     });
     await renderDetail({ received: [received], shotId: received.id });
 
-    expect(screen.getByText("Hit you! - shot by Bob")).toBeInTheDocument();
+    expect(
+      screen.getByText(prose.shotHistory.hitYouLabel("Bob")),
+    ).toBeInTheDocument();
   });
 
   test.each([
-    ["open", "Under appeal"],
-    ["upheld", "Appeal upheld"],
-    ["rejected", "Appeal rejected"],
+    ["open", prose.shotHistory.appealOpenLabel],
+    ["upheld", prose.shotHistory.appealUpheldLabel],
+    ["rejected", prose.shotHistory.appealRejectedLabel],
   ])("an appeal in state %s reads as '%s'", (appeal_state, label) => {
     expect(
       shotStatus(
@@ -755,7 +811,7 @@ describe("appeals", () => {
           appeal_state,
         }),
       ),
-    ).toMatchObject({ label, sublabel: "Hit Ann!" });
+    ).toMatchObject({ label, sublabel: prose.shotHistory.hitLabel("Ann") });
   });
 
   test("the Appeal button is offered on a shot the backend says can be appealed", async () => {
@@ -767,7 +823,9 @@ describe("appeals", () => {
     });
     await renderDetail({ fired: [shot], shotId: shot.id });
 
-    expect(screen.getByRole("button", { name: "Appeal" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: prose.shotHistory.appealButtonLabel }),
+    ).toBeEnabled();
   });
 
   test("with no appeals left the button is disabled and says so, never hidden", async () => {
@@ -787,7 +845,9 @@ describe("appeals", () => {
     });
 
     expect(
-      screen.getByRole("button", { name: "No appeals left" }),
+      screen.getByRole("button", {
+        name: prose.shotHistory.noAppealsLeftLabel,
+      }),
     ).toBeDisabled();
   });
 
@@ -812,28 +872,38 @@ describe("appeals", () => {
     await renderDetail({ fired: [shot], shotId: shot.id });
 
     await actAndFlush(() =>
-      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: prose.shotHistory.appealButtonLabel,
+        }),
+      ),
     );
 
     expect(
-      screen.getByText("Are you sure? You have 2 of 3 appeals left.", {
+      screen.getByText(prose.shotHistory.appealsLeftText(2, 3), {
         exact: false,
       }),
     ).toBeInTheDocument();
     expect(
-      screen.getByText("Successful appeals are refunded."),
+      screen.getByText(prose.shotHistory.appealsRefundNote),
     ).toBeInTheDocument();
 
     // Nothing is spent until a reason is given.
     expect(
-      screen.getByRole("button", { name: "Appeal this shot" }),
+      screen.getByRole("button", {
+        name: prose.shotHistory.appealConfirmButton,
+      }),
     ).toBeDisabled();
 
     await actAndFlush(() =>
-      fireEvent.click(screen.getByLabelText("It actually hit")),
+      fireEvent.click(screen.getByLabelText(firedReason("actually_hit"))),
     );
     await actAndFlush(() =>
-      fireEvent.click(screen.getByRole("button", { name: "Appeal this shot" })),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: prose.shotHistory.appealConfirmButton,
+        }),
+      ),
     );
 
     expect(getLastAPICall("appeal_shot").query).toEqual({
@@ -843,7 +913,9 @@ describe("appeals", () => {
     expect(getLastAPICall("appeal_shot").method).toBe("POST");
     // Back to the detail view once it has been lodged.
     expect(
-      screen.queryByRole("button", { name: "Appeal this shot" }),
+      screen.queryByRole("button", {
+        name: prose.shotHistory.appealConfirmButton,
+      }),
     ).toBeNull();
   });
 
@@ -858,12 +930,18 @@ describe("appeals", () => {
     await renderDetail({ received: [received], shotId: received.id });
 
     await actAndFlush(() =>
-      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: prose.shotHistory.appealButtonLabel,
+        }),
+      ),
     );
 
-    expect(screen.getByLabelText("It missed me")).toBeInTheDocument();
-    expect(screen.getByLabelText("That wasn't me")).toBeInTheDocument();
-    expect(screen.queryByLabelText("It actually hit")).toBeNull();
+    expect(screen.getByLabelText(receivedReason("missed"))).toBeInTheDocument();
+    expect(
+      screen.getByLabelText(receivedReason("wrong_target")),
+    ).toBeInTheDocument();
+    expect(screen.queryByLabelText(firedReason("actually_hit"))).toBeNull();
   });
 
   test("a refused appeal shows the server's reason instead of failing silently", async () => {
@@ -885,13 +963,21 @@ describe("appeals", () => {
     });
 
     await actAndFlush(() =>
-      fireEvent.click(screen.getByRole("button", { name: "Appeal" })),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: prose.shotHistory.appealButtonLabel,
+        }),
+      ),
     );
     await actAndFlush(() =>
-      fireEvent.click(screen.getByLabelText("It actually hit")),
+      fireEvent.click(screen.getByLabelText(firedReason("actually_hit"))),
     );
     await actAndFlush(() =>
-      fireEvent.click(screen.getByRole("button", { name: "Appeal this shot" })),
+      fireEvent.click(
+        screen.getByRole("button", {
+          name: prose.shotHistory.appealConfirmButton,
+        }),
+      ),
     );
 
     expect(
@@ -912,7 +998,9 @@ describe("appeals", () => {
     await renderDetail({ fired: [shot], shotId: shot.id });
 
     expect(
-      screen.getByText("You appealed: It hit someone else"),
+      screen.getByText(
+        prose.shotHistory.youAppealed(firedReason("wrong_target")),
+      ),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /appeal/i })).toBeNull();
   });

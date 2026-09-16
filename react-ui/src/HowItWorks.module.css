@@ -59,3 +59,149 @@
   margin-top: 10mm;
   opacity: 0.75;
 }
+
+.paragraph {
+  margin: 0 0 4mm;
+}
+
+/* PLACEHOLDER START - the frame a commissioned figure has not arrived in yet.
+   Dashed and labelled on purpose: an essay published with an empty box in it
+   should look unfinished rather than look designed. Delete with
+   FigurePlaceholder in HowItWorksFigures.js. */
+.placeholder {
+  display: flex;
+  flex-direction: column;
+  gap: 2mm;
+  padding: 8mm 4mm;
+  border: 1px dashed rgba(255, 255, 255, 0.4);
+  border-radius: 2mm;
+}
+
+.placeholderTag {
+  font-size: smaller;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.6;
+}
+
+.placeholderNote {
+  font-style: italic;
+  opacity: 0.8;
+}
+/* PLACEHOLDER END */
+
+/* F3. Square, full width, and drawn in grid units - see FigureCodewordGrid. */
+.grid {
+  width: 100%;
+  height: auto;
+}
+
+.gridField {
+  fill: rgba(255, 255, 255, 0.06);
+}
+
+.gridCell {
+  fill: white;
+}
+
+/* Slot 0, the all-black outfit nobody is given: on the grid, but hollow, so
+   the essay's "49 outfits, one never handed out" is visible rather than
+   asserted. */
+.gridCellWithheld {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.55);
+  stroke-width: 0.15;
+}
+
+.gridYou {
+  fill: none;
+  stroke: #ffd400;
+  stroke-width: 0.5;
+}
+
+.gridNeighbour {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.5);
+  stroke-width: 0.3;
+}
+
+.yourOutfit {
+  margin-top: 8mm;
+}
+
+.outfitRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 2mm;
+  margin: 0 0 3mm;
+}
+
+.outfitLabel {
+  width: 100%;
+  opacity: 0.75;
+}
+
+.garment {
+  display: inline-flex;
+  align-items: center;
+  gap: 1.5mm;
+}
+
+.garmentStrip {
+  display: inline-flex;
+  gap: 1mm;
+}
+
+.neighbours {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.neighbour {
+  display: flex;
+  align-items: center;
+  gap: 3mm;
+  padding: 1.5mm 0;
+}
+
+.neighbourDistance {
+  opacity: 0.75;
+  font-size: smaller;
+}
+
+.hint {
+  opacity: 0.75;
+}
+
+/* Which way is which on F3. The row index is a *pair* of garments, so there is
+   no axis to tick - naming the two pairs above the square is the whole
+   labelling it can honestly carry. */
+.gridAxes {
+  display: flex;
+  justify-content: space-between;
+  gap: 3mm;
+  margin: 0 0 1.5mm;
+  font-size: smaller;
+  opacity: 0.75;
+  text-align: left;
+}
+
+.neighbourName {
+  flex: 1;
+}
+
+/* Names beside the rings on F3. The size is set in the component, which has to
+   measure the text to keep two names from being drawn through each other;
+   `color` is here only so a nudged label's leader line can pick it up through
+   currentColor. */
+.gridLabel {
+  fill: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.gridLabelYou {
+  fill: #ffd400;
+  color: #ffd400;
+}
