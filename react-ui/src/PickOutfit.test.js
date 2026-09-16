@@ -1085,7 +1085,7 @@ test("the curiosity footer links to the essay in a new tab, on the picker and on
   await goPastHeader();
 
   const link = screen.getByRole("link", {
-    name: p.curiosityFooter,
+    name: prose.curiosityFooter.linkText,
   });
   expect(link).toHaveAttribute("href", "/how-it-works");
   expect(link).toHaveAttribute("target", "_blank");
@@ -1110,7 +1110,7 @@ test("the curiosity footer links to the essay in a new tab, on the picker and on
 
   expect(screen.getByText(p.resultHeading)).toBeInTheDocument();
   expect(
-    screen.getByRole("link", { name: p.curiosityFooter }),
+    screen.getByRole("link", { name: prose.curiosityFooter.linkText }),
   ).toBeInTheDocument();
 });
 
