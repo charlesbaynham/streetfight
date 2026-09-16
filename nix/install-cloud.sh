@@ -147,9 +147,10 @@ echo "$extra/data/secrets/streetfight.env (0600 in a 0700 directory)"
 
 if [ "$skip_vm_test" -eq 0 ]; then
   step "Booting the built image locally (--vm-test)"
-  # Runs under plain TCG without KVM - slow, not broken. It boots the actual
-  # installed disk, which is the only check that catches a system that
-  # installs cleanly and then never comes up.
+  # Needs real KVM: the test derivation requires the `kvm` system feature, so
+  # nix refuses to build it at all without /dev/kvm rather than falling back to
+  # TCG. It boots the actual installed disk, which is the only check that
+  # catches a system that installs cleanly and then never comes up.
   nixos-anywhere --flake ".#$FLAKE_ATTR" --vm-test
 fi
 
