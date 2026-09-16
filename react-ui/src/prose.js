@@ -22,6 +22,10 @@ const prose = {
     armourLabel: "Armour:",
     appealsRemaining: (n) => `Appeals: ${n}`,
   },
+  // @section curiosityFooter
+  curiosityFooter: {
+    linkText: "Interested in what's happening here?",
+  },
   // @section fireButton
   fireButton: {
     fireButtonAlt: "Fire button",
@@ -246,7 +250,6 @@ const prose = {
     enterGameNote: "",
     askAdminNote:
       "Please do wear these clothes! Ask Charles if you need to change your outfit",
-    curiosityFooter: "Interested in what's happening here?",
     joinProgressAriaLabel: "Join progress",
     progressPercent: (percent) => `${percent}%`,
     noInviteLinkNote: "No invite link found - ask for the sign-up link again.",
