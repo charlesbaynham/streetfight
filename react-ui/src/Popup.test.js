@@ -2,6 +2,7 @@ import React from "react";
 import { fireEvent, render, screen } from "@testing-library/react";
 
 import Popup from "./Popup";
+import prose from "./prose";
 
 // jsdom does no layout, so the scroll geometry the hint keys off has to be
 // supplied by hand
@@ -27,7 +28,7 @@ function renderPopup() {
   );
 }
 
-const scrollHint = () => screen.queryByLabelText("Scroll down for more");
+const scrollHint = () => screen.queryByLabelText(prose.popup.scrollHintLabel);
 
 test("no hint when everything fits in the box", () => {
   renderPopup();

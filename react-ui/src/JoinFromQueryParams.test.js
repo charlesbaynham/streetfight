@@ -4,6 +4,7 @@ import { MemoryRouter, useLocation } from "react-router-dom";
 
 import JoinFromQueryParams from "./JoinFromQueryParams";
 import { installFetchMock, getAPICalls } from "./testUtils";
+import prose from "./prose";
 
 // Renders the current router location so navigation triggered by the
 // component under test (navigate("/") after a join attempt) is observable.
@@ -75,7 +76,7 @@ test("an error response without a detail shows a generic message", async () => {
 
   await screen.findByText("/");
   expect(
-    await screen.findByText("Could not join the game"),
+    await screen.findByText(prose.joinFromQueryParams.joinFailed),
   ).toBeInTheDocument();
 });
 

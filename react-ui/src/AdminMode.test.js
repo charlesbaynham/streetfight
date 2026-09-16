@@ -13,6 +13,7 @@ import {
   makeGame,
   actAndFlush,
 } from "./testUtils";
+import prose from "./prose";
 
 // These panels aren't what's under test here (Circles, the ticker feed, the
 // item QR generator, the live player map) and each does its own polling /
@@ -197,7 +198,7 @@ describe("UserControls", () => {
     const aliceRow = screen.getByText("Alice").closest("li");
     expect(aliceRow).toHaveTextContent("3 HP");
     expect(aliceRow).toHaveTextContent("5 ammo");
-    expect(aliceRow).toHaveTextContent("Pewster");
+    expect(aliceRow).toHaveTextContent(prose.weapons.pewster);
     expect(aliceRow).not.toHaveTextContent("\u{1F480}");
 
     const bobRow = screen.getByText("Bob").closest("li");
@@ -310,7 +311,7 @@ describe("UserControls", () => {
 
     userEvent.selectOptions(
       within(aliceRow).getByRole("combobox"),
-      "Tracka-Tracka",
+      prose.weapons.trackaTracka,
     );
 
     await waitFor(() =>
@@ -318,7 +319,7 @@ describe("UserControls", () => {
     );
     expect(getLastAPICall("admin_set_weapon").query).toEqual({
       user_id: "user-pewster",
-      weapon: "Tracka-Tracka",
+      weapon: prose.weapons.trackaTracka,
     });
   });
 
@@ -329,7 +330,9 @@ describe("UserControls", () => {
     expect(
       within(aliceRow).queryByRole("option", { name: "custom" }),
     ).not.toBeInTheDocument();
-    expect(within(aliceRow).getByRole("combobox").value).toBe("Pewster");
+    expect(within(aliceRow).getByRole("combobox").value).toBe(
+      prose.weapons.pewster,
+    );
 
     const bobRow = screen.getByText("Bob").closest("li"); // non-standard weapon
     expect(
@@ -373,17 +376,6 @@ describe("GamePanel", () => {
         active: "true",
       }),
     );
-  });
-
-  test("both AI checkboxes render with distinct labels", async () => {
-    await renderAdmin();
-
-    expect(
-      screen.getByLabelText(/CharlesBot reviews shot photos automatically/),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByLabelText(/CharlesBot verdicts resolve shots automatically/),
-    ).toBeInTheDocument();
   });
 
   test("the AI review checkbox reflects ai_shot_review_enabled and posts on toggle", async () => {

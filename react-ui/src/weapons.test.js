@@ -2,14 +2,15 @@ import fs from "fs";
 import path from "path";
 
 import { weaponName } from "./weapons";
+import prose from "./prose";
 
 describe("weaponName", () => {
   test.each([
-    [{ shot_damage: 0, shot_timeout: 6 }, "No weapon"],
-    [{ shot_damage: 1, shot_timeout: 6 }, "Pewster"],
-    [{ shot_damage: 2, shot_timeout: 6 }, "Tracka-Tracka"],
-    [{ shot_damage: 3, shot_timeout: 6 }, "OMG"],
-    [{ shot_damage: 1, shot_timeout: 1 }, "Eat-a-bullet"],
+    [{ shot_damage: 0, shot_timeout: 6 }, prose.weapons.noWeapon],
+    [{ shot_damage: 1, shot_timeout: 6 }, prose.weapons.pewster],
+    [{ shot_damage: 2, shot_timeout: 6 }, prose.weapons.trackaTracka],
+    [{ shot_damage: 3, shot_timeout: 6 }, prose.weapons.omg],
+    [{ shot_damage: 1, shot_timeout: 1 }, prose.weapons.eatABullet],
   ])("maps %j to %s", (user, expected) => {
     expect(weaponName(user)).toBe(expected);
   });

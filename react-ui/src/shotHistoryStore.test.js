@@ -4,6 +4,7 @@
 // modules per test avoid state leaking between cases, and are required for
 // the getShotImage memoisation test in particular.
 import { makeShot } from "./testUtils";
+import prose from "./prose";
 
 let store;
 let sendAPIRequest;
@@ -157,7 +158,7 @@ describe("corrupt localStorage", () => {
   });
 });
 
-// unacknowledgedHits / acknowledgeHit back the "You have been shot" overlay
+// unacknowledgedHits / acknowledgeHit back the prose.shotReceivedOverlay.headline overlay
 // (ShotReceivedOverlay.js): which shot it shows, and what dismissing it
 // sweeps away.
 describe("unacknowledgedHits / acknowledgeHit", () => {
