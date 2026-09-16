@@ -5,10 +5,14 @@ renders at `/how-it-works`, linked from the outfit picker's footer. Its
 audience is the interested layman: a player who has just chosen a t-shirt
 colour and wants to know why they were only offered some of them.
 
-Three figures were agreed. **F3 is built and live.** F1 and F2 are
-commissioned artwork and render as dashed placeholders until their SVG
-arrives (`react-ui/src/HowItWorksFigures.js`, marked `PLACEHOLDER
-START/END`).
+Three figures were agreed, and **all three are built and live.** F3 is drawn
+from the backend; F1 and F2 were drawn to the briefs below by Claude Design and
+delivered on 2026-09-16 as `react-ui/src/images/essay/f1-camera-read.svg` and
+`f2-spot-the-difference.svg` - self-contained, 320 px wide with a viewBox,
+white-on-transparent over the page's black, and imported as images by
+`FigureCameraRead` / `FigureSpotTheDifference`. Their alt text is
+`prose.howItWorks.figures.<name>.alt`; the caption beside each is a `figure`
+block in `prose.howItWorks.content`. Redrawing one means replacing the file.
 
 ## Principles the three share
 
@@ -23,6 +27,12 @@ START/END`).
 - Phone first. The column is 130 mm wide at most; assume 320 px.
 
 ## F1 — What the camera actually gives us
+
+**Built**, from the brief below. The delivered figure crops Tom to 640 x 800
+rather than square, puts the crosshair on his chest as asked, and marks the
+misread t-shirt with a red rule through the word `black` and a `MISREAD` tag -
+so the "wrong" marker does not rely on colour alone, which matters in a panel
+made of colours.
 
 **Photograph chosen: shot `121f91cb` from the 30 August trial game**, Mermaid
 shooting Tom. It and the runners-up are extracted into
@@ -146,7 +156,9 @@ the opposite of what F1 is for.
 
 ## F2 — Spot the difference
 
-Nothing real to photograph: this one is drawn.
+**Built**, from the brief below. Nothing real to photograph: this one is drawn,
+and the "blurry photograph" in each half is the same schematic figure behind a
+Gaussian blur, so the two halves are demonstrably the same shot.
 
 ### Brief for Claude Design
 
