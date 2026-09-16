@@ -202,3 +202,17 @@ button.stackedItem {
     animation: none;
   }
 }
+
+/* CuriosityFooter's own spacing is tuned for the picker, where it follows the
+   page. Here it sits between the logo and the first join step, so it wants a
+   rule of its own: the divider goes above the logo's side, and the gaps are
+   tight because this container is centred in the viewport and grows a row at
+   a time. Scoped to the container so it outranks the component's own rule
+   whichever order the two stylesheets end up in. */
+.innerContainer .curiosityFooter {
+  margin: 0 0 4mm;
+  padding-top: 0;
+  padding-bottom: 3mm;
+  border-top: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}

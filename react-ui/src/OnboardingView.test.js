@@ -423,3 +423,17 @@ test("getCurrentPosition is called with a timeout, so a stuck fix cannot hang th
     window.navigator.geolocation.getCurrentPosition.mock.calls[0][2];
   expect(options.timeout).toBeGreaterThan(0);
 });
+
+// This screen is what a player stares at while the game is waiting to start,
+// so the essay link lives here as well as on the picker. It must open in a
+// new tab: the join steps above it are half-finished permission prompts, and
+// navigating away would send the player back through them.
+test("the curiosity footer links to the essay in a new tab, even before a name is set", async () => {
+  await renderOnboarding(soloUser({ name: null }));
+
+  const link = screen.getByRole("link", {
+    name: prose.curiosityFooter.linkText,
+  });
+  expect(link).toHaveAttribute("href", "/how-it-works");
+  expect(link).toHaveAttribute("target", "_blank");
+});

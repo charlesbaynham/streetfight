@@ -22,6 +22,7 @@ import {
 } from "./utils";
 
 import { Swatch } from "./Swatch";
+import CuriosityFooter from "./CuriosityFooter";
 import styles from "./OnboardingView.module.css";
 import prose from "./prose";
 
@@ -332,6 +333,14 @@ function OnboardingView({ user }) {
           <p className={styles.logo}>
             <img src={logo} alt={prose.onboardingView.logoAlt} />
           </p>
+          {/* Same aside as the picker's: this screen is where a player waits
+              for the game to start - at home the week before, or standing in
+              the pub - so it is the other place worth offering the essay
+              from. A new tab, so a tap never costs them their place in the
+              join steps below. Under the logo rather than at the foot of the
+              list, which is where the "better in full-screen" scrawl
+              (FullscreenButton) is drawn while the game is waiting. */}
+          <CuriosityFooter className={styles.curiosityFooter} />
           {getActionItems()}
         </div>
       </AnimatePresence>
