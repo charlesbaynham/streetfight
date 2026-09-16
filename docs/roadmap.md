@@ -291,7 +291,10 @@ Recorded here so they are not re-litigated:
 - **The reference photo is taken by the admin at the door on the night** (R7),
   not by the player at pick time. It is a manual gate on whether people actually
   wore what they said they would, so it has to be done by the person who can
-  send them home to change. Answers open question 2.
+  send them home to change. Answers open question 2. *Amended 2026-09-16:* the
+  admin can also **upload** a photo on the page, because players who arrive
+  late are sent straight to their team and never pass the desk - the picture
+  comes from whoever is with them instead.
 - **`TEAM_CHANNEL` stays on the hat**, reversing the earlier decision to move it
   to the armbands. We now buy and supply each team's hats outright (#9), rather
   than leaving that to the team, so the armband stays the free per-player

@@ -26,6 +26,7 @@ import { useNavigateKeepingSearch, usePatchSearchParams } from "./urlState";
 import { AdminPage, adminPost } from "./AdminCommon";
 import UpdateListener from "./UpdateListener";
 import { MyWebcam } from "./MyWebcam";
+import { fileToPhotoDataURL } from "./imageFile";
 import { ChannelTags, isMarginal, outcomeTag, zoomTag } from "./ShotQueue";
 import { Swatch } from "./Swatch";
 
@@ -390,6 +391,7 @@ function PlayerDetail({ row, onClose, onChanged }) {
   const userId = row.user_id;
   const playerName = row.name || "This player";
   const expected = row.expected_appearance || null;
+  const uploadInputId = `reference-upload-${userId}`;
 
   const [hasPhoto, setHasPhoto] = useState(row.has_photo);
   const [photo, setPhoto] = useState(null);
@@ -398,6 +400,7 @@ function PlayerDetail({ row, onClose, onChanged }) {
   const [capturing, setCapturing] = useState(!row.has_photo);
   const [trigger, setTrigger] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [uploadError, setUploadError] = useState(null);
 
   const refreshPhoto = useCallback(() => {
     sendAPIRequest(
@@ -450,6 +453,30 @@ function PlayerDetail({ row, onClose, onChanged }) {
       });
     },
     [userId, refreshPhoto, refreshReview, onChanged],
+  );
+
+  // The latecomer's route in: somebody else photographed them and sent it
+  // over, so there is no camera to point - just a file, which is converted to
+  // the frame shape `capture` already takes.
+  const uploadFile = useCallback(
+    (event) => {
+      const file = event.target.files && event.target.files[0];
+      // Clear the input so picking the same file twice still fires a change.
+      event.target.value = "";
+      if (!file) return;
+      setUploadError(null);
+      setBusy(true);
+      fileToPhotoDataURL(file)
+        .then((dataURL) => {
+          setBusy(false);
+          capture(dataURL);
+        })
+        .catch((error) => {
+          setBusy(false);
+          setUploadError(error.message);
+        });
+    },
+    [capture],
   );
 
   const rerunReview = useCallback(() => {
@@ -508,6 +535,22 @@ function PlayerDetail({ row, onClose, onChanged }) {
           >
             {busy ? "Uploading..." : `Photograph ${playerName}`}
           </button>
+          {/* For the players who never come past this desk: somebody who is
+              with them sends a photo instead, and it goes in the same way. */}
+          <label className={styles.uploadButton} htmlFor={uploadInputId}>
+            Upload a photo of {playerName}
+          </label>
+          <input
+            id={uploadInputId}
+            className={styles.uploadInput}
+            type="file"
+            accept="image/*"
+            disabled={busy}
+            onChange={uploadFile}
+          />
+          {uploadError ? (
+            <div className={styles.errorBox}>{uploadError}</div>
+          ) : null}
           {hasPhoto ? (
             <button onClick={() => setCapturing(false)}>Cancel</button>
           ) : null}
