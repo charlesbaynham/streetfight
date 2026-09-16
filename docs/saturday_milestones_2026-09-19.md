@@ -108,6 +108,49 @@ Recorded so nobody builds against the plan's numbers.
 
 ---
 
+## Two things that are not code, and must not be forgotten
+
+- **Resize the droplet before Saturday.** Live runs on a very small
+  DigitalOcean droplet, sized for sign-ups, not for thirty phones posting a
+  fix every five seconds, the vision pipeline draining a queue, and the
+  spectator screen. Resize it on **Friday 18 Sept**: take a DO snapshot
+  first, power off, resize (CPU and RAM only — a disk resize cannot be
+  undone), power on, and check `/api/get_version` and the admin page come
+  back. `/data` is on the root disk and survives a resize. It is in the
+  runbook (M9) as a Friday step, and it is here so it is not lost when M9 is
+  written.
+- **Back up `/data` before every live deploy** (`docs/deployment_droplet.md`,
+  "State and backups"): thirty seconds, and it makes everything below
+  reversible.
+
+---
+
+## M0.0 — The schema compatibility gate *(top priority; before any code PR lands)*
+
+The live database cannot be migrated by hand in the time available, and
+`database.add_missing_columns()` only migrates one shape of change (rule 2).
+Nothing today catches a PR that writes the other shape — a rename, a drop, a
+type change, a `NOT NULL` column with no scalar default — before it is
+deployed and crash-loops the service. So make CI the gate:
+
+1. **Snapshot the live schema.** Live runs revision `b50fe89`
+   (`/api/get_version`, 16 Sept), and its database was created by
+   `create_all()` from that revision's models after the R15 wipe, so the
+   schema is reproducible here: build a sqlite file from `b50fe89`'s
+   `backend/model.py`, dump `.schema` (no data) to
+   `tests/live_schema/2026-09-16_b50fe89.sql`, and commit it.
+2. **Test the upgrade.** A test in `tests/test_database.py` that creates a
+   database from that snapshot, runs `create_all()` and
+   `add_missing_columns()` against the *current* models, then inserts and
+   reads back a row through every ORM class. A rename, a drop, or an
+   undefaulted `NOT NULL` column fails this test on the pull request.
+3. **Refresh the snapshot when live moves**, in the deploy PR or straight
+   after: the file name carries the revision, so a stale snapshot is visible.
+
+Lands in: `tests/live_schema/`, `tests/test_database.py`. Status: open.
+
+---
+
 ## M0 — The print freeze *(deadline: Thursday 17 Sept, morning)*
 
 Everything that has to be true before the printer runs. Merge these first;
@@ -465,7 +508,9 @@ where she will stand.
 button behind each step named — pause, **Reset to start state**, **Withdraw
 `sandbox`**, ten minutes, WhatsApp, start; the circle and drop cues; the
 courier page; what to do when a countdown fires while the server is
-restarting. Plus the Thursday print list with counts. Update `docs/roadmap.md`
+restarting. Plus the Thursday print list with counts, and the **Friday
+droplet resize** (snapshot, power off, resize CPU/RAM, power on, verify) —
+see the reminder at the top of this file. Update `docs/roadmap.md`
 (#12 shipped, #8's print run) and `CLAUDE.md` for anything that moved.
 
 ---
@@ -474,6 +519,7 @@ restarting. Plus the Thursday print list with counts. Update `docs/roadmap.md`
 
 | Session | Scope | Blocks |
 | --- | --- | --- |
+| 0 | M0.0 schema gate, first and alone | every code PR |
 | A | M0.1 then M1.1, M1.2 (same files) | M2.1 (constants) |
 | B | M0.2 | — |
 | C | M0.3 then M0.4, M2.2, M0.5 | M6 |
