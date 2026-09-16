@@ -132,6 +132,36 @@
   font-weight: 600;
 }
 
+/* The upload control is a label wrapping a hidden file input - a file input
+   cannot be styled into a target this size, and this one is pressed on a phone
+   just like the shutter above it. */
+.uploadButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 3.5em;
+  margin: 0.5em 0;
+  font-size: 1.1em;
+  font-weight: 600;
+  border: 1px solid #adb5bd;
+  border-radius: 0.4em;
+  background: #f8f9fa;
+  color: #212529;
+  text-align: center;
+  cursor: pointer;
+}
+
+.uploadInput {
+  /* Hidden, not display:none: a hidden input is still focusable from the
+     keyboard and still reachable by its label. */
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
 .buttonRow {
   display: flex;
   flex-wrap: wrap;

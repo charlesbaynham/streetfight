@@ -18,6 +18,15 @@ import {
 
 import ReferencePhotos from "./ReferencePhotos";
 
+// Latecomers never reach the desk, so their photo arrives as a file somebody
+// else sent. The conversion to a camera-shaped JPEG needs a canvas and an
+// image decoder jsdom does not have; the page's contract with it is a promise
+// of a data URL, or a rejection with something to show the admin.
+jest.mock("./imageFile", () => ({
+  fileToPhotoDataURL: jest.fn(),
+}));
+import { fileToPhotoDataURL } from "./imageFile";
+
 // The real webcam wants a camera, a canvas and a <video> jsdom cannot play.
 // Stand in for it with something that hands back a frame when the trigger
 // changes - the same contract MyWebcam's onCapture prop has.
@@ -270,6 +279,53 @@ describe("capturing", () => {
     expect(
       screen.getByAltText("Alice in the kit they arrived in"),
     ).toHaveAttribute("src", STORED_PHOTO);
+  });
+
+  test("accepts a photo somebody sent in, for the players who never reach the desk", async () => {
+    installReferenceMock({ rows: [makeRow()] });
+    fileToPhotoDataURL.mockResolvedValue("data:image/jpeg;base64,UPLOADED");
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    const file = new File(["x"], "alice.jpg", { type: "image/jpeg" });
+    await actAndFlush(() =>
+      fireEvent.change(screen.getByLabelText("Upload a photo of Alice"), {
+        target: { files: [file] },
+      }),
+    );
+
+    expect(fileToPhotoDataURL).toHaveBeenCalledWith(file);
+    // It lands against the player exactly as a photographed frame does
+    expect(getLastAPICall("admin_capture_reference_photo").body).toEqual({
+      user_id: "user-1",
+      photo: "data:image/jpeg;base64,UPLOADED",
+    });
+    expect(
+      screen.getByAltText("Alice in the kit they arrived in"),
+    ).toHaveAttribute("src", STORED_PHOTO);
+  });
+
+  test("says so when the file cannot be read, rather than doing nothing", async () => {
+    // A HEIC off an iPhone is the realistic case, and a screen that silently
+    // did nothing would leave the admin waiting for a verdict that is not
+    // coming.
+    installReferenceMock({ rows: [makeRow()] });
+    fileToPhotoDataURL.mockRejectedValue(
+      new Error("That file is not an image"),
+    );
+
+    await renderPage();
+    await openPlayer("Alice");
+
+    await actAndFlush(() =>
+      fireEvent.change(screen.getByLabelText("Upload a photo of Alice"), {
+        target: { files: [new File(["x"], "alice.heic")] },
+      }),
+    );
+
+    expect(screen.getByText("That file is not an image")).toBeInTheDocument();
+    expect(getAPICalls("admin_capture_reference_photo")).toHaveLength(0);
   });
 
   test("does not ask for a photo that has not been taken", async () => {
