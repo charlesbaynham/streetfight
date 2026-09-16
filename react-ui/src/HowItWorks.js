@@ -14,13 +14,27 @@ import React from "react";
 import prose from "./prose";
 import styles from "./HowItWorks.module.css";
 
+function HowItWorksBlock({ block }) {
+  if (block.type === "diagram") {
+    return (
+      <figure className={styles.diagram}>
+        {block.node}
+        {block.caption && <figcaption>{block.caption}</figcaption>}
+      </figure>
+    );
+  }
+  return <p className={styles.holdingNote}>{block.text}</p>;
+}
+
 function HowItWorks() {
   return (
     <div className={styles.outerContainer}>
       <article className={styles.innerContainer}>
         <h1>{prose.howItWorks.heading}</h1>
 
-        <p className={styles.holdingNote}>{prose.howItWorks.holdingNote}</p>
+        {prose.howItWorks.content.map((block, index) => (
+          <HowItWorksBlock key={index} block={block} />
+        ))}
 
         <p className={styles.backNote}>
           <a href="/">{prose.howItWorks.backToGame}</a>

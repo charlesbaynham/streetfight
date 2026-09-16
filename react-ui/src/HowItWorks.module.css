@@ -39,6 +39,22 @@
   font-style: italic;
 }
 
+.diagram {
+  margin: 6mm 0;
+  text-align: center;
+}
+
+.diagram img,
+.diagram svg {
+  max-width: 100%;
+}
+
+.diagram figcaption {
+  margin-top: 2mm;
+  font-size: smaller;
+  opacity: 0.75;
+}
+
 .backNote {
   margin-top: 10mm;
   opacity: 0.75;

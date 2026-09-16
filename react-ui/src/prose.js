@@ -39,10 +39,19 @@ const prose = {
   },
   // @section howItWorks
   howItWorks: {
-    // PLACEHOLDER START - scaffolding awaiting Charles's essay
     heading: "Clothes, colours, and error correction",
-    holdingNote:
-      "I haven't written this yet! So you'll have to ask me. Though if you want, you could google Hamming distances and Reed-Solomon codes. And then ask me why I don't get a proper job.",
+    // PLACEHOLDER START - scaffolding awaiting Charles's essay. Unlike the
+    // rest of this file, the essay is long-form, so `content` is a sequence
+    // of blocks rather than one string: a "paragraph" is plain text (or JSX,
+    // where a sentence needs markup - same rule as everywhere else in this
+    // file), and a "diagram" carries a JSX figure - an image, an inline SVG,
+    // whatever the point needs - plus its caption.
+    content: [
+      {
+        type: "paragraph",
+        text: "I haven't written this yet! So you'll have to ask me. Though if you want, you could google Hamming distances and Reed-Solomon codes. And then ask me why I don't get a proper job.",
+      },
+    ],
     // PLACEHOLDER END
     backToGame: "Back to the game",
   },
