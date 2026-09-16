@@ -254,6 +254,7 @@ next commit lands.
 | 10c   | **R9** Manual pass through every feature    | **~7–17 Sept**                | Everything above this line has agent tests, not a human's thumbs. Last gate before the print run and the night. |
 | 10d   | **R13** Fix the dry-run feedback (30 Aug)   | **Before the 19th**          | Twelve issues real guests hit on the 30 Aug dry run, several serious enough to block joining outright. See `docs/dry_run_feedback_2026-08-30.md`. |
 | 10e   | **R14** Reassign a session to a player      | **Shipped; needs a manual test** | A player who joins on a second phone or clears their cookies becomes a new, empty player. The repair used to be deleting them; now the admin can say the two sessions are one person. Charles's hand-test is outstanding — see the entry. |
+| 10f   | **R15** Sign up first, team on the night    | **Before the 19th** — Shipped 15 Sept | Pinning each team to a hat colour meant teams had to be allocated before anyone could pick an outfit, which needs a final guest list nobody has. The hat is freed; teams are scanned in at the door. |
 | —     | *— the game —*                              | **19 Sept**                  |                                                                                                                |
 | 11    | **#1** "CharlesBot", not "AI"               | Shipped 28 Aug               | Every user-facing string renamed; `ai_*` fields and columns kept, with a boundary comment at each site.        |
 | 12    | **R2** Adjudication scorecard               | —                            | The full version of R1; the game itself generates the data it needs.                                           |
@@ -280,6 +281,8 @@ Recorded here so they are not re-litigated:
   night and not assigned by an admin.
 - **`TEAM_CHANNEL` moves from the hat to the armbands** (#9), so team identity
   rests on the one garment we supply. Follows from armbands-only; see #9.
+  *Superseded twice: reversed back onto the hat below, and then retired
+  altogether by R15.*
 - **No native app and no app stores** (#14), for this run and by default. The
   Apple Developer Program fee is unavoidable for iOS in *any* distribution form,
   TestFlight included, and it is not worth paying for a party game. #14 stays on
@@ -295,7 +298,18 @@ Recorded here so they are not re-litigated:
   channel we set on the night — for a stronger reason than originally argued,
   since we control the hat colour directly instead of trusting a team's bulk
   order to get it right. See #9 and plan §12.6 — no code change, `TEAM_CHANNEL`
-  is already `"hat"`.
+  is already `"hat"`. *Superseded by R15 (15 Sept): there is no team channel at
+  all any more.*
+- **No channel carries the team** (R15, 15 Sept), superseding both bullets
+  above. Pinning the hat to a team meant teams had to be allocated before
+  anybody could pick an outfit, and allocating teams needs a final list of who
+  is actually coming — which does not exist until the night. So the hat is now
+  a provided channel exactly like the armband, both ours to hand out, with the
+  allocator picking the best-separating pair per player; players sign up
+  through one game-wide link and are scanned into a team at the door. Telling
+  teams apart by eye is given up deliberately — the app says who is on which
+  side. `Team.identity_colour` stays on as a display colour for the spectator
+  screen and nothing else. See R15 and plan §12.6's dated note.
 - **Auto-actions must work on the night.** They are the point of the recognition
   work, not a bonus. This promotes **#5** onto the critical path, because the
   code-decode path in `slot_candidates_from_review` cannot see a player who is
@@ -644,10 +658,13 @@ needs to go and find.
   (`IdentityScheme.usable_slots`) — it was 34 until the guest list outgrew the
   five-colour trousers palette and that channel joined the main one (plan §2.6)
   — so the game caps there regardless of how generous anyone's wardrobe is.
-- **The team join code is a shareable bearer token.** One link per team means
-  one leaked link can burn every outfit in that team, not just one —
-  `/join_game`'s older per-slot code had this property per outfit; pooling by
-  team widens the blast radius.
+- **The join code is a shareable bearer token.** `/join_game`'s older per-slot
+  code had this property per outfit; pooling by team widened the blast radius
+  to a whole team's outfits. **Since R15 it is wider still** — there is one
+  game-wide sign-up link, so a leak burns the whole pool rather than one
+  team's. Accepted knowingly: the link has to be sendable to everybody at
+  once, and a per-team link cannot be until the teams exist, which is the
+  planning problem R15 was for.
 
 **Current state, before this shipped.** `identity_admin.build_join_codes(game_id, slots_per_team)`
 pre-allocated a block of slots per team (one team-channel colour each, via
@@ -730,13 +747,16 @@ and the checkbox are satisfied. `NameEntry` also no longer posts a
 whitespace-only name, in `OnboardingView` as well as here.
 
 **The box stays visible and editable, always - it no longer hides itself once
-a name is known.** `join_options` only ever reports a name for a player an
-admin has already added to the team ahead of picking (`team_id` and
-`identity_slot` are otherwise set together, atomically, by `pick_outfit`
-alone) - a real but uncommon case, and one worth showing correctly: the box
-pre-fills from that name rather than reappearing blank and asking again, and
-stays open to a correction the whole way through, including on the confirm
-screen.
+a name is known.** `join_options` reports a name for anybody who already has
+one: an admin who added them to a team ahead of picking, or - **since R15** -
+the player themselves, since a name is given at sign-up and the team arrives
+separately at the door. `identity_slot` is claimed atomically by `claim_slot`
+(what `pick_outfit` used to do as `join_team_and_claim_slot`); `team_id` is set
+apart from it, so a player with an outfit and no team is now the *normal* state
+rather than the uncommon one this paragraph used to describe. All the more
+reason to show the name correctly: the box pre-fills from it rather than
+reappearing blank and asking again, and stays open to a correction the whole
+way through, including on the confirm screen.
 
 **Depends on:** #9 (both the kit and the `TEAM_CHANNEL` move, shipped).
 **Feeds:** #8.
@@ -778,12 +798,14 @@ and the Millbank government blocks are most of the eastern half.
 
 ### #8 — Print everything
 
-**Three separate print runs**, all landing by ~12 September:
+**Four separate print runs**, all landing by ~12 September:
 
 1. **Drop codes** for the new locations (#7) — existing tooling:
    `backend/generate_qr_items.py` plus the templates in
    `backend/image_templates/`. Add the "this is a game, ring this number" line
-   from #7 to the template.
+   from #7 to the template. Since 15 Sept the same sheets can be minted from
+   the admin's **Printables** page (`/admin/printables`) instead of the CLI,
+   which is how to get them signed by the box the game runs on.
 2. **Pub handouts** (#6) — **tooling shipped 12 Sept**:
    `backend/generate_pub_pages.py` (`npm run pubgen -- --count 19`) writes a
    PDF of portrait A4 posters, one page and one code per pub, reusing the
@@ -797,12 +819,31 @@ and the Millbank government blocks are most of the eastern half.
    `DATABASE_URL` at a throwaway sqlite file while doing it — the generator
    opens whatever it is given, and mints nothing into it), and print **at
    actual size** rather than "fit to page", which shrinks the QR.
+
+   The signature half of that is now answered by construction: the admin's
+   **Printables** page (`/admin/printables`, `backend/printables.py`) builds
+   the same PDF on the running server, so the codes carry that deployment's
+   `SECRET_KEY` and `WEBSITE_URL` whatever is in the .env of whoever is
+   printing. The CLI still works for a run done from a checkout.
 3. **Player appearance cards** (#10, shipped) — what to wear, per player, plus
    their join code. Each player already knows this, having picked it via
    `/pick`; the print step reads it off each player's picked
    `effective_appearance` (the same shape `admin_identity_report` returns),
    not from `build_join_codes` — that now mints one code per *team*, not one
    appearance per slot.
+
+4. **Team cards** (R15, shipped 15 Sept) - `backend/team_cards.py` via
+   `GET /admin_team_cards_pdf?game_id=`, downloaded from the admin's
+   `JoinQRCodes.js` or the **Printables** page: one A4 portrait page per team, drawn as a Ministry of War
+   notice of conscription, carrying that team's door code. These are what
+   turns a signed-up player into a member of a team on the night, so one per
+   team is the minimum and a spare each is cheap.
+
+   The pub pages' two rules carry over. Print **at actual size**, not "fit to
+   page". And the codes are signed, so they must be minted against the live
+   `SECRET_KEY` and `WEBSITE_URL` - which, being built by the running server
+   rather than a CLI, they are by construction, provided the PDF is downloaded
+   from the deployment the game will actually run on.
 
 **If the schedule slips**, the drop codes are the ones with a hard dependency on
 physical placement; the appearance cards can be sent digitally as a fallback,
@@ -843,6 +884,12 @@ this file is kept current.
 
 - [ ] Join a team via QR/link and pick an outfit at `/pick` (#10): ranked
   outfit list, canonical-first ordering, colour swatches, pagination.
+- [ ] Sign up through the **game-wide link** (R15) - name and outfit, landing
+  in the game with no team - and then **scan a team's QR code at the door**
+  with the phone's camera app to join that team keeping the outfit. Check the
+  three cases: rescanning the same team does nothing, scanning a different
+  team moves you, and somebody who scans a team code with no outfit yet is
+  sent to `/pick` and joins the team as part of picking.
 - [ ] The "recommended" vs "not ideal" outfit badges and the "show
   non-recommended outfits" reveal link.
 - [ ] The name-then-confirm flow — entering a name, seeing the committed
@@ -890,6 +937,10 @@ this file is kept current.
 - [ ] The identity workbench / `AdminIdentity.js`: viewing a player's
   effective appearance and any overrides, and recording an override for a
   misdressed player so they stay distinguishable from their teammates.
+- [ ] The join-codes page (R15): the sign-up-link card to send to everyone,
+  the per-team door-code cards, and **Download team cards (PDF)** - which
+  wants checking on paper, printed at actual size, with a phone scanning the
+  code off the printout rather than off the screen.
 - [ ] Renaming a team from the admin dashboard.
 - [ ] Downloading all shot images as a zip.
 - [ ] The admin nav (finger-sized button row) on a real phone screen, not
@@ -1128,6 +1179,126 @@ are agents' rather than thumbs':
 
 **Depends on:** nothing.
 **Feeds:** R9's manual pass.
+---
+
+### R15 — Sign up first, team on the night *(shipped 2026-09-15)*
+
+**What.** Signing up and being put in a team are now two separate moments. One
+game-wide link goes to everybody before the night: a player follows it, gives a
+name, picks an outfit, and is in the game **with no team at all**. Teams are
+joined on the night, at the door, by scanning that team's printed code.
+
+**The decision (15 Sept), and why.** Pinning every team to one hat colour made
+planning impossible. Which outfits a player could be offered depended on which
+team they were in, so teams had to be allocated before anybody could choose —
+and allocating teams needs a final list of exactly who is coming, which does
+not exist until people are standing in the hall. Freeing the hat decouples the
+two: picking an outfit stops depending on a fact we do not have yet.
+
+**What it cost, said plainly.** `TEAM_CHANNEL` is no longer pinned to anything.
+The hat is now a *provided* channel exactly like the armband — both are ours to
+hand out — and `identity_admin.outfit_options` enumerates the full palette of
+both, leaving the allocator to pick the best-separating pair for each player.
+So **players can no longer tell friend from foe by hat colour at thirty metres**,
+which was the entire argument for having a team channel at all (#9, plan
+§12.6). The app says who is on which team instead. That is a real loss and it
+was taken knowingly.
+
+**What it bought.** One 48-slot pool instead of seven buckets of seven. The
+Hamming gate and slot uniqueness are game-wide, and team-less signups count for
+both — which is what `User.game_id` is for (below). The capacity arithmetic in
+plan §12.6 that said the team partition removes §12.5's tax no longer applies:
+there is no partition, so the game is the unstructured free choice §12.5
+priced.
+
+**Three kinds of join code**, since `JoinCodeModel.team_id` is now optional:
+
+- **Game code** (`team_id=None`, `slot=None`; `make_game_join_url`) — the
+  sign-up link sent to everyone. `/pick` → name and outfit → in the game, no
+  team.
+- **Team code** (`team_id` set, `slot=None`; `make_team_join_url`) — printed
+  for the door. A player who already has an outfit scans it and `POST
+  /join_game` (`identity_admin.join_team_by_code` →
+  `UserInterface.set_team`) puts them in that team **keeping the outfit**;
+  rescanning the same team is a no-op and a different team moves them. A
+  player with no outfit gets `needs_pick` and picks via `/pick` carrying the
+  team code, joining the team as part of the pick.
+- **Slot code** — the legacy per-slot code, unchanged.
+
+**Old team links already in WhatsApp keep working**, with the second meaning:
+they were team codes before and they are team codes now.
+
+**`Team.identity_colour` survives, as a display colour only.** It is still
+pinned the first time `build_join_codes` runs and still never re-shuffled
+(`allocation.assign_team_colours`), but it is now what the spectator screen
+draws a team's dots and roster in (`react-ui/src/SpectatorView.js`,
+`teamColours.js`) rather than the hat its players wear. It constrains no
+outfit. `allocation.allocate_team_slots` is dead outside its own tests — it
+already was.
+
+**`User.game_id` is a real column now**, set *before* and independently of
+`team_id`, and every writer that sets one sets the other.
+`AdminInterface.get_users_for_game` filters on it, so a player who has signed
+up but not arrived still counts for slot uniqueness and the distance gate.
+`shot_identification.eligible_candidates` excludes team-less players — they are
+not on the field — while `rank_reference_candidates` keeps them, because the
+door kit check is exactly when they have no team yet. `demo_game.strangers`,
+the wipe guard, tests `game_id` rather than `team_id`, and `delete_game` and
+`merge_user` both handle a player with no team.
+`UserInterface.join_team_and_claim_slot` is replaced by `claim_slot(game_id,
+slot, team_id=None, overrides_json, wardrobe_json)`, whose holder check is on
+`User.game_id`.
+
+**No migration, and this once that is fine.** The live database is being wiped
+before the 19th — Charles's decision, taken for this rework — and
+`backend.database.add_missing_columns` would add the column anyway.
+`build_join_codes` now returns `{"team_channel", "game_url", "teams": [...]}`
+with no `capacity`.
+
+**Team cards to print** (#8 gains a fourth run). `backend/team_cards.py` plus
+`GET /admin_team_cards_pdf?game_id=` renders one A4 portrait page per team as a
+Ministry of War "Notice of Conscription" call-up notice carrying that team's
+door QR — Pillow and the bundled `UbuntuMono-R.ttf`, reusing
+`generate_pub_pages.make_qr` / `DPI` / `_mm`, with every line of copy a
+module-level constant at the top so the wording is Charles's to tune in one
+place. It is built by the **running server** rather than a CLI because the team
+ids the codes carry only exist in the live database. `JoinQRCodes.js` now shows
+the sign-up-link card ("send this to everyone"), the team code cards ("for the
+door") and a **Download team cards (PDF)** link. Print at actual size.
+
+**What the player reads.** `PickOutfit.js` heads the page "Sign up" for a game
+code — no team, no team swatch — and "Team X" for a team code, and its result
+screen tells a team-less player "On the night, scan a team code at the door to
+join a team." `OnboardingView.js`'s team rung says the same thing where a
+player who arrives without having read anything will meet it: "At the door,
+scan a team's QR code with your camera app to join a team...".
+`JoinFromQueryParams.js` is unchanged in behaviour (`needs_pick` → `/pick`,
+otherwise `/`).
+
+**The test world is stale until it is regenerated.** `backend/test_world/cast.py`
+still picks through the real allocator with no pinning — Charles's instruction,
+and the point of the fixture: it follows the allocator rather than freezing an
+old answer. But with the hat free the picks come out different, so the
+committed `world.json` and the photographs generated against it no longer
+match. **Charles regenerates them with the `regenerate-test-world-images` skill
+after this lands**; the change deliberately does not touch
+`backend/test_world/data/`. Until that run happens
+`python -m backend.test_world check` fails, and that failure *is* this change
+rather than a bug. Expect a whole-cast re-clothing rather than a handful of
+images, so dry-run `generate` and put the number in front of Charles before
+spending.
+
+**Lands in:** `backend/model.py`, `backend/identity_admin.py`,
+`backend/join_codes.py`, `backend/user_interface.py`,
+`backend/admin_interface.py`, `backend/shot_identification.py`,
+`backend/demo_game.py`, `backend/main.py`, the new `backend/team_cards.py`, and
+`react-ui/src/PickOutfit.js`, `JoinQRCodes.js`, `OnboardingView.js`,
+`SpectatorView.js`, `teamColours.js`; tests in `tests/test_team_cards.py` plus
+extensions to the join-code, pick-outfit, identification, demo-game and alias
+suites.
+**Depends on:** #9 and #10, both shipped.
+**Feeds:** #8 (the fourth print run), R9's manual pass.
+
 ---
 
 ## Track A — recognition correctness

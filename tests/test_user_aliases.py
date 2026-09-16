@@ -194,5 +194,29 @@ def test_admin_merge_user_fills_in_what_the_survivor_lacks(
     survivor = db_session.get(User, survivor_id)
     assert survivor.name == "Stray"
     assert survivor.team_id == team_id
+    assert survivor.game_id == db_session.get(User, survivor_id).team.game_id
     assert survivor.identity_slot == 5
     assert db_session.get(User, stray_id) is None
+
+
+def test_admin_merge_user_carries_a_team_less_signup_across(
+    admin_api_client, db_session, one_game, user_factory
+):
+    """A stray who signed up through the game link and has no team yet
+    (roadmap R15) still belongs to the game, and the survivor inherits that."""
+    stray_id = user_factory()
+    with UserInterface(stray_id) as ui:
+        ui.claim_slot(one_game, 5)
+
+    survivor_id = user_factory()
+
+    response = admin_api_client.post(
+        f"/api/admin_merge_user?user_id={stray_id}&into_user_id={survivor_id}"
+    )
+    assert response.is_success
+
+    db_session.expire_all()
+    survivor = db_session.get(User, survivor_id)
+    assert survivor.game_id == one_game
+    assert survivor.team_id is None
+    assert survivor.identity_slot == 5

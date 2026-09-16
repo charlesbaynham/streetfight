@@ -10,6 +10,7 @@ import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { sendAPIRequest } from "./utils";
 import { mapGeometry, mapProjection, useVenue } from "./venue";
 import { fallbackTeamColour } from "./teamColours";
+import prose from "./prose";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
@@ -434,7 +435,7 @@ export function VenueMapView({
               <div
                 className={styles.mapImage}
                 src={mapSrc}
-                alt="Map"
+                alt={prose.mapView.mapAlt}
                 style={{
                   backgroundImage: `url(${mapSrc})`,
                   backgroundPosition: `left ${map_x0}px bottom ${map_y0}px`,
@@ -491,14 +492,14 @@ export function VenueMapView({
               <button
                 type="button"
                 className={styles.closeButton}
-                aria-label="Close map"
+                aria-label={prose.mapView.closeMapLabel}
                 onClick={() => {
                   setPoppedOut(false);
                   resetTransform();
                   handleResize();
                 }}
               >
-                ×
+                {prose.mapView.closeMapSymbol}
               </button>
             ) : null}
           </div>

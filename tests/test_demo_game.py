@@ -86,6 +86,18 @@ def test_a_browser_that_never_joined_is_not_a_real_game(db_session, user_factory
     assert demo_game.strangers() == []
 
 
+def test_a_player_who_signed_up_but_has_no_team_yet_is_a_real_game(
+    db_session, one_game, user_factory
+):
+    """Signing up through the game link claims an outfit before any team is
+    joined (roadmap R15), and that is somebody's game to wipe."""
+    user_id = user_factory()
+    with UserInterface(user_id) as ui:
+        ui.claim_slot(one_game, 1)
+
+    assert demo_game.strangers() != []
+
+
 def test_the_demo_cast_are_not_strangers_to_themselves(db_session, one_team):
     """A user carrying a demo id counts as the demo's own, team or no team."""
     cast_id = sorted(demo_game.demo_user_ids())[0]

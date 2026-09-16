@@ -12,20 +12,16 @@
   break-inside: avoid;
 }
 
-.colourLine {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.4em;
-}
-
 /* The QR itself is the link: no underline or colour, just the code */
 .qrLink {
   display: inline-block;
 }
 
-.capacityLine {
-  color: #555;
+.pdfLink {
+  display: inline-block;
+  padding: 0.3em 0.6em;
+  border: 1px solid #888;
+  border-radius: 3px;
 }
 
 .joinLinkRow {

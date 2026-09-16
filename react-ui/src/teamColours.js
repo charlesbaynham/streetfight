@@ -6,8 +6,9 @@
 // module would otherwise lose the palette with it.
 //
 // Index-derived, so it is only stable while the set of teams is. A team that
-// has been through build_join_codes has a real Team.identity_colour, which is
-// the colour of the hat its players are actually wearing; prefer that.
+// has been through build_join_codes has a real Team.identity_colour - a
+// display colour pinned once and never reshuffled (it used to be the hat its
+// players wore, before the hat was freed from the team); prefer that.
 export const FALLBACK_TEAM_COLORS = [
   "red",
   "blue",

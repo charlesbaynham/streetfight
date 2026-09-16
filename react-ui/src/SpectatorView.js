@@ -733,9 +733,9 @@ function SpectatorScreen() {
     return out;
   }, [scoreboard]);
 
-  // A team's colour is the hat its players wear, so the dots on the map match
-  // the people in the room. Falls back to MapViewAdmin's own palette when a
-  // team has no pinned colour yet.
+  // A team's colour is the display colour pinned when its join codes were
+  // generated (Team.identity_colour, drawn from the hat palette). Falls back
+  // to MapViewAdmin's own palette when a team has no pinned colour yet.
   const colourForTeam = useCallback(
     (teamId) => {
       const team = teams.find((t) => t.id === teamId);
@@ -747,7 +747,7 @@ function SpectatorScreen() {
         );
         if (hex) return hex;
       }
-      // No pinned hat colour yet (a game before the join codes are minted).
+      // No pinned colour yet (a game before the join codes are minted).
       // Fall back to the map's own palette, by the same index, so a dot and
       // its roster row still match.
       return fallbackTeamColour(teams.findIndex((t) => t.id === teamId));

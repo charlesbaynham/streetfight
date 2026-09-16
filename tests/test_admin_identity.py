@@ -6,7 +6,6 @@ from fastapi.exceptions import HTTPException
 
 from backend import identity_admin
 from backend.admin_interface import AdminInterface
-from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 from backend.identity.config import palette_for_channel
 from backend.identity_admin import IdentityAdminError
@@ -370,23 +369,18 @@ def test_clear_frees_the_outfit_for_outfit_options(
         IdentitySetRequest(user_id=a, slot=1, overrides=None)
     )
     a_appearance = claimed["effective_appearance"]
-    team_colour = a_appearance[TEAM_CHANNEL]
 
     threshold = SCHEME.code.min_distance()
     candidate = get_uuid()  # a hypothetical other player, not yet in the game
 
     game_users = AdminInterface().get_users_for_game(one_game)
-    before = identity_admin.outfit_options(
-        SCHEME, team_colour, {}, game_users, candidate, threshold
-    )
+    before = identity_admin.outfit_options(SCHEME, {}, game_users, candidate, threshold)
     assert not any(o.appearance == a_appearance for o in before)
 
     identity_admin.clear_identity(a)
 
     game_users = AdminInterface().get_users_for_game(one_game)
-    after = identity_admin.outfit_options(
-        SCHEME, team_colour, {}, game_users, candidate, threshold
-    )
+    after = identity_admin.outfit_options(SCHEME, {}, game_users, candidate, threshold)
     assert any(o.appearance == a_appearance for o in after)
 
 

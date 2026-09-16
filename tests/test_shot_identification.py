@@ -231,6 +231,23 @@ def test_a_player_with_no_slot_is_not_a_candidate():
     assert si.eligible_candidates([shooter, unassigned]) == []
 
 
+def test_a_signed_up_player_with_no_team_is_not_a_shot_candidate_but_is_a_door_one():
+    """Signed up through the game link, not yet scanned into a team (roadmap
+    R15): they hold an outfit but are not on the field, so a shot is never
+    scored against them - while the kit check at the door, which is exactly
+    where they are, must still find them."""
+    on_field = player(slot=7)
+    at_home = player(slot=21)
+    at_home.team_id = None
+
+    assert si.eligible_candidates([on_field, at_home]) == [on_field]
+
+    ranked = si.rank_reference_candidates(
+        [on_field, at_home], review_of(SCHEME.appearance_of_slot(21))
+    )
+    assert ranked.ranked[0][0] == at_home.id
+
+
 def test_ranking_an_empty_field_is_none_rather_than_an_error():
     shooter = player()
     review = review_of(SCHEME.appearance_of_slot(7))

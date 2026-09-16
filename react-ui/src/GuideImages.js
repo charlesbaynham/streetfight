@@ -7,6 +7,7 @@ import styles from "./GuideImages.module.css";
 
 import dead_image from "./images/you_are_dead.svg";
 import crosshair_url from "./images/crosshair.svg";
+import prose from "./prose";
 
 export const CrosshairImage = () => (
   <img alt="" src={crosshair_url} className={screenfillStyles.screenFill} />
@@ -14,7 +15,7 @@ export const CrosshairImage = () => (
 
 export const DeadImage = () => (
   <motion.img
-    alt="You Died"
+    alt={prose.guideImages.deadAlt}
     src={dead_image}
     className={screenfillStyles.screenFill}
     animate={{
@@ -68,8 +69,8 @@ export const KnockedOutView = ({ user }) => (
         duration: 1,
       }}
     >
-      <p>You are knocked out</p>
-      <p className={styles.textSmaller}>Get a medkit quick! You will die in:</p>
+      <p>{prose.guideImages.knockedOutTitle}</p>
+      <p className={styles.textSmaller}>{prose.guideImages.medkitWarning}</p>
       <p className={styles.textSmaller}>
         {<CountdownTimer deadline={1000 * user.time_of_death} />}
       </p>

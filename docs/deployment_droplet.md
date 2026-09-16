@@ -21,8 +21,9 @@ that LXC has since come back as **staging**, which is a different runbook -
 > key that did the install is now in `deployKeys` alongside Charles's own.
 > The `--vm-test` step was initially skipped (no KVM in the deploying
 > container) in favour of a disk/firmware pre-check, which caught neither
-> hole - the vm-test *does* (it boots the installed disk), and it runs fine
-> under plain TCG emulation, just slowly. Don't skip it again.
+> hole - the vm-test *does* (it boots the installed disk). Don't skip it
+> lightly; see the KVM note on it below, which is why it has been skipped
+> since.
 > Third install (virtio + static networking fixes) booted first time on
 > 28 Aug; the site is live.
 
@@ -74,11 +75,38 @@ order, and why each step is in there rather than in this document:
    target, printing the droplet's real disks if not.
 4. **Assembles the `--extra-files` tree** with `data/secrets/streetfight.env`
    at 0600 inside a 0700 directory, in a temporary directory it cleans up.
-5. **Boots the built image locally** (`nixos-anywhere --vm-test`). Skippable
-   with `--skip-vm-test`; don't. It runs under plain TCG without KVM - slow,
-   not broken - and it is the only check that catches a system which installs
-   cleanly and then never comes up. It was skipped for the first two installs,
-   which is exactly how both went dark.
+5. **Boots the built image locally** (`nixos-anywhere --vm-test`). It is the
+   only check that catches a system which installs cleanly and then never
+   comes up, and it was skipped for the first two installs, which is exactly
+   how both went dark - so skip it with `--skip-vm-test` only deliberately.
+
+   ⚠️ **It needs real KVM**, which this document used to deny. The test
+   derivation declares `requiredSystemFeatures = [ "kvm" "nixos-test" ]`, so
+   nix *refuses to build it at all* on a machine without `/dev/kvm` - it does
+   not fall back to TCG, and there is no "slow but working" path:
+
+   ```
+   error: Cannot build '...vm-test-run-disko-streetfight-cloud-disko.drv'.
+          Reason: missing system features
+          Required features: {kvm, nixos-test}
+   ```
+
+   The home lab's usual deploying machine, the workspace container CT 113, is
+   an unprivileged LXC with no `/dev/kvm`, so the step is unavailable there
+   until the hypervisor passes the device in.
+
+   When you do have to skip it, evaluate the two things it would have caught
+   instead - both are the holes that actually killed installs, and both are
+   answerable without booting anything:
+
+   ```bash
+   A=.#nixosConfigurations.streetfight-cloud.config
+   nix eval --raw "$A.boot.initrd.availableKernelModules" \
+     --apply 'builtins.concatStringsSep " "'   # want virtio_pci/blk/scsi/net
+   nix eval "$A.networking.useDHCP"                      # want false
+   nix eval --json "$A.networking.interfaces.eth0.ipv4.addresses"
+   nix eval --json "$A.networking.defaultGateway"        # match the droplet
+   ```
 6. **Installs.**
 
 ### What it does not do
@@ -166,6 +194,25 @@ systemctl start streetfight-autodeploy       # deploy now, don't wait for the ti
 systemctl disable --now streetfight-autodeploy.timer   # kill switch
 nixos-rebuild switch --rollback              # recovery; there is no auto-rollback
 ```
+
+**Undoing that kill switch takes two commands, not one.** The timer has
+`OnBootSec` and `OnUnitActiveSec` and no `OnCalendar`, so once the boot window
+has passed its only anchor is the last activation of the *service*. Enabling
+and starting the timer on a box where the service has never run therefore
+schedules nothing: it sits `active` with `NextElapseUSecMonotonic=infinity`
+and an empty `NEXT` in `list-timers`, looking healthy while deploying nothing.
+Starting the service once supplies the anchor, after which the timer
+self-schedules.
+
+```bash
+systemctl enable --now streetfight-autodeploy.timer
+systemctl start --no-block streetfight-autodeploy.service   # supplies the anchor
+systemctl list-timers streetfight-autodeploy.timer          # NEXT must not be empty
+```
+
+That last check is the point: an active timer is not a scheduled one. Bitten
+on the 2026-09-16 droplet, whose timer had been stopped before its first tick
+to keep it off a stale `live`.
 
 The manual `nixos-rebuild --target-host` line above still works and is the
 right tool for deploying something that is not in the repository at all - an

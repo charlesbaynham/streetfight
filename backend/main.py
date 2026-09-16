@@ -17,6 +17,7 @@ from fastapi import Depends
 from fastapi import FastAPI
 from fastapi import HTTPException
 from fastapi import Request
+from fastapi import Response
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 from starlette.responses import Response
@@ -89,12 +90,15 @@ load_env_vars()
 setup_logging()
 
 from . import ai_shot_review
+from . import generate_pub_pages
 from . import image_processing
+from . import printables
 from . import reference_photos
 from . import shot_auto_actions
 from . import shot_escalation
 from . import shot_vision
 from . import sse_event_streams
+from . import team_cards
 from .admin_auth import is_admin_authed
 from .admin_auth import mark_admin_authed
 from .admin_auth import require_admin_auth
@@ -300,27 +304,55 @@ async def join_game(
     encoded_code: _EncodedJoinCode,
     user_id=Depends(get_user_id),
 ):
-    """Join a team by scanning a signed join code.
+    """Join a game or a team by scanning a signed join code.
 
     The body is ``{"data": <url-or-b64>}``, same shape as collect_item. A
-    code with a concrete ``slot`` claims it immediately (unchanged). A *team*
-    code (``slot is None``) writes nothing - it hands back ``needs_pick`` so
-    the frontend can route the player to the outfit-picking flow instead.
+    code with a concrete ``slot`` claims it immediately (unchanged). A code
+    with no slot is either the game-wide sign-up link or a team's door code
+    (roadmap R15): a *team* code scanned by somebody who already holds an
+    outfit in the game puts them in that team, keeping the outfit, and hands
+    back their row with ``joined``. Any other slot-less scan - a game code,
+    or a team code by somebody with no outfit yet - writes nothing and hands
+    back ``needs_pick`` so the frontend routes the player to the outfit
+    picker, which joins the team as part of the pick when the code names one.
     """
     code = _decoded_join_code(encoded_code.data)
 
     logger.info(
-        "User %s joining team %s with slot %s", user_id, code.team_id, code.slot
+        "User %s joining game %s team %s with slot %s",
+        user_id,
+        code.game_id,
+        code.team_id,
+        code.slot,
     )
 
-    if code.slot is None:
-        team = AdminInterface().get_team_model(code.team_id)  # 404s if missing
+    if code.slot is not None:
+        with _identity_admin_errors():
+            return identity_admin.claim_join_slot(user_id, code)
+
+    admin = AdminInterface()
+    admin.get_game_model(code.game_id)  # 404s if missing
+    team = None
+    if code.team_id is not None:
+        team = admin.get_team_model(code.team_id)  # 404s if missing
         if team.game_id != code.game_id:
             raise HTTPException(400, "join code's team does not belong to its game")
-        return {"needs_pick": True, "team_id": team.id, "team_name": team.name}
 
-    with _identity_admin_errors():
-        return identity_admin.claim_join_slot(user_id, code)
+    # Scanning the game's roster rather than UserInterface.get_user(), which
+    # would mint a User row for a link-preview bot (see join_options).
+    scanner = next(
+        (u for u in admin.get_users_for_game(code.game_id) if u.id == user_id), None
+    )
+    if team is not None and scanner is not None and scanner.identity_slot is not None:
+        with _identity_admin_errors():
+            row = identity_admin.join_team_by_code(user_id, code)
+        return {"joined": True, **row}
+
+    return {
+        "needs_pick": True,
+        "team_id": team.id if team else None,
+        "team_name": team.name if team else None,
+    }
 
 
 @router.get("/join_options")
@@ -1230,11 +1262,98 @@ async def admin_identity_report(game_id: UUID) -> dict:
 
 @admin_method(path="/admin_join_qr_codes", method="GET")
 async def admin_join_qr_codes(game_id: UUID) -> dict:
-    """One signed team join QR per team: scanning it lets a player pick their
-    own outfit in that team's colour. See ``identity_admin.build_join_codes``
-    for why this GET writes (it pins each team's hat colour)."""
+    """The game's sign-up link and one signed team join QR per team. See
+    ``identity_admin.build_join_codes`` for why this GET writes (it pins
+    each team's display colour)."""
     with _identity_admin_errors():
         return identity_admin.build_join_codes(game_id)
+
+
+@admin_method(path="/admin_game_join_url", method="GET")
+async def admin_game_join_url(game_id: UUID) -> dict:
+    """The game's sign-up link on its own - the link and QR that go out over
+    WhatsApp. Unlike ``/admin_join_qr_codes`` this needs no teams and writes
+    nothing."""
+    with _identity_admin_errors():
+        return identity_admin.game_join_url(game_id)
+
+
+@admin_method(path="/admin_team_cards_pdf", method="GET")
+async def admin_team_cards_pdf(game_id: UUID):
+    """The printable team cards (backend/team_cards.py): one A4 page per
+    team, each carrying that team's door code. Built here rather than by a
+    CLI because the team ids the codes carry only exist in the running
+    server's database."""
+    with _identity_admin_errors():
+        codes = identity_admin.build_join_codes(game_id)
+    pdf = team_cards.render_pdf(
+        [(team["team_name"], team["encoded_url"]) for team in codes["teams"]]
+    )
+    return _pdf_response(pdf, "team_cards.pdf")
+
+
+# The other two printables (backend/printables.py). POST rather than GET
+# because each call *mints fresh codes* and records them: a link a browser is
+# free to prefetch would put phantom batches in qr_codes.csv and hand the
+# admin a sheet that is not the one the log describes. The team cards above
+# re-render the codes a game already has, so they stay a plain download link.
+
+
+@admin_method(path="/admin_item_sheets_pdf", method="POST")
+async def admin_item_sheets_pdf(
+    itype: str,
+    num: int,
+    sheets: int = 1,
+    damage: int = 1,
+    timeout: float = 6,
+    collected_only_once: bool = True,
+    collected_as_team: bool = False,
+    tag: str = "",
+):
+    """The drop cards: sheets of eight item codes, to be cut up and hidden."""
+    logger.info("admin_item_sheets_pdf - %s", locals())
+
+    try:
+        pdf = printables.item_sheets_pdf(
+            itype,
+            num,
+            sheets=sheets,
+            damage=damage,
+            timeout=timeout,
+            collected_only_once=collected_only_once,
+            collected_as_team=collected_as_team,
+            tag=tag,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, f"item_cards_{itype}.pdf")
+
+
+@admin_method(path="/admin_pub_pages_pdf", method="POST")
+async def admin_pub_pages_pdf(
+    count: int,
+    num_bullets: int = generate_pub_pages.BULLETS_PER_TEAM_MEMBER,
+    tag: str = "pub",
+):
+    """The pub certificates: one A4 poster per pub, each a team-wide ammo
+    code the first team to scan it collects for everybody."""
+    logger.info("admin_pub_pages_pdf - %s", locals())
+
+    try:
+        pdf = printables.pub_pages_pdf(count, num_bullets=num_bullets, tag=tag)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, "pub_pages.pdf")
+
+
+def _pdf_response(pdf: bytes, filename: str) -> Response:
+    return Response(
+        content=pdf,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @admin_method(path="/admin_identity_set", method="POST")

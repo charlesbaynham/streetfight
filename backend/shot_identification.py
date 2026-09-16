@@ -291,7 +291,12 @@ def eligible_candidates(users: List[UserModel]) -> List[UserModel]:
     ``build_prior``, so there is no shooter id to filter on here.
 
     A player with no identity slot is excluded -- they have no effective word,
-    so there is nothing to score them against.
+    so there is nothing to score them against. So is a player with no team:
+    somebody who signed up through the game link and has not scanned a team
+    in at the door yet (roadmap R15) holds an outfit but is not on the field,
+    so nobody can have photographed them in play. The door check is the one
+    place they *must* be scored, and :func:`rank_reference_candidates` keeps
+    its own filter for exactly that reason.
 
     **Being knocked out does not remove a candidate.** A dead player is still
     standing there to be photographed, most obviously in the seconds after the
@@ -302,7 +307,11 @@ def eligible_candidates(users: List[UserModel]) -> List[UserModel]:
     -- a down-weight by how long ago they died is plausible, but it is a
     constant to fit from R2's data rather than to invent here.
     """
-    return [user for user in users if user.identity_slot is not None]
+    return [
+        user
+        for user in users
+        if user.identity_slot is not None and user.team_id is not None
+    ]
 
 
 def build_prior(

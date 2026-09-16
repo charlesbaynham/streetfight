@@ -129,16 +129,17 @@ def demo_user_ids(seed: int = SAMPLE_SEED) -> set:
 
 
 def strangers(seed: int = SAMPLE_SEED) -> List[str]:
-    """Players in a team who are not part of the demo cast.
+    """Players in a game who are not part of the demo cast.
 
-    Membership of a *team* is the test rather than mere existence: a browser
+    Membership of a *game* is the test rather than mere existence: a browser
     that opened the app once leaves a nameless user row behind, and refusing
-    to demo because of one would be useless. A player in a team is somebody
-    playing a game.
+    to demo because of one would be useless. A player in a game is somebody
+    who has signed up for one - whether or not they have scanned a team in
+    yet (roadmap R15), since their outfit is claimed either way.
     """
     known = demo_user_ids(seed)
     with session_scope() as session:
-        rows = session.query(User.id, User.name).filter(User.team_id.isnot(None)).all()
+        rows = session.query(User.id, User.name).filter(User.game_id.isnot(None)).all()
     return [name or str(user_id) for user_id, name in rows if user_id not in known]
 
 

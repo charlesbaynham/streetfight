@@ -11,22 +11,19 @@
 
 import React from "react";
 
+import prose from "./prose";
 import styles from "./HowItWorks.module.css";
 
 function HowItWorks() {
   return (
     <div className={styles.outerContainer}>
       <article className={styles.innerContainer}>
-        <h1>Clothes, colours, and error correction</h1>
+        <h1>{prose.howItWorks.heading}</h1>
 
-        <p className={styles.holdingNote}>
-          I haven't written this yet! So you'll have to ask me. Though if you
-          want, you could google Hamming distances and Reed-Solomon codes. And
-          then ask me why I don't get a proper job.
-        </p>
+        <p className={styles.holdingNote}>{prose.howItWorks.holdingNote}</p>
 
         <p className={styles.backNote}>
-          <a href="/">Back to the game</a>
+          <a href="/">{prose.howItWorks.backToGame}</a>
         </p>
       </article>
     </div>

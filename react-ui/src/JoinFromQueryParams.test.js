@@ -35,6 +35,16 @@ test("posts join_game with the code after the debounce, then navigates to /", as
   expect(calls[0].body).toEqual({ data: "ABC123" });
 });
 
+test("a door code that joined the team navigates to /, where onboarding names the team", async () => {
+  installFetchMock({
+    join_game: { joined: true, team_name: "Reds", slot: 3 },
+  });
+  renderWithRouter("/somewhere?j=ABC123");
+
+  await screen.findByText("/");
+  expect(getAPICalls("join_game")).toHaveLength(1);
+});
+
 test("a needs_pick response navigates to /pick carrying the same code", async () => {
   installFetchMock({
     join_game: { needs_pick: true, team_id: "team-1", team_name: "Reds" },

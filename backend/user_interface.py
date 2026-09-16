@@ -355,10 +355,7 @@ class UserInterface:
 
     @db_scoped
     def get_game_id(self) -> UUID:
-        team = self.get_user().team
-        if team is None:
-            return None
-        return team.game_id
+        return self.get_user().game_id
 
     @db_scoped
     def get_team_model(self) -> TeamModel:
@@ -448,38 +445,72 @@ class UserInterface:
             team = Team(id=team_id, game_id=game_id)
             self._session.add(team)
 
-        team.users.append(self.get_user())
+        user = self.get_user()
+        user.game_id = team.game_id
+        team.users.append(user)
 
     @db_scoped
-    def join_team_and_claim_slot(
-        self,
-        team_id: UUID,
-        slot: int,
-        overrides_json: Optional[str] = None,
-        wardrobe_json: Optional[str] = None,
-    ):
-        """Join ``team_id`` and claim identity ``slot`` in one transaction.
+    def set_team(self, team_id: UUID):
+        """Put the user in ``team_id``, keeping whatever outfit they hold.
 
-        Unlike join_team this never auto-creates the team: join codes are
-        signed against an existing team, so a missing one is a 404, not a
-        provisioning request. The slot-holder check is re-run here, inside
-        the same transaction as the write, so two players scanning the same
-        code can't both claim it - the loser gets a 409.
-
-        Claiming a slot rewrites the whole identity, so a canonical claim
-        (which passes neither ``overrides_json`` nor ``wardrobe_json``) clears
-        any previous overrides and wardrobe. That is deliberate and symmetric.
+        The door scan (roadmap R15): the team half of what ``claim_slot`` does
+        for a player who already claimed their outfit through the game-wide
+        sign-up link. Unlike ``join_team`` this never auto-creates: team codes
+        are signed against an existing team, so a missing one is a 404.
+        Moving between teams of the same game is allowed - it is the repair
+        for scanning the wrong card - and keeps the slot, which is unique per
+        game rather than per team.
         """
         team = self._session.query(Team).filter_by(id=team_id).first()
 
         if not team:
             raise HTTPException(404, f"Team {team_id} not found")
 
+        user = self.get_user()
+        user.game_id = team.game_id
+        team.users.append(user)
+
+    @db_scoped
+    def claim_slot(
+        self,
+        game_id: UUID,
+        slot: int,
+        team_id: Optional[UUID] = None,
+        overrides_json: Optional[str] = None,
+        wardrobe_json: Optional[str] = None,
+    ):
+        """Claim identity ``slot`` in ``game_id`` - and join ``team_id``, if
+        one is given - in one transaction.
+
+        The sign-up write (roadmap R15). A game code carries no team, so the
+        player lands in the game alone and scans a team in at the door
+        (``set_team``); a team code carries one, and the pick joins it too.
+        Either way this never auto-creates: join codes are signed against an
+        existing game and team, so a missing one is a 404, not a provisioning
+        request. The slot-holder check is re-run here, inside the same
+        transaction as the write, so two players picking at once can't both
+        claim it - the loser gets a 409. Slots are unique per *game*, which
+        is why the check is on ``User.game_id`` and not the team.
+
+        Claiming a slot rewrites the whole identity, so a canonical claim
+        (which passes neither ``overrides_json`` nor ``wardrobe_json``) clears
+        any previous overrides and wardrobe. That is deliberate and symmetric.
+        """
+        if self._session.get(Game, game_id) is None:
+            raise HTTPException(404, f"Game {game_id} not found")
+
+        team = None
+        if team_id is not None:
+            team = self._session.query(Team).filter_by(id=team_id).first()
+            if not team:
+                raise HTTPException(404, f"Team {team_id} not found")
+            if team.game_id != game_id:
+                raise HTTPException(400, "team does not belong to this game")
+
         holder = (
             self._session.query(User)
-            .join(Team, User.team_id == Team.id)
             .filter(
-                Team.game_id == team.game_id,
+                User.game_id == game_id,
                 User.identity_slot == slot,
                 User.id != self.user_id,
             )
@@ -491,7 +522,9 @@ class UserInterface:
             )
 
         user = self.get_user()
-        team.users.append(user)
+        user.game_id = game_id
+        if team is not None:
+            team.users.append(user)
         user.identity_slot = slot
         user.identity_overrides = overrides_json
         user.identity_wardrobe = wardrobe_json
@@ -741,15 +774,10 @@ class UserInterface:
     def _game_users(self) -> List[User]:
         """Everybody in this user's game: the candidate set a photograph of
         theirs is scored against."""
-        team = self.get_user().team
-        if team is None:
+        game_id = self.get_user().game_id
+        if game_id is None:
             return []
-        return (
-            self._session.query(User)
-            .join(Team, User.team_id == Team.id)
-            .filter(Team.game_id == team.game_id)
-            .all()
-        )
+        return self._session.query(User).filter(User.game_id == game_id).all()
 
     @db_scoped
     def get_own_shot_image(self, shot_id: UUID) -> str:

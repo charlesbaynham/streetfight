@@ -33,7 +33,6 @@ import pydantic
 from . import ticker_message_dispatcher as tk
 from .admin_interface import AdminInterface
 from .identity.allocation import assign_team_colours
-from .identity.allocation import colour_capacity
 from .identity.config import PROVIDED_CHANNEL
 from .identity.config import TEAM_CHANNEL
 from .identity.config import buckets_for_channel
@@ -49,6 +48,7 @@ from .identity.overrides import pairwise_distances
 from .identity.overrides import suggest_free_channels
 from .identity.scheme import IdentityScheme
 from .join_codes import JoinCodeModel
+from .join_codes import make_game_join_url
 from .join_codes import make_team_join_url
 from .model import TeamModel
 from .model import UserModel
@@ -145,10 +145,12 @@ def effective_words(users: List[UserModel], scheme: IdentityScheme) -> Dict[UUID
 
 def provided_channels(scheme: IdentityScheme) -> List[str]:
     """The garments we hand out at the door rather than leave to a wardrobe:
-    the team hat and the armband. Both have been bought (roadmap #9), and both
-    are put on the player by the admin doing the kit check, which is why
-    :func:`expected_outfit` marks them -- that admin is standing at the box
-    and needs to know which colours to take out of it.
+    the hat and the armband. Both have been bought (roadmap #9), both are
+    chosen per player by the allocator rather than by the player (the hat
+    used to be pinned to the team; since roadmap R15 it is free like the
+    armband), and both are put on the player by the admin doing the kit
+    check, which is why :func:`expected_outfit` marks them -- that admin is
+    standing at the box and needs to know which colours to take out of it.
 
     The complement of :func:`_wardrobe_channels`, and defined in the same terms
     so the two can never disagree about which channels a player supplies.
@@ -405,6 +407,9 @@ def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
     scheme = default_scheme()
     admin = AdminInterface()
 
+    if code.team_id is None:
+        raise IdentityAdminError("a slot code must name a team")
+
     game_users = admin.get_users_for_game(code.game_id)  # 404s if game missing
     team = admin.get_team_model(code.team_id)  # 404s if team missing
     if team.game_id != code.game_id:
@@ -427,7 +432,7 @@ def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
     # check re-run inside it (409 on losing the race). Then the same ticker
     # announcement AdminInterface.add_user_to_team makes.
     with UserInterface(user_id) as ui:
-        ui.join_team_and_claim_slot(code.team_id, code.slot)
+        ui.claim_slot(code.game_id, code.slot, code.team_id)
 
         u = ui.get_user()
 
@@ -448,12 +453,16 @@ def claim_join_slot(user_id: UUID, code: JoinCodeModel) -> dict:
 
 # ---------------------------------------------------------------------------
 # Player-facing outfit picking (join_options / outfit_options / pick_outfit)
+# and the door scan (join_team_by_code)
 #
-# A *team* join code (JoinCodeModel.slot is None, see build_join_codes/C3)
-# lets the scanner choose their own outfit rather than claiming a fixed slot.
-# Authorised the same way /join_game is - possession of a validly-signed
-# code, checked by the caller (backend/main.py's _decoded_join_code) before
-# any of these run.
+# A join code with no slot (see build_join_codes) lets the scanner choose
+# their own outfit rather than claiming a fixed slot. A *game* code (no team
+# either) is the sign-up link: the pick puts the player in the game with no
+# team, and a *team* code scanned at the door puts them in that team keeping
+# the outfit (roadmap R15). A team code scanned by somebody with no outfit
+# yet runs the pick and the team join together. Authorised the same way
+# /join_game is - possession of a validly-signed code, checked by the caller
+# (backend/main.py's _decoded_join_code) before any of these run.
 # ---------------------------------------------------------------------------
 
 
@@ -469,16 +478,20 @@ class Option(NamedTuple):
     is_canonical: bool
 
 
-def _team_for_pick(admin: AdminInterface, code: JoinCodeModel) -> TeamModel:
-    """Shared preamble for the three outfit-picking entry points: reject a
-    per-slot code (that's the older claim-a-fixed-outfit flow, not this one)
-    and a code whose team doesn't belong to its game.
+def _team_for_pick(admin: AdminInterface, code: JoinCodeModel) -> Optional[TeamModel]:
+    """Shared preamble for the outfit-picking entry points: reject a per-slot
+    code (that's the older claim-a-fixed-outfit flow, not this one), 404 a
+    missing game, and check a team code's team belongs to its game. ``None``
+    for a game code, which names no team.
     """
     if code.slot is not None:
         raise IdentityAdminError(
-            "this join code claims a specific outfit slot - scan a team code "
-            "to pick your own instead"
+            "this join code claims a specific outfit slot - scan a team or "
+            "game code to pick your own instead"
         )
+    admin.get_game_model(code.game_id)  # 404s if missing
+    if code.team_id is None:
+        return None
     team = admin.get_team_model(code.team_id)  # 404s if missing
     if team.game_id != code.game_id:
         raise IdentityAdminError("join code's team does not belong to its game")
@@ -487,7 +500,7 @@ def _team_for_pick(admin: AdminInterface, code: JoinCodeModel) -> TeamModel:
 
 def _wardrobe_channels(scheme: IdentityScheme) -> List[str]:
     """The channels a player's own clothes must answer: every channel except
-    the team-pinned hat and the armband we hand out (plan C4)."""
+    the hat and the armband we hand out (plan C4)."""
     provided = set(provided_channels(scheme))
     return [name for name in scheme.channels.names if name not in provided]
 
@@ -511,15 +524,14 @@ def _validate_wardrobe(scheme: IdentityScheme, wardrobe: Dict[str, List[str]]) -
 
 def outfit_options(
     scheme: IdentityScheme,
-    team_colour: str,
     wardrobe: Dict[str, List[str]],
     game_users: List[UserModel],
     user_id: Optional[UUID],
     threshold: int,
     dedupe: bool = True,
 ) -> List[Option]:
-    """Every wearable, currently-free outfit for a player joining
-    ``team_colour``, ranked best first (plan C4).
+    """Every wearable, currently-free outfit for a player joining the game,
+    ranked best first (plan C4).
 
     ``dedupe`` collapses each tshirt+trousers combination to its best-ranked
     survivor, which is what the picking page wants: the armband is ours to
@@ -530,9 +542,11 @@ def outfit_options(
 
     Enumerates the product of the player's declared colours on each wardrobe
     channel (or that channel's whole palette, when nothing was declared -
-    "no constraint", not "no options") times every armband colour, hat
-    pinned to ``team_colour``. An empty ``wardrobe`` entry for a channel is
-    therefore as unconstrained as an absent one.
+    "no constraint", not "no options") times every colour of each provided
+    channel - the hat and the armband are ours to hand out, so both are free
+    for the allocator to choose (the hat used to be pinned to the team; see
+    roadmap R15). An empty ``wardrobe`` entry for a channel is therefore as
+    unconstrained as an absent one.
 
     Each candidate is gated on ``threshold`` (its minimum
     :func:`~backend.identity.overrides.overlap_distance` to every other
@@ -542,23 +556,24 @@ def outfit_options(
     ranked ``(overrides needed, -rarity, -min_distance, symbols)``: distance
     from a canonical codeword beats rarity absolutely - an option needing no
     overrides always outranks a rarer one needing even one - and rarity (the
-    summed ``1 - commonness`` over the *wardrobe* channels only; the hat is
-    fixed and the armband is ours) only breaks ties within a tier. The final
+    summed ``1 - commonness`` over the *wardrobe* channels only; the hat and
+    the armband are ours) only breaks ties within a tier. The final
     ``symbols`` key (the candidate's own codeword-shaped word, numeric) makes
     the order fully deterministic.
 
     Finally, the ranked list is collapsed to **one option per distinct
     combination of the wardrobe channels** (e.g. one per tshirt+trousers
-    pair): the armband is ours to assign, not the player's to choose, so
-    letting it vary would offer a choice the player has no stake in - rows
-    differing only in armband colour would even render identically once the
-    picker stops displaying it (plan revision, roadmap #10). Because the
-    list is already ranked, the survivor kept from each group is
-    automatically its best-separating armband. Done here, inside
-    :func:`outfit_options` itself, so ``total`` and the pagination in
-    :func:`outfit_options_page` stay honest.
+    pair): the hat and the armband are ours to assign, not the player's to
+    choose, so letting them vary would offer a choice the player has no
+    stake in - rows differing only in those colours would even render
+    identically once the picker stops displaying them (plan revision,
+    roadmap #10). Because the list is already ranked, the survivor kept from
+    each group is automatically its best-separating hat and armband. Done
+    here, inside :func:`outfit_options` itself, so ``total`` and the
+    pagination in :func:`outfit_options_page` stay honest.
     """
     wardrobe_channels = _wardrobe_channels(scheme)
+    provided = set(provided_channels(scheme))
 
     others_users = [u for u in game_users if u.id != user_id]
     others = effective_words(others_users, scheme)
@@ -571,9 +586,7 @@ def outfit_options(
     choice_lists: List[List[str]] = []
     for i, channel in enumerate(scheme.channels):
         addressable = channel.labels[: scheme.channels.max_addressable_symbol(i)]
-        if channel.name == TEAM_CHANNEL:
-            choice_lists.append([team_colour])
-        elif channel.name == PROVIDED_CHANNEL:
+        if channel.name in provided:
             choice_lists.append(addressable)
         else:
             declared = [
@@ -660,7 +673,12 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
     join link, tapped in the group chat) is described by the team they are in,
     not the one they scanned, flagged with ``joined_other_team``: the page has
     nothing left to offer them but the outfit they already own, and naming the
-    scanned team beside it would read as having joined it.
+    scanned team beside it would read as having joined it. (A door scan never
+    gets here - ``/join_game`` moves a player who holds an outfit straight
+    into the scanned team - so this is the direct-URL case only.)
+
+    ``team_id`` and ``team_name`` are ``None`` for a game code: the sign-up
+    link names no team, and the page says so.
     """
     scheme = default_scheme()
     admin = AdminInterface()
@@ -670,7 +688,8 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
     caller = next((u for u in game_users if u.id == user_id), None)
 
     joined_other_team = (
-        caller is not None
+        team is not None
+        and caller is not None
         and caller.identity_slot is not None
         and caller.team_id is not None
         and caller.team_id != team.id
@@ -679,12 +698,11 @@ def join_options(user_id: UUID, code: JoinCodeModel) -> dict:
         team = admin.get_team_model(caller.team_id)
 
     return {
-        "team_id": team.id,
-        "team_name": team.name,
-        "team_colour": team.identity_colour,
+        "game_id": code.game_id,
+        "team_id": team.id if team is not None else None,
+        "team_name": team.name if team is not None else None,
         "joined_other_team": joined_other_team,
-        "team_channel": TEAM_CHANNEL,
-        "provided_channel": PROVIDED_CHANNEL,
+        "provided_channels": provided_channels(scheme),
         "wardrobe_channels": _wardrobe_channels(scheme),
         "channels": _channels_payload(scheme),
         "you": _player_row(caller, scheme) if caller is not None else None,
@@ -717,27 +735,19 @@ def outfit_options_page(
     """
     scheme = default_scheme()
     admin = AdminInterface()
-    team = _team_for_pick(admin, code)
-    if team.identity_colour is None:
-        raise IdentityAdminError(
-            "team has no colour pinned yet - generate join codes first"
-        )
+    _team_for_pick(admin, code)
 
     _validate_wardrobe(scheme, wardrobe)
     game_users = admin.get_users_for_game(code.game_id)
 
     threshold = scheme.code.min_distance()
     gate = threshold - 1 if relaxed else threshold
-    options = outfit_options(
-        scheme, team.identity_colour, wardrobe, game_users, user_id, gate
-    )
+    options = outfit_options(scheme, wardrobe, game_users, user_id, gate)
 
     exhausted = False
     if relaxed and not options:
         exhausted = True
-        options = outfit_options(
-            scheme, team.identity_colour, wardrobe, game_users, user_id, 0
-        )
+        options = outfit_options(scheme, wardrobe, game_users, user_id, 0)
 
     total = len(options)
     page = max(page, 0)
@@ -758,7 +768,6 @@ def outfit_options_page(
 
 def _revalidate_appearance(
     scheme: IdentityScheme,
-    team_colour: str,
     wardrobe: Dict[str, List[str]],
     game_users: List[UserModel],
     user_id: UUID,
@@ -778,7 +787,7 @@ def _revalidate_appearance(
 
     That enumeration must be **undeduped**. Collapsing to one survivor per
     tshirt+trousers combination happens *after* the distance gate, so which
-    armband colour survives depends on the gate that was applied: the page
+    hat and armband survive depends on the gate that was applied: the page
     offers the best of the group that clears the threshold, while an ungated
     enumeration can hand the same combination to a lower-ranked sibling. Ask
     for the deduped set here and a perfectly legitimate pick is simply absent
@@ -793,9 +802,7 @@ def _revalidate_appearance(
     escape hatch ``outfit_options_page`` applies, so a legitimately exhausted
     pick is never bounced on a technicality.
     """
-    all_options = outfit_options(
-        scheme, team_colour, wardrobe, game_users, user_id, 0, dedupe=False
-    )
+    all_options = outfit_options(scheme, wardrobe, game_users, user_id, 0, dedupe=False)
     matching = next((o for o in all_options if o.appearance == appearance), None)
     if matching is None:
         raise OutfitUnavailableError(
@@ -829,20 +836,22 @@ def pick_outfit(
     appearance: Dict[str, str],
     confirmed: bool,
 ) -> dict:
-    """Claim ``appearance`` for ``user_id`` in ``code``'s team, for
-    ``POST /pick_outfit``.
+    """Claim ``appearance`` for ``user_id`` in ``code``'s game - and its
+    team, if the code names one - for ``POST /pick_outfit``.
 
     ``confirmed`` must be exactly ``True`` - the page's "I own these and
     I'll wear them on the night" checkbox - or the request is rejected with
     a readable error before anything is read or written.
 
-    A revisit by someone who already holds a slot in this team is an
+    A revisit by someone who already holds a slot in this game is an
     idempotent no-op (mirrors ``claim_join_slot``'s re-scan branch): their
     unchanged ``_player_row`` comes back and no second ticker message is
-    sent. Otherwise ``appearance`` is re-validated against freshly read state
+    sent. Whichever team they are in, or none: an outfit is claimed once per
+    game, and the team is the door scan's business (``join_team_by_code``).
+    Otherwise ``appearance`` is re-validated against freshly read state
     under ``pick_outfit_lock`` (see ``_revalidate_appearance``) before the
     write - the client's belief about which option this was is never
-    trusted. ``join_team_and_claim_slot``'s own in-transaction holder check
+    trusted. ``claim_slot``'s own in-transaction holder check
     (backend/user_interface.py) stays as the final backstop.
     """
     if confirmed is not True:
@@ -853,11 +862,7 @@ def pick_outfit(
 
     scheme = default_scheme()
     admin = AdminInterface()
-    team = _team_for_pick(admin, code)
-    if team.identity_colour is None:
-        raise IdentityAdminError(
-            "team has no colour pinned yet - generate join codes first"
-        )
+    _team_for_pick(admin, code)
 
     _validate_wardrobe(scheme, wardrobe)
     threshold = scheme.code.min_distance()
@@ -866,49 +871,72 @@ def pick_outfit(
         game_users = admin.get_users_for_game(code.game_id)
 
         scanner = next((u for u in game_users if u.id == user_id), None)
-        if (
-            scanner is not None
-            and scanner.team_id == code.team_id
-            and scanner.identity_slot is not None
-        ):
+        if scanner is not None and scanner.identity_slot is not None:
             # Idempotent revisit - same shape as claim_join_slot's re-scan.
             return _player_row(scanner, scheme)
 
         option = _revalidate_appearance(
-            scheme,
-            team.identity_colour,
-            wardrobe,
-            game_users,
-            user_id,
-            appearance,
-            threshold,
+            scheme, wardrobe, game_users, user_id, appearance, threshold
         )
 
         overrides_json = json.dumps(option.overrides) if option.overrides else None
         wardrobe_json = json.dumps(wardrobe)
 
         with UserInterface(user_id) as ui:
-            ui.join_team_and_claim_slot(
-                code.team_id, option.slot, overrides_json, wardrobe_json
+            ui.claim_slot(
+                code.game_id, option.slot, code.team_id, overrides_json, wardrobe_json
             )
 
-            u = ui.get_user()
-
-            user_name = u.name
-            team_name = u.team.name
-            game_id = u.team.game_id
-
-            tk.send_ticker_message(
-                tk.TickerMessageType.USER_JOINED_TEAM,
-                {"user": user_name, "team": team_name},
-                game_id=game_id,
-                session=ui.get_session(),
-            )
+            if code.team_id is not None:
+                _announce_joined_team(ui)
 
         updated = admin.get_user_model(user_id)
         row = _player_row(updated, scheme)
         row["min_distance"] = option.min_distance
         return row
+
+
+def _announce_joined_team(ui: UserInterface) -> None:
+    """The same ticker line ``AdminInterface.add_user_to_team`` sends, on the
+    open session so it commits with the join."""
+    u = ui.get_user()
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_JOINED_TEAM,
+        {"user": u.name, "team": u.team.name},
+        game_id=u.team.game_id,
+        session=ui.get_session(),
+    )
+
+
+def join_team_by_code(user_id: UUID, code: JoinCodeModel) -> dict:
+    """The door scan (roadmap R15): put a player who already holds an outfit
+    in this game into the team ``code`` names, keeping the outfit.
+
+    Only for a *team* code scanned by somebody with a slot - ``/join_game``
+    sends everyone else to the picker, which joins the team as part of the
+    pick. Re-scanning the team you are in is an idempotent no-op with no
+    second ticker line; scanning a different team of the same game moves you
+    (the repair for scanning the wrong card at a crowded door).
+    """
+    scheme = default_scheme()
+    admin = AdminInterface()
+    team = _team_for_pick(admin, code)
+    if team is None:
+        raise IdentityAdminError("a game code names no team to join")
+
+    game_users = admin.get_users_for_game(code.game_id)
+    scanner = next((u for u in game_users if u.id == user_id), None)
+    if scanner is None or scanner.identity_slot is None:
+        raise IdentityAdminError("pick an outfit before joining a team")
+
+    if scanner.team_id == team.id:
+        return _player_row(scanner, scheme)
+
+    with UserInterface(user_id) as ui:
+        ui.set_team(team.id)
+        _announce_joined_team(ui)
+
+    return _player_row(admin.get_user_model(user_id), scheme)
 
 
 # ---------------------------------------------------------------------------
@@ -917,25 +945,26 @@ def pick_outfit(
 
 
 def build_join_codes(game_id: UUID) -> dict:
-    """One signed *team* join QR per team, each pinned to its own hat colour.
+    """The game's sign-up link plus one signed *team* join QR per team.
+
+    ``game_url`` is the link sent to everyone before the night (roadmap R15):
+    it names no team, so a player who follows it picks an outfit and waits.
+    Each team's ``encoded_url`` is the code printed for the door - scanning it
+    puts the player in that team keeping the outfit, or picks one first if
+    they have none. Contrast :func:`make_join_url`, the older per-slot code
+    that ``claim_join_slot`` still serves unchanged.
 
     Teams are ordered by creation time (:meth:`AdminInterface.get_teams_for_game`)
-    and coloured via :func:`~backend.identity.allocation.assign_team_colours`,
-    which honours any colour a team already has (``Team.identity_colour``) and
-    only assigns fresh colours to teams that don't. **Generating these codes
-    therefore writes to the database on what looks like a GET** - this is
-    deliberate, not an oversight: it is the moment the admin commits a team to
-    its hat colour, and it is idempotent after the first call (calling again,
-    even after adding a new team, leaves every already-coloured team exactly
-    as it was - see ``assign_team_colours``'s docstring for why). There is no
-    separate "pin now" step; if there were, it would be a footgun on game
-    night - an admin who forgot to press it before printing cards would print
-    colours that later generation could still reshuffle.
-
-    A player scans the printed code and picks their own outfit from the
-    team's colour (see the C4 endpoints) rather than being handed a fixed
-    slot - contrast :func:`make_join_url`, the older per-slot code that
-    ``claim_join_slot`` still serves unchanged.
+    and given a display colour via
+    :func:`~backend.identity.allocation.assign_team_colours`, which honours
+    any colour a team already has (``Team.identity_colour``) and only assigns
+    fresh colours to teams that don't. That colour is what the spectator
+    screen draws the team in; it stopped being the hat its players wear when
+    the hat was freed from the team, and constrains no outfit. **Generating
+    these codes therefore writes to the database on what looks like a GET** -
+    idempotent after the first call (calling again, even after adding a new
+    team, leaves every already-coloured team exactly as it was - see
+    ``assign_team_colours``'s docstring for why).
     """
     scheme = default_scheme()
     teams = AdminInterface().get_teams_for_game(game_id)  # 404s if game missing
@@ -950,7 +979,6 @@ def build_join_codes(game_id: UUID) -> dict:
     except ValueError as e:
         raise IdentityAdminError(str(e))
 
-    capacity = colour_capacity(scheme, TEAM_CHANNEL)
     admin = AdminInterface()
 
     out = []
@@ -965,12 +993,34 @@ def build_join_codes(game_id: UUID) -> dict:
                 "team_name": team.name,
                 "team_colour": colour,
                 "team_colour_hex": hex_for(TEAM_CHANNEL, colour),
-                "capacity": capacity[colour],
                 "encoded_url": make_team_join_url(game_id, team.id),
             }
         )
 
-    return {"team_channel": TEAM_CHANNEL, "teams": out}
+    return {
+        "team_channel": TEAM_CHANNEL,
+        "game_url": make_game_join_url(game_id),
+        "teams": out,
+    }
+
+
+# ---------------------------------------------------------------------------
+# GET /admin_game_join_url
+# ---------------------------------------------------------------------------
+
+
+def game_join_url(game_id: UUID) -> dict:
+    """Just the game's sign-up link (roadmap R15), with no teams involved.
+
+    :func:`build_join_codes` also returns this, but it refuses a game with no
+    teams and pins every team's display colour on the way past. The sign-up
+    link is the one thing that is wanted *before* any of that exists - it is
+    what goes out over WhatsApp days before the night - so it gets its own
+    read-only endpoint rather than a side effect and a precondition it has no
+    use for.
+    """
+    AdminInterface().get_teams_for_game(game_id)  # 404s if the game is missing
+    return {"game_url": make_game_join_url(game_id)}
 
 
 # ---------------------------------------------------------------------------

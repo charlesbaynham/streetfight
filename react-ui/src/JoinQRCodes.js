@@ -3,19 +3,15 @@ import React, { useState } from "react";
 import QRCode from "react-qr-code";
 
 import { sendAPIRequest } from "./utils";
-import { Swatch } from "./Swatch";
 
 import styles from "./JoinQRCodes.module.css";
 
-// Admin generator for the per-team join QR codes. Each code encodes (game,
-// team); a player scans their team's code and picks their own outfit from
-// the team's hat colour (see PickOutfit.js / the C4 endpoints) rather than
-// being handed a fixed slot.
-//
-// The backend allocates each team a block of slots sharing one colour in the
-// team channel (the hat), so the card calls that colour out: it is the one
-// garment the admin buys in bulk, and the one players use to tell friend
-// from foe at a distance.
+// Admin generator for the join codes (roadmap R15). Two kinds come back from
+// one call: the game's *sign-up link*, sent to everyone before the night, which
+// puts a player in the game with an outfit but no team; and one *door code*
+// per team, printed and handed to the team leads, which a player scans on
+// arrival to join that team keeping the outfit they picked. The printable
+// version of the door codes is the team cards PDF (backend/team_cards.py).
 export default function JoinQRCodes({ game_id }) {
   const [data, setData] = useState(null);
 
@@ -26,57 +22,77 @@ export default function JoinQRCodes({ game_id }) {
   return (
     <>
       <button onClick={generate}>Generate</button>{" "}
-      {data ? <button onClick={() => window.print()}>Print</button> : null}
+      {data ? <button onClick={() => window.print()}>Print</button> : null}{" "}
       {data ? (
-        <div className={styles.cardGrid}>
-          {data.teams.map((team) => (
-            <div key={team.team_id} className={styles.card}>
-              <h4>Team {team.team_name}</h4>
-              <p className={styles.colourLine}>
-                <Swatch hex={team.team_colour_hex} label={team.team_colour} />{" "}
-                {team.team_colour} {data.team_channel}s
-              </p>
-              <a
-                className={styles.qrLink}
-                href={team.encoded_url}
-                target="_blank"
-                rel="noreferrer"
-                aria-label={`Join link for team ${team.team_name}`}
-              >
-                <QRCode value={team.encoded_url} size={256} />
-              </a>
-              {/* A QR image is useless to forward from the same phone someone
-                  would scan it with (item 1 of the 30 Aug dry-run feedback) -
-                  this is the plain link, visible and selectable, to paste
-                  straight into a WhatsApp message. */}
-              <div className={styles.joinLinkRow}>
-                <input
-                  className={styles.joinLinkInput}
-                  type="text"
-                  readOnly
-                  value={team.encoded_url}
-                  aria-label={`Join link text for team ${team.team_name}`}
-                  onFocus={(e) => e.target.select()}
-                />
-                <button
-                  type="button"
-                  className={styles.copyButton}
-                  onClick={() => {
-                    if (navigator.clipboard && navigator.clipboard.writeText) {
-                      navigator.clipboard.writeText(team.encoded_url);
-                    }
-                  }}
-                >
-                  Copy
-                </button>
-              </div>
-              <p className={styles.capacityLine}>
-                holds {team.capacity} players at full accuracy
-              </p>
-            </div>
-          ))}
-        </div>
+        <a
+          className={styles.pdfLink}
+          href={`/api/admin_team_cards_pdf?game_id=${encodeURIComponent(game_id)}`}
+          download="team_cards.pdf"
+        >
+          Download team cards (PDF)
+        </a>
+      ) : null}
+      {data ? (
+        <>
+          <h4>Sign-up link - send this to everyone</h4>
+          <div className={styles.cardGrid}>
+            <JoinCard label="the game" url={data.game_url} title="Sign up" />
+          </div>
+          <h4>Team codes - for the door</h4>
+          <div className={styles.cardGrid}>
+            {data.teams.map((team) => (
+              <JoinCard
+                key={team.team_id}
+                label={`team ${team.team_name}`}
+                url={team.encoded_url}
+                title={`Team ${team.team_name}`}
+              />
+            ))}
+          </div>
+        </>
       ) : null}
     </>
+  );
+}
+
+export function JoinCard({ label, url, title }) {
+  return (
+    <div className={styles.card}>
+      <h4>{title}</h4>
+      <a
+        className={styles.qrLink}
+        href={url}
+        target="_blank"
+        rel="noreferrer"
+        aria-label={`Join link for ${label}`}
+      >
+        <QRCode value={url} size={256} />
+      </a>
+      {/* A QR image is useless to forward from the same phone someone would
+          scan it with (item 1 of the 30 Aug dry-run feedback) - this is the
+          plain link, visible and selectable, to paste straight into a
+          WhatsApp message. */}
+      <div className={styles.joinLinkRow}>
+        <input
+          className={styles.joinLinkInput}
+          type="text"
+          readOnly
+          value={url}
+          aria-label={`Join link text for ${label}`}
+          onFocus={(e) => e.target.select()}
+        />
+        <button
+          type="button"
+          className={styles.copyButton}
+          onClick={() => {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+              navigator.clipboard.writeText(url);
+            }
+          }}
+        >
+          Copy
+        </button>
+      </div>
+    </div>
   );
 }

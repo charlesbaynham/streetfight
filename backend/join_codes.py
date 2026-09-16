@@ -1,12 +1,21 @@
 """Signed "join by QR" codes: ``(game_id, team_id, slot)`` payloads.
 
-A join code is printed as a QR of ``{WEBSITE_URL}?j=<b64>``; scanning one
-joins you to that team. A code with a concrete ``slot`` claims that identity
-slot (see :func:`backend.identity_admin.claim_join_slot`); a code with
-``slot=None`` is a *team* code that lets the scanner pick their own outfit
-instead (see :func:`make_team_join_url`). Encoding and signing mirror
-:class:`backend.items.ItemModel`, sharing the one HMAC helper in
-``backend/qr_signing.py``.
+A join code is printed as a QR of ``{WEBSITE_URL}?j=<b64>``, and which of
+its fields are set says what scanning it does (roadmap R15):
+
+* a **game** code (``team_id=None, slot=None``, :func:`make_game_join_url`)
+  is the sign-up link sent to everyone before the night: the scanner picks
+  a name and an outfit and is in the game with no team yet;
+* a **team** code (``team_id`` set, ``slot=None``,
+  :func:`make_team_join_url`) is printed and scanned at the door: a player
+  who already holds an outfit joins that team keeping it, and one who does
+  not picks an outfit first and joins the team as part of the pick;
+* a **slot** code (``team_id`` and ``slot`` set, :func:`make_join_url`) is
+  the older kind that claims one fixed identity slot
+  (:func:`backend.identity_admin.claim_join_slot`).
+
+Encoding and signing mirror :class:`backend.items.ItemModel`, sharing the one
+HMAC helper in ``backend/qr_signing.py``.
 """
 
 import base64
@@ -35,10 +44,12 @@ load_env_vars()
 
 class JoinCodeModel(pydantic.BaseModel):
     game_id: UUID
-    team_id: UUID
+    team_id: Optional[UUID] = None
+    """``None`` means a *game* code: the sign-up link, which puts the scanner
+    in the game with no team (see ``make_game_join_url``)."""
     slot: Optional[int] = None
-    """``None`` means a *team* code: whoever scans it picks their own outfit
-    rather than claiming a fixed slot (see ``make_team_join_url``)."""
+    """``None`` means the scanner picks their own outfit rather than claiming
+    a fixed slot (see ``make_team_join_url`` / ``make_game_join_url``)."""
 
     sig: Optional[str] = None
 
@@ -77,10 +88,10 @@ class JoinCodeModel(pydantic.BaseModel):
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
     def get_signature(self) -> str:
-        # sign_payload joins with str(p), so a None slot renders as the
-        # literal "None" - which no integer slot can ever equal. That
-        # domain-separates team codes from slot codes for free, with no
-        # special-casing needed here.
+        # sign_payload joins with str(p), so a None slot or team renders as
+        # the literal "None" - which no integer slot or UUID can ever equal.
+        # That domain-separates game, team and slot codes from one another
+        # for free, with no special-casing needed here.
         return sign_payload("join", self.game_id, self.team_id, self.slot)
 
     def sign(self):
@@ -110,11 +121,20 @@ def make_join_url(game_id: UUID, team_id: UUID, slot: int) -> str:
 
 
 def make_team_join_url(game_id: UUID, team_id: UUID) -> str:
-    """A signed team join URL: scanning it lets the player pick their own
-    outfit rather than claiming a fixed slot. Same ``?j=`` query param as
-    :func:`make_join_url` deliberately - there is one QR-scanning story, and
-    the signed payload (a ``None`` slot), not the URL shape, decides which
-    flow applies.
+    """A signed team join URL: scanning it puts the player in that team,
+    keeping the outfit they already picked or picking one on the spot. Same
+    ``?j=`` query param as :func:`make_join_url` deliberately - there is one
+    QR-scanning story, and the signed payload (a ``None`` slot), not the URL
+    shape, decides which flow applies.
     """
     code = JoinCodeModel(game_id=game_id, team_id=team_id, slot=None).sign()
+    return add_params_to_url(os.environ["WEBSITE_URL"], {"j": code.to_base64()})
+
+
+def make_game_join_url(game_id: UUID) -> str:
+    """A signed game join URL - the sign-up link. Scanning it lets the player
+    pick their own outfit in the game with no team; the team is scanned in
+    at the door with a :func:`make_team_join_url` code.
+    """
+    code = JoinCodeModel(game_id=game_id, team_id=None, slot=None).sign()
     return add_params_to_url(os.environ["WEBSITE_URL"], {"j": code.to_base64()})

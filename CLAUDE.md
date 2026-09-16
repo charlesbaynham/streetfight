@@ -49,6 +49,15 @@ What that changes, in practice:
   deployment section below. Merging to master is safe at any hour; nothing
   reaches the players until someone runs the deploy workflow.
 
+**Suspended for one change (2026-09-15).** Charles is wiping the live database
+before the 19th in order to land R15 ("sign up first, team on the night"), so
+the state-preservation caveats above do not bind that one rework: `User.game_id`
+arrives with no hand-written `ALTER TABLE`, the identity slots and team colours
+currently in `/data` are going, and the join links already sent are being
+reissued as a single game-wide sign-up link. Everything in this section comes
+back into force the moment the new links go out — it is a dated exception, not
+a repeal, so do not read it as licence for the next schema change.
+
 Everything else — code, styling, tests, admin pages — is as free to change as
 it ever was. This is about state, not about caution generally.
 
@@ -200,6 +209,31 @@ Four things from it that are worth knowing even if you never call the agent:
     `QR_POCKET` is the one gap a readable code fits in without covering the
     handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
     a re-drawn picture fails a test rather than a print run.
+  - `printables.py` — the printables the admin page builds on demand
+    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets
+    and the pub certificates, from the *same* functions the two CLIs call, so
+    a sheet printed from a phone and one printed from a terminal are the same
+    sheet. The reason it exists is the signature: a code is signed with the
+    `SECRET_KEY` that minted it and carries that machine's `WEBSITE_URL`, so a
+    run done from a checkout whose `.env` has drifted is a stack of paper
+    nobody at the party can scan, and the failure only shows up when somebody
+    in a pub points a phone at it. Building them in the server makes both
+    right by construction. Its two endpoints are **POST**, unlike the team
+    cards' GET, because each call mints *fresh* codes and records them in
+    `qr_codes.csv`: a link a browser is free to prefetch would put phantom
+    batches in the log and hand the admin a sheet the log does not describe.
+    That log sits beside the source tree, which on a deployment is a read-only
+    Nix store path, so failing to write it is a warning rather than a lost
+    print run.
+  - `team_cards.py` — the **team** cards (roadmap R15): one A4 portrait page
+    per team, a Ministry of War "notice of conscription" carrying that team's
+    door code, which players scan on the night to join a team. Same toolchain
+    as the pub pages — Pillow, and `generate_pub_pages`'s own `make_qr`, `DPI`
+    and `_mm`, drawn in the bundled `UbuntuMono-R.ttf` — so there is no artwork
+    to measure. Every line of copy is a module-level constant at the top, so
+    the wording changes in one place. Built by the **running server**
+    (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
+    carry only exist in the live database. Print at actual size.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
@@ -209,6 +243,15 @@ Four things from it that are worth knowing even if you never call the agent:
   - `src/index.js` — entrypoint (React Router).
   - `src/utils.js` — `sendAPIRequest(...)` fetch wrapper (prefixes `/api/`),
     plus geolocation/camera permission helpers.
+  - `src/prose.js` — **every piece of prose a player sees**, one section per
+    component (`prose.pickOutfit.lockInButton`, `prose.shotHistory.missed`,
+    ...), so it can be reviewed and edited in one place and localised later
+    without touching the views. Plain strings for fixed text, arrow functions
+    where a value sits inside the sentence, and a JSX-returning function only
+    where inline markup cannot be split out of the sentence. Admin pages are
+    deliberately *not* in it, and neither is text the backend supplies (ticker
+    messages, error `detail`s, colour and player names). A new player-facing
+    string belongs there, not inline in the component.
   - `src/urlState.js` — where a page's *place* lives. Three pages keep it in
     the URL rather than only in React state (`ShotQueue.js`,
     `ReferencePhotos.js`, `PickOutfit.js`), because they are worked on a phone
@@ -281,9 +324,14 @@ Four things from it that are worth knowing even if you never call the agent:
     moment later. `currentShotIdx` is derived from it, falling back to the
     last position held when the id has left the queue - which is what makes
     ruling on shot 5 land on the new shot 5 rather than back at the top.
-    `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page a
-    team join code lands on; it shares the colour `Swatch.js` component with
-    the admin identity pages (`AdminIdentity.js`, `IdentityDemo.js`).
+    `PickOutfit.js` (route `/pick`) is the player-facing outfit-picking page,
+    and since R15 **two** kinds of join code land on it. A *game* code - the
+    sign-up link sent to everyone - heads the page "Sign up", shows no team
+    and no team swatch, and leaves the player in the game with no team until
+    they scan a team code at the door. A *team* code heads it "Team X" and
+    joins that team as part of the pick. It shares the colour `Swatch.js`
+    component with the admin identity pages (`AdminIdentity.js`,
+    `IdentityDemo.js`).
     Everything short of claiming an outfit rides in the query string beside
     the join code - the wardrobe ticks (`w_<channel>`, absent meaning the
     all-ticked default and empty meaning "unticked the lot", which are
@@ -332,6 +380,17 @@ Four things from it that are worth knowing even if you never call the agent:
     own shots is ruled on - seeded silently from the first list it sees, so a
     reload replays nothing. Those `.wav`s were synthesised (numpy → `wave`),
     so replacing one is just dropping a better file over it.
+    `AdminPrintables.js` (route `/admin/printables`) is everything a game
+    night needs handed out, in one page: team cards, pub certificates and
+    drop-card sheets, each a panel with its own controls and one big button,
+    and above them the **sign-up link** - the one thing here that is sent
+    rather than printed, so it is a QR and a copyable link (`JoinQRCodes.js`'s
+    exported `JoinCard`) and not a PDF. It reads `GET /admin_game_join_url`
+    rather than `/admin_join_qr_codes`, which refuses a game with no teams and
+    pins team colours on the way past - neither of which the sign-up link,
+    wanted days before any team exists, has any use for. The two panels that
+    mint codes say above the button how many a press mints, since a second
+    press is a second set rather than a re-download of the first.
     `ReferencePhotos.js` (route `/admin/reference`, with the player being
     checked at `/admin/reference/<user id>` and the game in `?game=`) is the
     door kit-check page
@@ -839,7 +898,10 @@ Three deployment targets share one service definition:
   `AdminInterface.merge_user` is the write side: it re-points every row naming
   the stray onto the survivor, sums the counts, deletes the stray and records
   the alias, mirroring `delete_user`'s foreign-key walk. Any new table with a
-  foreign key to `users.id` has to be added to both.
+  foreign key to `users.id` has to be added to both. The same discipline now
+  has a second half: `merge_user` and `delete_user` carry `User.game_id` as
+  well as `team_id`, since a stray may be a signed-up player with no team at
+  all — see the `game_id` bullet below.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or
@@ -928,24 +990,51 @@ Three deployment targets share one service definition:
   puts them inside that channel's question rather than in one shared list. Keep
   the two in step — identification scores what the player said against what the
   model said, so they must mean the same thing by a colour name.
-- One channel (`TEAM_CHANNEL` in that config, the **hat**) is spent on telling
-  teams apart by eye: the join-QR pre-allocation
-  (`backend/identity/allocation.py` → `identity_admin.build_join_codes`) hands
-  each team a block of slots sharing one hat colour, and no two teams share a
-  colour. That is an allocation policy only — the decoder is unaffected. A hat
-  colour covers seven slots — six for black, and only because slot 0 is withheld
-  and its hat symbol is black; the palettes have nothing to do with it — so a
-  bigger team picks up a whole second colour rather than sharing a part-used
-  one. Six teams of five fit comfortably: each takes one colour and black is
-  never reached.
-- `Team.identity_colour` is **pinned** the first time `build_join_codes` runs
-  for a game, and left untouched on every later call (even after a new team is
-  added) — so a team that has already started picking outfits never gets
-  re-coloured out from under players who chose against its original hat.
-- Players choose their own outfit rather than being assigned one: a team join
-  code (`slot=None` in `JoinCodeModel`) sends the scanner to `/pick`, which
-  offers a ranked, paginated list built by
-  `identity_admin.outfit_options`. Ranking is canonical-first — an option
-  needing zero overrides from a Reed–Solomon codeword always outranks a rarer
-  one needing even one — then rarity, gated throughout on Hamming distance
-  against everyone already placed in the game.
+- **No channel is spent on the team** (roadmap R15, 2026-09-15). The hat used
+  to be pinned per team so players could read friend from foe at thirty metres;
+  that meant teams had to be allocated before anybody could pick an outfit,
+  which needs a final list of who is coming, which does not exist until the
+  night. So the hat and the armband are now both *provided* channels —
+  `identity_admin.provided_channels` is unchanged in shape (hat + armband), as
+  is `_wardrobe_channels` (t-shirt, trousers) — `outfit_options` enumerates
+  the full palette of **both**, and the allocator picks the best-separating
+  pair for each player. The game is one 48-slot pool, gated game-wide. The
+  cost, accepted knowingly: nobody can tell teams apart by eye, so the app
+  says who is on which side.
+- `Team.identity_colour` survives as a **display colour only**. It is still
+  pinned the first time `build_join_codes` runs and still never re-shuffled on
+  a later call, even after a new team is added
+  (`allocation.assign_team_colours`) — but it is what the spectator screen
+  draws a team's dots and roster in (`react-ui/src/SpectatorView.js`,
+  `teamColours.js`), not the hat its players wear, and it constrains no
+  outfit. `allocation.allocate_team_slots` is dead outside its own tests.
+- **Three kinds of join code**, since `JoinCodeModel.team_id` is now optional.
+  A **game code** (`team_id=None`, `slot=None`; `make_game_join_url`) is the
+  sign-up link sent to everyone: `/pick`, name and outfit, and the player is
+  in the game with no team. A **team code** (`team_id` set, `slot=None`;
+  `make_team_join_url`) is printed for the door — a player with an outfit
+  scans it and `POST /join_game` (`identity_admin.join_team_by_code` →
+  `UserInterface.set_team`) puts them in that team keeping the outfit;
+  rescanning the same team is a no-op, a different team moves them, and a
+  player with no outfit gets `needs_pick` and joins the team as part of
+  picking — so the team links already in people's WhatsApp keep working,
+  with that second meaning. A **slot code** is the legacy per-slot one,
+  unchanged.
+  `UserInterface.claim_slot(game_id, slot, team_id=None, overrides_json,
+  wardrobe_json)` replaces `join_team_and_claim_slot`, and its holder check is
+  on `User.game_id`.
+- **`User.game_id` must be set wherever `team_id` is**, and set first. A player
+  belongs to a game before they belong to a team, so
+  `AdminInterface.get_users_for_game` filters on `game_id` — which is what
+  makes a team-less signup count for slot uniqueness and the Hamming gate.
+  `shot_identification.eligible_candidates` excludes players with no team (not
+  on the field) while `rank_reference_candidates` keeps them (the door kit
+  check is exactly when they have none), and `demo_game.strangers`, the wipe
+  guard, tests `game_id` rather than `team_id`. Any new writer of `team_id`
+  that forgets `game_id` makes a player invisible to the allocator.
+- Players choose their own outfit rather than being assigned one: `/pick`
+  offers a ranked, paginated list built by `identity_admin.outfit_options`.
+  Ranking is canonical-first — an option needing zero overrides from a
+  Reed–Solomon codeword always outranks a rarer one needing even one — then
+  rarity, gated throughout on Hamming distance against everyone already placed
+  in the game.

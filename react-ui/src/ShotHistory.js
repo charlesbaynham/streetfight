@@ -9,6 +9,7 @@ import useSound from "use-sound";
 import Popup from "./Popup";
 import UpdateListener from "./UpdateListener";
 import Modernizr from "./modernizr";
+import prose from "./prose";
 import { sendAPIRequest } from "./utils";
 import { weaponName } from "./weapons";
 import {
@@ -29,6 +30,8 @@ import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
 import shotConfirmedSound from "./shot_confirmed.wav";
 import shotMissedSound from "./shot_missed.wav";
+
+const p = prose.shotHistory;
 
 const OPEN_EVENT = "streetfight:open-shot-history";
 
@@ -59,16 +62,8 @@ const STATE_CLASSES = {
 // A subset of the backend's APPEAL_REASONS: the shooter has no case to make
 // about having been hit, and the target none about their own shot landing.
 export const APPEAL_REASONS = {
-  fired: [
-    ["actually_hit", "It actually hit"],
-    ["wrong_target", "It hit someone else"],
-  ],
-  received: [
-    ["missed", "It missed me"],
-    ["wrong_target", "That wasn't me"],
-    ["not_a_player", "That's not a player"],
-    ["already_out", "I was already out"],
-  ],
+  fired: p.appealReasonsFired,
+  received: p.appealReasonsReceived,
 };
 
 export const APPEALS_PER_GAME = 3;
@@ -77,21 +72,28 @@ export const APPEALS_PER_GAME = 3;
 // is open there is no settled answer, so it is amber; once the referee has
 // ruled, green and red say which way (colour means certainty).
 const APPEAL_STATUS = {
-  open: { state: "appealOpen", emoji: "⚖️", label: "Under appeal" },
-  upheld: { state: "appealUpheld", emoji: "⚖️", label: "Appeal upheld" },
-  rejected: { state: "appealRejected", emoji: "⚖️", label: "Appeal rejected" },
+  open: { state: "appealOpen", emoji: "⚖️", label: p.appealOpenLabel },
+  upheld: { state: "appealUpheld", emoji: "⚖️", label: p.appealUpheldLabel },
+  rejected: {
+    state: "appealRejected",
+    emoji: "⚖️",
+    label: p.appealRejectedLabel,
+  },
 };
 
 // A shot somebody else fired at this player: what it did to them, and who did
 // it. The ticker has already named the shooter, so this names them too.
 function receivedStatus(shot) {
-  const by = shot.shooter_name ? ` - shot by ${shot.shooter_name}` : "";
   if (shot.result === "hit")
-    return { state: "hitYou", emoji: "💥", label: `Hit you!${by}` };
+    return {
+      state: "hitYou",
+      emoji: "💥",
+      label: p.hitYouLabel(shot.shooter_name),
+    };
   return {
     state: "unreviewed",
     emoji: "⏳",
-    label: `Shot at you${by}`,
+    label: p.shotAtYouLabel(shot.shooter_name),
   };
 }
 
@@ -114,25 +116,25 @@ function baseStatus(shot) {
       return {
         state: "hit",
         icon: checkImg,
-        label: shot.target_name ? `Hit ${shot.target_name}!` : "Hit!",
+        label: p.hitLabel(shot.target_name),
       };
     if (result === "refunded")
-      return { state: "refunded", icon: returnImg, label: "Ammo refunded" };
+      return { state: "refunded", icon: returnImg, label: p.ammoRefunded };
     if (result === "invalidated")
       return {
         state: "invalidated",
         icon: returnImg,
-        label: "Invalidated",
-        sublabel: "You were knocked out before this shot could be checked",
+        label: p.invalidated,
+        sublabel: p.invalidatedSublabel,
       };
     if (result === "bystander")
       return {
         state: "bystander",
         emoji: "😲",
-        label: "You shot a bystander!",
-        sublabel: "Not a player - no damage done",
+        label: p.shotBystander,
+        sublabel: p.shotBystanderSublabel,
       };
-    return { state: "miss", icon: crossImg, label: "Missed" };
+    return { state: "miss", icon: crossImg, label: p.missed };
   }
 
   // "CharlesBot" is the display name for what the API calls ai_review (#1).
@@ -141,20 +143,20 @@ function baseStatus(shot) {
   if (shot.ai_review_state === "done" && shot.ai_suggestion) {
     // Naming the target only when the backend was sure enough to name one:
     // the shooter reads a name as who they shot.
-    let label = `CharlesBot thinks: ${shot.ai_suggestion}`;
+    let label = p.charlesBotThinks(shot.ai_suggestion);
     if (shot.ai_suggestion === "hit")
       label = shot.ai_target_name
-        ? `CharlesBot thinks: hit on ${shot.ai_target_name}`
-        : "CharlesBot thinks: hit - can't tell who";
+        ? p.charlesBotHitOn(shot.ai_target_name)
+        : p.charlesBotHitUnknown;
     return {
       state: "escalated",
       emoji: "🤖",
       label,
-      sublabel: "Escalated to referee",
+      sublabel: p.escalatedSublabel,
     };
   }
 
-  return { state: "unreviewed", emoji: "⏳", label: "Not reviewed yet" };
+  return { state: "unreviewed", emoji: "⏳", label: p.notReviewed };
 }
 
 function statusClasses(status, ...extra) {
@@ -209,7 +211,7 @@ export function ShotThumbnail({ shotId, className, wrapperClassName }) {
         .filter(Boolean)
         .join(" ")}
     >
-      <img className={className} src={image} alt="Your shot" />
+      <img className={className} src={image} alt={p.yourShotAlt} />
       <img className={styles.crosshair} src={crosshairImg} alt="" />
     </span>
   );
@@ -240,7 +242,7 @@ export function ShotHistoryButton({ standalone = false }) {
         }
         onClick={() => openShotHistory()}
       >
-        My shots &gt;&gt;
+        {p.hudLabel}
         {numUnseen > 0 ? (
           <span className={styles.badge}>{numUnseen}</span>
         ) : null}
@@ -287,7 +289,8 @@ function ShotRow({ shot, onClick }) {
 // bug, so a player with no appeals left still sees the button, greyed out and
 // saying why (roadmap R8).
 export function appealButtonState(shot, appealsRemaining) {
-  if (shot.can_appeal) return { show: true, disabled: false, label: "Appeal" };
+  if (shot.can_appeal)
+    return { show: true, disabled: false, label: p.appealButtonLabel };
 
   const outOfAppeals =
     appealsRemaining === 0 &&
@@ -301,7 +304,7 @@ export function appealButtonState(shot, appealsRemaining) {
         shot.result !== "invalidated");
 
   if (outOfAppeals)
-    return { show: true, disabled: true, label: "No appeals left" };
+    return { show: true, disabled: true, label: p.noAppealsLeftLabel };
 
   return { show: false };
 }
@@ -332,13 +335,13 @@ function AppealConfirmation({ shot, appealsRemaining, onDone, onCancel }) {
         return;
       }
       const body = await response.json().catch(() => null);
-      setError((body && body.detail) || "That appeal could not be lodged");
+      setError((body && body.detail) || p.appealSubmitFailed);
     });
   }, [shot, reason, onDone]);
 
   return (
     <div className={styles.appeal}>
-      <h3 className={styles.appealTitle}>What was wrong with it?</h3>
+      <h3 className={styles.appealTitle}>{p.appealPromptTitle}</h3>
       {(APPEAL_REASONS[shot.direction] || []).map(([value, label]) => (
         <label key={value} className={styles.reasonRow}>
           <input
@@ -352,13 +355,9 @@ function AppealConfirmation({ shot, appealsRemaining, onDone, onCancel }) {
         </label>
       ))}
       <p className={styles.appealQuestion}>
-        Are you sure? You have{" "}
-        {appealsRemaining === null ? "..." : appealsRemaining} of{" "}
-        {APPEALS_PER_GAME} appeals left.
+        {p.appealsLeftText(appealsRemaining, APPEALS_PER_GAME)}
         <br />
-        <span className={styles.appealRefund}>
-          Successful appeals are refunded.
-        </span>
+        <span className={styles.appealRefund}>{p.appealsRefundNote}</span>
       </p>
       {error ? <p className={styles.appealError}>{error}</p> : null}
       <button
@@ -366,10 +365,10 @@ function AppealConfirmation({ shot, appealsRemaining, onDone, onCancel }) {
         disabled={!reason}
         onClick={confirm}
       >
-        Appeal this shot
+        {p.appealConfirmButton}
       </button>
       <button className={styles.appealCancelButton} onClick={onCancel}>
-        Cancel
+        {p.appealCancelButton}
       </button>
     </div>
   );
@@ -386,7 +385,7 @@ function ShotDetail({ shot, onBack, appealsRemaining, onAppealed }) {
   return (
     <div className={styles.detail}>
       <button className={styles.backButton} onClick={onBack}>
-        &lt;&lt; All shots
+        {p.backButton}
       </button>
       <p>
         <StatusIcon status={status} className={styles.rowIcon} /> {status.label}
@@ -404,11 +403,11 @@ function ShotDetail({ shot, onBack, appealsRemaining, onAppealed }) {
       />
       <p className={styles.rowTime}>{formatShotTime(shot.time_created)}</p>
       {weaponName(shot) ? (
-        <p className={styles.rowSublabel}>Fired with {weaponName(shot)}</p>
+        <p className={styles.rowSublabel}>{p.firedWith(weaponName(shot))}</p>
       ) : null}
       {shot.my_appeal_reason ? (
         <p className={styles.rowSublabel}>
-          You appealed: {reasonLabel(shot, shot.my_appeal_reason)}
+          {p.youAppealed(reasonLabel(shot, shot.my_appeal_reason))}
         </p>
       ) : null}
       {confirming ? (
@@ -573,7 +572,7 @@ export function ShotHistoryController() {
           />
         ) : (
           <div className={styles.list}>
-            <h2 className={styles.listTitle}>My shots</h2>
+            <h2 className={styles.listTitle}>{p.listTitle}</h2>
             {(shotList || []).map((shot) => (
               <ShotRow
                 key={shot.id}
