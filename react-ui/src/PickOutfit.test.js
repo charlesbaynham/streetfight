@@ -22,6 +22,10 @@ import {
 
 const p = prose.pickOutfit;
 const chooseRow = proseFragment(p.chooseAriaLabel(""));
+// Addressed through prose.js, like every other player-facing string: these
+// tests are about which garments are offered, not what they are called.
+const TSHIRT = p.channelDisplayNames.tshirt;
+const TROUSERS = p.channelDisplayNames.trousers;
 
 function makeJoinData(overrides = {}) {
   return {
@@ -203,9 +207,9 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
 
   // Every colour starts ticked (the nudge) - untick the ones this player
   // doesn't have, leaving just black in each channel.
-  const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+  const tshirtGroup = screen.getByRole("group", { name: TSHIRT });
   userEvent.click(within(tshirtGroup).getByRole("button", { name: "red" }));
-  const trousersGroup = screen.getByRole("group", { name: "Trousers" });
+  const trousersGroup = screen.getByRole("group", { name: TROUSERS });
   userEvent.click(within(trousersGroup).getByRole("button", { name: "blue" }));
 
   await showOutfits();
@@ -228,7 +232,7 @@ test("ticking colours and submitting (with no confirm checkbox on this step) pos
   expect(screen.getByText(p.notIdealBadge)).toBeInTheDocument();
 
   // Only the player-supplied garments show on an option row - no hat/armband.
-  expect(screen.getByText("T-shirt: black")).toBeInTheDocument();
+  expect(screen.getByText(`${TSHIRT}: black`)).toBeInTheDocument();
   expect(screen.queryByText(/^Hat:/)).not.toBeInTheDocument();
   expect(screen.queryByText(/^Armbands:/)).not.toBeInTheDocument();
 });
@@ -239,7 +243,7 @@ test("every swatch starts ticked, with the checkbox-style tick shown from the fi
   renderPickOutfit();
   await goPastHeader();
 
-  const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+  const tshirtGroup = screen.getByRole("group", { name: TSHIRT });
   const blackSwatch = within(tshirtGroup).getByRole("button", {
     name: "black",
   });
@@ -309,14 +313,12 @@ test("the wardrobe form collapses to a summary once options are showing, and Cha
 
   // The twelve colour swatch buttons are gone from view; a summary + link
   // affordance stands in for them.
-  expect(
-    screen.queryByRole("group", { name: "T-shirt" }),
-  ).not.toBeInTheDocument();
+  expect(screen.queryByRole("group", { name: TSHIRT })).not.toBeInTheDocument();
   const reopen = screen.getByRole("button", { name: p.changeWhatIOwnButton });
 
   await actAndFlush(() => userEvent.click(reopen));
 
-  expect(screen.getByRole("group", { name: "T-shirt" })).toBeInTheDocument();
+  expect(screen.getByRole("group", { name: TSHIRT })).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: p.changeWhatIOwnButton }),
   ).not.toBeInTheDocument();
@@ -347,7 +349,7 @@ test("paging fetches the next page", async () => {
   await goPastHeader();
   await showOutfits();
 
-  expect(screen.getByText("Trousers: black")).toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: black`)).toBeInTheDocument();
 
   await showOtherOutfits();
   await actAndFlush(() =>
@@ -355,8 +357,8 @@ test("paging fetches the next page", async () => {
   );
 
   expect(getLastAPICall("outfit_options").body.page).toBe(1);
-  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
-  expect(screen.queryByText("Trousers: black")).not.toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: blue`)).toBeInTheDocument();
+  expect(screen.queryByText(`${TROUSERS}: black`)).not.toBeInTheDocument();
 });
 
 test("the empty state shows the are-you-sure prompt, and Yes I'm sure refetches at relaxed distance", async () => {
@@ -808,15 +810,15 @@ test("only the canonical outfits show until the player asks for the rest, which 
   await goPastHeader();
   await showOutfits();
 
-  expect(screen.getByText("Trousers: black")).toBeInTheDocument();
-  expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: black`)).toBeInTheDocument();
+  expect(screen.queryByText(`${TROUSERS}: blue`)).not.toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: p.nextButton }),
   ).not.toBeInTheDocument();
 
   await showOtherOutfits();
 
-  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: blue`)).toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: p.nextButton }),
   ).toBeInTheDocument();
@@ -906,7 +908,7 @@ test("a later page badges nothing as recommended - only the first page holds the
     userEvent.click(screen.getByRole("button", { name: p.nextButton })),
   );
 
-  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: blue`)).toBeInTheDocument();
   expect(screen.queryByText("recommended")).not.toBeInTheDocument();
 });
 
@@ -933,7 +935,7 @@ test("a wardrobe with no canonical outfit at all shows the whole list rather tha
   await goPastHeader();
   await showOutfits();
 
-  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: blue`)).toBeInTheDocument();
   expect(
     screen.queryByRole("button", { name: p.showMoreOutfitsButton }),
   ).not.toBeInTheDocument();
@@ -964,7 +966,7 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
   await goPastHeader();
   await showOutfits();
   await showOtherOutfits();
-  expect(screen.getByText("Trousers: blue")).toBeInTheDocument();
+  expect(screen.getByText(`${TROUSERS}: blue`)).toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.click(
@@ -973,7 +975,7 @@ test("reopening the wardrobe collapses the list back to the canonical outfits", 
   );
   await showOutfits();
 
-  expect(screen.queryByText("Trousers: blue")).not.toBeInTheDocument();
+  expect(screen.queryByText(`${TROUSERS}: blue`)).not.toBeInTheDocument();
   expect(
     screen.getByRole("button", { name: p.showMoreOutfitsButton }),
   ).toBeInTheDocument();
@@ -1133,7 +1135,7 @@ describe("keeping the pick in the URL", () => {
     renderPickOutfit();
     await goPastHeader();
 
-    const tshirtGroup = screen.getByRole("group", { name: "T-shirt" });
+    const tshirtGroup = screen.getByRole("group", { name: TSHIRT });
     await actAndFlush(() =>
       userEvent.click(within(tshirtGroup).getByRole("button", { name: "red" })),
     );
