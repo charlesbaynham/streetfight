@@ -33,8 +33,11 @@ import { sendAPIRequest } from "./utils";
 import { usePatchSearchParams } from "./urlState";
 import { NameEntry } from "./OnboardingView";
 import { Swatch } from "./Swatch";
+import prose from "./prose";
 
 import styles from "./PickOutfit.module.css";
+
+const p = prose.pickOutfit;
 
 // Same idiom as JoinFromQueryParams.useQuery - this page is mounted at its
 // own flat route, not underneath it, so it needs its own copy.
@@ -47,11 +50,9 @@ function useQuery() {
 // - this is the one place that turns it into something worth showing a
 // player. Keyed off the name so a future channel (a "shape" channel, say)
 // just falls through to the capitalised default instead of reading raw.
-const CHANNEL_DISPLAY_NAMES = { tshirt: "T-shirt" };
-
 function channelLabel(name) {
   return (
-    CHANNEL_DISPLAY_NAMES[name] || name.charAt(0).toUpperCase() + name.slice(1)
+    p.channelDisplayNames[name] || name.charAt(0).toUpperCase() + name.slice(1)
   );
 }
 
@@ -104,14 +105,16 @@ function Header({ joinData, showWardrobePrompt }) {
       {/* The backend has already swapped this whole block to the team the
           player is actually in, so the link they tapped is never named. */}
       {joinData.joined_other_team ? (
-        <p className={styles.alreadyJoinedNote}>You already joined a team:</p>
+        <p className={styles.alreadyJoinedNote}>{p.alreadyJoinedNote}</p>
       ) : null}
       {/* A game code names no team: the sign-up link is the same for
           everybody, and teams are dealt at the door. */}
-      <h1>{joinData.team_name ? `Team ${joinData.team_name}` : "Sign up"}</h1>
+      <h1>
+        {joinData.team_name ? p.teamHeading(joinData.team_name) : p.signUpHeading}
+      </h1>
       <p>
-        We'll hand you a {provided} on the night.
-        {showWardrobePrompt ? " Tell us what else you'll be wearing." : null}
+        {p.providedNote(provided)}
+        {showWardrobePrompt ? p.wardrobePrompt : null}
       </p>
     </div>
   );
@@ -222,14 +225,14 @@ function OptionRow({
     <button
       type="button"
       className={styles.optionRow}
-      aria-label={`Choose: ${optionDescription(option, wardrobeChannels)}`}
+      aria-label={p.chooseAriaLabel(optionDescription(option, wardrobeChannels))}
       onClick={() => onPick(option)}
     >
       {recommended ? (
-        <span className={styles.recommendedBadge}>preferred</span>
+        <span className={styles.recommendedBadge}>{p.recommendedBadge}</span>
       ) : null}
       {option.is_canonical ? null : (
-        <span className={styles.notIdealBadge}>not ideal</span>
+        <span className={styles.notIdealBadge}>{p.notIdealBadge}</span>
       )}
       <OutfitGarments
         appearance={option.appearance}
@@ -261,10 +264,8 @@ function OptionsList({
             {showHeading ? (
               <h3 className={styles.groupHeading}>
                 {option.overrides_needed === 0
-                  ? "Exact match"
-                  : `${option.overrides_needed} colour${
-                      option.overrides_needed === 1 ? "" : "s"
-                    } different`}
+                  ? p.exactMatchHeading
+                  : p.coloursDifferentHeading(option.overrides_needed)}
               </h3>
             ) : null}
             <OptionRow
@@ -285,14 +286,14 @@ function WardrobeSummary({ wardrobeChannels, wardrobe, onChange }) {
   const description = wardrobeChannels
     .map((name) => {
       const chosen = wardrobe[name] || [];
-      return `${channelLabel(name)}: ${chosen.length ? chosen.join(", ") : "anything"}`;
+      return `${channelLabel(name)}: ${chosen.length ? chosen.join(", ") : p.wardrobeAnythingFallback}`;
     })
     .join(" · ");
   return (
     <div className={styles.wardrobeSummary}>
       <p>{description}</p>
       <button type="button" className={styles.linkButton} onClick={onChange}>
-        Change what I own
+        {p.changeWhatIOwnButton}
       </button>
     </div>
   );
