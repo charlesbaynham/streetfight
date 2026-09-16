@@ -374,8 +374,9 @@ Four things from it that are worth knowing even if you never call the agent:
     other two, with every player whose overrides put them *off* a codeword
     marked in orange on the unlit cell they actually occupy (anonymously —
     it is the whole roster) and a dotted crosshair through the reader's own. That endpoint also carries the reader's *own* outfit — the
-    only place in the app that tells a player which hat and armband they will
-    be handed — and their three nearest neighbours, **named** and labelled on
+    hat and armband included, as the waiting page does
+    (`OnboardingView.js`'s "At the door" row, from `/user_info`'s
+    `outfit_provided`) — and their three nearest neighbours, **named** and labelled on
     the grid: knowing who you could be mistaken for is the part of the scheme
     a player can act on. Note that half of any codeword's neighbours sit at
     exactly the minimum distance (24 of the other 48), so those three are a

@@ -555,11 +555,13 @@ class UserModel(pydantic.BaseModel):
     identity_wardrobe: Optional[str] = None
 
     # {channel_name: {"colour", "hex"}} for the garments the player supplies
-    # themselves (t-shirt, trousers) -- everything except the hat/armband
-    # handed out at the door -- decoded from identity_slot +
-    # identity_overrides. None until an outfit is picked. Not an ORM
-    # attribute, so get_user_model fills it in by hand after model_validate.
+    # themselves (t-shirt, trousers), and the same again for the hat and
+    # armband handed out at the door, both decoded from identity_slot +
+    # identity_overrides. None until an outfit is picked. Neither is an ORM
+    # attribute, so get_user_model fills them in by hand after
+    # model_validate.
     outfit_wardrobe: Optional[Dict[str, Dict[str, Optional[str]]]] = None
+    outfit_provided: Optional[Dict[str, Dict[str, Optional[str]]]] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
