@@ -69,7 +69,7 @@ export default function BulletCount({ user }) {
   return (
     <div id="bullet-count" className={styles.bulletCount}>
       <p>
-        Ammo:{" "}
+        {prose.bulletCount.ammoLabel}{" "}
         {user.num_bullets > 0 ? (
           user.num_bullets > 3 ? (
             <>
@@ -84,9 +84,9 @@ export default function BulletCount({ user }) {
       </p>
       {/* A player weighing up an appeal needs to know what they have left
           (roadmap R8), so it sits with the ammo rather than behind a tap */}
-      <p>Appeals: {user.appeals_remaining}</p>
+      <p>{prose.bulletCount.appealsRemaining(user.appeals_remaining)}</p>
       <p>
-        Armour:{" "}
+        {prose.bulletCount.armourLabel}{" "}
         {user.hit_points > 1
           ? make_n_images(user.hit_points - 1, armour)
           : make_n_images(1, cross)}

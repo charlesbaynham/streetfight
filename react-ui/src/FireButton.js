@@ -5,6 +5,7 @@ import bang from "./bang.mp3";
 import styles from "./FireButton.module.css";
 import { useCallback, useState } from "react";
 import Modernizr from "./modernizr";
+import prose from "./prose";
 
 import fireButtonImg from "./images/firebutton.svg";
 import fireButtonImgNoAmmo from "./images/firebutton_no_ammo.svg";
@@ -79,7 +80,7 @@ export default function FireButton({ user, onClick }) {
                 : fireButtonImg
               : fireButtonImgNoAmmo
           }
-          alt="Fire button"
+          alt={prose.fireButton.fireButtonAlt}
         />
         <svg className={styles.fireButtonCircle}>
           <motion.circle

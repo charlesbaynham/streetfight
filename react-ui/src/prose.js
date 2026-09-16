@@ -23,7 +23,9 @@ const prose = {
     appealsRemaining: (n) => `Appeals: ${n}`,
   },
   // @section fireButton
-  fireButton: {},
+  fireButton: {
+    fireButtonAlt: "Fire button",
+  },
   // @section fullscreenButton
   fullscreenButton: {
     fullscreenAlt: "Fullscreen",
@@ -36,7 +38,14 @@ const prose = {
     medkitWarning: "Get a medkit quick! You will die in:",
   },
   // @section howItWorks
-  howItWorks: {},
+  howItWorks: {
+    // PLACEHOLDER START - scaffolding awaiting Charles's essay
+    heading: "Clothes, colours, and error correction",
+    holdingNote:
+      "I haven't written this yet! So you'll have to ask me. Though if you want, you could google Hamming distances and Reed-Solomon codes. And then ask me why I don't get a proper job.",
+    // PLACEHOLDER END
+    backToGame: "Back to the game",
+  },
   // @section joinFromQueryParams
   joinFromQueryParams: {
     joinFailed: "Could not join the game",
@@ -47,8 +56,6 @@ const prose = {
     closeMapLabel: "Close map",
     closeMapSymbol: "×",
   },
-  // @section myWebcam
-  myWebcam: {},
   // @section onboardingView
   onboardingView: {
     logoAlt: "Streetfight, by Charles and Gaby",
@@ -70,7 +77,67 @@ const prose = {
     waitForGame: "Wait for game to start...",
   },
   // @section pickOutfit
-  pickOutfit: {},
+  pickOutfit: {
+    channelDisplayNames: { tshirt: "T-shirt" },
+    alreadyJoinedNote: "You already joined a team:",
+    signUpHeading: "Sign up",
+    teamHeading: (teamName) => `Team ${teamName}`,
+    providedNote: (provided) => `We'll hand you a ${provided} on the night.`,
+    wardrobePrompt: " Tell us what else you'll be wearing.",
+    wardrobeIntro: () => (
+      <>
+        Everything's ticked to start, so you'll be offered a good outfit
+        either way. <strong>Untick</strong> anything you don't actually own
+        or won't wear on the night - not what you'd merely like to - for a
+        better match.
+      </>
+    ),
+    changeWhatIOwnButton: "Change what I own",
+    wardrobeAnythingFallback: "anything",
+    recommendedBadge: "preferred",
+    notIdealBadge: "not ideal",
+    chooseAriaLabel: (description) => `Choose: ${description}`,
+    exactMatchHeading: "Exact match",
+    coloursDifferentHeading: (count) =>
+      `${count} colour${count === 1 ? "" : "s"} different`,
+    findingOutfitsButton: "Finding outfits...",
+    showMeOutfitsButton: "Show me outfits",
+    noOutfitsFoundNote:
+      "No outfits found. Are you sure you don't have any more clothes?",
+    yesImSureButton: "Yes, I'm sure",
+    exhaustedNote:
+      "These are the best options we could find - sorry for the limited choice.",
+    showMoreOutfitsButton: "Show more outfits",
+    previousButton: "Previous",
+    nextButton: "Next",
+    pageOf: (page, totalPages) => `Page ${page} of ${totalPages}`,
+    confirmHeading: "One more step to join",
+    confirmIntro: () => (
+      <>
+        You haven't joined yet - tick the box and tap{" "}
+        <strong>"Lock in my choice"</strong> below to confirm this outfit and
+        join the game.
+      </>
+    ),
+    wearCheckboxLabel: "I will wear this on the night.",
+    nameRequiredNote: "Enter your name above first.",
+    lockingInButton: "Locking in...",
+    lockInButton: "Lock in my choice",
+    chooseDifferentOutfitButton: "Choose a different outfit",
+    resultHeading: "You're set",
+    nextStepNote:
+      "You're signed up. On the night, scan a team code at the door to join a team.",
+    finalNote: "Locked in - please screenshot this page!",
+    goToGameButton: "Go to the game",
+    enterGameNote:
+      "Set up your camera and location now - we'll take you to the game automatically when it starts.",
+    askAdminNote: "Ask the admin if you need to change your outfit",
+    curiosityFooter: "Interested in what's happening here?",
+    joinProgressAriaLabel: "Join progress",
+    progressPercent: (percent) => `${percent}%`,
+    noInviteLinkNote: "No invite link found - ask for the sign-up link again.",
+    loadingNote: "Loading...",
+  },
   // @section popup
   popup: {
     scrollHintLabel: "Scroll down for more",
@@ -145,7 +212,10 @@ const prose = {
     appealButton: "Appeal this shot",
   },
   // @section swatch
-  swatch: {},
+  swatch: {
+    unknownTitle: "not in palette",
+    unknownSymbol: "?",
+  },
   // @section userMode
   userMode: {
     loading: "Loading...",
@@ -158,8 +228,6 @@ const prose = {
     omg: "OMG",
     eatABullet: "Eat-a-bullet",
   },
-  // @section webcamView
-  webcamView: {},
 };
 
 export default prose;
