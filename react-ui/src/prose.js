@@ -91,12 +91,19 @@ const prose = {
     alreadyJoinedNote: "You already joined a team:",
     signUpHeading: "Sign up",
     teamHeading: (teamName) => `Team ${teamName}`,
-    wardrobePrompt: "Tell us what else you'll be wearing.",
+    wardrobePrompt: "Choose your uniform...",
     wardrobeIntro: () => (
       <>
-        Everything's ticked to start, so you'll be offered a good outfit either
-        way. <strong>Untick</strong> anything you don't actually own or won't
-        wear on the night - not what you'd merely like to - for a better match.
+        <p>
+          We need you to wear particular colours on the night, so the game can
+          tell who you are. This sign-up page makes sure that you don't clash
+          with other players.
+        </p>
+        <p>
+          To give you as many options as possible, please leave ticked{" "}
+          <strong>all the colours you could wear</strong>, so you'll be offered
+          lots of choices.
+        </p>
       </>
     ),
     changeWhatIOwnButton: "Change what I own",
@@ -119,13 +126,7 @@ const prose = {
     nextButton: "Next",
     pageOf: (page, totalPages) => `Page ${page} of ${totalPages}`,
     confirmHeading: "One more step to join",
-    confirmIntro: () => (
-      <>
-        You haven't joined yet - tick the box and tap{" "}
-        <strong>"Lock in my choice"</strong> below to confirm this outfit and
-        join the game.
-      </>
-    ),
+    confirmIntro: () => <>Your chosen outfit:</>,
     wearCheckboxLabel: "I will wear this on the night.",
     nameRequiredNote: "Enter your name above first.",
     lockingInButton: "Locking in...",
@@ -134,11 +135,11 @@ const prose = {
     resultHeading: "You're set",
     nextStepNote:
       "You're signed up. On the night, scan a team code at the door to join a team.",
-    finalNote: "Locked in - please screenshot this page!",
+    finalNote: "",
     goToGameButton: "Go to the game",
-    enterGameNote:
-      "Set up your camera and location now - we'll take you to the game automatically when it starts.",
-    askAdminNote: "Ask the admin if you need to change your outfit",
+    enterGameNote: "",
+    askAdminNote:
+      "Please do wear these clothes! Ask Charles if you need to change your outfit",
     curiosityFooter: "Interested in what's happening here?",
     joinProgressAriaLabel: "Join progress",
     progressPercent: (percent) => `${percent}%`,
