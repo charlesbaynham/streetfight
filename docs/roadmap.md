@@ -17,6 +17,15 @@ rather than writing something new.
 
 ## The date drives everything
 
+**Three days out (16 Sept), the work list for the night itself moved to
+`docs/saturday_milestones_2026-09-19.md`** — the triage of Charles's plan
+(`docs/saturday_plan_2026-09-19.md`) into milestones M0–M9: the print
+freeze, the balance changes and server-side cooldown, the 16:00 reset and
+code withdrawal, countdowns, the courier, sounds, the two experimental items,
+the team leader view. Items below that it absorbs: #12's redraw (M0.6),
+#8's reprint (M0.2, M0.4, M0.5), #7's contact line (M0.5).
+
+
 **The next game is Saturday 19 September 2026.** That is four weeks out, and it
 changes the ordering completely: the logistics track has a hard, unmovable
 deadline and most of the recognition work does not. Anything that has to be

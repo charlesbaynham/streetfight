@@ -36,11 +36,13 @@ What that changes, in practice:
   refusal check (`demo_game.refuse_if_live`) is load-bearing: it declines to
   run if the database holds any player in a team, or any game, that is not the
   demo's own.
-- **There are still no migrations**, so a change to `backend/model.py` and a
-  live database are now in genuine tension. A column addition is not free:
-  it needs a hand-written `ALTER TABLE` against `/data`, or a considered
-  decision to lose the state. Raise the cost to Charles before writing the
-  model change, not after.
+- **There are still no migrations, but additive changes apply themselves.**
+  `database.load()` runs `create_all()` and then `add_missing_columns()` on
+  every startup, so a new table, a new nullable column, or a new column with a
+  plain scalar default reaches the live database on deploy with no hand-written
+  `ALTER TABLE`. Anything else — a rename, a drop, a type change, a `NOT NULL`
+  column without a scalar default — is still in genuine tension with the live
+  state: raise the cost to Charles before writing it, not after.
 - **The identity scheme is frozen.** Renumbering symbols, reordering or
   re-hexing a palette (`backend/identity/config.py`), or changing what a slot
   decodes to would re-clothe players who have already chosen. Treat those
@@ -62,6 +64,14 @@ Everything else — code, styling, tests, admin pages — is as free to change a
 it ever was. This is about state, not about caution generally.
 
 ## Planned work
+
+**Until the game on 19 September, `docs/saturday_milestones_2026-09-19.md`
+is the work list.** It triages Charles's plan for the night
+(`docs/saturday_plan_2026-09-19.md`) into milestones M0–M9 with the files each
+lands in, the ground rules every session follows (what is safe on the live
+database, how QR codes decouple printing from deploying), and the print
+deadline of Thursday 17 September that orders everything. Take scope from it,
+and update its status lines when something ships.
 
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
 the files each item lands in and the open questions still outstanding. Read it
@@ -609,11 +619,13 @@ time over about five minutes. It refuses to run against a database holding
 anybody else's players or games.
 
 There are **no database migrations** (no Alembic). The schema is created from the
-ORM models in `backend/model.py` via `create_all()`. After changing a model,
-reset the dev DB with `npm run resetdb` — **in dev only**: the live droplet's
-database holds a running game, so a model change now needs a hand-written
-`ALTER TABLE` there, or Charles's agreement to lose the state. See "The game
-is live", above.
+ORM models in `backend/model.py` via `create_all()`, and on an existing
+database `database.add_missing_columns()` adds any new columns at startup.
+After changing a model, reset the dev DB with `npm run resetdb` — **in dev
+only**: the live droplet's database holds a running game, so keep model
+changes additive there (new tables, nullable or scalar-defaulted columns);
+anything else needs Charles's agreement to lose the state. See "The game is
+live", above.
 
 Nix alternative: `nix develop` to enter the dev shell, then `nix run .#backend`
 and `nix run .#frontend` in separate terminals.
