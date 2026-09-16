@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="320" viewBox="0 0 320 790" role="img" aria-label="Two players one garment apart are confused by a single misread hat; three garments apart, the same misread still names the right person." font-family="'Lucida Sans','Lucida Grande','Lucida Sans Unicode',Geneva,Verdana,sans-serif">
+        <defs>
+          <filter id="f2blur" x="-25%" y="-25%" width="150%" height="150%">
+            <feGaussianBlur stdDeviation="4.2"></feGaussianBlur>
+          </filter>
+        </defs>
+
+        <text x="0" y="10" fill="#fff" fill-opacity="0.6" style="font-size:10px;letter-spacing:0.09em">THE OBVIOUS WAY</text>
+        <text x="320" y="10" text-anchor="end" fill="#fff" fill-opacity="0.75" style="font-size:10px">one garment apart</text>
+
+        <g id="tomTop">
+          <rect x="34" y="22" width="44" height="11" rx="3" fill="#4F7468"></rect>
+          <rect x="40" y="33" width="32" height="22" rx="4" fill="#2E2E2E" stroke="#fff" stroke-opacity="0.12"></rect>
+          <rect x="28" y="57" width="56" height="52" rx="3" fill="#6A1B9A"></rect>
+          <rect x="14" y="57" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="85" y="57" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="12" y="80" width="17" height="12" rx="2" fill="#AAC634"></rect>
+          <rect x="30" y="110" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+          <rect x="58" y="110" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+        </g>
+        <g>
+          <rect x="202" y="22" width="44" height="11" rx="3" fill="#2D5170"></rect>
+          <rect x="208" y="33" width="32" height="22" rx="4" fill="#2E2E2E" stroke="#fff" stroke-opacity="0.12"></rect>
+          <rect x="196" y="57" width="56" height="52" rx="3" fill="#6A1B9A"></rect>
+          <rect x="182" y="57" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="253" y="57" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="180" y="80" width="17" height="12" rx="2" fill="#AAC634"></rect>
+          <rect x="198" y="110" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+          <rect x="226" y="110" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+        </g>
+        <text x="56" y="180" text-anchor="middle" fill="#fff" style="font-size:13px">Tom</text>
+        <text x="224" y="180" text-anchor="middle" fill="#fff" style="font-size:13px">Gaby</text>
+        <g style="font-size:10.5px">
+          <text x="6" y="198" fill="#fff">hat green</text>
+          <text x="6" y="211" fill="#fff" fill-opacity="0.75">t-shirt purple</text>
+          <text x="6" y="224" fill="#fff" fill-opacity="0.75">armband lime</text>
+          <text x="6" y="237" fill="#fff" fill-opacity="0.75">trousers off-white</text>
+          <text x="174" y="198" fill="#fff">hat navy</text>
+          <text x="174" y="211" fill="#fff" fill-opacity="0.75">t-shirt purple</text>
+          <text x="174" y="224" fill="#fff" fill-opacity="0.75">armband lime</text>
+          <text x="174" y="237" fill="#fff" fill-opacity="0.75">trousers off-white</text>
+        </g>
+
+        <rect x="6" y="252" width="104" height="86" rx="3" fill="#0B0B0B" stroke="#fff" stroke-opacity="0.18"></rect>
+        <g opacity="0.5">
+          <use href="#tomTop" xlink:href="#tomTop" filter="url(#f2blur)" transform="translate(32.7 250) scale(0.46)"></use>
+        </g>
+        <text x="58" y="332" text-anchor="middle" fill="#fff" fill-opacity="0.75" style="font-size:9.5px">the shot, as taken</text>
+        <g stroke="#fff" stroke-opacity="0.55" fill="none">
+          <path d="M118 295h44"></path>
+        </g>
+        <path d="M162 291l8 4-8 4z" fill="#fff" fill-opacity="0.55"></path>
+        <text x="178" y="291" fill="#FF4D5E" style="font-size:13px">Gaby</text>
+        <path d="M178 295h24" stroke="#FF4D5E" stroke-width="1.4"></path>
+        <text x="178" y="307" fill="#FF4D5E" style="font-size:10px;letter-spacing:0.06em">WRONG PERSON</text>
+        <text x="6" y="362" fill="#fff" style="font-size:12px">One hat misread, and it is somebody else.</text>
+
+        <path d="M0 386h320" stroke="#fff" stroke-opacity="0.15"></path>
+
+        <text x="0" y="418" fill="#fff" fill-opacity="0.6" style="font-size:10px;letter-spacing:0.09em">WHAT WE ACTUALLY DO</text>
+        <text x="320" y="418" text-anchor="end" fill="#fff" fill-opacity="0.75" style="font-size:10px">three garments apart</text>
+
+        <g id="tomBottom">
+          <rect x="34" y="430" width="44" height="11" rx="3" fill="#4F7468"></rect>
+          <rect x="40" y="441" width="32" height="22" rx="4" fill="#2E2E2E" stroke="#fff" stroke-opacity="0.12"></rect>
+          <rect x="28" y="465" width="56" height="52" rx="3" fill="#6A1B9A"></rect>
+          <rect x="14" y="465" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="85" y="465" width="13" height="44" rx="3" fill="#6A1B9A"></rect>
+          <rect x="12" y="488" width="17" height="12" rx="2" fill="#AAC634"></rect>
+          <rect x="30" y="518" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+          <rect x="58" y="518" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+        </g>
+        <g>
+          <rect x="202" y="430" width="44" height="11" rx="3" fill="#2D5170"></rect>
+          <rect x="208" y="441" width="32" height="22" rx="4" fill="#2E2E2E" stroke="#fff" stroke-opacity="0.12"></rect>
+          <rect x="196" y="465" width="56" height="52" rx="3" fill="#FFF200"></rect>
+          <rect x="182" y="465" width="13" height="44" rx="3" fill="#FFF200"></rect>
+          <rect x="253" y="465" width="13" height="44" rx="3" fill="#FFF200"></rect>
+          <rect x="180" y="488" width="17" height="12" rx="2" fill="#0F61A6"></rect>
+          <rect x="198" y="518" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+          <rect x="226" y="518" width="24" height="52" rx="3" fill="#F0EFEA"></rect>
+        </g>
+        <text x="56" y="588" text-anchor="middle" fill="#fff" style="font-size:13px">Tom</text>
+        <text x="224" y="588" text-anchor="middle" fill="#fff" style="font-size:13px">Gaby</text>
+        <g style="font-size:10.5px">
+          <text x="6" y="606" fill="#fff">hat green</text>
+          <text x="6" y="619" fill="#fff">t-shirt purple</text>
+          <text x="6" y="632" fill="#fff">armband lime</text>
+          <text x="6" y="645" fill="#fff" fill-opacity="0.75">trousers off-white</text>
+          <text x="174" y="606" fill="#fff">hat navy</text>
+          <text x="174" y="619" fill="#fff">t-shirt yellow</text>
+          <text x="174" y="632" fill="#fff">armband blue</text>
+          <text x="174" y="645" fill="#fff" fill-opacity="0.75">trousers off-white</text>
+        </g>
+
+        <rect x="6" y="660" width="104" height="86" rx="3" fill="#0B0B0B" stroke="#fff" stroke-opacity="0.18"></rect>
+        <g opacity="0.5">
+          <use href="#tomBottom" xlink:href="#tomBottom" filter="url(#f2blur)" transform="translate(32.7 470.2) scale(0.46)"></use>
+        </g>
+        <text x="58" y="740" text-anchor="middle" fill="#fff" fill-opacity="0.75" style="font-size:9.5px">the same shot</text>
+        <g stroke="#fff" stroke-opacity="0.55" fill="none">
+          <path d="M118 703h44"></path>
+        </g>
+        <path d="M162 699l8 4-8 4z" fill="#fff" fill-opacity="0.55"></path>
+        <text x="178" y="699" fill="#fff" style="font-size:13px">Tom</text>
+        <text x="178" y="715" fill="#fff" fill-opacity="0.6" style="font-size:10px;letter-spacing:0.06em">STILL TOM</text>
+        <text x="6" y="770" fill="#fff" style="font-size:12px">The same misread, and no doubt about it.</text>
+      </svg>

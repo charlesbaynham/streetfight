@@ -102,18 +102,15 @@ const prose = {
         text: "That's still not quite enough however: it turns out that colour matching blurry photos is hard, and we often make more than 2 mistakes. To iron out these edge cases, we also use a Bayesian calculation to guess the probability of who the person in the photo is, based on their last known location and proximity to the shooter along with the probability of having made mistakes in the vision. As a final resort, we rank the top candidates in order of probability and then compare the photo against reference photos that we took when you joined the party, using a large language model.",
       },
     ],
-    // PLACEHOLDER START - the two commissioned figures. Delete this tag, the
-    // notes below and FigurePlaceholder once the artwork has landed.
-    placeholderTag: "Figure to come",
-    // PLACEHOLDER END
     figures: {
+      // F1 and F2 are drawn artwork rather than components, so their `alt` is
+      // the only description a screen reader gets - the caption says what the
+      // figure argues, the alt says what is in it.
       cameraRead: {
-        placeholder:
-          "The photograph, the four colours read off it, and who that turned out to be.",
+        alt: "A photograph of a player, the four colours the machine read off him - black, off-white, burgundy, purple - and the four he registered, which differ only in that his t-shirt is blue.",
       },
       spotTheDifference: {
-        placeholder:
-          "Two players one garment apart, and the same two spread three apart.",
+        alt: "Two players whose outfits differ only in the hat, where one misread hat names the wrong person, and the same two spread three garments apart, where the same misread still names the right one.",
       },
       codewordGrid: {
         across: (garments) => `across: the ${garments} we hand you`,

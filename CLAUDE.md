@@ -355,9 +355,12 @@ Four things from it that are worth knowing even if you never call the agent:
     paragraph and **figure** blocks; the figures themselves are
     `HowItWorksFigures.js`. Two of the three (F1, a real shot photograph
     against what CharlesBot read off it; F2, two outfits one garment apart)
-    are commissioned artwork and render as loud dashed placeholders until
-    their SVG lands — `docs/how_it_works_figures.md` holds the briefs and
-    names the archive photograph chosen for F1. The third is drawn from
+    are drawn artwork rather than components: self-contained SVGs in
+    `react-ui/src/images/essay/`, imported like any other image and sized to
+    the column by `.artwork`. Redrawing one means replacing the file —
+    `docs/how_it_works_figures.md` holds the brief each was drawn to, and
+    names the archive photograph in F1 (a real player, so that file is
+    published the moment it is committed). The third is drawn from
     `GET /api/how_it_works` (`backend/how_it_works.py`) rather than bundled,
     so a palette edit or a change to the code's parameters cannot leave a
     published essay lying: it is the 49 codewords as lit cells of a 2401-cell

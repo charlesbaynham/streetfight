@@ -31,14 +31,6 @@
   color: white;
 }
 
-/* Marks text as scaffolding rather than the essay: italic and dimmed, so a
-   player who arrives early can see at a glance that it isn't finished.
-   Delete this class along with the placeholder copy. */
-.holdingNote {
-  opacity: 0.75;
-  font-style: italic;
-}
-
 .diagram {
   margin: 6mm 0;
   text-align: center;
@@ -64,31 +56,15 @@
   margin: 0 0 4mm;
 }
 
-/* PLACEHOLDER START - the frame a commissioned figure has not arrived in yet.
-   Dashed and labelled on purpose: an essay published with an empty box in it
-   should look unfinished rather than look designed. Delete with
-   FigurePlaceholder in HowItWorksFigures.js. */
-.placeholder {
-  display: flex;
-  flex-direction: column;
-  gap: 2mm;
-  padding: 8mm 4mm;
-  border: 1px dashed rgba(255, 255, 255, 0.4);
-  border-radius: 2mm;
+/* F1 and F2, the two drawn figures. Full column width like F3 rather than the
+   320 px they were drawn at: they are vector apart from F1's photograph, which
+   is 640 px wide and so still has pixels in hand at the widest the measure
+   ever gets. */
+.artwork {
+  display: block;
+  width: 100%;
+  height: auto;
 }
-
-.placeholderTag {
-  font-size: smaller;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  opacity: 0.6;
-}
-
-.placeholderNote {
-  font-style: italic;
-  opacity: 0.8;
-}
-/* PLACEHOLDER END */
 
 /* F3. Square, full width, and drawn in grid units - see FigureCodewordGrid. */
 .grid {

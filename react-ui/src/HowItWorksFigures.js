@@ -1,52 +1,54 @@
 // The essay's figures (react-ui/src/HowItWorks.js).
 //
 // Two of the three are pictures of people and cannot be computed, so they are
-// commissioned artwork and sit behind `FigurePlaceholder` until the SVG lands.
-// The third is a picture of the *scheme* and is therefore drawn from what the
-// backend says the scheme currently is (GET /api/how_it_works): a palette edit
-// or a change to the code's parameters must not be able to leave a published
-// essay lying about what the players are wearing.
+// drawn artwork, delivered as self-contained SVGs and loaded like any other
+// image in the app. The third is a picture of the *scheme* and is therefore
+// drawn from what the backend says the scheme currently is
+// (GET /api/how_it_works): a palette edit or a change to the code's parameters
+// must not be able to leave a published essay lying about what the players are
+// wearing.
 //
-// Dropping a delivered SVG in means replacing the marked PLACEHOLDER block in
-// one component with the artwork's JSX. Nothing else moves: the caption, the
-// ordering and the figure frame all live in HowItWorks.js / prose.js.
+// The two artwork files are 320 px wide with a viewBox, so they scale to the
+// column; they are dark-on-transparent because the page behind them is black.
+// Their text is real `<text>`, which is why they are worth keeping as SVG
+// rather than flattening. Redrawing one means replacing the file - the
+// caption, the ordering and the figure frame all live in HowItWorks.js /
+// prose.js, and the brief each was drawn to is in
+// docs/how_it_works_figures.md.
 
 import React from "react";
 
 import prose from "./prose";
+import cameraReadArt from "./images/essay/f1-camera-read.svg";
+import spotTheDifferenceArt from "./images/essay/f2-spot-the-difference.svg";
 import { Swatch } from "./Swatch";
 import styles from "./HowItWorks.module.css";
 
 const p = prose.howItWorks;
 
-// PLACEHOLDER START - delete this component and its CSS once both figures
-// have arrived. It is deliberately loud: an essay that shipped with an empty
-// grey box in it should look wrong, not look designed.
-function FigurePlaceholder({ note }) {
-  return (
-    <div className={styles.placeholder}>
-      <span className={styles.placeholderTag}>{p.placeholderTag}</span>
-      <span className={styles.placeholderNote}>{note}</span>
-    </div>
-  );
-}
-// PLACEHOLDER END
-
 // F1. A real shot photograph, what CharlesBot read off it, and who it decided
 // that was - the reframe the whole essay rests on: the computer is not
 // recognising a face, it is reading four colours.
 export function FigureCameraRead() {
-  // PLACEHOLDER START - replace with the delivered SVG.
-  return <FigurePlaceholder note={p.figures.cameraRead.placeholder} />;
-  // PLACEHOLDER END
+  return (
+    <img
+      className={styles.artwork}
+      src={cameraReadArt}
+      alt={p.figures.cameraRead.alt}
+    />
+  );
 }
 
 // F2. Two players a single garment apart, and the same pair as the scheme
 // actually assigns them. The problem and the solution in one picture.
 export function FigureSpotTheDifference() {
-  // PLACEHOLDER START - replace with the delivered SVG.
-  return <FigurePlaceholder note={p.figures.spotTheDifference.placeholder} />;
-  // PLACEHOLDER END
+  return (
+    <img
+      className={styles.artwork}
+      src={spotTheDifferenceArt}
+      alt={p.figures.spotTheDifference.alt}
+    />
+  );
 }
 
 // Label geometry for F3, in grid units. The font size lives here rather than

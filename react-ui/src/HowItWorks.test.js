@@ -53,6 +53,13 @@ const NEIGHBOUR = {
   },
 };
 
+// The essay has three figures, and two of them are now artwork loaded as image
+// files, so the role "img" finds all three. F3 is the only one drawn inline,
+// which makes the tag the way to address it. The last one, because a test that
+// mounts the page twice wants the figure it has just drawn.
+const gridFigure = () =>
+  Array.from(document.querySelectorAll("article svg")).pop() ?? null;
+
 function mountWith(payload) {
   installFetchMock({ how_it_works: payload });
   return actAndFlush(() => render(<HowItWorks />));
@@ -84,7 +91,7 @@ test("renders the essay's blocks in the order prose.js gives them", async () => 
 test("the grid figure draws every codeword, and names the ringed players", async () => {
   await mountWith({ grid: GRID, you: YOU, neighbours: [NEIGHBOUR] });
 
-  const grid = screen.getByRole("img");
+  const grid = gridFigure();
   // One rect per codeword plus the background field, and a ring plus a name
   // each for the reader and their nearest neighbour.
   expect(grid.querySelectorAll("rect")).toHaveLength(GRID.cells.length + 1);
@@ -97,7 +104,7 @@ test("the grid figure draws every codeword, and names the ringed players", async
 test("the grid figure is skipped entirely when the request fails", async () => {
   await mountWith({ status: 500 });
 
-  expect(screen.queryByRole("img")).not.toBeInTheDocument();
+  expect(gridFigure()).toBeNull();
 });
 
 test("tells a player which hat and armband they will be handed", async () => {
@@ -196,7 +203,7 @@ test("a name pushed off its ring is drawn with a leader line back to it", async 
     neighbours: [{ ...NEIGHBOUR, row: 20, col: 12 }],
   });
 
-  const grid = screen.getByRole("img");
+  const grid = gridFigure();
   expect(grid.querySelectorAll("line.gridLeader").length).toBeGreaterThan(0);
 
   const ys = Array.from(grid.querySelectorAll("text")).map((t) =>
@@ -228,7 +235,7 @@ test("players wearing something off the codebook get their own mark", async () =
     ],
   });
 
-  const grid = screen.getByRole("img");
+  const grid = gridFigure();
   expect(grid.querySelectorAll("rect.gridOverridden")).toHaveLength(2);
   // The lit codewords are untouched by them.
   expect(grid.querySelectorAll("rect.gridCell")).toHaveLength(
@@ -240,7 +247,7 @@ test("the crosshair runs through the reader, and only when there is one", async 
   await mountWith({ grid: GRID, you: YOU, neighbours: [] });
 
   const crosshair = Array.from(
-    screen.getByRole("img").querySelectorAll("line.gridCrosshair"),
+    gridFigure().querySelectorAll("line.gridCrosshair"),
   );
   expect(crosshair).toHaveLength(2);
   expect(crosshair.map((l) => Number(l.getAttribute("y1")))).toContain(
@@ -251,7 +258,5 @@ test("the crosshair runs through the reader, and only when there is one", async 
   );
 
   await mountWith({ grid: GRID, you: null, neighbours: [] });
-  expect(
-    screen.getAllByRole("img").pop().querySelectorAll("line.gridCrosshair"),
-  ).toHaveLength(0);
+  expect(gridFigure().querySelectorAll("line.gridCrosshair")).toHaveLength(0);
 });
