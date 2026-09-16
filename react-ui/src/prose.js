@@ -75,6 +75,11 @@ const prose = {
     locationError:
       "Couldn't get your location — check Settings > Privacy > Location Services, then tap again.",
     compassPermission: "Grant compass permission:",
+    // Lowercase, unlike pickOutfit.channelDisplayNames - this reads as part
+    // of a sentence ("white t-shirt"), not a fieldset legend.
+    garmentNames: { tshirt: "t-shirt" },
+    outfitNotChosen: "Outfit not chosen",
+    outfitChosen: (summary) => `Outfit: ${summary}`,
     joinTeamPrompt: (hasOutfit) =>
       (hasOutfit ? "Outfit picked. " : "") +
       "Join a team by scanning the QR code on the night...",
