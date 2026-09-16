@@ -243,6 +243,15 @@ Four things from it that are worth knowing even if you never call the agent:
   - `src/index.js` — entrypoint (React Router).
   - `src/utils.js` — `sendAPIRequest(...)` fetch wrapper (prefixes `/api/`),
     plus geolocation/camera permission helpers.
+  - `src/prose.js` — **every piece of prose a player sees**, one section per
+    component (`prose.pickOutfit.lockInButton`, `prose.shotHistory.missed`,
+    ...), so it can be reviewed and edited in one place and localised later
+    without touching the views. Plain strings for fixed text, arrow functions
+    where a value sits inside the sentence, and a JSX-returning function only
+    where inline markup cannot be split out of the sentence. Admin pages are
+    deliberately *not* in it, and neither is text the backend supplies (ticker
+    messages, error `detail`s, colour and player names). A new player-facing
+    string belongs there, not inline in the component.
   - `src/urlState.js` — where a page's *place* lives. Three pages keep it in
     the URL rather than only in React state (`ShotQueue.js`,
     `ReferencePhotos.js`, `PickOutfit.js`), because they are worked on a phone

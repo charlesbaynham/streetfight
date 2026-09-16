@@ -110,7 +110,9 @@ function Header({ joinData, showWardrobePrompt }) {
       {/* A game code names no team: the sign-up link is the same for
           everybody, and teams are dealt at the door. */}
       <h1>
-        {joinData.team_name ? p.teamHeading(joinData.team_name) : p.signUpHeading}
+        {joinData.team_name
+          ? p.teamHeading(joinData.team_name)
+          : p.signUpHeading}
       </h1>
       <p>
         {p.providedNote(provided)}
@@ -225,7 +227,9 @@ function OptionRow({
     <button
       type="button"
       className={styles.optionRow}
-      aria-label={p.chooseAriaLabel(optionDescription(option, wardrobeChannels))}
+      aria-label={p.chooseAriaLabel(
+        optionDescription(option, wardrobeChannels),
+      )}
       onClick={() => onPick(option)}
     >
       {recommended ? (
@@ -312,12 +316,8 @@ function ConfirmScreen({
 }) {
   return (
     <div className={styles.confirmScreen}>
-      <h2>One more step to join</h2>
-      <p className={styles.confirmIntro}>
-        You haven't joined yet - tick the box and tap{" "}
-        <strong>"Lock in my choice"</strong> below to confirm this outfit and
-        join the game.
-      </p>
+      <h2>{p.confirmHeading}</h2>
+      <p className={styles.confirmIntro}>{p.confirmIntro()}</p>
       <OutfitGarments
         appearance={option.appearance}
         wardrobeChannels={wardrobeChannels}
@@ -336,10 +336,10 @@ function ConfirmScreen({
           checked={checked}
           onChange={(e) => onCheckedChange(e.target.checked)}
         />
-        I will wear this on the night.
+        {p.wearCheckboxLabel}
       </label>
       {hasName ? null : (
-        <p className={styles.nameRequired}>Enter your name above first.</p>
+        <p className={styles.nameRequired}>{p.nameRequiredNote}</p>
       )}
       <button
         type="button"
@@ -347,7 +347,7 @@ function ConfirmScreen({
         disabled={!checked || !hasName || confirming}
         onClick={() => onConfirm(checked)}
       >
-        {confirming ? "Locking in..." : "Lock in my choice"}
+        {confirming ? p.lockingInButton : p.lockInButton}
       </button>
       <button
         type="button"
@@ -355,7 +355,7 @@ function ConfirmScreen({
         onClick={onBack}
         disabled={confirming}
       >
-        Choose a different outfit
+        {p.chooseDifferentOutfitButton}
       </button>
     </div>
   );
@@ -365,15 +365,12 @@ function ResultScreen({ appearance, wardrobeChannels, channels, teamName }) {
   const navigate = useNavigate();
   return (
     <div className={styles.resultScreen}>
-      <h2>You're set</h2>
+      <h2>{p.resultHeading}</h2>
       {/* Signed up through the game link, so no team yet: say what happens
           next, or this screen reads as the end of the story and the door
           scan comes as a surprise (roadmap R15). */}
       {teamName ? null : (
-        <p className={styles.nextStepNote}>
-          You're signed up. On the night, scan a team code at the door to join a
-          team.
-        </p>
+        <p className={styles.nextStepNote}>{p.nextStepNote}</p>
       )}
       <div className={styles.resultGarments}>
         {wardrobeChannels.map((name) => {
@@ -392,9 +389,7 @@ function ResultScreen({ appearance, wardrobeChannels, channels, teamName }) {
           );
         })}
       </div>
-      <p className={styles.finalNote}>
-        Locked in - please screenshot this page!
-      </p>
+      <p className={styles.finalNote}>{p.finalNote}</p>
       {/* The way in by hand. The poll below sends a player here on its own
           once the game starts, but a player who picked early has nothing to
           do until then except grant the camera and location permissions the
@@ -406,13 +401,10 @@ function ResultScreen({ appearance, wardrobeChannels, channels, teamName }) {
         onClick={() => navigate("/")}
         type="button"
       >
-        Go to the game
+        {p.goToGameButton}
       </button>
-      <p className={styles.enterGameNote}>
-        Set up your camera and location now - we'll take you to the game
-        automatically when it starts.
-      </p>
-      <p>Ask the admin if you need to change your outfit</p>
+      <p className={styles.enterGameNote}>{p.enterGameNote}</p>
+      <p>{p.askAdminNote}</p>
     </div>
   );
 }
@@ -425,7 +417,7 @@ function CuriosityFooter() {
   return (
     <p className={styles.curiosityFooter}>
       <a href="/how-it-works" target="_blank" rel="noopener noreferrer">
-        Interested in what's happening here?
+        {p.curiosityFooter}
       </a>
     </p>
   );
@@ -442,7 +434,7 @@ function JoinProgressBar({ percent }) {
       <div
         className={styles.progressTrack}
         role="progressbar"
-        aria-label="Join progress"
+        aria-label={p.joinProgressAriaLabel}
         aria-valuenow={percent}
         aria-valuemin={0}
         aria-valuemax={100}
@@ -455,7 +447,9 @@ function JoinProgressBar({ percent }) {
           style={{ width: `${percent}%` }}
         />
       </div>
-      <span className={styles.progressPercent}>{percent}%</span>
+      <span className={styles.progressPercent}>
+        {p.progressPercent(percent)}
+      </span>
     </div>
   );
 }
@@ -748,12 +742,7 @@ function PickOutfitForm({
         />
       ) : (
         <>
-          <p className={styles.wardrobeIntro}>
-            Everything's ticked to start, so you'll be offered a good outfit
-            either way. <strong>Untick</strong> anything you don't actually own
-            or won't wear on the night - not what you'd merely like to - for a
-            better match.
-          </p>
+          <p className={styles.wardrobeIntro}>{p.wardrobeIntro()}</p>
 
           {wardrobeChannels.map((channelName) => {
             const channel = joinData.channels.find(
@@ -778,30 +767,27 @@ function PickOutfitForm({
               patchSearchParams({ page: 0, relaxed: null }, { replace: false })
             }
           >
-            {optionsLoading ? "Finding outfits..." : "Show me outfits"}
+            {optionsLoading ? p.findingOutfitsButton : p.showMeOutfitsButton}
           </button>
         </>
       )}
 
       {showAreYouSure ? (
         <div className={styles.emptyState}>
-          <p>No outfits found. Are you sure you don't have any more clothes?</p>
+          <p>{p.noOutfitsFoundNote}</p>
           <button
             type="button"
             onClick={() =>
               patchSearchParams({ page: 0, relaxed: 1 }, { replace: false })
             }
           >
-            Yes, I'm sure
+            {p.yesImSureButton}
           </button>
         </div>
       ) : null}
 
       {optionsResult && optionsResult.exhausted ? (
-        <p className={styles.exhaustedNote}>
-          These are the best options we could find - sorry for the limited
-          choice.
-        </p>
+        <p className={styles.exhaustedNote}>{p.exhaustedNote}</p>
       ) : null}
 
       {showingOptions ? (
@@ -824,7 +810,7 @@ function PickOutfitForm({
               className={styles.linkButton}
               onClick={() => patchSearchParams({ all: 1 }, { replace: false })}
             >
-              Show more outfits
+              {p.showMoreOutfitsButton}
             </button>
           ) : null}
           {!nudging && totalPages > 1 ? (
@@ -839,11 +825,9 @@ function PickOutfitForm({
                   )
                 }
               >
-                Previous
+                {p.previousButton}
               </button>
-              <span>
-                Page {optionsResult.page + 1} of {totalPages}
-              </span>
+              <span>{p.pageOf(optionsResult.page + 1, totalPages)}</span>
               <button
                 type="button"
                 disabled={optionsResult.page + 1 >= totalPages || claiming}
@@ -854,7 +838,7 @@ function PickOutfitForm({
                   )
                 }
               >
-                Next
+                {p.nextButton}
               </button>
             </div>
           ) : null}
@@ -947,11 +931,11 @@ function PickOutfit() {
       </Popup>
       <div className={styles.innerContainer}>
         {!code ? (
-          <p>No invite link found - ask for the sign-up link again.</p>
+          <p>{p.noInviteLinkNote}</p>
         ) : loadError ? (
           <p className={styles.errorText}>{loadError}</p>
         ) : !joinData ? (
-          <p>Loading...</p>
+          <p>{p.loadingNote}</p>
         ) : (
           <>
             <JoinProgressBar percent={progress} />

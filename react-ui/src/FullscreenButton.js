@@ -80,7 +80,10 @@ function FullscreenButton({ handle, isFullscreen, keepHintVisible = false }) {
       {isInstalled ? null : (
         <motion.div className={styles.buttonContainer}>
           <button onClick={toggleFullscreen}>
-            <img src={fullscreenImg} alt={prose.fullscreenButton.fullscreenAlt} />
+            <img
+              src={fullscreenImg}
+              alt={prose.fullscreenButton.fullscreenAlt}
+            />
           </button>
           <motion.img
             className={styles.fullscreenHint}

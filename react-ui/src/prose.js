@@ -86,10 +86,9 @@ const prose = {
     wardrobePrompt: " Tell us what else you'll be wearing.",
     wardrobeIntro: () => (
       <>
-        Everything's ticked to start, so you'll be offered a good outfit
-        either way. <strong>Untick</strong> anything you don't actually own
-        or won't wear on the night - not what you'd merely like to - for a
-        better match.
+        Everything's ticked to start, so you'll be offered a good outfit either
+        way. <strong>Untick</strong> anything you don't actually own or won't
+        wear on the night - not what you'd merely like to - for a better match.
       </>
     ),
     changeWhatIOwnButton: "Change what I own",
