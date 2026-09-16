@@ -24,13 +24,15 @@ START/END`).
 
 ## F1 — What the camera actually gives us
 
-**Photograph chosen: shot `9a4904b2` from the 30 August trial game.** It and
-the runners-up are extracted into `docs/how_it_works_figures/`:
+**Photograph chosen: shot `121f91cb` from the 30 August trial game**, Mermaid
+shooting Tom. It and the runners-up are extracted into
+`docs/how_it_works_figures/`:
 
 | file                                       | what it is                                                                                        |
 | ------------------------------------------ | ------------------------------------------------------------------------------------------------- |
-| `f1-chosen-square-crop.jpg`                | **the one to hand to Claude Design** - `9a4904b2` cropped square about the crosshair, 1080 x 1080 |
-| `f1-chosen-one-garment-wrong-9a4904b2.jpg` | the same shot uncropped, as the phone took it                                                     |
+| `f1-chosen-square-crop.jpg`                | **the one to hand to Claude Design** - `121f91cb` cropped square about the crosshair, 1080 x 1080 |
+| `f1-chosen-one-garment-wrong-121f91cb.jpg` | the same shot uncropped, as the phone took it                                                     |
+| `f1-alt-same-mistake-again-c57aa5d1.jpg`   | runner-up: the same player, the same misread, by a different shooter                              |
 | `f1-alt-hat-not-visible-4109d545.jpg`      | runner-up: dim hallway, hat unreadable                                                            |
 | `f1-alt-nothing-readable-b0cc305d.jpg`     | runner-up: out-of-focus shoulder, nothing readable                                                |
 | `f1-alt-perfect-read-3f32def2.jpg`         | runner-up: all four garments read correctly                                                       |
@@ -39,27 +41,41 @@ the runners-up are extracted into `docs/how_it_works_figures/`:
 They came out of the archive at
 `/home/charles/Nextcloud/Archives/streetfight/streetfight-game-archive-2026-08-30`,
 where the photographs are base64 columns in `data/db/data.db`, table `shots`,
-keyed by the first four bytes of `id`.
+keyed by the first four bytes of `id`. The marked-up copies under
+`data/logs/images/` are named after the **shooter**, not the person in the
+frame, which is an easy way to pick the wrong photograph.
 
 Why this one: all four garments are visible and namable by a reader who has to
-check the machine's homework, the subject is mid-distance and slightly moving
-so the photo is honestly imperfect, and she is holding her own phone up — both
-players were shooting each other. Most usefully, CharlesBot got exactly one
-garment wrong, which is the essay's whole argument in a single real example.
+check the machine's homework, Tom is looking straight down the lens so it
+reads as a photograph of a person rather than a surveillance still, and there
+is a second player behind him — which is honestly what the identification
+problem looks like. Most usefully, CharlesBot got exactly one garment wrong,
+which is the essay's whole argument in a single real example.
 
-| garment  | she was wearing | CharlesBot read | confidence |
-| -------- | --------------- | --------------- | ---------- |
-| t-shirt  | blue            | blue            | 0.95       |
-| trousers | blue            | blue            | 0.90       |
-| hat      | rust            | rust            | 0.85       |
-| armband  | **red**         | **orange**      | 0.95       |
+| garment  | he registered | CharlesBot read | confidence |
+| -------- | ------------- | --------------- | ---------- |
+| t-shirt  | **blue**      | **black**       | 0.95       |
+| trousers | off-white     | off-white       | 0.90       |
+| hat      | burgundy      | burgundy        | 0.95       |
+| armband  | purple        | purple          | 0.95       |
 
-Resolved as a hit on her anyway. The escalation pass, which gets the reference
-photo taken at the door, called it at 0.99 and described the wristbands as red
-— the second look fixed the one colour the first got wrong.
+Resolved as a hit on him anyway. The escalation pass, which gets the reference
+photo taken at the door, called it at 0.99 — "clearly recognizable from his
+beard, burgundy cap, and purple armbands".
+
+The misread is a fair one twice over. The shirt is a very dark navy in indoor
+light, and the scheme's `blue` swatch is `#0072CE`, a much brighter blue than
+the garment he actually owns — so the mistake is partly the room and partly
+the width of the word. `c57aa5d1`, a different shooter twenty minutes later,
+makes the identical call, which is how we know it is the shirt and not the
+photograph.
 
 Runners-up, if a different story is wanted:
 
+- `c57aa5d1` — Jordan shooting Tom. Same one-garment mistake, better lit, and
+  he is laughing. Rejected only because the square crop clips the cap and the
+  trousers and puts somebody else's lime armband in the foreground, which is
+  four garments' worth of confusion in a figure about four garments.
 - `4109d545` — a figure at the end of a dim hallway, small in frame, shooting
   back. Three garments read correctly, the hat genuinely not visible. "One
   garment missing costs you nothing."
@@ -71,12 +87,27 @@ Runners-up, if a different story is wanted:
 - `84a94623` — she put a jacket on over her t-shirt, so the model read green
   where her shirt is purple. The failure mode is not blur, it is coats.
 
-**Two things to know before using any of them.** They are photographs of
-identifiable friends on a page every player can open, so ask first. And the
-recorded outfit and the worn outfit disagree in several rows of that archive
-(Doug's record says a black hat; he is wearing a salmon cap in three separate
-photographs, and in `76ba95b1` three of his four garments differ from his
-record). Those are not model errors, and a figure built on one would be wrong.
+**Two things to know before using any of them.**
+
+They are photographs of identifiable friends, and this repository is public,
+so a file committed here is published whether or not the figure ever ships.
+Ask the person first, and prefer somebody who is looking at the camera — a
+player posing for the shot has already agreed to be photographed, which a
+player caught from behind has not. `9a4904b2` was the original choice here and
+was withdrawn on 2026-09-16 for exactly this reason.
+
+And **the registered outfit and the worn outfit disagree in a lot of that
+archive**, so check a candidate against the register before building on it.
+Two players swapped headwear during the evening: Doug's record says a black
+hat and a lime armband, but he is read in a salmon cap in five separate shots
+and a burgundy cap plus blue armbands in `76ba95b1`; Dee's record says
+burgundy, and he is read in green in `b3a26e2b` and black in `901f3ad7`. Those
+are not model errors, and a figure built on one would be wrong. `76ba95b1` is
+the trap worth naming: CharlesBot reads all four of Doug's garments
+**correctly**, and because he had borrowed the hat and bands, the outfit it
+reads is Dee's registered codeword exactly. A human ruled it a hit on Doug by
+recognising his face. It is a real and interesting photograph, but it argues
+the opposite of what F1 is for.
 
 ### Brief for Claude Design
 
@@ -85,22 +116,28 @@ record). Those are not model errors, and a figure built on one would be wrong.
 > stacked panels, no chrome.
 >
 > Panel 1: the photograph I have supplied, already cropped square. The
-> subject is the woman kneeling in the doorway in a blue polo shirt, dark blue
-> trousers, an orange-rust cap and coral wristbands, holding a phone up at the
-> camera - _not_ the seated woman behind her. Put a thin crosshair at the
-> centre of the frame, which is where the shooter aimed.
+> subject is the bearded man in the centre of the frame wearing a backwards
+> burgundy cap, a near-black navy shirt, a purple wristband on the raised arm
+> and tan cargo trousers - _not_ the man behind his shoulder in the salmon
+> cap. Put a thin crosshair at the centre of the frame, which is where the
+> shooter aimed; it lands on his chest.
 >
 > Panel 2: the same person reduced to four labelled colour blocks in a row —
-> t-shirt / trousers / hat / armband — as the machine sees her. Each block
-> carries the colour name the machine reported: blue, blue, rust, **orange**.
-> (Worth seeing in the photograph itself: in that light the bands genuinely
-> sit between orange and red, so this is a fair mistake, not a silly one.)
-> Mark the armband block as the one it got wrong, in a way that does not rely
-> on colour alone to say so, since the block itself is a colour.
+> t-shirt / trousers / hat / armband — as the machine sees him. Each block
+> carries the colour name the machine reported: **black**, off-white,
+> burgundy, purple. Mark the t-shirt block as the one it got wrong, in a way
+> that does not rely on colour alone to say so, since the block itself is a
+> colour.
 >
-> Panel 3: the same four blocks in the colours she was actually wearing —
-> blue, blue, rust, **red** — with one short line of text: three of four right
-> is enough.
+> Panel 3: the same four blocks in the colours he registered — **blue**,
+> off-white, burgundy, purple — with one short line of text: three of four
+> right is enough.
+>
+> One thing to get right in panel 3: his shirt really is almost black in that
+> light, so do not paint a vivid primary blue block that the reader can see
+> contradicts the photograph above it. Draw it as the dark navy it is and let
+> the _name_ carry the difference. That is the point of the panel — the
+> machine and the player used two different words for one garment.
 >
 > Caption is set by the page, so leave room but do not include it. White text
 > on black, one accent colour of your choosing for the "wrong" marker. Deliver
