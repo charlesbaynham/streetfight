@@ -4,6 +4,7 @@
 
 import React from "react";
 
+import prose from "./prose";
 import styles from "./Swatch.module.css";
 
 export function hexFor(channels, channelName, label) {
@@ -33,9 +34,9 @@ export function Swatch({ hex, label, small, size = "normal" }) {
     <span
       className={className}
       style={hex ? { background: hex } : undefined}
-      title={label || "not in palette"}
+      title={label || prose.swatch.unknownTitle}
     >
-      {hex ? "" : "?"}
+      {hex ? "" : prose.swatch.unknownSymbol}
     </span>
   );
 }

@@ -22,6 +22,7 @@ import {
 } from "./utils";
 
 import styles from "./OnboardingView.module.css";
+import prose from "./prose";
 
 // animateReposition defaults on: as later rows appear, the centred container
 // grows and every row above shifts up, and framer-motion's layout animation
@@ -106,7 +107,7 @@ function NameEntry({ user, className, onNameSet = null }) {
         }}
         onKeyDown={handleKeyDown}
         onBlur={setUserName}
-        placeholder="Enter your name..."
+        placeholder={prose.onboardingView.namePlaceholder}
       />
       <button className={styles.actionButton} onClick={setUserName}>
         <img src={done ? actionDone : returnIcon} alt="" />
@@ -162,7 +163,7 @@ function OnboardingView({ user }) {
     if (hasName)
       actionItems.push(
         <ActionItem
-          text="Grant webcam permission:"
+          text={prose.onboardingView.webcamPermission}
           done={webcamPermissionGranted}
           onClick={() => {
             requestWebcamAccess(() => {
@@ -180,8 +181,8 @@ function OnboardingView({ user }) {
         <ActionItem
           text={
             locationBypassed && !locationPermissionGranted
-              ? "Location skipped — no map"
-              : "Grant location permission:"
+              ? prose.onboardingView.locationSkipped
+              : prose.onboardingView.locationPermission
           }
           done={locationStepDone}
           warn={locationBypassed && !locationPermissionGranted}
@@ -213,8 +214,7 @@ function OnboardingView({ user }) {
       if (locationError)
         actionItems.push(
           <p className={styles.locationError} key={"location-error"}>
-            Couldn't get your location — check Settings &gt; Privacy &gt;
-            Location Services, then tap again.
+            {prose.onboardingView.locationError}
           </p>,
         );
     } else return actionItems;
@@ -225,7 +225,7 @@ function OnboardingView({ user }) {
     if (locationStepDone)
       actionItems.push(
         <ActionItem
-          text={"Grant compass permission:"}
+          text={prose.onboardingView.compassPermission}
           done={compassPermissionGranted}
           onClick={async () => {
             const success = await requestOrientationPermission();
@@ -237,7 +237,6 @@ function OnboardingView({ user }) {
 
     const hasOutfit =
       user.identity_slot !== null && user.identity_slot !== undefined;
-    const outfit = hasOutfit ? ` — outfit #${user.identity_slot}` : "";
 
     // Teams are scanned in at the door (roadmap R15): a player who signed
     // up through the game link arrives here with an outfit and no team.
@@ -246,9 +245,8 @@ function OnboardingView({ user }) {
         <ActionItem
           text={
             !teamName
-              ? (hasOutfit ? "Outfit picked. " : "") +
-                "At the door, scan a team's QR code with your camera app to join a team..."
-              : `You are in team "${teamName}"` + outfit
+              ? prose.onboardingView.joinTeamPrompt(hasOutfit)
+              : prose.onboardingView.inTeam(teamName, user.identity_slot)
           }
           done={inTeam}
           doable={false}
@@ -260,7 +258,7 @@ function OnboardingView({ user }) {
     if (user.team_id !== null)
       actionItems.push(
         <ActionItem
-          text="Wait for game to start..."
+          text={prose.onboardingView.waitForGame}
           done={false}
           doable={false}
           key={"game"}
@@ -275,7 +273,7 @@ function OnboardingView({ user }) {
       <AnimatePresence>
         <div className={styles.innerContainer}>
           <p className={styles.logo}>
-            <img src={logo} alt="Streetfight, by Charles and Gaby" />
+            <img src={logo} alt={prose.onboardingView.logoAlt} />
           </p>
           {getActionItems()}
         </div>

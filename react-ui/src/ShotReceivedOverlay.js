@@ -16,16 +16,18 @@ import {
   unacknowledgedHits,
 } from "./shotHistoryStore";
 import Modernizr from "./modernizr";
+import prose from "./prose";
 import hitSound from "./hit_received.wav";
 
 import styles from "./ShotReceivedOverlay.module.css";
 
+const p = prose.shotReceivedOverlay;
+
 function outcomeText(user) {
   if (!user) return "";
-  if (user.state === "knocked out") return "You are knocked out";
-  if (user.state === "dead") return "You are dead";
-  const points = user.hit_points;
-  return `${points} hit point${points === 1 ? "" : "s"} left`;
+  if (user.state === "knocked out") return p.knockedOut;
+  if (user.state === "dead") return p.dead;
+  return p.hitPointsLeft(user.hit_points);
 }
 
 export default function ShotReceivedOverlay({ user }) {
@@ -70,9 +72,9 @@ export default function ShotReceivedOverlay({ user }) {
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
     >
-      <h1 className={styles.headline}>You have been shot</h1>
+      <h1 className={styles.headline}>{p.headline}</h1>
       {shot.shooter_name ? (
-        <p className={styles.shooter}>by {shot.shooter_name}</p>
+        <p className={styles.shooter}>{p.shooterBy(shot.shooter_name)}</p>
       ) : null}
       <ShotThumbnail
         shotId={shot.id}
@@ -81,7 +83,7 @@ export default function ShotReceivedOverlay({ user }) {
       />
       <p className={styles.outcome}>{outcomeText(user)}</p>
       <button className={styles.okButton} onClick={dismiss}>
-        OK
+        {p.okButton}
       </button>
       <button
         className={styles.appealButton}
@@ -90,7 +92,7 @@ export default function ShotReceivedOverlay({ user }) {
           openShotHistory(shot.id);
         }}
       >
-        Appeal this shot
+        {p.appealButton}
       </button>
     </motion.div>
   );

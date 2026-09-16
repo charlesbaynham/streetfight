@@ -15,6 +15,7 @@ import styles from "./UserMode.module.css";
 import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
+import prose from "./prose";
 
 import {
   isLocationPermissionGranted,
@@ -60,7 +61,7 @@ function GetView({ user }) {
   }, []);
 
   if (user === null) {
-    return <p>Loading...</p>;
+    return <p>{prose.userMode.loading}</p>;
   }
 
   const isAlive = user ? user.state === "alive" : false;
