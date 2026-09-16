@@ -77,7 +77,7 @@ const prose = {
     compassPermission: "Grant compass permission:",
     joinTeamPrompt: (hasOutfit) =>
       (hasOutfit ? "Outfit picked. " : "") +
-      "At the door, scan a team's QR code with your camera app to join a team...",
+      "Join a team by scanning the QR code on the night...",
     inTeam: (teamName, identitySlot) =>
       `You are in team "${teamName}"` +
       (identitySlot !== null && identitySlot !== undefined
@@ -91,8 +91,7 @@ const prose = {
     alreadyJoinedNote: "You already joined a team:",
     signUpHeading: "Sign up",
     teamHeading: (teamName) => `Team ${teamName}`,
-    providedNote: (provided) => `We'll hand you a ${provided} on the night.`,
-    wardrobePrompt: " Tell us what else you'll be wearing.",
+    wardrobePrompt: "Tell us what else you'll be wearing.",
     wardrobeIntro: () => (
       <>
         Everything's ticked to start, so you'll be offered a good outfit either

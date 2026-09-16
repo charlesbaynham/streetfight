@@ -695,9 +695,6 @@ test("the sign-up link names no team and says the team comes at the door", async
     await screen.findByRole("heading", { name: "Sign up" }),
   ).toBeInTheDocument();
   expect(screen.queryByText(/Team /)).not.toBeInTheDocument();
-  expect(
-    screen.getByText(/We'll hand you a hat and armbands on the night/),
-  ).toBeInTheDocument();
 });
 
 test("a player signed up with no team is told to scan a team code at the door", async () => {
