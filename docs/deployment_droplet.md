@@ -195,6 +195,25 @@ systemctl disable --now streetfight-autodeploy.timer   # kill switch
 nixos-rebuild switch --rollback              # recovery; there is no auto-rollback
 ```
 
+**Undoing that kill switch takes two commands, not one.** The timer has
+`OnBootSec` and `OnUnitActiveSec` and no `OnCalendar`, so once the boot window
+has passed its only anchor is the last activation of the *service*. Enabling
+and starting the timer on a box where the service has never run therefore
+schedules nothing: it sits `active` with `NextElapseUSecMonotonic=infinity`
+and an empty `NEXT` in `list-timers`, looking healthy while deploying nothing.
+Starting the service once supplies the anchor, after which the timer
+self-schedules.
+
+```bash
+systemctl enable --now streetfight-autodeploy.timer
+systemctl start --no-block streetfight-autodeploy.service   # supplies the anchor
+systemctl list-timers streetfight-autodeploy.timer          # NEXT must not be empty
+```
+
+That last check is the point: an active timer is not a scheduled one. Bitten
+on the 2026-09-16 droplet, whose timer had been stopped before its first tick
+to keep it off a stale `live`.
+
 The manual `nixos-rebuild --target-host` line above still works and is the
 right tool for deploying something that is not in the repository at all - an
 uncommitted fix at 11pm on a game night.
