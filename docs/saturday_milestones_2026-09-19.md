@@ -41,7 +41,7 @@ tomorrow-morning deadline that nothing else has.
    the team cards and any code in a WhatsApp are not). New fields are
    optional, default off, and **left out of the signature when at their
    default**, so an old payload signs exactly as before.
-6. **Tests, TDD for bugs, `pre-commit run --all-files`, no `FIXME`**, as
+6. **Tests, TDD for bugs, `pre-commit run --all-files`, no fix-me markers (the CI gate)**, as
    `CLAUDE.md` says. Run the tests that cover the change; CI does the sweep.
 7. **Prose a player sees goes in `react-ui/src/prose.js`.** Admin pages keep
    their strings inline. New per-game admin controls go in `AdminMode.js`'s
