@@ -138,7 +138,7 @@ export function placeLabels(entries, size) {
 //
 // Drawn in grid units (0..size) with a viewBox, so it scales to the column
 // width without any of the geometry knowing about pixels.
-export function FigureCodewordGrid({ grid, you, neighbours }) {
+export function FigureCodewordGrid({ grid, you, neighbours, overridden }) {
   if (!grid) return null;
 
   const { size, cells } = grid;
@@ -193,12 +193,47 @@ export function FigureCodewordGrid({ grid, you, neighbours }) {
           width={size + 4}
           height={size + 4}
         />
+        {/* Where the reader sits, carried right across the figure: the row
+            is everyone sharing their t-shirt and trousers, the column
+            everyone sharing their hat and armband. Under the cells, so it
+            guides the eye without competing with them. */}
+        {you && you.row !== null && you.col !== null ? (
+          <>
+            <line
+              className={styles.gridCrosshair}
+              x1={-2}
+              y1={you.row + 0.5}
+              x2={size + 2}
+              y2={you.row + 0.5}
+            />
+            <line
+              className={styles.gridCrosshair}
+              x1={you.col + 0.5}
+              y1={-2}
+              x2={you.col + 0.5}
+              y2={size + 2}
+            />
+          </>
+        ) : null}
         {cells.map((cell) => (
           <rect
             key={cell.slot}
             className={cell.usable ? styles.gridCell : styles.gridCellWithheld}
             x={cell.col + 0.15}
             y={cell.row + 0.15}
+            width={0.7}
+            height={0.7}
+          />
+        ))}
+        {/* Players wearing something the codebook never offered. They are off
+            the constellation by construction, so they get their own colour
+            rather than being drawn as though they were codewords. */}
+        {(overridden || []).map((entry) => (
+          <rect
+            key={`o-${entry.row}-${entry.col}`}
+            className={styles.gridOverridden}
+            x={entry.col + 0.15}
+            y={entry.row + 0.15}
             width={0.7}
             height={0.7}
           />
@@ -219,9 +254,7 @@ export function FigureCodewordGrid({ grid, you, neighbours }) {
           .map((entry) => (
             <line
               key={`${entry.key}-leader`}
-              className={entry.labelClass}
-              stroke="currentColor"
-              strokeWidth={0.2}
+              className={`${styles.gridLeader} ${entry.labelClass}`}
               x1={entry.cx + (entry.anchor === "start" ? 1 : -1) * entry.radius}
               y1={entry.cy}
               x2={entry.x}

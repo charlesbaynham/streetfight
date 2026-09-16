@@ -114,7 +114,40 @@ def _caller(user_id: UUID):
         return None
 
 
-def _neighbours(caller, word: Word, scheme: IdentityScheme) -> Tuple[List[dict], int]:
+def _roster(caller) -> List:
+    """Everyone in the reader's game, or nothing if they are not in one yet."""
+    if caller.game_id is None:
+        return []
+    return AdminInterface().get_users_for_game(caller.game_id)
+
+
+def off_codeword_positions(roster: List, scheme: IdentityScheme) -> List[dict]:
+    """Where the players who are *not* wearing a codeword sit on the grid.
+
+    A player who overrode a garment -- because they owned no shirt in any of
+    the colours the scheme offered them, mostly -- is no longer at one of the
+    49 lit cells. They are still perfectly identifiable (identification scores
+    the photograph against what each player is actually wearing, not against
+    the codebook) but they have spent some of their own separation to get
+    there, and the figure should say so rather than quietly leave them off.
+
+    Anonymous, unlike the neighbours: this is the whole roster, and thirty
+    names would bury the figure. A player whose override blanks a channel
+    outright has no single cell to sit in and is left out.
+    """
+    seen = set()
+    for word in effective_words(roster, scheme).values():
+        if scheme.code.is_codeword(word):
+            continue
+        position = _position(word, scheme.code.q)
+        if position is not None:
+            seen.add(position)
+    return [{"row": row, "col": col} for row, col in sorted(seen)]
+
+
+def _neighbours(
+    caller, word: Word, scheme: IdentityScheme, roster: List
+) -> Tuple[List[dict], int]:
     """The outfits nearest the reader's, closest first and **named**, with a
     count of how many players are tied at that nearest distance.
 
@@ -130,14 +163,7 @@ def _neighbours(caller, word: Word, scheme: IdentityScheme) -> Tuple[List[dict],
     might be mistaken for is the part of the scheme a player can act on, and
     it is what makes the figure about them rather than about the maths.
     """
-    if caller.game_id is None:
-        return [], 0
-
-    others = {
-        other.id: other
-        for other in AdminInterface().get_users_for_game(caller.game_id)
-        if other.id != caller.id
-    }
+    others = {other.id: other for other in roster if other.id != caller.id}
 
     scored = [
         (overlap_distance(word, other_word), other_id, other_word)
@@ -167,15 +193,18 @@ def how_it_works(user_id: UUID) -> dict:
     you = None
     neighbours: List[dict] = []
     closest_count = 0
+    overridden: List[dict] = []
     caller = _caller(user_id)
     word = None if caller is None else effective_words([caller], scheme).get(caller.id)
     if caller is not None and word is not None:
+        roster = _roster(caller)
         you = dict(
             _outfit(word, scheme, caller.identity_slot),
             name=caller.name,
             provided=provided_channels(scheme),
         )
-        neighbours, closest_count = _neighbours(caller, word, scheme)
+        neighbours, closest_count = _neighbours(caller, word, scheme, roster)
+        overridden = off_codeword_positions(roster, scheme)
 
     return {
         "scheme": {
@@ -193,4 +222,8 @@ def how_it_works(user_id: UUID) -> dict:
         "neighbours": neighbours,
         # How many players share the nearest distance -- see _neighbours.
         "closest_count": closest_count,
+        # Players wearing something the codebook never offered -- see
+        # off_codeword_positions. Anonymous, and includes the reader if they
+        # overrode a garment themselves.
+        "overridden": overridden,
     }

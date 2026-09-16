@@ -197,7 +197,7 @@ test("a name pushed off its ring is drawn with a leader line back to it", async 
   });
 
   const grid = screen.getByRole("img");
-  expect(grid.querySelectorAll("line").length).toBeGreaterThan(0);
+  expect(grid.querySelectorAll("line.gridLeader").length).toBeGreaterThan(0);
 
   const ys = Array.from(grid.querySelectorAll("text")).map((t) =>
     Number(t.getAttribute("y")),
@@ -215,4 +215,43 @@ test("label size is set inline, so the global font-size rule cannot win", () => 
 
   const label = container.querySelector("text");
   expect(label).toHaveStyle({ fontSize: "2.6px" });
+});
+
+test("players wearing something off the codebook get their own mark", async () => {
+  await mountWith({
+    grid: GRID,
+    you: YOU,
+    neighbours: [],
+    overridden: [
+      { row: 4, col: 4 },
+      { row: 6, col: 1 },
+    ],
+  });
+
+  const grid = screen.getByRole("img");
+  expect(grid.querySelectorAll("rect.gridOverridden")).toHaveLength(2);
+  // The lit codewords are untouched by them.
+  expect(grid.querySelectorAll("rect.gridCell")).toHaveLength(
+    GRID.cells.filter((cell) => cell.usable).length,
+  );
+});
+
+test("the crosshair runs through the reader, and only when there is one", async () => {
+  await mountWith({ grid: GRID, you: YOU, neighbours: [] });
+
+  const crosshair = Array.from(
+    screen.getByRole("img").querySelectorAll("line.gridCrosshair"),
+  );
+  expect(crosshair).toHaveLength(2);
+  expect(crosshair.map((l) => Number(l.getAttribute("y1")))).toContain(
+    YOU.row + 0.5,
+  );
+  expect(crosshair.map((l) => Number(l.getAttribute("x1")))).toContain(
+    YOU.col + 0.5,
+  );
+
+  await mountWith({ grid: GRID, you: null, neighbours: [] });
+  expect(
+    screen.getAllByRole("img").pop().querySelectorAll("line.gridCrosshair"),
+  ).toHaveLength(0);
 });

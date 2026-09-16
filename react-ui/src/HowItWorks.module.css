@@ -205,3 +205,20 @@
   fill: #ffd400;
   color: #ffd400;
 }
+
+/* A player wearing something the codebook never offered. Orange because they
+   are genuinely a different kind of mark from a codeword, not a worse one. */
+.gridOverridden {
+  fill: #ff8c26;
+}
+
+.gridCrosshair {
+  stroke: rgba(255, 212, 0, 0.35);
+  stroke-width: 0.15;
+  stroke-dasharray: 0.6 1.2;
+}
+
+.gridLeader {
+  stroke: currentColor;
+  stroke-width: 0.2;
+}

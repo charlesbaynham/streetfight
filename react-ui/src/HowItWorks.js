@@ -34,6 +34,7 @@ const FIGURES = {
       grid={data.grid}
       you={data.you}
       neighbours={data.neighbours}
+      overridden={data.overridden}
     />
   ),
 };
@@ -59,6 +60,7 @@ function HowItWorks() {
     you: null,
     neighbours: [],
     closest_count: 0,
+    overridden: [],
   });
 
   useEffect(() => {

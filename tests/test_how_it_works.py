@@ -5,6 +5,8 @@ the things worth testing are the ones that would let it lie: the grid's shape,
 and the fact that a reader's neighbours arrive without names attached.
 """
 
+import json
+
 import pytest
 
 from backend.admin_interface import AdminInterface
@@ -20,8 +22,13 @@ def mock_asyncio_tasks(mocker):
     mocker.patch("backend.asyncio_triggers.schedule_update_event")
 
 
-def set_slot(db_session, user_id, slot):
-    db_session.query(User).filter_by(id=user_id).update({"identity_slot": slot})
+def set_slot(db_session, user_id, slot, overrides=None):
+    db_session.query(User).filter_by(id=user_id).update(
+        {
+            "identity_slot": slot,
+            "identity_overrides": json.dumps(overrides) if overrides else None,
+        }
+    )
     db_session.commit()
 
 
@@ -136,3 +143,38 @@ def test_the_page_is_told_how_many_players_share_the_nearest_distance(
 
     assert body["closest_count"] == 3
     assert [n["distance"] for n in body["neighbours"]] == [3, 3, 3]
+
+
+def test_players_wearing_something_off_the_codebook_are_marked(
+    db_session, api_client, api_user_id, one_team, user_factory
+):
+    """A player who swapped a garment is no longer at one of the 49 lit cells,
+    and the figure should place them rather than quietly leave them off.
+    """
+    with UserInterface(api_user_id) as ui:
+        ui.join_team(one_team)
+    set_slot(db_session, api_user_id, 5)
+    swapped = add_player(db_session, user_factory, one_team, 9)
+    set_slot(db_session, swapped, 9, {"tshirt": "orange"})
+
+    body = api_client.get("/api/how_it_works").json()
+    lit = {(cell["row"], cell["col"]) for cell in body["grid"]["cells"]}
+    marked = [(entry["row"], entry["col"]) for entry in body["overridden"]]
+
+    # The reader wears their codeword, so only the player who swapped shows up.
+    assert len(marked) == 1
+    assert marked[0] not in lit
+    assert (body["you"]["row"], body["you"]["col"]) in lit
+
+
+def test_an_override_that_blanks_a_garment_has_no_cell_to_sit_in(
+    db_session, api_client, api_user_id, one_team, user_factory
+):
+    """An uninformative channel puts a player along a line, not at a point.
+    Drawing them anywhere would be a lie, so they are left out.
+    """
+    with UserInterface(api_user_id) as ui:
+        ui.join_team(one_team)
+    set_slot(db_session, api_user_id, 5, {"hat": None})
+
+    assert api_client.get("/api/how_it_works").json()["overridden"] == []

@@ -362,7 +362,9 @@ Four things from it that are worth knowing even if you never call the agent:
     so a palette edit or a change to the code's parameters cannot leave a
     published essay lying: it is the 49 codewords as lit cells of a 2401-cell
     square, one per row and per column because any two garments determine the
-    other two. That endpoint also carries the reader's *own* outfit — the
+    other two, with every player whose overrides put them *off* a codeword
+    marked in orange on the unlit cell they actually occupy (anonymously —
+    it is the whole roster) and a dotted crosshair through the reader's own. That endpoint also carries the reader's *own* outfit — the
     only place in the app that tells a player which hat and armband they will
     be handed — and their three nearest neighbours, **named** and labelled on
     the grid: knowing who you could be mistaken for is the part of the scheme

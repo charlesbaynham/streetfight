@@ -95,7 +95,7 @@ const prose = {
         type: "figure",
         figure: "codewordGrid",
         caption:
-          "Every outfit anyone could wear, as one cell of a square: across, the hat and armband we hand out; down, the shirt and trousers you chose. The 49 we actually use are lit - and because any two garments determine the other two, exactly one is lit in each row and each column.",
+          "Every outfit anyone could wear, as one cell of a square: across, the hat and armband; down, the shirt and trousers. The 49 we actually use are lit - notice how, because any two garments determine the other two, exactly one is lit in each row and column. Orange marks a player who swapped a garment for something they already owned, which puts them off the pattern; the dotted lines run through you.",
       },
       {
         type: "paragraph",

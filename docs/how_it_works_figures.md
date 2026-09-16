@@ -146,6 +146,17 @@ garments determine the other two: exactly one cell is lit in each row and each
 column. `tests/test_how_it_works.py` asserts that rather than trusting it.
 Slot 0 — black head to toe, never handed out — is drawn hollow.
 
+**Orange cells are players wearing something the codebook never offered**, put
+there by an override because they owned no shirt in any colour the scheme
+could give them. They are off the constellation by construction, so they get
+their own colour rather than being drawn as though they were codewords; they
+are anonymous, since this is the whole roster and thirty names would bury the
+figure. A player whose override _blanks_ a channel has no single cell to sit
+in — they are along a line rather than at a point — and is left out rather than
+drawn somewhere untrue. A faint dotted crosshair runs the full width and height
+through the reader's own cell: the row is everyone who shares their t-shirt and
+trousers, the column everyone who shares their hat and armband.
+
 The reader's own outfit is ringed in yellow and their three nearest
 neighbours in grey, each ring labelled with the player's name. Their size is set as an
 inline style rather than a `font-size` attribute, because `index.css`'s global
