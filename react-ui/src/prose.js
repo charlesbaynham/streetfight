@@ -191,7 +191,13 @@ const prose = {
   },
   // @section pickOutfit
   pickOutfit: {
-    channelDisplayNames: { tshirt: "T-shirt" },
+    // Players supply these two garments themselves, so the name must read as
+    // a body part rather than a dress code: somebody in shorts or a skirt
+    // needs to know the trousers row is theirs too.
+    channelDisplayNames: {
+      tshirt: "T-shirt / top",
+      trousers: "Trousers / shorts / skirt",
+    },
     alreadyJoinedNote: "You already joined a team:",
     signUpHeading: "Sign up",
     teamHeading: (teamName) => `Team ${teamName}`,
