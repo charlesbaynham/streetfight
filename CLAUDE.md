@@ -348,10 +348,16 @@ Four things from it that are worth knowing even if you never call the agent:
     code opened can be reloaded without dropping the player back to an empty
     form. The list follows the URL: the fetch effect is guarded on
     page/relaxed/wardrobe alone, so choosing an outfit does *not* re-post the
-    list out from under the confirm screen. Its
-    footer links to `HowItWorks.js` (route `/how-it-works`), the essay on the
+    list out from under the confirm screen. `CuriosityFooter.js` links it to
+    `HowItWorks.js` (route `/how-it-works`), the essay on the
     error-correcting code behind the outfits, pitched at the interested
-    layman. Its prose lives in `prose.howItWorks.content` as a sequence of
+    layman - the same component is on `OnboardingView.js`, the front page a
+    player sits on while the game is waiting to start, since those are the
+    two screens where somebody has time to read it. There it goes under the
+    logo rather than at the foot of the list: the bottom of that screen is
+    where `FullscreenButton`'s "better in full-screen" scrawl is drawn while
+    the game is paused, and a link under it was illegible. The essay's prose
+    lives in `prose.howItWorks.content` as a sequence of
     paragraph and **figure** blocks; the figures themselves are
     `HowItWorksFigures.js`. Two of the three (F1, a real shot photograph
     against what CharlesBot read off it; F2, two outfits one garment apart)

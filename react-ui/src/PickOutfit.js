@@ -33,6 +33,7 @@ import { sendAPIRequest } from "./utils";
 import { usePatchSearchParams } from "./urlState";
 import { NameEntry } from "./OnboardingView";
 import { Swatch } from "./Swatch";
+import CuriosityFooter from "./CuriosityFooter";
 import prose from "./prose";
 
 import styles from "./PickOutfit.module.css";
@@ -398,20 +399,6 @@ function ResultScreen({ appearance, wardrobeChannels, channels, teamName }) {
       <p className={styles.enterGameNote}>{p.enterGameNote}</p>
       <p>{p.askAdminNote}</p>
     </div>
-  );
-}
-
-// Shown under every screen of the flow. A plain anchor with target=_blank
-// rather than a router Link on purpose: the wardrobe ticks and the fetched
-// option list are React state on this page, so navigating away mid-pick
-// would silently throw them away.
-function CuriosityFooter() {
-  return (
-    <p className={styles.curiosityFooter}>
-      <a href="/how-it-works" target="_blank" rel="noopener noreferrer">
-        {p.curiosityFooter}
-      </a>
-    </p>
   );
 }
 
