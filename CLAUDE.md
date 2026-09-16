@@ -397,7 +397,15 @@ Four things from it that are worth knowing even if you never call the agent:
     (roadmap R7): it shows what each player is expected to be wearing - the hat
     and armband we hand over first, *before* the camera, because that is the
     moment they are handed over - captures a reference photo, and then puts the
-    model's reading beside that expectation garment by garment. It falls back to
+    model's reading beside that expectation garment by garment. The photo can
+    also be **uploaded** rather than taken: a latecomer is sent straight to
+    their team and never passes the desk, so somebody with them sends a picture
+    instead. `imageFile.js` converts a picked file into what `MyWebcam` hands
+    back - EXIF-rotated (via `createImageBitmap`, since `drawImage` ignores the
+    tag), scaled to the camera's 2048px long edge, re-encoded as a JPEG data
+    URL - so the backend, the vision pipeline and the stored column cannot tell
+    the two routes apart. A file no browser can decode (a HEIC off an iPhone)
+    says so on screen rather than failing silently. It falls back to
     `ShotQueue.js`'s exported tag renderers for a player with no outfit to
     compare against.
   - Styling: CSS Modules (`*.module.css`) + Bootstrap; React hooks only (no Redux).
