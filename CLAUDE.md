@@ -225,9 +225,12 @@ Four things from it that are worth knowing even if you never call the agent:
     `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
     team handler for armour, medpacks or weapons, so asking for one raises
     `NotImplementedError` — a `RuntimeError`, so `collect_item` turns it into a
-    403. `RADAR` and `CIRCLE_WARNING` are in that position on purpose (M0.3):
-    their payloads are frozen and their cards are printed, and until M6 writes
-    the handlers a scan is refused. **A printed code is an HMAC over its
+    403. `CIRCLE_WARNING` is in that position on purpose (M0.3): its payload is
+    frozen and its cards are printed, and until M6.2 writes the handler a scan
+    is refused. `RADAR` has its handler now (M6.1): it sets `User.radar_until`
+    to `now + minutes*60` and **refuses while one is already running**, which
+    costs the player nothing — the refusal rolls the whole scan back, so no
+    `Item` row is written and the card is still good for later. **A printed code is an HMAC over its
     payload and nothing else**, which is what decouples the print run from the
     deploy — so a field added to `ItemModel` after codes are in circulation
     joins the signed message *only when it is not at its default*
@@ -436,6 +439,18 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
+    `RadarLayer.js` is the radar card's two halves (M6.1): a `RadarStrip`
+    mounted in `UserMode.js` beside `NextEventStrip`, which reads
+    `radar_until` off `/user_info` and counts it down, and a layer mounted
+    inside `MapView.js`'s zoomable content, which polls `GET /radar` every
+    five seconds and draws a dot and a "3 min ago" label per contact, fading
+    with the age of the fix. The strip is what tells the layer there is a
+    radar at all, through a module-level store in that file — the same shape
+    as `shotRefusalStore.js`, and for the same reason: the admin map and the
+    spectator screen mount the same `MapView`, and have no business polling a
+    player's radar. The ages travel as `seconds_ago` rather than timestamps,
+    so the phone's clock never has to agree with the server's; the phone
+    re-bases each one on arrival and goes on ageing it between polls.
   - `src/NextEventStrip.js` — the band across the top of every player's
     screen saying what the game has cued up and how long is left, drawn from
     `/user_info`'s `next_event_*` (see `backend/next_event.py`). Mounted in

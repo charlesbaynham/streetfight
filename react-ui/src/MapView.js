@@ -14,6 +14,7 @@ import prose from "./prose";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
+import RadarLayer from "./RadarLayer";
 import { deregisterListener, registerListener } from "./UpdateListener";
 
 const MAP_POLL_TIME = 5 * 1000;
@@ -466,6 +467,12 @@ export function VenueMapView({
                   circles={circles}
                 />
               )}
+
+              {/* Radar contacts (M6.1). Draws nothing, and polls for nothing,
+              unless the player is holding a live radar card - so the admin
+              map and the spectator screen, which mount this same view, are
+              unaffected. */}
+              <RadarLayer calculators={{ coordsToPixels }} />
 
               {/* A box that intercepts clicks - transparent and at the top z-order.
               Only wired for the unexpanded corner map (tap to pop out): once

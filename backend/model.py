@@ -397,6 +397,12 @@ class User(Base):
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
 
+    # The radar card (M6.1): the epoch second at which the holder stops being
+    # able to see where everybody else last was. Null, or a moment in the
+    # past, means no radar - so it expires by itself and nothing has to tidy
+    # it up, and a reset that clears the items leaves nothing behind either.
+    radar_until = Column(Float, nullable=True)
+
     # The player's identity slot (backend/identity/): a member of
     # default_scheme().usable_slots() that determines the canonical colour
     # code they're assigned to wear. None means this player has no identity
@@ -638,6 +644,12 @@ class UserModel(pydantic.BaseModel):
     next_shot_at: Optional[float] = None
 
     time_of_death: Optional[float] = None
+
+    # Rides out with the rest so the phone knows its radar is running without
+    # asking: scanning the card is a write on this player, so the "user" SSE
+    # event they already listen to carries it. RadarLayer.js is what polls,
+    # and only while this says it is worth polling.
+    radar_until: Optional[float] = None
 
     # Rides the SSE "user" payload beside num_bullets, so a player weighing up
     # an appeal always has the count in front of them without a poll

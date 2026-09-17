@@ -200,6 +200,16 @@ async def get_circles(
         return ui.get_circles()
 
 
+@router.get("/radar")
+async def get_radar(
+    user_id=Depends(get_user_id),
+):
+    """Where everybody else was last seen, for a player holding a live radar
+    (M6.1). A 403 while no radar is running, so the map can stop polling."""
+    with UserInterface(user_id) as ui:
+        return ui.get_radar()
+
+
 class _Shot(BaseModel):
     photo: str
     # Degrees clockwise from north at the moment of capture. Optional on

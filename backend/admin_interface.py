@@ -2359,6 +2359,9 @@ class AdminInterface:
             # Otherwise everybody starts the real game holding the cooldown
             # from a sandbox shot that no longer exists (M1.1)
             user.last_shot_at = None
+            # A radar lit in the sandbox hour must not still be running when
+            # the real game starts (M6.1)
+            user.radar_until = None
 
         # By game rather than by shooter: a shot outlives the team its shooter
         # was in, and this has to empty the queue whoever is left in it
@@ -2434,6 +2437,7 @@ class AdminInterface:
             # Otherwise a reset leaves everybody holding the cooldown from
             # whatever they fired last (M1.1), which a reset has just deleted.
             user.last_shot_at = None
+            user.radar_until = None
 
             # The kit-check photos are photographs of identifiable people and
             # have no meaning once the night they were taken for is over.
