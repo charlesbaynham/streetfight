@@ -1491,10 +1491,11 @@ async def admin_pub_pages_pdf(
 
 @admin_method(path="/admin_sandbox_sheets_pdf", method="POST")
 async def admin_sandbox_sheets_pdf(copies: int = 1):
-    """The sandbox posters: one sheet of eight for every kind of card the
-    warm-up room carries, every code unlimited so the same player can scan it
-    again and again, and every one in the "sandbox" batch so the whole room is
-    withdrawn in a single press at 16:00."""
+    """The sandbox posters: one A4 page for every kind of card the warm-up
+    room carries, headed INFINITE so it cannot be mistaken for a drop card,
+    every code unlimited so the same player can scan it again and again, and
+    every one in the "sandbox" batch so the whole room is withdrawn in a
+    single press at 16:00."""
     logger.info("admin_sandbox_sheets_pdf - %s", locals())
 
     try:

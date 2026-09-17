@@ -1,13 +1,17 @@
 """The printables the admin page builds on demand (backend/printables.py)."""
 
+import logging
 import os
 
 import pytest
+from PIL import Image
+from PIL import ImageChops
 
 os.environ["SECRET_KEY"] = "test_secret_key"
 os.environ.setdefault("WEBSITE_URL", "https://example.com")
 
 from backend import printables  # noqa: E402
+from backend import qr_log  # noqa: E402
 from backend.generate_qr_items import base_image_path  # noqa: E402
 from backend.item_actions import WEAPON_NAME_LOOKUP  # noqa: E402
 from backend.items import ItemModel  # noqa: E402
@@ -19,11 +23,10 @@ def mock_asyncio_tasks(mocker):
 
 
 @pytest.fixture(autouse=True)
-def log_to_tmp(tmp_path, mocker):
+def log_to_tmp(tmp_path, monkeypatch):
     """Keep the tests out of the repository's own qr_codes.csv."""
     logfile = tmp_path / "qr_codes.csv"
-    mocker.patch("backend.generate_qr_items.QR_LOGFILE", logfile)
-    mocker.patch("backend.generate_pub_pages.QR_LOGFILE", logfile)
+    monkeypatch.setenv(qr_log.QR_LOGFILE_ENV, str(logfile))
     return logfile
 
 
@@ -84,7 +87,7 @@ def test_the_new_timed_cards_print(log_to_tmp):
     )
 
 
-def test_a_sandbox_run_prints_a_sheet_for_every_kind_of_poster(log_to_tmp):
+def test_a_sandbox_run_prints_a_page_for_every_kind_of_poster(log_to_tmp):
     pdf = printables.sandbox_sheets_pdf(copies=2)
 
     assert page_count(pdf) == 2 * len(printables.SANDBOX_CARDS)
@@ -92,6 +95,29 @@ def test_a_sandbox_run_prints_a_sheet_for_every_kind_of_poster(log_to_tmp):
     # everybody as often as they like, so a second would be the same power and
     # a second row to read.
     assert len(logged_codes(log_to_tmp)) == len(printables.SANDBOX_CARDS)
+
+
+def test_a_sandbox_poster_is_a_portrait_a4_page_saying_what_it_is():
+    """The word is the whole reason this is a page of its own rather than a
+    card on a sheet of eight: an unlimited code carries the same drawing as
+    the ones being hidden round the town, so a poster without it gets
+    shuffled into the box."""
+    card = printables.SANDBOX_CARDS[0]
+    page = printables.infinite_poster("https://example.com/item", card)
+
+    assert page.size == (printables.PAGE_W, printables.PAGE_H)
+
+    band = page.crop((0, 0, printables.PAGE_W, printables.INFINITE_BAND))
+    blank = Image.new("RGB", band.size, "white")
+    assert ImageChops.difference(band, blank).getbbox() is not None
+
+
+def test_no_sandbox_poster_buries_its_own_qr_code():
+    """The drawings are drawn around an ink-free pocket and the code goes in
+    it. Measured rather than eyeballed, so a re-drawn card that closed the
+    pocket up fails here rather than in a warm-up room."""
+    for card in printables.SANDBOX_CARDS:
+        assert printables.poster_artwork_ink(card) < 0.05, card
 
 
 def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
@@ -131,14 +157,39 @@ def test_the_sandbox_hands_out_the_weapons_it_names():
         assert WEAPON_NAME_LOOKUP[(card.damage, card.timeout)] == named[card.label]
 
 
-def test_a_read_only_log_costs_the_record_but_not_the_pdf(mocker):
-    """The log sits beside the source tree, which on a deployment is a
-    read-only Nix store: a print run must survive not being able to write it."""
-    mocker.patch(
-        "backend.generate_qr_items.log_items", side_effect=OSError("read-only")
-    )
+def test_a_configured_log_is_where_a_print_run_is_recorded(tmp_path, monkeypatch):
+    """The deployment's backend runs from a read-only store path, so the log
+    has to be somewhere else entirely - and the rows have to arrive there."""
+    configured = tmp_path / "state" / "qr_codes.csv"
+    configured.parent.mkdir()
+    monkeypatch.setenv(qr_log.QR_LOGFILE_ENV, str(configured))
 
-    assert page_count(printables.item_sheets_pdf("ammo", num=5)) == 1
+    printables.item_sheets_pdf("ammo", num=5)
+    printables.pub_pages_pdf(1)
+
+    assert len(logged_codes(configured)) == printables.CARDS_PER_SHEET + 1
+
+
+def test_an_unconfigured_log_stays_beside_the_checkout(monkeypatch):
+    """A dev checkout is unchanged: no QR_LOGFILE, same file as ever."""
+    monkeypatch.delenv(qr_log.QR_LOGFILE_ENV)
+
+    assert qr_log.qr_logfile() == qr_log.DEFAULT_QR_LOGFILE
+
+
+@pytest.mark.skipif(os.geteuid() == 0, reason="root ignores a read-only directory")
+def test_a_read_only_log_costs_the_record_but_not_the_pdf(
+    tmp_path, monkeypatch, caplog
+):
+    """Losing the record is a nuisance; losing the paper would be worse."""
+    unwritable = tmp_path / "store"
+    unwritable.mkdir(mode=0o500)
+    monkeypatch.setenv(qr_log.QR_LOGFILE_ENV, str(unwritable / "qr_codes.csv"))
+
+    with caplog.at_level(logging.WARNING):
+        assert page_count(printables.item_sheets_pdf("ammo", num=5)) == 1
+
+    assert "Could not record minted codes" in caplog.text
 
 
 @pytest.mark.parametrize(

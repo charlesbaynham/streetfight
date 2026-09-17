@@ -45,8 +45,9 @@ from PIL import ImageDraw
 from .admin_interface import AdminInterface
 from .generate_qr_items import DEFAULT_BATCH
 from .generate_qr_items import IMAGES_DIR
-from .generate_qr_items import QR_LOGFILE
 from .items import ItemModel
+from .qr_log import append_rows
+from .qr_log import qr_logfile
 
 logger = logging.getLogger(__name__)
 
@@ -198,12 +199,12 @@ def log_items(
     urls: Iterable[str], tag: str, num_bullets: int, batch: Optional[str] = None
 ) -> None:
     """Append to the same ``qr_codes.csv`` the drop codes are recorded in."""
-    with open(QR_LOGFILE, "a") as f:
-        for i, url in enumerate(urls):
-            item = ItemModel.from_base64(url)
-            f.write(
-                f"{item.id},{tag},{i},{item.itype},{num_bullets},,,False,True,{batch or ''}\n"
-            )
+    items = (ItemModel.from_base64(url) for url in urls)
+
+    append_rows(
+        f"{item.id},{tag},{i},{item.itype},{num_bullets},,,False,True,{batch or ''}"
+        for i, item in enumerate(items)
+    )
 
 
 @click.command()
@@ -265,7 +266,7 @@ def generate(count: int, num: int, outfile: str, tag: str, batch: str, log: bool
 
     if log:
         log_items(urls, tag, num, batch)
-        click.echo(f"Recorded {len(urls)} code(s) in {QR_LOGFILE}")
+        click.echo(f"Recorded {len(urls)} code(s) in {qr_logfile()}")
 
 
 if __name__ == "__main__":
