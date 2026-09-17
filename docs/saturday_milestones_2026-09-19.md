@@ -278,7 +278,7 @@ Lands in: `backend/items.py`, `backend/model.py` (`ItemType`),
 `backend/main.py`, `react-ui/src/AdminPrintables.js`, `NewItems.js`,
 `tests/test_items.py`.
 
-### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #TBD)*
+### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #263)*
 
 What the warm-up room's walls carry, and a way to mint them in one press:
 
