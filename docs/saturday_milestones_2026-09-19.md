@@ -486,7 +486,7 @@ strip and the spectator screen's pill. Nothing sets the columns yet, so the
 the waiting page too, and reads the cue off `User.game` rather than the team's,
 so a signed-up player with no team still sees it.
 
-### M3.2 — Cue the next circle *(status: shipped 2026-09-17, PR #PRNUM)*
+### M3.2 — Cue the next circle *(status: shipped 2026-09-17, PR #269)*
 
 - Admin places the NEXT circle as today (`CircleControl.js`), then **"Close
   the circle in N minutes"** (default 10) → sets `next_event_*`, ticker
