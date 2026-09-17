@@ -88,8 +88,9 @@ skeleton numbers them in.
 
 ### After the print run
 
-**The log of what was minted is `/data/qr_codes.csv` on the live box**, one row
-per code: id, tag, index, item type, number, damage, timeout, once-only,
+**The log of what was minted is `/data/qr_codes.csv` on the live box** (PR
+#279; before that deploy the backend could not write the file at all, so
+anything printed earlier left no record), one row per code: id, tag, index, item type, number, damage, timeout, once-only,
 as-team, batch. That is what the corner tag on a card is for - it names the row
 rather than the item, so two weapon cards drawn the same are told apart by
 reading it, not by scanning them.
