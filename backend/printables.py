@@ -31,7 +31,6 @@ codes for one hiding place.
 """
 
 import io
-import itertools
 import logging
 from typing import List
 from typing import NamedTuple
@@ -40,17 +39,27 @@ from typing import Sequence
 from typing import Tuple
 
 from PIL import Image
+from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
 from .generate_pub_pages import BULLETS_PER_TEAM_MEMBER
 from .generate_pub_pages import DPI
+from .generate_pub_pages import MARGIN as PAGE_MARGIN
+from .generate_pub_pages import PAGE_H
+from .generate_pub_pages import PAGE_W
+from .generate_pub_pages import _mm
 from .generate_pub_pages import log_items as log_pub_codes
 from .generate_pub_pages import mint_pub_items
 from .generate_pub_pages import render_page
+from .generate_qr_items import A4_HEIGHT
+from .generate_qr_items import A4_WIDTH
 from .generate_qr_items import DEFAULT_BATCH
 from .generate_qr_items import base_image_path
 from .generate_qr_items import build_qr_grid
+from .generate_qr_items import card_face
+from .generate_qr_items import fit_font
 from .generate_qr_items import item_data
+from .generate_qr_items import load_base_image
 from .generate_qr_items import log_items as log_item_codes
 from .generate_qr_items import random_tag
 from .model import DEFAULT_SHOT_TIMEOUT
@@ -64,6 +73,11 @@ SHEET_COLS = 4
 SHEET_ROWS = 2
 CARDS_PER_SHEET = SHEET_COLS * SHEET_ROWS
 
+# The shape of one of those cards, which is A4's own: it is what the artwork
+# is drawn squashed to, so the infinite posters lay their card face out at it
+# rather than at whatever is left of the paper once their banner is taken off.
+CARD_ASPECT = (A4_WIDTH / SHEET_COLS) / (A4_HEIGHT / SHEET_ROWS)
+
 # A hundred sheets is a slip of a thumb rather than a request, and each one is
 # a full-page 300 dpi image held in memory while the PDF is assembled.
 MAX_SHEETS = 20
@@ -76,9 +90,25 @@ MAX_PUB_PAGES = 40
 # 16:00 (M2.2) rather than card by card.
 SANDBOX_BATCH = "sandbox"
 
-# Six kinds of poster times this many sheets of eight, so it is a stack of
-# paper rather than a sheet: a smaller cap than the drop cards'.
+# Six kinds of poster times this many pages, so it is a stack of paper
+# rather than a sheet: a smaller cap than the drop cards'.
 MAX_SANDBOX_COPIES = 5
+
+# What the sandbox poster says it is, and how deep the band it says it in is.
+# The word is the whole reason this page exists rather than a sheet of eight
+# drop cards: an infinite code and a one-shot one carry the same drawing, so a
+# sandbox poster that looked like a card was one gust of wind away from being
+# shuffled into the box of cards to be hidden round the town.
+INFINITE_WORD = "INFINITE"
+INFINITE_BAND = _mm(28)
+
+# The card face on a poster: as tall as the paper leaves once the band is
+# taken off it, and as wide as that height makes it at a card's own
+# proportions. The width follows the height rather than filling the paper,
+# because stretching the drawing would move the QR out of the pocket it is
+# drawn around.
+_POSTER_CARD_H = PAGE_H - INFINITE_BAND - PAGE_MARGIN
+POSTER_CARD_BOX = (round(_POSTER_CARD_H * CARD_ASPECT), _POSTER_CARD_H)
 
 
 class SandboxCard(NamedTuple):
@@ -234,12 +264,87 @@ def sandbox_items() -> List[Tuple[SandboxCard, str]]:
     ]
 
 
-def sandbox_sheets_pdf(copies: int = 1) -> bytes:
-    """The sandbox posters: ``copies`` sheets of eight for each kind of card.
+def infinite_poster(url: str, card: SandboxCard, label: str = "") -> Image.Image:
+    """One portrait A4 page: ``INFINITE`` over the card's own drawing.
 
-    Eight copies of the *same* code to a sheet, on the drop cards' landscape
-    A4 grid, so they are big enough to read across a warm-up room once cut up
-    and stuck on the walls.
+    The artwork and the code are exactly what a drop card carries - the same
+    :func:`backend.generate_qr_items.card_face`, so the picture is the card's
+    picture blown up rather than a second drawing to keep in step. What is
+    added is the word, and it is added because the two are otherwise
+    indistinguishable: a sandbox code hands out its item as often as anybody
+    asks, and one that ended up in the box of cards to be hidden round the
+    town would be an infinite ammunition supply taped under a pub bench.
+
+    The card face is laid out at the proportions of a card on a sheet of
+    eight, which are A4's own (``A4_WIDTH / 4`` by ``A4_HEIGHT / 2``), so the
+    QR lands in the same pocket of the drawing here as it does there. That is
+    what the side margins are: the band costs the page some height, and the
+    width follows the height rather than the drawing being stretched to fill
+    the paper.
+    """
+    art_w, art_h = POSTER_CARD_BOX
+
+    face = card_face(
+        url,
+        art_w,
+        art_h,
+        load_base_image(
+            base_image_path(card.itype, card.num, card.damage), art_w, art_h
+        ),
+    )
+
+    page = Image.new("RGB", (PAGE_W, PAGE_H), "white")
+    page.paste(face, ((PAGE_W - art_w) // 2, INFINITE_BAND), mask=face)
+
+    draw = ImageDraw.Draw(page)
+
+    word_font = fit_font(draw, INFINITE_WORD, PAGE_W - 2 * PAGE_MARGIN, INFINITE_BAND)
+    draw.text(
+        (PAGE_W // 2, INFINITE_BAND // 2),
+        INFINITE_WORD,
+        font=word_font,
+        fill="black",
+        anchor="mm",
+    )
+
+    if label:
+        draw.text((PAGE_MARGIN // 4, PAGE_MARGIN // 4), label, fill="black")
+
+    return page
+
+
+def poster_artwork_ink(card: SandboxCard) -> float:
+    """The fraction of a poster's QR code its own drawing is painted over.
+
+    The artwork is drawn around an ink-free pocket and the code goes in it,
+    but the pocket is a property of a picture rather than of the layout - so
+    this is measured off the alpha channel, the way
+    ``generate_pub_pages.pocket_ink_pixels`` is, and a test holds it down. A
+    re-drawn card that closed the pocket up would otherwise print a stack of
+    posters nobody can scan.
+    """
+    art_w, art_h = POSTER_CARD_BOX
+    art = load_base_image(
+        base_image_path(card.itype, card.num, card.damage), art_w, art_h
+    )
+    if art is None:
+        return 0.0
+
+    size = int(0.75 * min(art_w, art_h))
+    offset = min(art_w // 2 - size // 2, art_h // 2 - size // 2)
+    alpha = art.crop((offset, offset, offset + size, offset + size)).getchannel("A")
+
+    return sum(alpha.histogram()[17:]) / (size * size)
+
+
+def sandbox_sheets_pdf(copies: int = 1) -> bytes:
+    """The sandbox posters: one A4 page per kind of card, ``copies`` of each.
+
+    One code to a page, which for these is not a waste of paper: every code
+    here is unlimited, so eight to a sheet was eight copies of one thing that
+    only ever needed to be scanned once by anybody standing in front of it.
+    A page each also means each poster is the size it is read at, from across
+    a warm-up room.
     """
     if copies < 1:
         raise ValueError("Nothing to print: ask for at least one copy.")
@@ -249,24 +354,14 @@ def sandbox_sheets_pdf(copies: int = 1) -> bytes:
     pages: List[Image.Image] = []
 
     for card, url in sandbox_items():
-        artwork = base_image_path(card.itype, card.num, card.damage)
-        codes = itertools.repeat(url)
+        label = f"{SANDBOX_BATCH}-{card.label}"
 
-        pages.extend(
-            build_qr_grid(
-                codes,
-                SHEET_COLS,
-                SHEET_ROWS,
-                tag=f"{SANDBOX_BATCH}-{card.label}",
-                base_image=artwork,
-            )
-            for _ in range(copies)
-        )
+        pages.extend(infinite_poster(url, card, label) for _ in range(copies))
 
         _record(
             log_item_codes,
             [url],
-            f"{SANDBOX_BATCH}-{card.label}",
+            label,
             card.num,
             card.damage,
             card.timeout,

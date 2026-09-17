@@ -264,15 +264,12 @@ Four things from it that are worth knowing even if you never call the agent:
     one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
     number of minutes the picture does not say. Every code minted is recorded
     in `qr_codes.csv`, whose last column is the batch; the file has no header
-    and is read by column number, so a new field goes on the end. Every card
-    also carries the **contact line** (`CONTACT_LINE`, roadmap #7): what it is
-    and a number to ring, so a stranger who finds one taped under a pub bench
-    gets an answer rather than a fright. It is drawn in a strip below the
-    artwork rather than on it, and that strip is taken out of the artwork's
-    height while keeping the whole gutter between the line and the box edge —
-    the bottom row of a sheet is against the edge of the paper, and a printer
-    with a 5 mm unprintable margin would swallow a line any lower. The size is
-    measured to the card (`_contact_font`), since the grid is a parameter.
+    and is read by column number, so a new field goes on the end. A card is the
+    artwork, the code and the run label, and nothing else: it **used** to carry
+    a "this is part of a game - ring …" line in a strip below the drawing
+    (roadmap #7, M0.5), which Charles had removed on 17 September — so do not
+    re-add one as an oversight. `fit_font` is what is left of it, and sizes
+    the posters' banner.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
     portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
@@ -288,14 +285,26 @@ Four things from it that are worth knowing even if you never call the agent:
     (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets,
     the pub certificates and the **sandbox posters**, the first two from the
     *same* functions the two CLIs call, so a sheet printed from a phone and
-    one printed from a terminal are the same sheet. The sandbox sheet
-    (`SANDBOX_CARDS`, `sandbox_sheets_pdf`) has no CLI and no controls beyond
+    one printed from a terminal are the same sheet. The sandbox posters
+    (`SANDBOX_CARDS`, `sandbox_sheets_pdf`) have no CLI and no controls beyond
     how many copies: what the warm-up room hands out is decided here so that
     the paper and the codes cannot disagree. Every code on it is `unlimited`
     (a poster is scanned again and again by the same player) and in the
     `sandbox` batch, so the room goes off in one press at 16:00 — and there is
     **one code per kind, not one per card**, since eight distinct unlimited
-    codes would be eight identical powers and eight rows in the log. A card's
+    codes would be eight identical powers and eight rows in the log. Which is
+    also why each is **one portrait A4 page rather than a sheet of eight**
+    (`infinite_poster`): eight copies of one unlimited code is eight copies of
+    a thing anybody need only scan once. The page is headed **INFINITE**,
+    which is the other half of the same point — an unlimited code carries the
+    same drawing as a card being hidden round the town, so without the word a
+    sandbox poster is one gust of wind from being shuffled into that box. The
+    drawing under it is the card's own, blown up: the same
+    `generate_qr_items.card_face`, laid out at a card's proportions
+    (`CARD_ASPECT`, which are A4's), so the QR lands in the pocket the artwork
+    is drawn around rather than over the handwriting —
+    `printables.poster_artwork_ink` measures that the way the pub page's
+    `pocket_ink_pixels` does, and a test holds it down. A card's
     numbers are not free: `num` picks the drawing as well as the amount, which
     is why the ammunition poster is five bullets (there is an `ammo_5.png` and
     no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox

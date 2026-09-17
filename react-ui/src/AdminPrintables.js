@@ -467,16 +467,21 @@ function ItemSheets() {
 // No controls but how many copies - what the posters *are* is decided in
 // backend/printables.py's SANDBOX_CARDS, so that the paper and the codes
 // cannot disagree.
+//
+// One A4 page per poster, and the word INFINITE across the top of each: the
+// drawing on an unlimited code is the same drawing as on a card to be hidden
+// round the town, so without the word a sandbox poster is one that can be
+// shuffled into the box by mistake.
 function SandboxSheets() {
   const [copies, setCopies] = useState(1);
 
-  const sheets = copies * SANDBOX_CARD_KINDS;
+  const pages = copies * SANDBOX_CARD_KINDS;
 
   return (
     <Printable
       title="Sandbox posters"
-      blurb={`The warm-up room: ammunition, level 2 armour, a med pack and three weapons, ${CARDS_PER_SHEET} copies of each to a sheet. Every one can be scanned again and again by the same player, so they work as posters on a wall.`}
-      warning={`Prints ${sheets} sheet${sheets === 1 ? "" : "s"}, and mints ${SANDBOX_CARD_KINDS} new codes - one per poster. Withdraw the "sandbox" batch at 16:00 to turn them all off.`}
+      blurb={`The warm-up room: ammunition, level 2 armour, a med pack and three weapons, one A4 page each, headed "INFINITE". Every one can be scanned again and again by the same player, so they work as posters on a wall.`}
+      warning={`Prints ${pages} page${pages === 1 ? "" : "s"}, and mints ${SANDBOX_CARD_KINDS} new codes - one per poster. Withdraw the "sandbox" batch at 16:00 to turn them all off.`}
       label="Mint and download (PDF)"
       ready={copies >= 1}
       action={() =>
@@ -487,7 +492,7 @@ function SandboxSheets() {
         )
       }
     >
-      <Field label="Copies of each poster" hint="One sheet of 8 per copy.">
+      <Field label="Copies of each poster" hint="One A4 page per copy.">
         <input
           className={styles.input}
           type="number"

@@ -3,6 +3,8 @@
 import os
 
 import pytest
+from PIL import Image
+from PIL import ImageChops
 
 os.environ["SECRET_KEY"] = "test_secret_key"
 os.environ.setdefault("WEBSITE_URL", "https://example.com")
@@ -84,7 +86,7 @@ def test_the_new_timed_cards_print(log_to_tmp):
     )
 
 
-def test_a_sandbox_run_prints_a_sheet_for_every_kind_of_poster(log_to_tmp):
+def test_a_sandbox_run_prints_a_page_for_every_kind_of_poster(log_to_tmp):
     pdf = printables.sandbox_sheets_pdf(copies=2)
 
     assert page_count(pdf) == 2 * len(printables.SANDBOX_CARDS)
@@ -92,6 +94,29 @@ def test_a_sandbox_run_prints_a_sheet_for_every_kind_of_poster(log_to_tmp):
     # everybody as often as they like, so a second would be the same power and
     # a second row to read.
     assert len(logged_codes(log_to_tmp)) == len(printables.SANDBOX_CARDS)
+
+
+def test_a_sandbox_poster_is_a_portrait_a4_page_saying_what_it_is():
+    """The word is the whole reason this is a page of its own rather than a
+    card on a sheet of eight: an unlimited code carries the same drawing as
+    the ones being hidden round the town, so a poster without it gets
+    shuffled into the box."""
+    card = printables.SANDBOX_CARDS[0]
+    page = printables.infinite_poster("https://example.com/item", card)
+
+    assert page.size == (printables.PAGE_W, printables.PAGE_H)
+
+    band = page.crop((0, 0, printables.PAGE_W, printables.INFINITE_BAND))
+    blank = Image.new("RGB", band.size, "white")
+    assert ImageChops.difference(band, blank).getbbox() is not None
+
+
+def test_no_sandbox_poster_buries_its_own_qr_code():
+    """The drawings are drawn around an ink-free pocket and the code goes in
+    it. Measured rather than eyeballed, so a re-drawn card that closed the
+    pocket up fails here rather than in a warm-up room."""
+    for card in printables.SANDBOX_CARDS:
+        assert printables.poster_artwork_ink(card) < 0.05, card
 
 
 def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
