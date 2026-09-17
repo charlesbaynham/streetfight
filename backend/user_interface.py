@@ -235,6 +235,21 @@ def _outfit_appearance(user: User) -> Tuple[Optional[dict], Optional[dict]]:
     return wardrobe, provided
 
 
+def _next_event(user: User) -> Tuple[Optional[str], Optional[float], Optional[str]]:
+    """The cue the player's game is counting down to: ``(kind, at, note)``,
+    or three Nones when nothing is cued (backend/next_event.py).
+
+    Read off ``User.game`` rather than ``User.team.game``: a player who has
+    signed up but not yet been handed a team is exactly who the waiting page
+    is for, and they have a game and no team (see ``User.game_id``). The team
+    is kept as a fallback for any row written before ``game_id`` existed.
+    """
+    game = user.game or (user.team.game if user.team else None)
+    if game is None:
+        return None, None, None
+    return game.next_event_kind, game.next_event_at, game.next_event_note
+
+
 def touch_user(user_interface: "UserInterface"):
     logger.debug("Touching user %s", user_interface.user_id)
     user = (
@@ -398,6 +413,11 @@ class UserInterface:
             return None
         model = UserModel.model_validate(u)
         model.outfit_wardrobe, model.outfit_provided = _outfit_appearance(u)
+        (
+            model.next_event_kind,
+            model.next_event_at,
+            model.next_event_note,
+        ) = _next_event(u)
         return model
 
     @db_scoped
