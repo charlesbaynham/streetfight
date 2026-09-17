@@ -31,6 +31,7 @@ what defines the pub list rather than the other way round.
 """
 
 import argparse
+import gzip
 import io
 import json
 import math
@@ -753,6 +754,11 @@ def main():
         "--exclude", action="append", default=[], help="pub name to drop; repeatable"
     )
     ap.add_argument("--include-bars", action="store_true")
+    ap.add_argument(
+        "--refetch",
+        action="store_true",
+        help="re-query Overpass even when osm_features.json.gz is present",
+    )
     ap.add_argument("--out", required=True)
     args = ap.parse_args()
 
@@ -789,8 +795,20 @@ def main():
             if box.inside(p["lat"], p["lon"]) and p["name"] not in args.exclude
         ][: args.max_pubs]
 
-    print("fetching roads and water...")
-    els = fetch_features(box)
+    # Overpass is slow and often busy, and the drawn map (render_venue_map.py)
+    # needs exactly these features, so keep them beside the bundle. Iterating
+    # on the drawing style then costs nothing and asks the free service
+    # nothing; delete the file to force a refetch.
+    p_feat = os.path.join(args.out, "osm_features.json.gz")
+    if os.path.exists(p_feat) and not args.refetch:
+        print(f"reusing {os.path.basename(p_feat)} (--refetch to replace)...")
+        with gzip.open(p_feat, "rt") as fh:
+            els = json.load(fh)
+    else:
+        print("fetching roads and water...")
+        els = fetch_features(box)
+        with gzip.open(p_feat, "wt") as fh:
+            json.dump(els, fh)
 
     print("stitching tiles...")
     osm = fetch_tiles(box, os.path.join(args.out, ".tilecache"))
@@ -839,7 +857,7 @@ def main():
 
     side = 2 * args.half_span
     print(f"\nwrote {args.out}/")
-    for f in refs + [p_osm, p_skel, p_prompt, p_meta]:
+    for f in refs + [p_osm, p_skel, p_prompt, p_meta, p_feat]:
         print(f"  {os.path.basename(f)}")
     print(f"\ncrop {side:.0f} x {side:.0f} m, {side/OUT_PX:.2f} m/px at {OUT_PX}px")
     print(f"  NW (0,0)  lat={box.north:.6f} long={box.west:.6f}")

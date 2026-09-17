@@ -184,29 +184,34 @@ KOYAO_RESORT = Venue(
 WESTMINSTER = Venue(
     name="Westminster",
     map=VenueMap(
-        # Drawn in the Kingston style from an OpenStreetMap tracing, so the
-        # streets are where they actually are rather than where they looked
-        # good. A placeholder for a hand-drawn map (roadmap #12), and now an
-        # incomplete one: it was traced with only the ten surveyed pubs
-        # marked, and the real pub list is nineteen. The streets are still
-        # right; twelve of the pubs are simply not labelled on it. Redrawing
-        # it against the list below is outstanding - see roadmap #12.
+        # Drawn in the Kingston style, but rendered rather than illustrated
+        # (roadmap #12, milestone M0.6, 17 Sept 2026):
+        # `.claude/skills/draw-venue-map/scripts/render_venue_map.py` draws
+        # the OpenStreetMap geometry with a wobbly pen and a handwriting font.
+        # Every image model tried resynthesised instead of tracing and got
+        # either the roads or the scale wrong, so the geometry is no longer
+        # asked of one: it is exact by construction, and all nineteen pubs are
+        # labelled because the renderer labels whatever is in `landmarks`
+        # below. Re-run it if that list changes.
         #
-        # The play area is defined by three things - House Absolute at the
-        # exact centre, the crop symmetric about it, and Big Ben inside the
-        # frame. Big Ben is 537 m north of the house, so symmetry forces a
-        # half-span of at least that; 650 m leaves room to draw the tower.
-        # The reference points are that crop's corners, so they are exact by
-        # construction rather than measured off the drawing.
+        # The crop is sized to the markers rather than pinned to one of them.
+        # It used to be symmetric about House Absolute, which forced 1300 m
+        # because Big Ben is 537 m north of it; the nineteen pubs and four
+        # landmarks all fit within 458 m of their own centre, so 575 m leaves
+        # every one at least 117 m of drawing room in a 1150 m square. The
+        # reference points are that crop's corners, so they are exact by
+        # construction rather than measured off the drawing - which is why
+        # they only ever change together with the image.
         image="westminster",
-        width_px=1024,
-        height_px=1024,
-        ref_1=MapReferencePoint(x=0, y=0, lat=51.501752, long=-0.140302),
-        ref_2=MapReferencePoint(x=1024, y=1024, lat=51.489995, long=-0.121544),
-        # Wider than Kingston's 0.115. The drawing is 1.27 m/px against
-        # Kingston's 0.51, so a window that tight would be showing the player
-        # ninety pixels of blur; this trades some zoom for something legible.
-        corner_width_km=0.2,
+        width_px=2000,
+        height_px=2000,
+        ref_1=MapReferencePoint(x=0, y=0, lat=51.502881, long=-0.139506),
+        ref_2=MapReferencePoint(x=2000, y=2000, lat=51.492481, long=-0.122912),
+        # Kingston uses 0.115 at 0.51 m/px; this drawing is 0.575 m/px, so the
+        # same window on the ground is 0.13. The old 0.2 was compensating for
+        # a 1.27 m/px image that had ninety pixels of blur in the corner
+        # mini-map; there is nothing left to compensate for.
+        corner_width_km=0.13,
     ),
     # The nineteen pubs Charles has actually chosen to play, plus House
     # Absolute and the three landmarks everybody navigates by. Superseded the
@@ -217,12 +222,9 @@ WESTMINSTER = Venue(
     # list's own coordinates turned out to be 4-230 m out (median ~140 m),
     # which is the same order as the location term's own uncertainty.
     #
-    # NOTE these pubs are *not all drawn on the current map* - it was traced
-    # from the ten-pub shortlist. Twelve of the nineteen therefore have no
-    # marker on the drawing an admin places a circle against. Every one is
-    # inside the crop (tests/test_venues.py checks that), so a circle at one
-    # still lands somewhere the players can see, but it will not be labelled.
-    # Redrawing the map against this list is roadmap #12's outstanding half.
+    # Every one of these is drawn and named on the map, because the map is
+    # rendered from this dict (see the note above). Adding a pub here and
+    # re-running the renderer is the whole change.
     landmarks={
         # South, around Horseferry Road and Millbank
         "ROYAL_OAK": (51.494215, -0.132538),  # 2 Regency Street

@@ -78,20 +78,39 @@ def test_the_legend_leaves_off_where_the_game_will_put_things():
 
 def test_a_landmark_lands_where_the_venue_says_it_is():
     """The markers are projected through the venue's own bounds, so this is
-    the same sum the frontend does to draw a player's dot. Big Ben is in the
-    north-east corner of the Westminster crop and House Absolute is dead
-    centre, which pins both axes and their sign."""
+    the same sum the frontend does to draw a player's dot.
+
+    Compass relationships rather than absolute positions: the crop is sized to
+    fit the markers rather than centred on any one of them (M0.6), so nothing
+    sits at a memorable fraction any more, but Big Ben is still north-east of
+    House Absolute and Windsor Castle still west of it - which is what pins
+    both axes and their sign.
+    """
     westminster = VENUES["westminster"]
     names = map_poster.poster_landmarks(westminster)
     positions = dict(zip(names, map_poster._marker_positions(westminster, names)))
 
     house_x, house_y = positions["HOUSE_ABSOLUTE"]
-    assert house_x == pytest.approx(0.5, abs=0.01)
-    assert house_y == pytest.approx(0.5, abs=0.01)
 
     big_ben_x, big_ben_y = positions["BIG_BEN"]
     assert big_ben_x > house_x  # east
     assert big_ben_y < house_y  # north
+
+    windsor_x, windsor_y = positions["WINDSOR_CASTLE"]
+    assert windsor_x < house_x  # west
+    assert positions["ROYAL_OAK"][1] > house_y  # south
+
+
+def test_every_landmark_is_inside_the_crop_with_room_to_draw_it():
+    """The crop is sized to fit the markers, so this is the property that
+    sizing bought: shrink it and a pub falls off the poster."""
+    westminster = VENUES["westminster"]
+    names = map_poster.poster_landmarks(westminster)
+    positions = map_poster._marker_positions(westminster, names)
+
+    for name, (x, y) in zip(names, positions):
+        assert 0.05 < x < 0.95, f"{name} is too close to an edge to label"
+        assert 0.05 < y < 0.95, f"{name} is too close to an edge to label"
 
 
 def test_a_landmark_key_is_written_the_way_the_pub_is():

@@ -6,6 +6,34 @@ them have no marker on the drawing. This folder is the bundle for asking an
 image model to trace it again against the real list. **It needs one human
 step: running the prompt.**
 
+## Superseded 17 September: the map is rendered, not generated
+
+**The image models never managed it.** Every model Gemini offers and every
+image-output model on OpenRouter was tried, and each attempt got either the
+roads or the scale wrong; the one good result months ago was luck that could
+not be repeated or corrected. Image models resynthesise rather than trace, and
+nothing in them preserves metric geometry.
+
+So the map is now drawn from the OpenStreetMap data instead:
+
+```bash
+uv run python .claude/skills/draw-venue-map/scripts/render_venue_map.py \
+    --bundle docs/venue_map_westminster \
+    --out react-ui/src/images/map_westminster.jpg \
+    --title WESTMINSTER
+```
+
+That is exact by construction, labels all nineteen pubs, and costs nothing to
+re-run — `osm_features.json.gz` here is the cached Overpass answer, so it needs
+no network. **Adding a pub to `backend/venues.py` and re-running is the whole
+change.** What it cannot do is the pun doodles; ink those onto a printed copy.
+
+The four reference images and `prompt.md` below are kept for the image-model
+route, which survives only as the way to get a genuinely hand-drawn result.
+Read "Why not an image model" in the skill before spending an evening on it.
+
+## The image-model route (kept, not recommended)
+
 ## The one step
 
 Open a new chat with an image-capable model (Gemini was what worked last

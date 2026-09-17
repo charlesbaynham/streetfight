@@ -5,14 +5,41 @@ description: Make a hand-drawn-style map for a new streetfight venue - fix the p
 
 # Draw a map for a new venue
 
-The Kingston map is hand-drawn and that is the house style. Until someone draws
-the new one by hand, an image model can produce a passable stand-in — but only
-if it is made to **trace** an accurate reference rather than illustrate a place
-it half-remembers. Everything below exists to force that.
+The Kingston map is hand-drawn and that is the house style. The output here is
+a georeferenced image plus a `Venue` for `backend/venues.py`.
 
-The output is a georeferenced image plus a `Venue` for `backend/venues.py`.
+**Render it. Do not ask an image model.** `render_venue_map.py` draws the
+OpenStreetMap geometry with a wobbly pen and a handwriting font, which is
+exact by construction and free to re-run. The image-model route is kept below
+because it is the only way to get the *doodles*, but it is no longer the
+default and it should not be the first thing tried — see "Why not an image
+model" at the foot of this file, which is a record of it failing repeatedly
+rather than an opinion.
 
-## The workflow
+## The short version
+
+```bash
+# once per venue, or whenever the pub list changes
+./docs/venue_map_<name>/build.sh          # fetches OSM, writes the bundle
+uv run python .claude/skills/draw-venue-map/scripts/render_venue_map.py \
+    --bundle docs/venue_map_<name> \
+    --out react-ui/src/images/map_<name>.jpg \
+    --title <NAME>
+```
+
+Then wire it in (below). `build.sh` caches the OSM features in the bundle as
+`osm_features.json.gz`, so re-rendering costs nothing and asks Overpass
+nothing; `--refetch` forces a new query when the area itself has changed.
+
+The renderer labels **every marker in `meta.json`**, which is every landmark
+in the venue. Adding a pub and re-running is the whole change — there is no
+step where a human or a model has to redraw anything.
+
+What it cannot do is the doodles. The cartwheel beside Wheelwrights Arms is
+the charm of the Kingston map and no renderer will invent one; ink them onto a
+printed copy if you want them.
+
+## The workflow for the references (and the image-model route)
 
 1. **Centre.** Ask the user. It is normally the house the game runs from, and
    it becomes the middle of the map.
@@ -116,7 +143,13 @@ Give them `prompt.md` **and** all four images, and say the images map to
 look like padding ("this is a TRACING task, not an illustration task", "do not
 crop, rotate, zoom or re-centre") are the parts doing the work.
 
-## Checking what comes back
+## Checking the drawing
+
+`check_venue_map.py` works on a rendered map as well as a generated one, and
+is still worth running: it is an end-to-end check that the image, `meta.json`
+and the venue's reference points agree.
+
+## Checking what an image model sends back
 
 ```bash
 uv run python .claude/skills/draw-venue-map/scripts/check_venue_map.py \
@@ -146,21 +179,31 @@ It also prints the `Venue` snippet with the real image size filled in.
    That checks the georeferencing against the artwork, which the arithmetic
    cannot.
 
-## Gotchas (learned the hard way)
+## Why not an image model
 
-- **Tracing, not illustration.** Asked to "draw a map of X" from the same
-  references, a model produces something that looks like a map of somewhere.
-  On the first Westminster attempt six of ten pubs were wrong, three by
-  500–840 m, and the whole central street grid was shuffled. The attempt told
-  to trace the skeleton put every pub within about 20 m.
+Kept because somebody will suggest it again. Westminster was attempted many
+times, across every image model Gemini offers and the whole of OpenRouter's
+image-output roster, and the failures were consistent:
+
+- **They do not trace, they resynthesise.** Asked to "draw a map of X" from
+  the same references, a model produces something that looks like a map of
+  somewhere. On the first Westminster attempt six of ten pubs were wrong,
+  three by 500–840 m, and the whole central street grid was shuffled.
+- **"Roads in the wrong place" and "wrong scale" are one bug, not two.**
+  Nothing in the architecture preserves metric geometry, so each generation
+  rolls the dice on both at once. The framing is what the georeferencing
+  depends on, so a re-crop is fatal however good the drawing.
 - **Never ask a good result to fix small errors.** A four-item correction
-  request on the good Westminster map triggered a full redraw that scrambled
-  eight of ten pubs — and misspelled its own title, which is the giveaway. If
-  something is wrong, either live with it or regenerate from scratch.
-  Corrections are not cheap here, they are a re-roll.
-- **The model matters more than the prompt.** The same prompt and images gave a
-  scrambled map on one model and a near-exact trace on another. If the first
-  attempt composes, try a different model before rewriting anything.
+  request on the one good Westminster map triggered a full redraw that
+  scrambled eight of ten pubs — and misspelled its own title, which is the
+  giveaway. A correction is a re-roll with the good result thrown away.
+- **A good result was luck, and luck does not repeat.** The same prompt and
+  images gave a scrambled map on one model and a near-exact trace on another,
+  and then never again. That is what finally motivated the renderer: the
+  geometry was always available in the OSM data, and a hand-drawn look is a
+  rendering style rather than a creative act.
+
+## Gotchas (learned the hard way)
 - **Reference points come from the crop's corners**, never from eyeballing
   landmarks — the corners are exact by construction, so long as the drawing
   keeps the framing. This is why the prompt is so insistent about not cropping.
