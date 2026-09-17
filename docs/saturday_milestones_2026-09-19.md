@@ -262,7 +262,7 @@ answer rather than a fright. Drawn text on the card in `generate_qr_items.py`
 number is a module constant Charles fills in. Verify the sheets still pass
 `tests/test_generate_qr_items.py`.
 
-### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #PRNUM; the drawing itself still needs Charles's Gemini round-trip)*
+### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
 
 Roadmap #12, reopened 12 Sept: eleven of the nineteen pubs have no marker.
 Now print-critical, because the poster (M0.7) is this image. Rerun the
