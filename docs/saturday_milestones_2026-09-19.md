@@ -422,7 +422,7 @@ Two things the spec did not anticipate:
 
 ## M2 — The 16:00 transition *(by Friday)*
 
-### M2.1 — Reset to start state *(status: open)*
+### M2.1 — Reset to start state *(status: shipped 2026-09-17, PR #TBD)*
 
 One `AdminInterface.reset_to_start_state(game_id)` and one big button in
 `GamePanel`, **refusing unless the game is paused** (say so in the code: the
@@ -440,6 +440,21 @@ sign-ups included, which `reset_game`'s team walk misses:
 
 Existing `reset_game` stays for dev. Tests in `tests/test_admin_mode.py`.
 Two-tap confirm on the button, like the demo button.
+
+Shipped as specified. `reset_to_start_state` sits directly before
+`reset_game`, behind `POST /admin_reset_to_start_state`; the button is
+`react-ui/src/ResetToStartButton.js`, mounted in `GamePanel` under the join
+QR codes. Two notes on what shipped:
+
+- **The two-tap is built as a self-arming button**, not copied from the demo
+  button — that button turned out to have no confirm at all, just a plain
+  press and a server-side refusal. The first tap arms it and makes it say
+  "Tap again to wipe the sandbox"; it disarms itself after six seconds.
+- Shots are deleted **by `game_id` rather than by shooter**, so a shot
+  outlives the team its shooter was in and the queue empties whoever is left
+  in it. The circles are nulled straight onto the columns rather than through
+  `set_circles`, which would announce three changes to a ticker this is about
+  to delete anyway.
 
 ### M2.2 — Withdraw a batch of codes *(status: shipped 2026-09-17, PR #265)*
 

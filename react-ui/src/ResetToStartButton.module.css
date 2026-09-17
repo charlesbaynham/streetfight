@@ -1,0 +1,49 @@
+/* Same tones as AdminIdentity/ReferencePhotos: green and red are answers,
+   amber is for what the machine is unsure of - and this button is never
+   unsure, it either can run or cannot. */
+.status {
+  display: inline-block;
+  padding: 0.2em 0.7em;
+  border-radius: 1em;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+  font-size: 0.85em;
+}
+
+.statusGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  font-weight: bold;
+}
+
+.statusBad {
+  background: #fbdddd;
+  border-color: #c0392b;
+  font-weight: bold;
+}
+
+.bigButton {
+  width: 100%;
+  min-height: 3.5em;
+  margin: 0.5em 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+/* Armed: the button now does the thing, so it says so in red rather than
+   relying on the changed wording alone */
+.armed {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: white;
+}
+
+.resultGood {
+  color: #256c3a;
+  font-weight: bold;
+}
+
+.resultBad {
+  color: #c0392b;
+  font-weight: bold;
+}

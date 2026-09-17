@@ -1167,6 +1167,15 @@ async def admin_reset_game(game_id: UUID, keep_weapons: bool = True):
     AdminInterface().reset_game(game_id=game_id, keep_weapons=keep_weapons)
 
 
+@admin_method(path="/admin_reset_to_start_state", method="POST")
+async def admin_reset_to_start_state(game_id: UUID):
+    """The 16:00 button (M2.1): sweep the sandbox away but keep the door's
+    work. Refuses unless the game is paused."""
+    logger.info("admin_reset_to_start_state - %s", locals())
+
+    AdminInterface().reset_to_start_state(game_id=game_id)
+
+
 @admin_method("/admin_ticker_messages", method="GET")
 async def admin_ticker_messages(game_id: UUID, num_messages: int = 10):
     """Public ticker messages for a game, keyed by game rather than by the

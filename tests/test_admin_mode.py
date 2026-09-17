@@ -9,6 +9,12 @@ from fastapi.exceptions import HTTPException
 from backend import admin_interface
 from backend.admin_interface import AdminInterface
 from backend.image_processing import load_image
+from backend.model import APPEALS_PER_GAME
+from backend.model import BASIC_WEAPON
+from backend.model import STARTING_HIT_POINTS
+from backend.model import Game
+from backend.model import Item
+from backend.model import ItemType
 from backend.model import Shot
 from backend.model import TickerEntry
 from backend.model import User
@@ -736,3 +742,134 @@ def test_the_admin_scoreboard_answers_without_a_player_session(
     )
     assert response.is_success
     assert len(response.json()["table"]) == 2
+
+
+@pytest.fixture
+def game_mid_sandbox(db_session, team_factory, user_factory, test_image_string):
+    """A game part-way through the sandbox hour, with everything M2.1 has an
+    opinion about: a player in a team who has shot, scanned and been shot at,
+    a signed-up player who has not reached the door yet, a reference photo, a
+    location, a nominated leader, circles, a ticker and a cued event.
+
+    Returns (game_id, player_in_team, signup_with_no_team).
+    """
+    team_id = team_factory()
+    player = user_factory()
+    with UserInterface(player) as ui:
+        ui.join_team(team_id)
+
+    game_id = game_of_user(player)
+
+    # The player who signed up through the game link and has not scanned a
+    # team card yet - invisible to reset_game's walk over the teams
+    signup = user_factory()
+    db_session.query(User).filter_by(id=signup).update({"game_id": game_id})
+    db_session.commit()
+
+    # An hour of sandbox: ammo, armour, a weapon, a shot fired, a hit taken
+    with UserInterface(player) as ui:
+        ui.award_ammo(5)
+        ui.set_HP(4)
+        ui.set_weapon_data(3, NO_FIRE_DELAY)
+        ui.submit_shot(test_image_string)
+    UserInterface(player).set_location(51.0, 0.0, accuracy=10.0)
+
+    # The door's work, which must survive
+    AdminInterface().set_reference_photo(player, test_image_string)
+    AdminInterface().set_team_leader(player, True)
+    db_session.query(User).filter_by(id=player).update({"identity_slot": 7})
+
+    # An appeal spent, so the budget has visibly moved
+    db_session.query(User).filter_by(id=player).update({"appeals_remaining": 1})
+
+    # A scanned item, a circle, a ticker entry and a cue
+    item = Item(id=uuid4(), item_type=ItemType.AMMO, data="{}", game_id=game_id)
+    item.users.append(db_session.query(User).filter_by(id=player).one())
+    db_session.add(item)
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    game.exclusion_circle_lat = 51.0
+    game.exclusion_circle_long = 0.0
+    game.exclusion_circle_radius = 1.0
+    game.next_event_kind = "drop"
+    game.next_event_at = 1_000_000.0
+    game.next_event_note = "a medpack"
+    db_session.add(TickerEntry(game_id=game_id, message="something happened"))
+    db_session.commit()
+
+    return game_id, player, signup
+
+
+def test_reset_to_start_state_clears_the_sandbox_but_keeps_the_door(
+    db_session, game_mid_sandbox
+):
+    game_id, player, _signup = game_mid_sandbox
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    model = UserInterface(player).get_user_model()
+    assert model.num_bullets == 0
+    assert model.hit_points == STARTING_HIT_POINTS
+    assert (model.shot_damage, model.shot_timeout) == BASIC_WEAPON
+    assert model.appeals_remaining == APPEALS_PER_GAME
+    assert model.time_of_death is None
+
+    user = db_session.query(User).filter_by(id=player).one()
+    assert user.last_shot_at is None
+
+    # Nothing of the sandbox hour is left
+    assert db_session.query(Shot).filter_by(game_id=game_id).count() == 0
+    assert db_session.query(Item).filter_by(game_id=game_id).count() == 0
+    assert db_session.query(TickerEntry).filter_by(game_id=game_id).count() == 0
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    assert game.exclusion_circle_lat is None
+    assert game.exclusion_circle_radius is None
+    assert game.next_event_kind is None
+    assert game.next_event_at is None
+    assert game.next_event_note is None
+
+    # ...but everything the door did survives it
+    assert user.reference_photo_base64 is not None
+    assert user.identity_slot == 7
+    assert user.team_id is not None
+    assert user.is_team_leader is True
+    assert user.latitude == 51.0
+
+
+def test_reset_to_start_state_includes_signups_with_no_team(
+    db_session, game_mid_sandbox
+):
+    """reset_game walks the teams, so it cannot see a player who has signed up
+    and not yet scanned a team card at the door (roadmap R15)."""
+    game_id, _player, signup = game_mid_sandbox
+
+    db_session.query(User).filter_by(id=signup).update(
+        {"num_bullets": 9, "hit_points": 1, "appeals_remaining": 0}
+    )
+    db_session.commit()
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    stray = db_session.query(User).filter_by(id=signup).one()
+    assert stray.team_id is None
+    assert stray.num_bullets == 0
+    assert stray.hit_points == STARTING_HIT_POINTS
+    assert (stray.shot_damage, stray.shot_timeout) == BASIC_WEAPON
+    assert stray.appeals_remaining == APPEALS_PER_GAME
+
+
+def test_reset_to_start_state_refuses_while_the_game_is_running(
+    db_session, game_mid_sandbox
+):
+    """The friction is deliberate - see reset_to_start_state's docstring."""
+    game_id, player, _signup = game_mid_sandbox
+    AdminInterface().set_game_active(game_id, True)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().reset_to_start_state(game_id)
+    assert excinfo.value.status_code == 400
+
+    # And it refused before touching anything
+    assert db_session.query(Shot).filter_by(game_id=game_id).count() == 1
+    assert UserInterface(player).get_user_model().num_bullets == 4
