@@ -110,8 +110,8 @@ from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import GameModel
-from .next_event import NextEventKind
 from .model import ShotModel
+from .next_event import NextEventKind
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface

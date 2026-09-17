@@ -9,6 +9,7 @@ import JoinQRCodes from "./JoinQRCodes";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
+import EventCue from "./EventCue";
 import TickerView from "./TickerView";
 import { WEAPONS, weaponName } from "./weapons";
 
@@ -315,6 +316,9 @@ function GamePanel({ game }) {
         <Col md>
           <h3>Circles</h3>
           <CircleControl game_id={game.id} />
+
+          <h3>Countdown</h3>
+          <EventCue game={game} />
 
           <h3>Ticker</h3>
           <TickerView admin game_id={game.id} num_messages={10} />

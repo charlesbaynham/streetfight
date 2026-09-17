@@ -304,15 +304,31 @@ Four things from it that are worth knowing even if you never call the agent:
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
-  - `next_event.py` — the one thing a game is counting down to: the vocabulary
-    (`KIND_CIRCLE` / `KIND_DROP`) that `Game.next_event_kind` /
+  - `next_event.py` — the one thing a game is counting down to, and the clock
+    that fires it: the vocabulary (`NextEventKind`, `KIND_CIRCLE` /
+    `KIND_DROP`) that `Game.next_event_kind` /
     `next_event_at` / `next_event_note` are written in. Those three columns
     ride out to every phone on `UserModel` (`user_interface._next_event`,
     read off `User.game` so a signed-up player with no team gets it too), so
     the `"user"` SSE event each client already listens to is what keeps the
     countdown current — there is no second stream and nothing polls. Null
     together means nothing is cued, which is what `NextEventStrip.js` draws
-    nothing for.
+    nothing for. The timer is an in-process asyncio task per game (`arm` /
+    `disarm`), and it is **deliberately not durable**: what survives a restart
+    is `next_event_at`, and `sweep()` rebuilds the timers from it in a startup
+    hook in `main.py` — re-arming what is still in the future and firing at
+    once anything whose moment passed while the process was down, since a
+    circle that should have closed ten minutes ago should close now rather
+    than never. Double-firing is guarded twice over: arming a cue cancels the
+    game's pending task, and `AdminInterface.fire_next_event` re-reads the
+    deadline and does nothing if it is not the one the timer was armed for —
+    which is the half that holds across a restart. `AdminInterface`'s
+    `cue_next_event` / `cancel_cue` / `promote_next_circle` are the write
+    side, all announcing in the ticker and bumping every player in the game
+    (on `User.game_id`, so a team-less signup hears it too). Note
+    `promote_next_circle` changes nothing but the cue when there is no next
+    circle to promote: an admin who cleared it mid-countdown must not have the
+    play area blanked.
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
   - `sse_event_streams.py` + `asyncio_triggers.py` — SSE streams and the
@@ -393,7 +409,12 @@ Four things from it that are worth knowing even if you never call the agent:
     minutes rather than minutes-past-the-hour), and at zero the strip says
     what is happening rather than sitting on a stopped 00:00 until the server
     clears the cue. The spectator screen carries the same thing as a pill on
-    its headline.
+    its headline. The admin end is `src/EventCue.js`, in `AdminMode.js`'s
+    `GamePanel` under the circle controls: it says in words whether anything
+    is cued, starts one (ten minutes for a circle, five for a drop) and calls
+    it off. Placing the NEXT circle and saying when it closes are deliberately
+    two separate acts — the cue promotes whatever NEXT holds when it reaches
+    zero, and promotes nothing if NEXT is empty.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `ShotQueue.js`'s `RankedCandidates` shows each candidate's own colours
     beside the ranking, in the scheme's channel order — which is the review's

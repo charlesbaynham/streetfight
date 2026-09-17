@@ -397,6 +397,9 @@ export function makeGame(overrides = {}) {
     ai_auto_actions_enabled: false,
     ai_escalation_enabled: true,
     ai_resolve_everything_enabled: false,
+    next_event_kind: null,
+    next_event_at: null,
+    next_event_note: null,
     ...overrides,
   };
 }

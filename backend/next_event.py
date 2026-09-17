@@ -77,13 +77,15 @@ def arm(game_id: UUID, at: float) -> Optional[asyncio.Task]:
     disarm(game_id)
 
     delay = max(0.0, at - time.time())
+    # The loop is looked up before the coroutine is built rather than catching
+    # create_task's RuntimeError: a coroutine made and then dropped warns.
     try:
-        task = asyncio.create_task(_wait_then_fire(game_id, at, delay))
+        loop = asyncio.get_running_loop()
     except RuntimeError:
-        logger.warning(
-            "Not arming the cue for game %s: no running event loop", game_id
-        )
+        logger.warning("Not arming the cue for game %s: no running event loop", game_id)
         return None
+
+    task = loop.create_task(_wait_then_fire(game_id, at, delay))
 
     _pending[game_id] = task
     task.add_done_callback(lambda finished: _forget(game_id, finished))
