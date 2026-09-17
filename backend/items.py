@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from typing import Dict
+from typing import List
 from typing import Optional
 from urllib.parse import parse_qs
 from urllib.parse import urlparse
@@ -46,11 +47,21 @@ class ItemDataWeapon(pydantic.BaseModel):
     shot_timeout: float
 
 
+class ItemDataRadar(pydantic.BaseModel):
+    minutes: int = 5
+
+
+class ItemDataCircleWarning(pydantic.BaseModel):
+    minutes: int = 10
+
+
 ITEM_TYPE_VALIDATORS = {
     ItemType.AMMO: ItemDataAmmo,
     ItemType.ARMOUR: ItemDataArmour,
     ItemType.MEDPACK: ItemDataMedpack,
     ItemType.WEAPON: ItemDataWeapon,
+    ItemType.RADAR: ItemDataRadar,
+    ItemType.CIRCLE_WARNING: ItemDataCircleWarning,
 }
 
 
@@ -60,6 +71,15 @@ class ItemModel(pydantic.BaseModel):
     data: Dict
     collected_only_once: bool
     collected_as_team: bool
+
+    batch: Optional[str] = None
+    """A label minted into the payload so a set of codes can be withdrawn
+    together. ``None`` on every code printed before it existed."""
+
+    unlimited: bool = False
+    """Scannable any number of times by the same player - what the sandbox's
+    wall posters need, since ``collected_only_once=False`` still blocks a
+    second scan by the same person. Real codes never set it."""
 
     sig: Optional[str] = None
     # Pre-HMAC items were scrypt-signed with a salt. The field is kept only so
@@ -97,7 +117,17 @@ class ItemModel(pydantic.BaseModel):
         return cls(**decoded_dict)
 
     def to_base64(self):
-        json_encoded_obj = json.dumps(self.model_dump(), cls=_UUIDEncoder)
+        # Fields at their default are left out of the encoding, not just out
+        # of the signature. Every character here is a character the QR has to
+        # carry, and the pub certificate's code is already at the size where
+        # one more version means modules too fine to print
+        # (tests/test_generate_pub_pages.py). Dropping them costs nothing:
+        # they parse straight back to the defaults they were left out for,
+        # so an unbatched code encodes byte for byte as it did before batches
+        # existed.
+        json_encoded_obj = json.dumps(
+            self.model_dump(exclude_defaults=True), cls=_UUIDEncoder
+        )
         logger.debug("JSON encoded: %s", json_encoded_obj)
         return base64.b64encode(json_encoded_obj.encode("utf-8")).decode("utf-8")
 
@@ -131,7 +161,38 @@ class ItemModel(pydantic.BaseModel):
             self.data_as_json(),
             self.collected_only_once,
             self.collected_as_team,
+            *self._late_signed_parts(),
         )
+
+    def _late_signed_parts(self) -> List[str]:
+        """The fields added after codes were already in people's pockets.
+
+        A code is an HMAC over its payload and nothing else, which is what
+        decouples the print run from the deploy - but only as long as a
+        payload keeps signing the way it did when it was printed. Each late
+        field therefore joins the signed message **only when it is not at its
+        default**: a code minted before ``batch`` and ``unlimited`` existed
+        yields byte for byte the message it always did, and still validates.
+        They are named rather than positional so that setting one can never be
+        read as the other.
+        """
+        parts: List[str] = []
+        if self.batch is not None:
+            parts.append(f"batch={self.batch}")
+        if self.unlimited:
+            parts.append("unlimited=True")
+        return parts
+
+    @pydantic.field_validator("batch")
+    @classmethod
+    def blank_batch_is_no_batch(cls, v):
+        """An empty text field means "unbatched", not a batch named "".
+
+        Otherwise a cleared box on the Printables page would mint codes into a
+        batch nobody can withdraw by name, and one that signs differently from
+        an unbatched code minted a minute earlier.
+        """
+        return v or None
 
     @pydantic.field_validator("data")
     @classmethod

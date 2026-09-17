@@ -61,6 +61,26 @@ def test_pub_pages_mint_repeatable_team_ammo(log_to_tmp):
     assert all((row[7], row[8]) == ("False", "True") for row in rows)
 
 
+def test_a_run_labels_its_codes_with_its_batch(log_to_tmp):
+    """A batch is how a whole print run is withdrawn at once later (M2.2), so
+    it has to reach both the payload and the log."""
+    printables.item_sheets_pdf("ammo", num=5, batch="sandbox", unlimited=True)
+
+    rows = [row.split(",") for row in logged_codes(log_to_tmp)]
+    assert all(row[-1] == "sandbox" for row in rows)
+
+
+def test_the_new_timed_cards_print(log_to_tmp):
+    """Radar and circle-warning cards are printed before their handlers are
+    written, so what must work now is minting and drawing them."""
+    pdf = printables.item_sheets_pdf("radar", num=1, minutes=7)
+
+    assert page_count(pdf) == 1
+    assert all(
+        row.split(",")[3] == "ItemType.RADAR" for row in logged_codes(log_to_tmp)
+    )
+
+
 def test_a_read_only_log_costs_the_record_but_not_the_pdf(mocker):
     """The log sits beside the source tree, which on a deployment is a
     read-only Nix store: a print run must survive not being able to write it."""

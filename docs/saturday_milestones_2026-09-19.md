@@ -244,7 +244,7 @@ redraw the line in his own hand over the top of this.
 Lands in: `backend/generate_pub_pages.py`, `backend/image_templates/`,
 `react-ui/src/AdminPrintables.js`, tests.
 
-### M0.3 — Freeze the QR item encoding *(status: open)*
+### M0.3 — Freeze the QR item encoding *(status: shipped 2026-09-17, PR #259)*
 
 The one PR that decides what the cards printed tomorrow *say*. Three
 additions to `items.ItemModel`, all optional, all excluded from the

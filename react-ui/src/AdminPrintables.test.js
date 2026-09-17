@@ -52,7 +52,7 @@ test("minting pub certificates posts the page count and the bullets each is wort
 
   const call = getLastAPICall("admin_pub_pages_pdf");
   expect(call.method).toBe("POST");
-  expect(call.query).toEqual({ count: "6", num_bullets: "5" });
+  expect(call.query).toEqual({ count: "6", num_bullets: "5", batch: "game" });
 });
 
 test("minting drop cards posts the whole item definition", async () => {
@@ -70,7 +70,37 @@ test("minting drop cards posts the whole item definition", async () => {
     timeout: "25",
     collected_only_once: "true",
     collected_as_team: "false",
+    batch: "game",
   });
+});
+
+test("a radar card asks for minutes rather than an amount, and is batched like the rest", async () => {
+  renderPage();
+
+  await actAndFlush(() =>
+    userEvent.selectOptions(
+      panel("Drop cards").getByRole("combobox"),
+      "circle_warning",
+    ),
+  );
+  await press("Drop cards", "Mint and download (PDF)");
+
+  const call = getLastAPICall("admin_item_sheets_pdf");
+  expect(call.query.itype).toBe("circle_warning");
+  // The default that comes with the payload schema, not one chosen here.
+  expect(call.query.minutes).toBe("10");
+  expect(call.query.batch).toBe("game");
+});
+
+test("a batch is what the admin types, so a sandbox run can be withdrawn on its own", async () => {
+  renderPage();
+
+  const field = panel("Drop cards").getByLabelText(/Batch/);
+  await actAndFlush(() => userEvent.clear(field));
+  await actAndFlush(() => userEvent.type(field, "sandbox"));
+  await press("Drop cards", "Mint and download (PDF)");
+
+  expect(getLastAPICall("admin_item_sheets_pdf").query.batch).toBe("sandbox");
 });
 
 test("a failed build says so rather than leaving the button looking pressed", async () => {
