@@ -29,6 +29,7 @@ import crossImg from "./images/cross.svg";
 import crosshairImg from "./images/crosshair.svg";
 import returnImg from "./images/return.svg";
 import shotConfirmedSound from "./shot_confirmed.wav";
+import shotKnockoutSound from "./shot_knockout.wav";
 import shotMissedSound from "./shot_missed.wav";
 
 const p = prose.shotHistory;
@@ -472,6 +473,7 @@ function ShotNotifierBubble({ shotList }) {
 // ruled between two refreshes - still sounds, since nothing has yet.
 function useShotOutcomeSounds(shotList) {
   const [playConfirmed] = useSound(shotConfirmedSound);
+  const [playKnockout] = useSound(shotKnockoutSound);
   const [playMissed] = useSound(shotMissedSound);
   const lastSeen = useRef(null);
 
@@ -492,7 +494,12 @@ function useShotOutcomeSounds(shotList) {
           before === undefined || before.startsWith("false|");
         if (justVerdicted) {
           if (shot.result === "hit") {
-            playConfirmed();
+            // A hit that took the target's last hit point gets its own,
+            // bigger sound: a knockout is the only thing in this game that
+            // takes somebody off the board, and it deserves to be heard as
+            // something other than the fifth confirmed hit of the evening.
+            if (shot.target_knocked_out) playKnockout();
+            else playConfirmed();
             if (Modernizr.vibrate) navigator.vibrate(200);
           } else if (shot.result === "miss" || shot.result === "bystander") {
             playMissed();
@@ -503,7 +510,7 @@ function useShotOutcomeSounds(shotList) {
     });
 
     lastSeen.current = next;
-  }, [shotList, playConfirmed, playMissed]);
+  }, [shotList, playConfirmed, playKnockout, playMissed]);
 }
 
 // Mount exactly one of these in the in-game view: it owns the shot list, the
