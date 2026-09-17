@@ -804,7 +804,9 @@ Four things from it that are worth knowing even if you never call the agent:
     change. It writes the drawing as **two SVG layers** as well as the JPEG the
     app loads — `map` (roads, water, parks, and where doodles belong) and
     `handwriting` (every word, and the arrows that point at things) — so either
-    can be redrawn by hand without the other. Every file it writes is signed
+    can be redrawn by hand without the other. Sepia paper with the water and
+    parks coloured in; the palette is four constants at the top of that file,
+    and the road corridors are the paper colour rather than white. Every file it writes is signed
     with a hash of itself, and it **refuses to overwrite a layer that has been
     edited**; `--combine-only` restacks the layers from disk after you have
     re-lettered one.

@@ -103,7 +103,9 @@ OUT_PX = 2000
 SS = 3  # supersample: PIL does not antialias lines, so draw big and shrink
 
 INK = "#000000"
-PAPER = "#ffffff"
+PAPER = "#f2e7d0"  # aged paper; the road corridors are this too, not white
+WATER = "#a9c6d6"
+PARK = "#c9d7ab"
 
 # All in output pixels.
 PEN = 1.7  # one nib width - the whole map is drawn at this weight
@@ -145,6 +147,16 @@ class Sheet:
 
     def rect(self, layer, box, fill):
         self.ops[layer].append(("rect", tuple(box), fill))
+
+    def poly(self, layer, pts, fill):
+        """A filled area, with no outline - the wobbly pen draws that after.
+
+        Keeping the two apart is what makes the colour look laid on by hand:
+        the fill follows the true edge and the line wobbles about it, so the
+        ink does not quite stay inside the colour.
+        """
+        if len(pts) > 2:
+            self.ops[layer].append(("poly", list(pts), fill))
 
     def text(
         self,
@@ -243,6 +255,129 @@ def freehand(pts, seed, amp=WOBBLE_AMP, step=WOBBLE_STEP):
         off = noise[i] * amp * taper
         out.append((x - dy / length * off, y + dx / length * off))
     return out
+
+
+# --------------------------------------------------------------------------
+# Areas
+# --------------------------------------------------------------------------
+
+
+def _same(a, b, eps=1e-9):
+    return abs(a["lat"] - b["lat"]) < eps and abs(a["lon"] - b["lon"]) < eps
+
+
+def closed_rings(el):
+    """Rings that can actually be filled.
+
+    Every way Overpass returns here is already closed, but a multipolygon
+    relation arrives as its member ways, each an open arc that ends where the
+    next begins - so `rings()` alone yields nothing fillable, and closing an
+    arc by joining its own two ends draws a chord across the map. The Thames
+    is one ring split over about thirty members; chained head-to-tail it
+    closes on itself, and the part outside the crop is clipped off afterwards.
+
+    (`build_venue_map.py` gets the same result by flooding a bitmap from a
+    seed in midstream. That cannot be done to a vector, and it does not need
+    to be: this is the geometry the flood was recovering.)
+    """
+    parts = [list(r) for r in rings(el) if len(r) > 1]
+    if el["type"] != "relation":
+        return parts
+
+    out, pending = [], parts
+    while pending:
+        ring = pending.pop(0)
+        joined = True
+        while joined and not _same(ring[0], ring[-1]):
+            joined = False
+            for i, part in enumerate(pending):
+                if _same(ring[-1], part[0]):
+                    ring = ring + part[1:]
+                elif _same(ring[-1], part[-1]):
+                    ring = ring + part[-2::-1]
+                elif _same(ring[0], part[-1]):
+                    ring = part[:-1] + ring
+                elif _same(ring[0], part[0]):
+                    ring = part[:0:-1] + ring
+                else:
+                    continue
+                pending.pop(i)
+                joined = True
+                break
+        out.append(ring)
+    return out
+
+
+def clip_to_box(poly, size):
+    """Sutherland-Hodgman against the sheet.
+
+    The Thames ring runs miles past the crop in both directions. Clipping it
+    keeps the SVG to the part anybody can see, rather than carrying thousands
+    of points off the page.
+    """
+
+    def inside(p, edge):
+        return (p[0] >= 0, p[0] <= size, p[1] >= 0, p[1] <= size)[edge]
+
+    def cut(a, b, edge):
+        if edge < 2:
+            xe = 0.0 if edge == 0 else float(size)
+            t = (xe - a[0]) / (b[0] - a[0])
+            return (xe, a[1] + (b[1] - a[1]) * t)
+        ye = 0.0 if edge == 2 else float(size)
+        t = (ye - a[1]) / (b[1] - a[1])
+        return (a[0] + (b[0] - a[0]) * t, ye)
+
+    out = list(poly)
+    for edge in range(4):
+        if not out:
+            return []
+        clipped, out = out, []
+        for i, cur in enumerate(clipped):
+            prev = clipped[i - 1]
+            if inside(cur, edge):
+                if not inside(prev, edge):
+                    out.append(cut(prev, cur, edge))
+                out.append(cur)
+            elif inside(prev, edge):
+                out.append(cut(prev, cur, edge))
+    return out
+
+
+def edge_runs(poly, size, eps=0.75):
+    """Split a clipped ring into the runs that are real edges, not the frame.
+
+    Clipping introduces segments that run along the sheet's border. They bound
+    the colour but they are not banks or railings, and inking them draws a box
+    round the map.
+    """
+
+    def on_frame(p):
+        return (
+            p[0] <= eps,
+            p[0] >= size - eps,
+            p[1] <= eps,
+            p[1] >= size - eps,
+        )
+
+    runs, run = [], []
+    for a, b in zip(poly, poly[1:] + poly[:1]):
+        if any(x and y for x, y in zip(on_frame(a), on_frame(b))):
+            if len(run) > 1:
+                runs.append(run)
+            run = []
+        else:
+            run = (run or [a]) + [b]
+    if len(run) > 1:
+        runs.append(run)
+    return runs
+
+
+def _area(poly):
+    total = 0.0
+    for (x0, y0), (x1, y1) in zip(poly, poly[1:] + poly[:1]):
+        total += x0 * y1 - x1 * y0
+    return abs(total) / 2
 
 
 # --------------------------------------------------------------------------
@@ -395,18 +530,42 @@ def draw_roads(sheet, els, box, size):
     return roads
 
 
+def draw_area(sheet, el, box, size, colour, amp, limit=1.0):
+    """Colour a ring in and ink its edge, from one path.
+
+    The wobble is applied after clipping and then clamped back inside, so the
+    ink and the colour follow the same hand rather than the colour following
+    the survey exactly while the pen wanders - which left the river with a
+    stepped, machine-cut edge under a hand-drawn line.
+    """
+    drawn = []
+    for ring in closed_rings(el):
+        poly = clip_to_box([box.project(q["lat"], q["lon"], size) for q in ring], size)
+        if len(poly) < 3:
+            continue
+        poly = [
+            (min(max(x, 0.0), float(size)), min(max(y, 0.0), float(size)))
+            for x, y in freehand(poly + poly[:1], el.get("id", 0), amp=amp)
+        ]
+        if _area(poly) > limit * size * size:
+            continue
+        sheet.poly(LAYER_MAP, poly, colour)
+        for run in edge_runs(poly, size):
+            sheet.line(LAYER_MAP, run, PEN)
+            drawn.append(run)
+    return drawn
+
+
 def draw_water(sheet, els, box, size):
-    """Banks only, white inside, with a few squiggles to say it is water."""
+    """Coloured in, banks inked over the top, and a few squiggles."""
     banks = []
     for el in els:
         tags = el.get("tags", {})
         if tags.get("natural") == "water" or tags.get("waterway") == "riverbank":
-            for ring in rings(el):
-                pts = [box.project(q["lat"], q["lon"], size) for q in ring]
-                if len(pts) > 1:
-                    bank = freehand(pts, el.get("id", 1), amp=2.6)
-                    sheet.line(LAYER_MAP, bank, PEN)
-                    banks.append(bank)
+            # Water is the minority of a town crop, so a fill covering most of
+            # the sheet means the ring closed the wrong way round - the same
+            # sanity limit build_venue_map.py puts on its flood.
+            banks += draw_area(sheet, el, box, size, WATER, amp=2.6, limit=0.35)
     if not banks:
         return
     longest = max(banks, key=len)
@@ -423,14 +582,8 @@ def draw_water(sheet, els, box, size):
 
 def draw_parks(sheet, els, box, size):
     for el in els:
-        if el.get("tags", {}).get("leisure") != "park":
-            continue
-        for ring in rings(el):
-            pts = [box.project(q["lat"], q["lon"], size) for q in ring]
-            if len(pts) >= 3:
-                sheet.line(
-                    LAYER_MAP, freehand(pts + [pts[0]], el.get("id", 2), amp=2.2), PEN
-                )
+        if el.get("tags", {}).get("leisure") == "park":
+            draw_area(sheet, el, box, size, PARK, amp=2.2)
 
 
 def draw_street_names(sheet, roads, box, size, limit=14):
@@ -559,6 +712,7 @@ def compose(meta, els, size=OUT_PX, title=None):
     box = Box(meta["centre"][0], meta["centre"][1], meta["half_span_m"])
     sheet = Sheet(size)
 
+    sheet.rect(LAYER_MAP, (0, 0, size, size), PAPER)
     draw_parks(sheet, els, box, size)
     draw_water(sheet, els, box, size)
     roads = draw_roads(sheet, els, box, size)
@@ -580,14 +734,17 @@ def compose(meta, els, size=OUT_PX, title=None):
 # --------------------------------------------------------------------------
 
 
-def _grey(colour):
-    return 0 if colour == INK else 255
+def _rgb(colour):
+    """'#rrggbb' -> (r, g, b). The display list speaks CSS; PIL does not."""
+    value = int(colour[1:], 16)
+    return (value >> 16, (value >> 8) & 0xFF, value & 0xFF)
 
 
 def _pil_text(img, op, ss):
     _, x, y, text, px, anchor, fill, stroke, stroke_w, rotate = op
     font = _font(px * ss)
-    stroke_v = None if stroke is None else _grey(stroke)
+    fill_v = _rgb(fill)
+    stroke_v = None if stroke is None else _rgb(stroke)
     width = int(round(stroke_w * ss))
 
     if abs(rotate) < 0.01:
@@ -595,7 +752,7 @@ def _pil_text(img, op, ss):
             (x * ss, y * ss),
             text,
             font=font,
-            fill=_grey(fill),
+            fill=fill_v,
             anchor=anchor,
             stroke_width=width,
             stroke_fill=stroke_v,
@@ -609,28 +766,30 @@ def _pil_text(img, op, ss):
     pad = width + 8 * ss
     bb = _measure().textbbox((0, 0), text, font=font)
     w, h = int(bb[2] - bb[0] + 2 * pad), int(bb[3] - bb[1] + 2 * pad)
-    strip = Image.new("L", (w, h), 255)
-    ImageDraw.Draw(strip).text(
-        (pad - bb[0], pad - bb[1]),
-        text,
-        font=font,
-        fill=_grey(fill),
-        stroke_width=width,
-        stroke_fill=stroke_v,
+    where = (pad - bb[0], pad - bb[1])
+    body = dict(font=font, stroke_width=width)
+
+    strip = Image.new("RGB", (w, h), _rgb(PAPER))
+    ImageDraw.Draw(strip).text(where, text, fill=fill_v, stroke_fill=stroke_v, **body)
+    # Mask to the glyphs and their stroke rather than the strip, so a rotated
+    # label lays its own paper only where it is written. Pasting the strip
+    # itself would knock a tilted rectangle out of the water and the parks.
+    cover = Image.new("L", (w, h), 0)
+    ImageDraw.Draw(cover).text(
+        where, text, fill=255, stroke_fill=255 if stroke_v else None, **body
     )
-    area = Image.new("L", (w, h), 255)
     spin = dict(expand=True, resample=Image.BICUBIC)
-    strip = strip.rotate(rotate, fillcolor=255, **spin)
-    area = area.rotate(rotate, fillcolor=0, **spin)
+    strip = strip.rotate(rotate, fillcolor=_rgb(PAPER), **spin)
+    cover = cover.rotate(rotate, fillcolor=0, **spin)
     img.paste(
-        strip, (int(x * ss - strip.width / 2), int(y * ss - strip.height / 2)), area
+        strip, (int(x * ss - strip.width / 2), int(y * ss - strip.height / 2)), cover
     )
 
 
 def to_pil(sheet, ss=SS, layers=LAYERS):
-    """The raster the app and the poster need. Greyscale: it is ink on paper."""
+    """The raster the app and the poster need."""
     side = int(sheet.size * ss)
-    img = Image.new("L", (side, side), 255)
+    img = Image.new("RGB", (side, side), _rgb(PAPER))
     draw = ImageDraw.Draw(img)
     for layer in layers:
         for op in sheet.ops[layer]:
@@ -638,15 +797,18 @@ def to_pil(sheet, ss=SS, layers=LAYERS):
                 _, pts, width, colour = op
                 draw.line(
                     [(x * ss, y * ss) for x, y in pts],
-                    fill=_grey(colour),
+                    fill=_rgb(colour),
                     width=max(1, int(round(width * ss))),
                     joint="curve",
                 )
             elif op[0] == "rect":
                 _, b, fill = op
                 draw.rectangle(
-                    [b[0] * ss, b[1] * ss, b[2] * ss, b[3] * ss], fill=_grey(fill)
+                    [b[0] * ss, b[1] * ss, b[2] * ss, b[3] * ss], fill=_rgb(fill)
                 )
+            elif op[0] == "poly":
+                _, pts, fill = op
+                draw.polygon([(x * ss, y * ss) for x, y in pts], fill=_rgb(fill))
             else:
                 _pil_text(img, op, ss)
     return img.resize((sheet.size, sheet.size), Image.LANCZOS)
@@ -682,6 +844,10 @@ def _svg_ops(ops):
                 f'<rect x="{b[0]:.1f}" y="{b[1]:.1f}" width="{b[2] - b[0]:.1f}" '
                 f'height="{b[3] - b[1]:.1f}" fill="{fill}"/>'
             )
+        elif op[0] == "poly":
+            _, pts, fill = op
+            pt = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
+            out.append(f'<polygon points="{pt}" fill="{fill}"/>')
         else:
             _, x, y, text, px, anchor, fill, stroke, stroke_w, rotate = op
             attrs = (
@@ -702,16 +868,20 @@ def _svg_ops(ops):
     return out
 
 
-def to_svg(sheet, layers=LAYERS, paper=True):
-    """One `<g>` per layer, so a layer can be pulled out or replaced whole."""
+def to_svg(sheet, layers=LAYERS):
+    """One `<g>` per layer, so a layer can be pulled out or replaced whole.
+
+    The paper is the map layer's own first primitive rather than a backdrop
+    here, so the map on its own looks like the map, the handwriting on its own
+    stays transparent and stackable, and the combined file gets the paper once
+    and in the right order.
+    """
     size = sheet.size
     body = [
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}">',
         f"<style>{_face_css()}</style>",
     ]
-    if paper:
-        body.append(f'<rect width="{size}" height="{size}" fill="{PAPER}"/>')
     for layer in layers:
         body.append(
             f'<g id="{layer}" font-family="{FAMILY}" dominant-baseline="central" '
@@ -800,7 +970,6 @@ def combine_layers(out_path, size):
         f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
         f'viewBox="0 0 {size} {size}">',
         f"<style>{_face_css()}</style>",
-        f'<rect width="{size}" height="{size}" fill="{PAPER}"/>',
         *groups,
         "</svg>",
     ]
@@ -868,16 +1037,8 @@ def main():
 
     if not args.no_svg:
         for layer, path in svg_paths(args.out):
-            # A single layer carries no paper behind it, so it can be stacked
-            # on the other - or on a redrawn one - without hiding it.
             open(path, "w").write(
-                _stamped(
-                    to_svg(
-                        sheet,
-                        layers=LAYERS if layer is None else (layer,),
-                        paper=layer is None,
-                    )
-                )
+                _stamped(to_svg(sheet, layers=LAYERS if layer is None else (layer,)))
             )
             written.append(path)
 

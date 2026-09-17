@@ -35,6 +35,36 @@ The renderer labels **every marker in `meta.json`**, which is every landmark
 in the venue. Adding a pub and re-running is the whole change — there is no
 step where a human or a model has to redraw anything.
 
+## Colour
+
+Sepia paper, with the water and the parks coloured in. The four constants at
+the top of `render_venue_map.py` are the whole palette:
+
+| | |
+| --- | --- |
+| `PAPER` `#f2e7d0` | the sheet — **and the road corridors**, which are this rather than white |
+| `INK` `#000000` | every line and every word |
+| `WATER` `#a9c6d6` | |
+| `PARK` `#c9d7ab` | |
+
+Two things about how the colour is laid on:
+
+- **The fill and the ink edge come from one path.** `draw_area` clips the ring
+  to the sheet, wobbles it, then fills it *and* inks it. Colouring the survey
+  geometry while wobbling the pen separately left the river with a stepped,
+  machine-cut edge under a hand-drawn line.
+- **Clipping introduces edges that are not banks.** A ring clipped to the
+  sheet gains segments running along the border; `edge_runs` drops those
+  before inking, or the map gets a box drawn round it.
+
+A multipolygon relation — the Thames here — arrives as member ways, each an
+open arc ending where the next begins, so nothing is fillable until they are
+chained (`closed_rings`). Closing an arc on itself instead draws a chord
+across the map. `build_venue_map.py` recovers the same region by flooding a
+bitmap from a seed in midstream, which is what you cannot do to a vector; the
+skeleton still does it that way and is fine, because nobody fills a reference
+image.
+
 ## Two layers, and replacing the handwriting
 
 Beside the raster it writes three SVGs — `<name>.svg`, `<name>.map.svg` and
