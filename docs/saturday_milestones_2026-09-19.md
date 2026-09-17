@@ -215,7 +215,12 @@ Lands in: `backend/model.py`, `backend/user_interface.py`,
 `backend/printables.py`, `backend/main.py`, `react-ui/src/weapons.js`,
 `react-ui/src/utils.js`, `react-ui/src/AdminPrintables.js`.
 
-### M0.2 — Pub poster: five bullets *(status: open)*
+### M0.2 — Pub poster: five bullets *(status: shipped 17 Sept, PR #254)*
+
+The artwork's "2x" was erased and "5x" redrawn with Pillow in the same
+purple (`#8103D0`) and pen weight; the bullets are still drawn twice, since
+adding three more convincingly is more than a Pillow paint-over. Charles can
+redraw the line in his own hand over the top of this.
 
 - `BULLETS_PER_TEAM_MEMBER = 5` (`generate_pub_pages.py:52`), the module
   docstring, `AdminPrintables.js:196`'s `useState(2)`, the three literal 2s in

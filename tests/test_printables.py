@@ -50,7 +50,7 @@ def test_every_drop_card_is_a_different_item(log_to_tmp):
 
 
 def test_pub_pages_mint_repeatable_team_ammo(log_to_tmp):
-    pdf = printables.pub_pages_pdf(3, num_bullets=2)
+    pdf = printables.pub_pages_pdf(3, num_bullets=5)
 
     assert page_count(pdf) == 3
 
