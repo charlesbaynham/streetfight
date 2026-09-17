@@ -43,6 +43,17 @@ What that changes, in practice:
   `ALTER TABLE`. Anything else — a rename, a drop, a type change, a `NOT NULL`
   column without a scalar default — is still in genuine tension with the live
   state: raise the cost to Charles before writing it, not after.
+  **`tests/test_database.py`'s `TestLiveSchemaUpgrade` is the gate**: it takes
+  the committed snapshot of the live schema (`tests/live_schema/`, one file,
+  named for the date and the revision live was running), upgrades a copy of it
+  the way a deploy would, and then compares it against a database built fresh
+  from the models and writes a row through every mapped class. So a rename, a
+  drop, a type change or an undefaulted `NOT NULL` column fails CI on the pull
+  request rather than crash-looping the service. Two things to keep up:
+  refresh the snapshot whenever live moves — `python
+  tests/live_schema/refresh.py <rev>` writes the new file from that revision's
+  models, then delete the old one and point `SNAPSHOT` at it — and give any
+  new ORM class a row in that test, which it will demand by name.
 - **The identity scheme is frozen.** Renumbering symbols, reordering or
   re-hexing a palette (`backend/identity/config.py`), or changing what a slot
   decodes to would re-clothe players who have already chosen. Treat those
