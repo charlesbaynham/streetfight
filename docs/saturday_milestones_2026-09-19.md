@@ -829,11 +829,11 @@ and that are worth knowing separately:
 `docs/roadmap.md`'s #12 and #8 were updated, and the "What the plan assumed"
 section above now says which milestone superseded each of its bullets.
 
-Radar (M6.1) is written up as shipped. The early circle warning (M6.2) had not
-merged when this was written, so the runbook treats that one conditionally and
-says to check its status line before printing its cards — an item type with no
-handler 403s when scanned, which is a dud card in a hiding place. **Refresh
-the runbook's "Early circle warning" section when M6.2 lands.**
+Both experimental items (M6.1, M6.2) are written up as shipped. M6.2 changed
+the shape of the runbook's "Cue a circle" section rather than just adding to
+it: placing NEXT is now private working-out and the **cue** is the
+announcement, which is the one procedural change on the night that a reader of
+the old plan would get wrong.
 
 ---
 

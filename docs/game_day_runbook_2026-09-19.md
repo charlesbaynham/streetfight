@@ -52,12 +52,12 @@ touching the real cards.
 - Ammunition, med packs and weapons as you like. The weapon table is
   Eat-a-bullet `(1 damage, 5 s)`, Pewster `(1, 25)`, Tracka-Tracka `(2, 25)`,
   OMG `(3, 25)`.
-- **Radar** cards are minted from the same panel: **Item** = `radar`, then
-  **Minutes it lasts** (defaults to 5). Print a few — the card is worth as
-  much to everybody else as to the holder, since the scan is announced.
-- **Circle warning** cards: only if M6.2 has shipped. Check its status line in
-  the milestones doc first; an item type with no handler refuses with a 403
-  when scanned, which is a dud card in a hiding place.
+- **Radar** cards: **Item** = `radar`, then **Minutes it lasts** (defaults to
+  5). Print a few — the card is worth as much to everybody else as to the
+  holder, since the scan is announced.
+- **Circle warning** cards: **Item** = `circle_warning`, **Minutes it lasts**
+  (defaults to 10). Worth hiding somewhere that takes effort to reach; it is
+  the only card that buys information rather than equipment.
 
 ### The sandbox posters
 
@@ -125,8 +125,10 @@ at `https://streetfight-staging.i.houseabsolute.co.uk`:
 - **The sounds**, on an iPhone. Tap the sound-check row on the waiting page
   first — that tap is also what unlocks audio in the browser.
 - **A radar card**: scan one and check the dots and the countdown strip
-  appear, and that the ticker announces it. Circle-warning cards too, if M6.2
-  has landed by then.
+  appear, and that the ticker announces it.
+- **A circle-warning card**: place a NEXT circle without cueing it, check it
+  is invisible on an ordinary player's map, then scan the card and check it
+  appears on the holder's.
 
 Staging's database starts empty; press **Fire demo game** on the admin page to
 fill it with the thirty-player sample cast.
@@ -200,16 +202,30 @@ Circles roughly every 45 minutes, alternating with drops.
 
 ### Cue a circle
 
-On **Admin home**, in the game panel: **Circles** first, then **Countdown**.
+**Two acts, and players see nothing until the second one.** On **Admin home**,
+in the game panel: **Circles** first, then **Countdown**.
 
-1. Place the **NEXT** circle where it is going — landmark or coordinates, in
-   the **Circles** block. The radius reminders are printed under it.
-2. In **Countdown**: **Event** = "circle closes", minutes (default **10**),
-   **Start countdown**.
+1. **Place the NEXT circle** where it is going — landmark or coordinates, in
+   the **Circles** block. The radius reminders are printed under it. This
+   announces nothing and draws nothing on any player's map. You can place it,
+   look at it on your own map, move it, and think again, and nobody knows.
+2. **Cue it.** In **Countdown**: **Event** = "circle closes", minutes
+   (default **10**), **Start countdown**.
 
-The ticker announces it, and every player's phone grows a strip at the top
-counting down. At zero the next circle becomes the exclusion circle, the old
-next circle is cleared, and the ticker says the circle has closed.
+The cue is what makes the circle public. At that moment the ticker announces
+it, the circle appears on every player's map, and their phones grow a strip at
+the top counting down. At zero the next circle becomes the exclusion circle,
+the old next circle is cleared, and the ticker says the circle has closed.
+
+Three consequences of the circle being private until it is cued (M6.2):
+
+- **Take your time over step 1.** It used to be the announcement; it is now
+  private working-out.
+- **Moving or clearing NEXT makes it private again**, so changing your mind
+  mid-countdown takes the old circle off every phone rather than leaving two
+  stories on the map.
+- **`BOTH` is public immediately** — it puts the next circle exactly where the
+  exclusion circle everybody can already see is, so there is nothing to hide.
 
 **Place NEXT first.** If NEXT is empty when the clock runs out, nothing is
 promoted — the countdown just clears. That is deliberate: the alternative is
@@ -218,6 +234,11 @@ mid-countdown. The panel says so on screen.
 
 **Cancel countdown** calls the clock off and leaves the circles exactly as
 they are.
+
+**Your own map always shows the next circle**, cued or not. There is no
+on-screen indicator of whether it has gone public yet — the countdown panel
+sits directly under the circle controls, so cueing it is the next thing in
+front of you.
 
 ### Cue a drop
 
@@ -271,12 +292,23 @@ radar lit during the sandbox hour does not survive the 16:00 button.
 
 ### Early circle warning
 
-M6.2, still in progress at the time of writing. It reveals the next circle to
-the holder before it is announced. **Check its status line in the milestones
-doc before printing its cards** — an item type whose handler has not shipped
-refuses with a 403 when scanned, so an unshipped card is a dud in a hiding
-place. The plan marks both of these "drop if not working"; radar landing on
-its own is a perfectly good outcome.
+Shipped (M6.2). A player who scans one sees the next circle on their map for
+ten minutes **before it is cued** — which, since placing NEXT is now private,
+is a real head start rather than a few seconds.
+
+- **The public ticker line is anonymous**: "Somebody knows where the next
+  circle is...". Naming the holder would tell thirty people whose route to
+  watch, which is exactly the advantage the card just bought.
+- **The holder is told privately that it was them**, with how long they have.
+  A card that appears to do nothing is a card somebody scans again.
+- There is no strip and no countdown for it — the circle appearing on the map
+  is the effect. It disappears again when the warning runs out, even if the
+  circle has still not been cued.
+
+So the sequence a warning card pays off against is: you place NEXT (private,
+holders can see it), you cue it some minutes later (public, everybody sees
+it), it closes. Leaving a gap between placing and cueing is what makes the
+card worth anything.
 
 ### Shots
 
@@ -441,6 +473,23 @@ one place. Each names the PR that made it.
 - **Asking for a radar you do not have is an error, not an empty list**
   (#275): "you have no radar" and "there is nobody out there" must not look
   the same.
+- **Placing the NEXT circle now says nothing at all** (#277). It used to post
+  a ticker line; announcing a circle nobody can see is worse than silence, so
+  that message is retired. The **cue** is the announcement now.
+- **The circle-warning ticker line is anonymous** (#277) — "Somebody knows
+  where the next circle is..." — unlike every other collection, which names
+  the player. Naming them would give away the advantage the card just bought.
+  The holder gets a private line saying it was them.
+- **The admin's own map now reads the game's circles, not `/get_circles`**
+  (#277), which is the player endpoint that does the hiding — otherwise the
+  admin would have been blind to their own private circle.
+- **The admin has no indicator of whether the next circle is public yet**
+  (#277, deliberately). The countdown panel sits directly under the circle
+  controls, so cueing it is the next thing in front of them.
+- **A warning that expires during a restart costs one stale circle on one
+  phone** (#277) until the next circle event. The expiry timer is in-process
+  and not durable — judged the right price for an experimental card, unlike
+  the countdown's, which is rebuilt from a column.
 
 ### People
 
