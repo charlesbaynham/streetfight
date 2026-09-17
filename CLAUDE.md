@@ -598,8 +598,9 @@ Four things from it that are worth knowing even if you never call the agent:
     the door: no ammo and *no weapon at all* (`DEFAULT_SHOT_DAMAGE` is zero),
     so a confirmed hit would take nobody's last hit point and nothing on the
     dashboard would ever change. Each of the thirty gets `DEMO_BULLETS` (50),
-    the weakest weapon (damage 1, the standard delay) and one hit point — no
-    armour, so a hit kills.
+    the weakest weapon (damage 1, the standard delay) and one hit point — set
+    explicitly, *below* the `STARTING_HIT_POINTS` a real player gets, so that
+    a hit kills and the dashboard visibly moves.
   - **It unpauses the game**, through `AdminInterface.set_game_active` so the
     ticker and the players' clients hear about it.
   - **It refuses to run at all** if any player in a team is not one of the
@@ -1088,6 +1089,16 @@ Three deployment targets share one service definition:
   runs on this session part-way through, and a `@db_scoped` call from another
   interface **commits**, expiring every ORM object, so a later attribute read
   reloads one and autoflushes.
+- **A player starts with one piece of armour on.** There is no armour column:
+  level *n* armour sets `hit_points` to `n + 1`, so `model.STARTING_HIT_POINTS`
+  (2) *is* armour level 1, and `BulletCount.js` draws `hit_points - 1` helmets.
+  `UserInterface._make_user` is the only place a `User` row is built, so it is
+  the only place that has to say so; the column default stays at 1 so that a
+  row written any other way is not silently armoured. Two consequences:
+  a **level-1 armour card does nothing** for anybody who has not been hit
+  (`item_actions._handle_armour` refuses armour no better than what you have),
+  so mint level 2 or better; and `demo_game` deliberately arms its cast
+  *below* this, at one hit point, so that a hit kills and the dashboard moves.
 - **The fire cooldown is the server's rule, not the button's.** `submit_shot`
   refuses a shot fired less than the player's own `shot_timeout` after their
   last one (`User.last_shot_at`, epoch seconds, written beside the bullet

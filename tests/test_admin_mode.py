@@ -15,6 +15,7 @@ from backend.model import User
 from backend.user_interface import UserInterface
 
 from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
@@ -65,6 +66,11 @@ def old_shot_prep(
 
     UserInterface(user_a).join_team(team_a)
     UserInterface(user_b).join_team(team_b)
+
+    # Everything below turns on one shot killing user B - the invalidation
+    # cascade, the refund, the queue emptying - so neither player wears the
+    # starting armour M1.2 gave them.
+    strip_armour(user_a, user_b)
 
     AdminInterface().award_user_ammo(user_a, 1000)
     AdminInterface().award_user_ammo(user_b, 1000)
@@ -327,6 +333,9 @@ def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
 def contested_hit(two_users_in_different_teams, test_image_string):
     """A shot ruled a hit and then appealed by its target."""
     shooter, target = two_users_in_different_teams
+    # The hit knocks the target out, which is what makes the appeal worth
+    # lodging, so one hit has to be fatal.
+    strip_armour(target)
     UserInterface(shooter).award_ammo(1)
     UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(shooter).submit_shot(test_image_string)

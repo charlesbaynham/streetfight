@@ -30,6 +30,7 @@ from .item_actions import do_item_actions
 from .items import ItemModel
 from .model import APPEAL_REASONS
 from .model import DEFAULT_SHOT_TIMEOUT
+from .model import STARTING_HIT_POINTS
 from .model import Game
 from .model import GameModel
 from .model import Item
@@ -391,6 +392,7 @@ class UserInterface:
             id=self.user_id,
             shot_damage=DEFAULT_SHOT_DAMAGE,
             shot_timeout=DEFAULT_SHOT_TIMEOUT,
+            hit_points=STARTING_HIT_POINTS,
         )
         self._session.add(user)
         self._session.commit()

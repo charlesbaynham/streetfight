@@ -17,6 +17,7 @@ from backend import shot_escalation
 from backend import shot_vision
 from backend.admin_interface import AdminInterface
 from backend.identity.config import default_scheme
+from backend.model import STARTING_HIT_POINTS
 from backend.model import Shot
 from backend.model import Team
 from backend.model import User
@@ -25,6 +26,7 @@ from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 
 from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
 
 SCHEME = default_scheme()
 
@@ -158,11 +160,17 @@ def enable_ai(game_id):
 
 @pytest.fixture
 def target_with_slot(db_session, team_factory, user_factory):
-    """A second user, on their own team in the same game, wearing TARGET_SLOT."""
+    """A second user, on their own team in the same game, wearing TARGET_SLOT.
+
+    Unarmoured, so that one auto-applied hit takes them to zero: these tests
+    are about what the drain does with a verdict, not about how many hit
+    points M1.2 starts people on.
+    """
     team_id = team_factory()
     user_id = user_factory()
     with UserInterface(user_id) as ui:
         ui.join_team(team_id)
+    strip_armour(user_id)
     db_session.query(User).filter_by(id=user_id).update({"identity_slot": TARGET_SLOT})
     db_session.commit()
     return user_id
@@ -608,6 +616,7 @@ def test_a_confident_self_shot_auto_resolves(
         {"identity_slot": TARGET_SLOT}
     )
     db_session.commit()
+    strip_armour(user_in_team)
 
     shot = drain_with_confident_hit(db_session, shot_from_user_in_team)
 
@@ -636,7 +645,8 @@ def test_the_same_slot_in_another_game_does_not_confuse_the_mapping(
 
     assert shot.checked is True
     assert shot.target_user_id == target_with_slot
-    assert UserInterface(other_user).get_user_model().hit_points == 1
+    # Untouched: still on the hit points every player starts with.
+    assert UserInterface(other_user).get_user_model().hit_points == STARTING_HIT_POINTS
 
 
 # -- strict queue order ------------------------------------------------------

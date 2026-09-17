@@ -11,6 +11,7 @@ from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 from backend.identity.config import hex_for
+from backend.model import STARTING_HIT_POINTS
 from backend.model import User
 from backend.user_interface import UserInterface
 
@@ -121,16 +122,29 @@ def test_user_cannot_shoot_when_dead(
         UserInterface(user_id).submit_shot(test_image)
 
 
+def test_a_fresh_player_starts_with_their_armour_on(user_factory):
+    """M1.2: "starting armour 1", which is a starting hit_points of 2 -
+    armour is hit points above one. _make_user is the only place a User row is
+    built, so this is the whole of the starting state."""
+    user_id = user_factory()
+
+    assert UserInterface(user_id).get_user_model().hit_points == STARTING_HIT_POINTS
+
+
 def test_can_give_health(user_in_team):
+    before = UserInterface(user_in_team).get_user_model().hit_points
+
     UserInterface(user_in_team).award_HP()
 
-    assert UserInterface(user_in_team).get_user_model().hit_points == 2
+    assert UserInterface(user_in_team).get_user_model().hit_points == before + 1
 
 
 def test_can_give_multiple_health(user_in_team):
+    before = UserInterface(user_in_team).get_user_model().hit_points
+
     UserInterface(user_in_team).award_HP(num=10)
 
-    assert UserInterface(user_in_team).get_user_model().hit_points == 11
+    assert UserInterface(user_in_team).get_user_model().hit_points == before + 10
 
 
 def test_can_give_ammo(user_in_team):
