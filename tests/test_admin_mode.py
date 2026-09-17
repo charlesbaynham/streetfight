@@ -1,5 +1,6 @@
 import datetime
 import io
+import time
 import zipfile
 from uuid import uuid4
 
@@ -9,10 +10,19 @@ from fastapi.exceptions import HTTPException
 from backend import admin_interface
 from backend.admin_interface import AdminInterface
 from backend.image_processing import load_image
+from backend.model import APPEALS_PER_GAME
+from backend.model import BASIC_WEAPON
+from backend.model import STARTING_HIT_POINTS
+from backend.model import Game
+from backend.model import Item
+from backend.model import ItemType
 from backend.model import Shot
 from backend.model import TickerEntry
 from backend.model import User
 from backend.user_interface import UserInterface
+
+from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
@@ -64,12 +74,17 @@ def old_shot_prep(
     UserInterface(user_a).join_team(team_a)
     UserInterface(user_b).join_team(team_b)
 
+    # Everything below turns on one shot killing user B - the invalidation
+    # cascade, the refund, the queue emptying - so neither player wears the
+    # starting armour M1.2 gave them.
+    strip_armour(user_a, user_b)
+
     AdminInterface().award_user_ammo(user_a, 1000)
     AdminInterface().award_user_ammo(user_b, 1000)
 
     # Give both users the basic weapon
-    UserInterface(user_a).set_weapon_data(1, 6)
-    UserInterface(user_b).set_weapon_data(1, 6)
+    UserInterface(user_a).set_weapon_data(1, NO_FIRE_DELAY)
+    UserInterface(user_b).set_weapon_data(1, NO_FIRE_DELAY)
 
     # User A shoots user B (the admin hasn't checked it yet)
     shot_a = submit_shot_and_get_id(db_session, user_a, test_image_string)
@@ -256,7 +271,7 @@ def test_shots_info_includes_checked_only_when_asked(
     admin_api_client, db_session, user_in_team, test_image_string
 ):
     AdminInterface().award_user_ammo(user_in_team, 10)
-    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(user_in_team).submit_shot(test_image_string)
     shot_id = db_session.query(Shot.id).one()[0]
 
@@ -290,7 +305,7 @@ def test_a_contested_checked_shot_can_be_re_adjudicated(
 ):
     shooter, target = two_users_in_different_teams
     UserInterface(shooter).award_ammo(1)
-    UserInterface(shooter).set_weapon_data(1, 6)
+    UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(shooter).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_id, target)
 
@@ -308,7 +323,7 @@ def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
     db_session, user_in_team, test_image_string
 ):
     UserInterface(user_in_team).award_ammo(1)
-    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(user_in_team).submit_shot(test_image_string)
     AdminInterface().mark_shot_missed(shot_id)
 
@@ -325,8 +340,11 @@ def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
 def contested_hit(two_users_in_different_teams, test_image_string):
     """A shot ruled a hit and then appealed by its target."""
     shooter, target = two_users_in_different_teams
+    # The hit knocks the target out, which is what makes the appeal worth
+    # lodging, so one hit has to be fatal.
+    strip_armour(target)
     UserInterface(shooter).award_ammo(1)
-    UserInterface(shooter).set_weapon_data(1, 6)
+    UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(shooter).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_id, target)
     UserInterface(target).appeal_shot(shot_id, "missed")
@@ -394,7 +412,7 @@ def contested_no_hit(two_users_in_different_teams, test_image_string):
     def _make(ruling):
         shooter, target = two_users_in_different_teams
         UserInterface(shooter).award_ammo(1)
-        UserInterface(shooter).set_weapon_data(1, 6)
+        UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
         shot_id = UserInterface(shooter).submit_shot(test_image_string)
         if ruling == "miss":
             AdminInterface().mark_shot_missed(shot_id)
@@ -598,6 +616,193 @@ def test_set_circle(admin_api_client, user_in_team):
     assert response.is_success
 
 
+# -- the countdown cue (backend/next_event.py) -------------------------------
+
+
+def cue_of(user_id):
+    """The cue as the player's own phone sees it."""
+    model = UserInterface(user_id).get_user_model()
+    return model.next_event_kind, model.next_event_at, model.next_event_note
+
+
+def test_cueing_the_next_circle_starts_a_countdown(user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    deadline = AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    kind, at, note = cue_of(user_in_team)
+    assert kind == "circle"
+    assert at == pytest.approx(deadline)
+    assert at == pytest.approx(time.time() + 600, abs=5)
+    assert note is None
+
+
+def test_a_cue_carries_the_note_the_admin_typed(user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().cue_next_event(
+        game_id, "drop", seconds=300, note="  a medpack and two armour  "
+    )
+
+    assert cue_of(user_in_team)[2] == "a medpack and two armour"
+
+
+def test_a_blank_note_is_no_note(user_in_team):
+    """The admin's input box arrives as an empty string, not as None."""
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().cue_next_event(game_id, "drop", seconds=300, note="   ")
+
+    assert cue_of(user_in_team)[2] is None
+
+
+def test_cueing_again_replaces_the_first_cue(user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+    second = AdminInterface().cue_next_event(game_id, "drop", seconds=120)
+
+    kind, at, _note = cue_of(user_in_team)
+    assert kind == "drop"
+    assert at == pytest.approx(second)
+
+
+def test_an_unknown_kind_is_refused(user_in_team):
+    with pytest.raises(HTTPException):
+        AdminInterface().cue_next_event(
+            game_of_user(user_in_team), "fireworks", seconds=60
+        )
+
+
+def test_a_countdown_to_the_past_is_refused(user_in_team):
+    with pytest.raises(HTTPException):
+        AdminInterface().cue_next_event(
+            game_of_user(user_in_team), "circle", seconds=-60
+        )
+
+
+def test_cancelling_the_cue_clears_all_three_columns(user_in_team):
+    game_id = game_of_user(user_in_team)
+    AdminInterface().cue_next_event(game_id, "drop", seconds=300, note="a medpack")
+
+    AdminInterface().cancel_cue(game_id)
+
+    assert cue_of(user_in_team) == (None, None, None)
+
+
+def test_cancelling_when_nothing_is_cued_is_harmless(user_in_team):
+    AdminInterface().cancel_cue(game_of_user(user_in_team))
+
+    assert cue_of(user_in_team) == (None, None, None)
+
+
+def test_the_cue_is_announced_in_the_ticker(db_session, user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert any("10 minutes" in message for message in messages)
+
+
+def test_a_short_countdown_is_announced_in_seconds(db_session, user_in_team):
+    """The ticker line is read in passing by somebody walking, so the unit
+    follows the number rather than the other way round."""
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().cue_next_event(game_id, "circle", seconds=45)
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert any("45 seconds" in message for message in messages)
+
+
+def test_firing_a_cue_that_has_been_replaced_does_nothing(user_in_team):
+    """The double-firing guard: a timer that slept through a re-cue must not
+    close the circle on the deadline it was armed for."""
+    game_id = game_of_user(user_in_team)
+    stale = AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+    AdminInterface().cue_next_event(game_id, "circle", seconds=1200)
+
+    assert AdminInterface().fire_next_event(game_id, expected_at=stale) is False
+    assert cue_of(user_in_team)[0] == "circle"
+
+
+def test_firing_a_cue_that_has_been_cancelled_does_nothing(user_in_team):
+    game_id = game_of_user(user_in_team)
+    deadline = AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+    AdminInterface().cancel_cue(game_id)
+
+    assert AdminInterface().fire_next_event(game_id, expected_at=deadline) is False
+
+
+def test_firing_a_drop_cue_clears_it(user_in_team):
+    """M3.3 gives the drop its courier; until then the countdown at least
+    stops being one."""
+    game_id = game_of_user(user_in_team)
+    deadline = AdminInterface().cue_next_event(game_id, "drop", seconds=300)
+
+    assert AdminInterface().fire_next_event(game_id, expected_at=deadline) is True
+    assert cue_of(user_in_team) == (None, None, None)
+
+
+def test_a_signed_up_player_with_no_team_is_told_about_the_cue(
+    db_session, user_factory, one_game, mocker
+):
+    """A player who has signed up but not been handed a team sits on the
+    waiting page, which is exactly where the countdown is worth reading."""
+    bumped = mocker.patch("backend.admin_interface.trigger_update_event")
+    user_id = user_factory()
+    db_session.query(User).filter_by(id=user_id).one().game_id = one_game
+    db_session.commit()
+
+    AdminInterface().cue_next_event(one_game, "circle", seconds=600)
+
+    assert mocker.call("user", user_id) in bumped.call_args_list
+
+
+def test_only_live_cues_are_swept_up(user_in_team, one_game):
+    assert AdminInterface().get_cued_games() == []
+
+    game_id = game_of_user(user_in_team)
+    deadline = AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    assert AdminInterface().get_cued_games() == [(game_id, pytest.approx(deadline))]
+
+    AdminInterface().cancel_cue(game_id)
+    assert AdminInterface().get_cued_games() == []
+
+
+def test_cue_endpoints(admin_api_client, user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    response = admin_api_client.post(
+        "/api/admin_cue_next_event",
+        params={"game_id": str(game_id), "kind": "circle", "minutes": 10},
+    )
+    assert response.is_success
+    assert cue_of(user_in_team)[0] == "circle"
+
+    response = admin_api_client.post(
+        "/api/admin_cancel_cue", params={"game_id": str(game_id)}
+    )
+    assert response.is_success
+    assert cue_of(user_in_team) == (None, None, None)
+
+
+def test_the_cue_endpoint_refuses_a_kind_it_does_not_know(
+    admin_api_client, user_in_team
+):
+    response = admin_api_client.post(
+        "/api/admin_cue_next_event",
+        params={
+            "game_id": str(game_of_user(user_in_team)),
+            "kind": "fireworks",
+            "minutes": 10,
+        },
+    )
+    assert response.status_code == 422
+
+
 # -- the spectator screen's reads (react-ui/src/SpectatorView.js) ------------
 
 
@@ -725,3 +930,134 @@ def test_the_admin_scoreboard_answers_without_a_player_session(
     )
     assert response.is_success
     assert len(response.json()["table"]) == 2
+
+
+@pytest.fixture
+def game_mid_sandbox(db_session, team_factory, user_factory, test_image_string):
+    """A game part-way through the sandbox hour, with everything M2.1 has an
+    opinion about: a player in a team who has shot, scanned and been shot at,
+    a signed-up player who has not reached the door yet, a reference photo, a
+    location, a nominated leader, circles, a ticker and a cued event.
+
+    Returns (game_id, player_in_team, signup_with_no_team).
+    """
+    team_id = team_factory()
+    player = user_factory()
+    with UserInterface(player) as ui:
+        ui.join_team(team_id)
+
+    game_id = game_of_user(player)
+
+    # The player who signed up through the game link and has not scanned a
+    # team card yet - invisible to reset_game's walk over the teams
+    signup = user_factory()
+    db_session.query(User).filter_by(id=signup).update({"game_id": game_id})
+    db_session.commit()
+
+    # An hour of sandbox: ammo, armour, a weapon, a shot fired, a hit taken
+    with UserInterface(player) as ui:
+        ui.award_ammo(5)
+        ui.set_HP(4)
+        ui.set_weapon_data(3, NO_FIRE_DELAY)
+        ui.submit_shot(test_image_string)
+    UserInterface(player).set_location(51.0, 0.0, accuracy=10.0)
+
+    # The door's work, which must survive
+    AdminInterface().set_reference_photo(player, test_image_string)
+    AdminInterface().set_team_leader(player, True)
+    db_session.query(User).filter_by(id=player).update({"identity_slot": 7})
+
+    # An appeal spent, so the budget has visibly moved
+    db_session.query(User).filter_by(id=player).update({"appeals_remaining": 1})
+
+    # A scanned item, a circle, a ticker entry and a cue
+    item = Item(id=uuid4(), item_type=ItemType.AMMO, data="{}", game_id=game_id)
+    item.users.append(db_session.query(User).filter_by(id=player).one())
+    db_session.add(item)
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    game.exclusion_circle_lat = 51.0
+    game.exclusion_circle_long = 0.0
+    game.exclusion_circle_radius = 1.0
+    game.next_event_kind = "drop"
+    game.next_event_at = 1_000_000.0
+    game.next_event_note = "a medpack"
+    db_session.add(TickerEntry(game_id=game_id, message="something happened"))
+    db_session.commit()
+
+    return game_id, player, signup
+
+
+def test_reset_to_start_state_clears_the_sandbox_but_keeps_the_door(
+    db_session, game_mid_sandbox
+):
+    game_id, player, _signup = game_mid_sandbox
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    model = UserInterface(player).get_user_model()
+    assert model.num_bullets == 0
+    assert model.hit_points == STARTING_HIT_POINTS
+    assert (model.shot_damage, model.shot_timeout) == BASIC_WEAPON
+    assert model.appeals_remaining == APPEALS_PER_GAME
+    assert model.time_of_death is None
+
+    user = db_session.query(User).filter_by(id=player).one()
+    assert user.last_shot_at is None
+
+    # Nothing of the sandbox hour is left
+    assert db_session.query(Shot).filter_by(game_id=game_id).count() == 0
+    assert db_session.query(Item).filter_by(game_id=game_id).count() == 0
+    assert db_session.query(TickerEntry).filter_by(game_id=game_id).count() == 0
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    assert game.exclusion_circle_lat is None
+    assert game.exclusion_circle_radius is None
+    assert game.next_event_kind is None
+    assert game.next_event_at is None
+    assert game.next_event_note is None
+
+    # ...but everything the door did survives it
+    assert user.reference_photo_base64 is not None
+    assert user.identity_slot == 7
+    assert user.team_id is not None
+    assert user.is_team_leader is True
+    assert user.latitude == 51.0
+
+
+def test_reset_to_start_state_includes_signups_with_no_team(
+    db_session, game_mid_sandbox
+):
+    """reset_game walks the teams, so it cannot see a player who has signed up
+    and not yet scanned a team card at the door (roadmap R15)."""
+    game_id, _player, signup = game_mid_sandbox
+
+    db_session.query(User).filter_by(id=signup).update(
+        {"num_bullets": 9, "hit_points": 1, "appeals_remaining": 0}
+    )
+    db_session.commit()
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    stray = db_session.query(User).filter_by(id=signup).one()
+    assert stray.team_id is None
+    assert stray.num_bullets == 0
+    assert stray.hit_points == STARTING_HIT_POINTS
+    assert (stray.shot_damage, stray.shot_timeout) == BASIC_WEAPON
+    assert stray.appeals_remaining == APPEALS_PER_GAME
+
+
+def test_reset_to_start_state_refuses_while_the_game_is_running(
+    db_session, game_mid_sandbox
+):
+    """The friction is deliberate - see reset_to_start_state's docstring."""
+    game_id, player, _signup = game_mid_sandbox
+    AdminInterface().set_game_active(game_id, True)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().reset_to_start_state(game_id)
+    assert excinfo.value.status_code == 400
+
+    # And it refused before touching anything
+    assert db_session.query(Shot).filter_by(game_id=game_id).count() == 1
+    assert UserInterface(player).get_user_model().num_bullets == 4

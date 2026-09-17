@@ -89,11 +89,11 @@ export function sendAPIRequest(
 export function getGunImgFromUser(user) {
   let image = null;
 
-  if (user.shot_damage === 0 && user.shot_timeout === 6) image = gun_06;
-  else if (user.shot_damage === 1 && user.shot_timeout === 6) image = gun_16;
-  else if (user.shot_damage === 2 && user.shot_timeout === 6) image = gun_26;
-  else if (user.shot_damage === 3 && user.shot_timeout === 6) image = gun_36;
-  else if (user.shot_damage === 1 && user.shot_timeout === 1) image = gun_11;
+  if (user.shot_damage === 0 && user.shot_timeout === 25) image = gun_06;
+  else if (user.shot_damage === 1 && user.shot_timeout === 25) image = gun_16;
+  else if (user.shot_damage === 2 && user.shot_timeout === 25) image = gun_26;
+  else if (user.shot_damage === 3 && user.shot_timeout === 25) image = gun_36;
+  else if (user.shot_damage === 1 && user.shot_timeout === 5) image = gun_11;
 
   return image;
 }

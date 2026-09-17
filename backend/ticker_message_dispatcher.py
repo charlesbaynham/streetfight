@@ -45,6 +45,10 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_BOTH = auto()
     ADMIN_SET_CIRCLE_DROP = auto()
     ADMIN_CLEARED_CIRCLE_DROP = auto()
+    CUE_CIRCLE = auto()
+    CUE_DROP = auto()
+    CUE_CANCELLED = auto()
+    CIRCLE_CLOSED = auto()
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
@@ -157,6 +161,25 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP: (
         TickerTarget.PUBLIC,
         "The supply drop has been claimed!",
+    ),
+    # The countdown messages (M3.2/M3.3). {num} is how long is left, already
+    # in words ("10 minutes"), because the number alone would need a unit and
+    # the unit depends on the number.
+    TickerMessageType.CUE_CIRCLE: (
+        TickerTarget.PUBLIC,
+        "The circle closes in {num} - get inside it!",
+    ),
+    TickerMessageType.CUE_DROP: (
+        TickerTarget.PUBLIC,
+        "A supply drop lands in {num}",
+    ),
+    TickerMessageType.CUE_CANCELLED: (
+        TickerTarget.PUBLIC,
+        "The countdown has been called off",
+    ),
+    TickerMessageType.CIRCLE_CLOSED: (
+        TickerTarget.PUBLIC,
+        "The circle has closed - if you're outside, get moving!",
     ),
     TickerMessageType.MISSED_SHOT: (
         TickerTarget.PRIVATE_USER,

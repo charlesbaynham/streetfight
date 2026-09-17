@@ -92,6 +92,7 @@ setup_logging()
 
 from . import ai_shot_review
 from . import generate_pub_pages
+from . import generate_qr_items
 from . import image_processing
 from . import printables
 from . import reference_photos
@@ -107,8 +108,10 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import GameModel
 from .model import ShotModel
+from .next_event import NextEventKind
 from .ticker import Ticker
 from .user_id import get_user_id
 from .user_interface import UserInterface
@@ -1045,6 +1048,8 @@ async def admin_make_new_item(
     item_data: Dict,
     collected_only_once=True,
     collected_as_team=False,
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
 ):
     logger.info("admin_make_new_item")
     try:
@@ -1053,6 +1058,8 @@ async def admin_make_new_item(
             item_data,
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
     except pydantic.ValidationError as e:
         raise HTTPException(400, f"Invalid submission - {e}")
@@ -1097,6 +1104,12 @@ async def admin_set_user_name(user_id: UUID, name: str):
     AdminInterface().set_user_name(user_id=user_id, name=name)
 
 
+@admin_method(path="/admin_set_team_leader", method="POST")
+async def admin_set_team_leader(user_id: UUID, is_team_leader: bool):
+    logger.info("admin_set_team_leader - %s", locals())
+    AdminInterface().set_team_leader(user_id=user_id, is_team_leader=is_team_leader)
+
+
 @admin_method(path="/admin_set_circle", method="POST")
 async def admin_set_circle(
     game_id: UUID, name: CircleTypes, lat: float, long: float, radius_km: float
@@ -1105,6 +1118,28 @@ async def admin_set_circle(
     AdminInterface().set_circles(
         game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
     )
+
+
+@admin_method(path="/admin_cue_next_event", method="POST")
+async def admin_cue_next_event(
+    game_id: UUID,
+    kind: NextEventKind,
+    minutes: float,
+    note: Optional[str] = None,
+):
+    """Start the countdown the players' phones show. Minutes, not seconds:
+    this is typed on a phone in a hurry, and every real cue is a round number
+    of them."""
+    logger.info("admin_cue_next_event - %s", locals())
+    return AdminInterface().cue_next_event(
+        game_id=game_id, kind=kind.value, seconds=minutes * 60, note=note
+    )
+
+
+@admin_method(path="/admin_cancel_cue", method="POST")
+async def admin_cancel_cue(game_id: UUID):
+    logger.info("admin_cancel_cue - %s", locals())
+    AdminInterface().cancel_cue(game_id=game_id)
 
 
 Landmark = Enum("Landmark", {k: k for k in ACTIVE_VENUE.landmarks})
@@ -1153,6 +1188,15 @@ async def admin_reset_game(game_id: UUID, keep_weapons: bool = True):
     logger.info("admin_reset_game - %s", locals())
 
     AdminInterface().reset_game(game_id=game_id, keep_weapons=keep_weapons)
+
+
+@admin_method(path="/admin_reset_to_start_state", method="POST")
+async def admin_reset_to_start_state(game_id: UUID):
+    """The 16:00 button (M2.1): sweep the sandbox away but keep the door's
+    work. Refuses unless the game is paused."""
+    logger.info("admin_reset_to_start_state - %s", locals())
+
+    AdminInterface().reset_to_start_state(game_id=game_id)
 
 
 @admin_method("/admin_ticker_messages", method="GET")
@@ -1317,10 +1361,13 @@ async def admin_item_sheets_pdf(
     num: int,
     sheets: int = 1,
     damage: int = 1,
-    timeout: float = 6,
+    timeout: float = DEFAULT_SHOT_TIMEOUT,
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
+    minutes: Optional[int] = None,
 ):
     """The drop cards: sheets of eight item codes, to be cut up and hidden."""
     logger.info("admin_item_sheets_pdf - %s", locals())
@@ -1335,6 +1382,9 @@ async def admin_item_sheets_pdf(
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
             tag=tag,
+            batch=batch,
+            unlimited=unlimited,
+            minutes=minutes,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1347,17 +1397,63 @@ async def admin_pub_pages_pdf(
     count: int,
     num_bullets: int = generate_pub_pages.BULLETS_PER_TEAM_MEMBER,
     tag: str = "pub",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
 ):
     """The pub certificates: one A4 poster per pub, each a team-wide ammo
     code the first team to scan it collects for everybody."""
     logger.info("admin_pub_pages_pdf - %s", locals())
 
     try:
-        pdf = printables.pub_pages_pdf(count, num_bullets=num_bullets, tag=tag)
+        pdf = printables.pub_pages_pdf(
+            count, num_bullets=num_bullets, tag=tag, batch=batch
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return _pdf_response(pdf, "pub_pages.pdf")
+
+
+@admin_method(path="/admin_sandbox_sheets_pdf", method="POST")
+async def admin_sandbox_sheets_pdf(copies: int = 1):
+    """The sandbox posters: one sheet of eight for every kind of card the
+    warm-up room carries, every code unlimited so the same player can scan it
+    again and again, and every one in the "sandbox" batch so the whole room is
+    withdrawn in a single press at 16:00."""
+    logger.info("admin_sandbox_sheets_pdf - %s", locals())
+
+    try:
+        pdf = printables.sandbox_sheets_pdf(copies)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, "sandbox_sheets.pdf")
+
+
+# Withdrawing a batch (M2.2). The only recall a printed code has: a card
+# cannot be un-printed, and rotating SECRET_KEY would take the team cards with
+# it. POST for the two that change something, GET for the list.
+
+
+@admin_method(path="/admin_withdraw_batch", method="POST")
+async def admin_withdraw_batch(batch: str) -> List[dict]:
+    """Stop every code minted into ``batch`` from being collectable - what
+    turns the sandbox's posters off at 16:00. Returns the batches now
+    withdrawn, so the page never has to ask twice."""
+    logger.info("admin_withdraw_batch %s", batch)
+    return AdminInterface().withdraw_batch(batch)
+
+
+@admin_method(path="/admin_restore_batch", method="POST")
+async def admin_restore_batch(batch: str) -> List[dict]:
+    """Let a withdrawn batch be collected again."""
+    logger.info("admin_restore_batch %s", batch)
+    return AdminInterface().restore_batch(batch)
+
+
+@admin_method(path="/admin_revoked_batches", method="GET")
+async def admin_revoked_batches() -> List[dict]:
+    """Every batch currently withdrawn, most recent first."""
+    return AdminInterface().get_revoked_batches()
 
 
 def _pdf_response(pdf: bytes, filename: str) -> Response:
@@ -1442,6 +1538,23 @@ def _make_debug_entries() -> None:
     from .reset_db import make_debug_entries_if_wanted
 
     make_debug_entries_if_wanted()
+
+
+@app.on_event("startup")
+async def _rearm_event_cues() -> None:
+    """Rebuild the countdown timers from the database.
+
+    The timers are in-process asyncio tasks and die with the process; the
+    deadlines are columns and do not. Without this, deploying in the middle of
+    a ten-minute countdown would leave thirty phones counting down to a circle
+    that never closed - and the admin with no sign that anything was wrong.
+    See backend/next_event.py.
+    """
+    from . import next_event
+
+    found = next_event.sweep()
+    if found:
+        logger.info("Re-armed %d event cue(s) at startup", found)
 
 
 app.include_router(router, prefix="/api")

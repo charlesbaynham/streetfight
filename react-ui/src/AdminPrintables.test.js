@@ -18,6 +18,8 @@ function renderPage() {
     admin_team_cards_pdf: "%PDF-fake",
     admin_pub_pages_pdf: "%PDF-fake",
     admin_item_sheets_pdf: "%PDF-fake",
+    admin_sandbox_sheets_pdf: "%PDF-fake",
+    admin_revoked_batches: [],
   });
   render(<PrintablesPanel />);
 }
@@ -52,7 +54,7 @@ test("minting pub certificates posts the page count and the bullets each is wort
 
   const call = getLastAPICall("admin_pub_pages_pdf");
   expect(call.method).toBe("POST");
-  expect(call.query).toEqual({ count: "6", num_bullets: "5" });
+  expect(call.query).toEqual({ count: "6", num_bullets: "5", batch: "game" });
 });
 
 test("minting drop cards posts the whole item definition", async () => {
@@ -67,10 +69,102 @@ test("minting drop cards posts the whole item definition", async () => {
     num: "5",
     sheets: "1",
     damage: "1",
-    timeout: "6",
+    timeout: "25",
     collected_only_once: "true",
     collected_as_team: "false",
+    batch: "game",
   });
+});
+
+test("a radar card asks for minutes rather than an amount, and is batched like the rest", async () => {
+  renderPage();
+
+  await actAndFlush(() =>
+    userEvent.selectOptions(
+      panel("Drop cards").getByRole("combobox"),
+      "circle_warning",
+    ),
+  );
+  await press("Drop cards", "Mint and download (PDF)");
+
+  const call = getLastAPICall("admin_item_sheets_pdf");
+  expect(call.query.itype).toBe("circle_warning");
+  // The default that comes with the payload schema, not one chosen here.
+  expect(call.query.minutes).toBe("10");
+  expect(call.query.batch).toBe("game");
+});
+
+test("a batch is what the admin types, so a sandbox run can be withdrawn on its own", async () => {
+  renderPage();
+
+  const field = panel("Drop cards").getByLabelText(/Batch/);
+  await actAndFlush(() => userEvent.clear(field));
+  await actAndFlush(() => userEvent.type(field, "sandbox"));
+  await press("Drop cards", "Mint and download (PDF)");
+
+  expect(getLastAPICall("admin_item_sheets_pdf").query.batch).toBe("sandbox");
+});
+
+test("the sandbox sheet posts only how many copies, and says what a press costs", async () => {
+  renderPage();
+
+  const sandbox = panel("Sandbox posters");
+  // Six kinds of poster, one code each, whatever the copy count.
+  expect(sandbox.getByText(/mints 6 new codes/i)).toBeInTheDocument();
+
+  await press("Sandbox posters", "Mint and download (PDF)");
+
+  const call = getLastAPICall("admin_sandbox_sheets_pdf");
+  expect(call.method).toBe("POST");
+  expect(call.query).toEqual({ copies: "1" });
+});
+
+test("withdrawing a batch posts it, and the list it comes back with is what is shown", async () => {
+  installFetchMock({
+    admin_list_games: GAMES,
+    admin_game_join_url: { game_url: "https://example.com/?j=signup" },
+    admin_revoked_batches: [],
+    admin_withdraw_batch: [
+      { batch: "sandbox", revoked_at: "2026-09-19T16:00:00" },
+    ],
+  });
+  render(<PrintablesPanel />);
+  await actAndFlush(() => {});
+
+  const withdraw = panel("Withdraw codes");
+  expect(withdraw.getByText(/nothing is withdrawn/i)).toBeInTheDocument();
+
+  // The button names what it is about to turn off.
+  await press("Withdraw codes", 'Withdraw "sandbox"');
+
+  expect(getLastAPICall("admin_withdraw_batch").query).toEqual({
+    batch: "sandbox",
+  });
+  // The row that came back, with its way out - not the blurb, which also
+  // names the sandbox.
+  const row = withdraw.getByRole("button", {
+    name: "Allow again",
+  }).parentElement;
+  expect(within(row).getByText("sandbox")).toBeInTheDocument();
+});
+
+test("a batch that is not the sandbox is warned about before it is withdrawn", async () => {
+  installFetchMock({
+    admin_list_games: GAMES,
+    admin_game_join_url: { game_url: "https://example.com/?j=signup" },
+    admin_revoked_batches: [],
+  });
+  render(<PrintablesPanel />);
+  await actAndFlush(() => {});
+
+  const withdraw = panel("Withdraw codes");
+  expect(withdraw.queryByText(/is not the sandbox/i)).not.toBeInTheDocument();
+
+  const field = withdraw.getByLabelText("Batch");
+  await actAndFlush(() => userEvent.clear(field));
+  await actAndFlush(() => userEvent.type(field, "game"));
+
+  expect(withdraw.getByText(/is not the sandbox/i)).toBeInTheDocument();
 });
 
 test("a failed build says so rather than leaving the button looking pressed", async () => {

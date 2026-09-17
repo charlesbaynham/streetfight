@@ -1,4 +1,6 @@
 import json
+import re
+import time
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -10,6 +12,8 @@ from backend.model import Shot
 from backend.model import User
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
+
+from .shared_fixtures import strip_armour
 
 
 def test_submit_shot(user_in_team, test_image_string):
@@ -44,16 +48,16 @@ def test_submit_shot_records_shot_timeout(db_session, user_in_team, test_image_s
     have to be frozen at the moment of firing."""
     ui = UserInterface(user_in_team)
     ui.award_ammo(1)
-    ui.set_weapon_data(damage=2, fire_delay=6)
+    ui.set_weapon_data(damage=2, fire_delay=25)
 
     shot_id = ui.submit_shot(test_image_string)
 
-    assert db_session.get(Shot, shot_id).shot_timeout == 6
+    assert db_session.get(Shot, shot_id).shot_timeout == 25
 
     # Picking up a later upgrade must not retroactively change what this
     # shot recorded - it is a snapshot of the moment it was fired.
-    ui.set_weapon_data(damage=3, fire_delay=1)
-    assert db_session.get(Shot, shot_id).shot_timeout == 6
+    ui.set_weapon_data(damage=3, fire_delay=5)
+    assert db_session.get(Shot, shot_id).shot_timeout == 25
 
 
 def test_submit_shot_no_ammo(user_in_team, test_image_string):
@@ -105,9 +109,16 @@ def test_a_replayed_shot_announces_itself_too(mocker, user_in_team, test_image_s
 
 
 def submit_a_shot(user_id, test_image_string, time_created=None):
+    """One shot, from a weapon with no fire delay at all.
+
+    The zero is deliberate: several tests below queue two shots from the same
+    player to exercise what happens to a shot *after* it lands, and the
+    server-side cooldown (M1.1) would otherwise refuse the second. The
+    cooldown has its own tests at the foot of this file.
+    """
     ui = UserInterface(user_id)
     ui.award_ammo(1)
-    ui.set_weapon_data(1, 6)
+    ui.set_weapon_data(1, 0)
     return ui.submit_shot(test_image_string, time_created=time_created)
 
 
@@ -176,6 +187,7 @@ def test_knockout_invalidates_the_targets_shot_fired_after_the_kill(
     import datetime
 
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
 
     shooter_shot = submit_a_shot(
         shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
@@ -240,6 +252,7 @@ def test_the_death_blow_announces_the_knockout_once(
     mocker, two_users_in_different_teams, test_image_string
 ):
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     shot_id = submit_a_shot(shooter, test_image_string)
     mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
 
@@ -260,6 +273,7 @@ def test_the_knockout_announces_invalidated_shots_with_a_count(
     import datetime
 
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     kill_shot = submit_a_shot(
         shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
     )
@@ -306,6 +320,7 @@ def test_hitting_an_already_dead_player_is_a_plain_hit(
     just changes nothing. Announcing a second knockout would credit the kill to
     whoever happened to be next in the queue."""
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     death_blow = submit_a_shot(shooter, test_image_string)
     afterwards = submit_a_shot(shooter, test_image_string)
     AdminInterface().hit_user(death_blow, target)
@@ -793,3 +808,186 @@ def test_shot_location_context_carries_the_shooters_fix(
     assert shooter["latitude"] == 51.5
     assert shooter["longitude"] == -0.1
     assert shooter["accuracy"] == 9.0
+
+
+# -- the server-side cooldown (M1.1) -----------------------------------------
+
+
+def test_three_back_to_back_shots_are_refused_after_the_first(
+    user_in_team, test_image_string
+):
+    """The plan's one "assume they will try to break it". Before this, the
+    only timer was FireButton's own setTimeout, so a reload - or a second tab,
+    or curl - fired as fast as you could press."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(3)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    ui.submit_shot(test_image_string)
+
+    for _ in range(2):
+        with pytest.raises(HTTPException) as refusal:
+            ui.submit_shot(test_image_string)
+        assert refusal.value.status_code == 403
+        assert "cooldown" in refusal.value.detail
+
+
+def test_a_refused_shot_costs_nothing(db_session, user_in_team, test_image_string):
+    """Checked before the photograph is stored and before the bullet is spent,
+    so a player who taps twice is not charged for the tap that did nothing."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(3)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    ui.submit_shot(test_image_string)
+    bullets_after_firing = db_session.get(User, user_in_team).num_bullets
+    shots_after_firing = db_session.query(Shot).count()
+
+    with pytest.raises(HTTPException):
+        ui.submit_shot(test_image_string)
+
+    assert db_session.get(User, user_in_team).num_bullets == bullets_after_firing
+    assert db_session.query(Shot).count() == shots_after_firing
+
+
+def test_a_shot_is_allowed_once_the_cooldown_has_run(
+    db_session, user_in_team, test_image_string
+):
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(2)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    ui.submit_shot(test_image_string)
+
+    # Wind the clock back rather than sleeping 25 s: last_shot_at is epoch
+    # seconds precisely so that it can be reasoned about like this.
+    user = db_session.get(User, user_in_team)
+    user.last_shot_at -= 25
+    db_session.commit()
+
+    ui.submit_shot(test_image_string)
+    assert db_session.query(Shot).count() == 2
+
+
+def test_the_fast_weapon_cools_down_sooner(db_session, user_in_team, test_image_string):
+    """The cooldown is the player's own shot_timeout, not one global number:
+    Eat-a-bullet's 5 s has to let a second shot through where Pewster's 25 s
+    does not."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(3)
+    ui.set_weapon_data(damage=1, fire_delay=5)
+
+    ui.submit_shot(test_image_string)
+
+    user = db_session.get(User, user_in_team)
+    user.last_shot_at -= 6
+    db_session.commit()
+
+    ui.submit_shot(test_image_string)
+    assert db_session.query(Shot).count() == 2
+
+    # ...and 6 s is not enough for the standard weapon.
+    ui.set_weapon_data(damage=1, fire_delay=25)
+    user = db_session.get(User, user_in_team)
+    user.last_shot_at -= 6
+    db_session.commit()
+
+    with pytest.raises(HTTPException):
+        ui.submit_shot(test_image_string)
+
+
+def test_the_refusal_says_how_long_is_left(user_in_team, test_image_string):
+    """MyWebcam puts this in front of the player, so it has to be a sentence
+    with the number in it rather than a bare status code."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(2)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    ui.submit_shot(test_image_string)
+
+    with pytest.raises(HTTPException) as refusal:
+        ui.submit_shot(test_image_string)
+
+    assert "s of cooldown left" in refusal.value.detail
+    seconds = float(re.search(r"([\d.]+) s of cooldown left", refusal.value.detail)[1])
+    assert 20 < seconds <= 25
+
+
+def test_a_players_first_ever_shot_is_never_refused(
+    db_session, user_in_team, test_image_string
+):
+    """last_shot_at is null for everybody on the live database the day this
+    deploys, and a null must mean "may fire" rather than "never fired, so
+    treat as now"."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(1)
+    assert db_session.get(User, user_in_team).last_shot_at is None
+
+    ui.submit_shot(test_image_string)
+
+
+def test_next_shot_at_counts_down_and_then_clears(
+    db_session, user_in_team, test_image_string
+):
+    """What FireButton counts down to, so a reload comes back still cooling
+    instead of handing over a fresh button."""
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(2)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    assert ui.get_user_model().next_shot_at is None
+
+    ui.submit_shot(test_image_string)
+
+    cooling = ui.get_user_model()
+    assert cooling.next_shot_at is not None
+    assert 20 < cooling.next_shot_at - time.time() <= 25
+
+    user = db_session.get(User, user_in_team)
+    user.last_shot_at -= 25
+    db_session.commit()
+
+    assert ui.get_user_model().next_shot_at is None
+
+
+def test_a_shot_with_a_time_of_its_own_is_exempt(
+    db_session, user_in_team, test_image_string
+):
+    """`time_created` is only ever passed by the replay and the demo drip -
+    `/api/submit_shot` passes neither, and must not - so those deal out a
+    simulated game's shots in whatever order suits them without the cooldown
+    refusing everything after the first. A player cannot reach this branch:
+    they have no way to choose their own shot's time.
+    """
+    import datetime
+
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(3)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    noon = datetime.datetime(2026, 1, 1, 12, 0, 0)
+    ui.submit_shot(test_image_string, time_created=noon)
+    ui.submit_shot(test_image_string, time_created=noon + datetime.timedelta(seconds=1))
+
+    assert db_session.query(Shot).count() == 2
+
+
+def test_a_replayed_shot_does_not_lock_out_a_real_one(
+    db_session, user_in_team, test_image_string
+):
+    """...and the replayed shot still records when it happened, so a simulated
+    shot from an hour ago leaves the player free to fire now rather than
+    stamping the cooldown with the wall clock."""
+    import datetime
+
+    ui = UserInterface(user_in_team)
+    ui.award_ammo(2)
+    ui.set_weapon_data(damage=1, fire_delay=25)
+
+    an_hour_ago = datetime.datetime.now(datetime.timezone.utc).replace(
+        tzinfo=None
+    ) - datetime.timedelta(hours=1)
+    ui.submit_shot(test_image_string, time_created=an_hour_ago)
+
+    ui.submit_shot(test_image_string)
+    assert db_session.query(Shot).count() == 2

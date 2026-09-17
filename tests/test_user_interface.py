@@ -11,8 +11,11 @@ from backend.identity.config import PROVIDED_CHANNEL
 from backend.identity.config import TEAM_CHANNEL
 from backend.identity.config import default_scheme
 from backend.identity.config import hex_for
+from backend.model import STARTING_HIT_POINTS
 from backend.model import User
 from backend.user_interface import UserInterface
+
+from .shared_fixtures import NO_FIRE_DELAY
 
 SCHEME = default_scheme()
 
@@ -79,16 +82,22 @@ def test_user_shots_respect_ammo(db_session, team_factory, user_factory, test_im
 
     UserInterface(user_id).join_team(team_id)
 
-    # Give the user some bullets
+    # Bullets, and a weapon with no fire delay: this test is about running out
+    # of ammo, and the server-side cooldown (M1.1) would otherwise refuse
+    # shots two and three for a reason it is not about.
     user = db_session.query(User).filter_by(id=user_id).first()
     user.num_bullets = 3
+    user.shot_timeout = NO_FIRE_DELAY
     db_session.commit()
 
     for _ in range(3):
         UserInterface(user_id).submit_shot(test_image)
 
-    with pytest.raises(HTTPException):
+    # ...and the refusal has to be the ammo one, now that there is a second
+    # thing in submit_shot that answers with a 403.
+    with pytest.raises(HTTPException) as refusal:
         UserInterface(user_id).submit_shot(test_image)
+    assert refusal.value.detail == "User has no ammo"
 
 
 def test_user_cannot_shoot_when_dead(
@@ -113,16 +122,29 @@ def test_user_cannot_shoot_when_dead(
         UserInterface(user_id).submit_shot(test_image)
 
 
+def test_a_fresh_player_starts_with_their_armour_on(user_factory):
+    """M1.2: "starting armour 1", which is a starting hit_points of 2 -
+    armour is hit points above one. _make_user is the only place a User row is
+    built, so this is the whole of the starting state."""
+    user_id = user_factory()
+
+    assert UserInterface(user_id).get_user_model().hit_points == STARTING_HIT_POINTS
+
+
 def test_can_give_health(user_in_team):
+    before = UserInterface(user_in_team).get_user_model().hit_points
+
     UserInterface(user_in_team).award_HP()
 
-    assert UserInterface(user_in_team).get_user_model().hit_points == 2
+    assert UserInterface(user_in_team).get_user_model().hit_points == before + 1
 
 
 def test_can_give_multiple_health(user_in_team):
+    before = UserInterface(user_in_team).get_user_model().hit_points
+
     UserInterface(user_in_team).award_HP(num=10)
 
-    assert UserInterface(user_in_team).get_user_model().hit_points == 11
+    assert UserInterface(user_in_team).get_user_model().hit_points == before + 10
 
 
 def test_can_give_ammo(user_in_team):
@@ -139,6 +161,28 @@ def test_can_give_multiple_ammo(user_in_team):
 
 def test_user_in_team(user_in_team):
     assert UserInterface(user_in_team).get_user_model().team_id is not None
+
+
+def test_a_player_is_not_a_team_leader_until_an_admin_says_so(user_in_team):
+    """The leader flag (M7) rides on the user model, which is what user_info
+    serves, so the waiting page can show the checklist without a second call."""
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is False
+
+    AdminInterface().set_team_leader(user_in_team, True)
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is True
+
+    AdminInterface().set_team_leader(user_in_team, False)
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is False
+
+
+def test_a_signed_up_player_with_no_team_can_be_made_a_leader(user_factory):
+    """Teams are scanned in at the door (R15), so a leader may be nominated
+    before the app knows which team they lead."""
+    user_id = user_factory()
+
+    AdminInterface().set_team_leader(user_id, True)
+
+    assert UserInterface(user_id).get_user_model().is_team_leader is True
 
 
 def test_outfit_wardrobe_is_none_before_an_outfit_is_picked(user_in_team):

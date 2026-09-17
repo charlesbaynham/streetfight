@@ -345,7 +345,8 @@ export function makeUser(overrides = {}) {
     num_bullets: 5,
     appeals_remaining: 3,
     shot_damage: 1,
-    shot_timeout: 6,
+    shot_timeout: 25,
+    next_shot_at: null,
     identity_slot: null,
     outfit_wardrobe: null,
     outfit_provided: null,
@@ -396,6 +397,9 @@ export function makeGame(overrides = {}) {
     ai_auto_actions_enabled: false,
     ai_escalation_enabled: true,
     ai_resolve_everything_enabled: false,
+    next_event_kind: null,
+    next_event_at: null,
+    next_event_note: null,
     ...overrides,
   };
 }

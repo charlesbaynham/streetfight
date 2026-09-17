@@ -43,7 +43,7 @@ function buildFixtures() {
     hit_points: 3,
     num_bullets: 5,
     shot_damage: 1,
-    shot_timeout: 6,
+    shot_timeout: 25,
   });
   // Non-standard damage/timeout combination, and dead - covers the skull
   // marker and the "raw figures" weapon fallback together.
@@ -66,7 +66,7 @@ function buildFixtures() {
     hit_points: 2,
     num_bullets: 1,
     shot_damage: 1,
-    shot_timeout: 6,
+    shot_timeout: 25,
   });
 
   const redTeam = makeTeam({
