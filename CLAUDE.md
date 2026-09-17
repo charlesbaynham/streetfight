@@ -225,12 +225,16 @@ Four things from it that are worth knowing even if you never call the agent:
     `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
     team handler for armour, medpacks or weapons, so asking for one raises
     `NotImplementedError` — a `RuntimeError`, so `collect_item` turns it into a
-    403. `CIRCLE_WARNING` is in that position on purpose (M0.3): its payload is
-    frozen and its cards are printed, and until M6.2 writes the handler a scan
-    is refused. `RADAR` has its handler now (M6.1): it sets `User.radar_until`
-    to `now + minutes*60` and **refuses while one is already running**, which
-    costs the player nothing — the refusal rolls the whole scan back, so no
-    `Item` row is written and the card is still good for later. **A printed code is an HMAC over its
+    403. Every `ItemType` has a handler now. The two experimental ones
+    (M6) work the same way: `RADAR` sets `User.radar_until` and
+    `CIRCLE_WARNING` sets `User.circle_warning_until`, both to
+    `now + minutes*60`, and both **refuse while one is already running** —
+    which costs the player nothing, because the refusal rolls the whole scan
+    back, so no `Item` row is written and the card is still good for later.
+    The circle warning is the one collection that is announced
+    *anonymously* ("Somebody knows where the next circle is..."), since naming
+    the holder would hand everybody the advantage the card just bought; the
+    holder gets a private line of their own so the card is not silent. **A printed code is an HMAC over its
     payload and nothing else**, which is what decouples the print run from the
     deploy — so a field added to `ItemModel` after codes are in circulation
     joins the signed message *only when it is not at its default*
