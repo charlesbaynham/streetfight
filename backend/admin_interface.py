@@ -28,6 +28,7 @@ from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
 from .model import APPEALS_PER_GAME
+from .model import BASIC_WEAPON
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import STARTING_HIT_POINTS
 from .model import Game
@@ -1990,6 +1991,87 @@ class AdminInterface:
     @db_scoped
     def _get_all_game_ids(self):
         return self._session.query(Game.id).all()
+
+    @db_scoped
+    def reset_to_start_state(self, game_id: UUID):
+        """Put a game back to how it should look the moment before it starts.
+
+        This is the 16:00 button on the night (M2.1), not `reset_game`: the
+        sandbox hour has to be swept away, but everything earned at the door
+        has to survive it. So it keeps the reference photos, the identities,
+        the teams, the last known locations and the nominated team leaders,
+        and resets everything the sandbox touched.
+
+        It **refuses unless the game is paused**, and that friction is
+        deliberate: this wipes every shot and every scanned item in the game,
+        and pausing first is both a second pair of eyes on a destructive
+        button and the thing the runbook asks for anyway. Do not quietly
+        relax it into a pause-then-reset.
+
+        Unlike `reset_game` it walks the players by `game_id` rather than
+        through the teams, so a player who signed up and has not yet scanned
+        a team card at the door is reset too (roadmap R15) - `reset_game`'s
+        team walk cannot see them at all.
+        """
+        game: Game = self._get_game_orm(game_id=game_id)
+
+        if game.active:
+            raise HTTPException(
+                400, "Pause the game before resetting it to the start state"
+            )
+
+        users: list[User] = self._session.query(User).filter_by(game_id=game_id).all()
+
+        for user in users:
+            user.num_bullets = 0
+            user.hit_points = STARTING_HIT_POINTS
+            user.time_of_death = None
+            user.shot_damage, user.shot_timeout = BASIC_WEAPON
+            user.appeals_remaining = APPEALS_PER_GAME
+            # Otherwise everybody starts the real game holding the cooldown
+            # from a sandbox shot that no longer exists (M1.1)
+            user.last_shot_at = None
+
+        # By game rather than by shooter: a shot outlives the team its shooter
+        # was in, and this has to empty the queue whoever is left in it
+        for shot in self._session.query(Shot).filter_by(game_id=game_id).all():
+            self._session.delete(shot)
+
+        # The sandbox codes have been scanned; deleting the rows re-arms the
+        # once-only ones, which is harmless here because the batch they belong
+        # to is withdrawn separately (M2.2) and the real codes are unscanned
+        for item in list(game.items):
+            item.users.clear()
+            self._session.delete(item)
+
+        for ticker_entry in (
+            self._session.query(TickerEntry).filter_by(game_id=game_id).all()
+        ):
+            self._session.delete(ticker_entry)
+
+        # All three circles, straight onto the columns rather than through
+        # set_circles: that announces each change to a ticker this is about to
+        # delete anyway, and would do it three times
+        for prefix in ("exclusion", "next", "drop"):
+            for field in ("lat", "long", "radius"):
+                setattr(game, f"{prefix}_circle_{field}", None)
+
+        # And whatever was cued to happen next (M3.1), which was cued against
+        # the sandbox clock
+        game.next_event_kind = None
+        game.next_event_at = None
+        game.next_event_note = None
+
+        # Read before the commit expires them
+        user_ids = [user.id for user in users]
+
+        self._session.commit()
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+        trigger_update_event("shots", game_id)
+        trigger_update_event("ticker", game_id)
+        trigger_circle_update(game_id)
 
     @db_scoped
     def reset_game(self, game_id: UUID, keep_weapons=True):

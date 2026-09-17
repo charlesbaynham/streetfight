@@ -6,6 +6,7 @@ import { sendAPIRequest } from "./utils";
 import { AdminPage, adminDownload, adminPost } from "./AdminCommon";
 import NewItems from "./NewItems";
 import JoinQRCodes from "./JoinQRCodes";
+import ResetToStartButton from "./ResetToStartButton";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
@@ -324,6 +325,9 @@ function GamePanel({ game }) {
 
       <h3>Join QR codes</h3>
       <JoinQRCodes game_id={game.id} />
+
+      <h3>Reset to start state</h3>
+      <ResetToStartButton game={game} />
     </>
   );
 }

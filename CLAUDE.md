@@ -179,6 +179,15 @@ Four things from it that are worth knowing even if you never call the agent:
     event triggering.
   - `user_interface.py` / `admin_interface.py` — game logic (player-facing and
     admin operations: shot validation, HP/ammo, weapons, circles, resets).
+    There are **two** resets and they are not interchangeable. `reset_game` is
+    the dev one: it walks the game's *teams*, and it deletes the reference
+    photos. `reset_to_start_state` (M2.1) is the one pressed on the night,
+    between the sandbox hour and the game proper: it walks every player by
+    `game_id` so a sign-up who has not reached the door yet is included
+    (roadmap R15), it clears the shots, items, ticker, circles and any cued
+    event, and it **keeps** the reference photos, identities, teams, locations
+    and team leaders. It refuses unless the game is paused, which is
+    deliberate friction rather than a precondition worth relaxing.
   - `shot_identification.py` — which player a shot photograph shows: builds the
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
