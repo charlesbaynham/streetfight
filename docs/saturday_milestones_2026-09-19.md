@@ -749,7 +749,7 @@ where she will stand.
 
 ---
 
-## M9 — The game-day runbook and the paper trail *(status: shipped 2026-09-17, PR #PRNUM)*
+## M9 — The game-day runbook and the paper trail *(status: shipped 2026-09-17, PR #276)*
 
 `docs/game_day_runbook_2026-09-19.md`: the plan's §5 as a checklist with the
 button behind each step named — pause, **Reset to start state**, **Withdraw
