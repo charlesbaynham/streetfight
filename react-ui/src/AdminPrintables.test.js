@@ -18,6 +18,7 @@ function renderPage() {
     admin_team_cards_pdf: "%PDF-fake",
     admin_pub_pages_pdf: "%PDF-fake",
     admin_item_sheets_pdf: "%PDF-fake",
+    admin_sandbox_sheets_pdf: "%PDF-fake",
   });
   render(<PrintablesPanel />);
 }
@@ -101,6 +102,20 @@ test("a batch is what the admin types, so a sandbox run can be withdrawn on its 
   await press("Drop cards", "Mint and download (PDF)");
 
   expect(getLastAPICall("admin_item_sheets_pdf").query.batch).toBe("sandbox");
+});
+
+test("the sandbox sheet posts only how many copies, and says what a press costs", async () => {
+  renderPage();
+
+  const sandbox = panel("Sandbox posters");
+  // Six kinds of poster, one code each, whatever the copy count.
+  expect(sandbox.getByText(/mints 6 new codes/i)).toBeInTheDocument();
+
+  await press("Sandbox posters", "Mint and download (PDF)");
+
+  const call = getLastAPICall("admin_sandbox_sheets_pdf");
+  expect(call.method).toBe("POST");
+  expect(call.query).toEqual({ copies: "1" });
 });
 
 test("a failed build says so rather than leaving the button looking pressed", async () => {
