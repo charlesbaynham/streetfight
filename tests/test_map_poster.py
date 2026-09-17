@@ -83,9 +83,7 @@ def test_a_landmark_lands_where_the_venue_says_it_is():
     centre, which pins both axes and their sign."""
     westminster = VENUES["westminster"]
     names = map_poster.poster_landmarks(westminster)
-    positions = dict(
-        zip(names, map_poster._marker_positions(westminster, names))
-    )
+    positions = dict(zip(names, map_poster._marker_positions(westminster, names)))
 
     house_x, house_y = positions["HOUSE_ABSOLUTE"]
     assert house_x == pytest.approx(0.5, abs=0.01)
@@ -103,9 +101,7 @@ def test_a_landmark_key_is_written_the_way_the_pub_is():
 
 
 def test_the_route_serves_a_pdf(admin_api_client):
-    response = admin_api_client.get(
-        "/api/admin_map_poster_pdf", params={"size": "A4"}
-    )
+    response = admin_api_client.get("/api/admin_map_poster_pdf", params={"size": "A4"})
 
     assert response.status_code == 200
     assert response.headers["content-type"] == "application/pdf"
@@ -113,9 +109,7 @@ def test_the_route_serves_a_pdf(admin_api_client):
 
 
 def test_the_route_refuses_paper_it_cannot_draw(admin_api_client):
-    response = admin_api_client.get(
-        "/api/admin_map_poster_pdf", params={"size": "A5"}
-    )
+    response = admin_api_client.get("/api/admin_map_poster_pdf", params={"size": "A5"})
 
     assert response.status_code == 400
 
