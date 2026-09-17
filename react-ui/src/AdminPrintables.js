@@ -44,6 +44,10 @@ const TIMED_TYPES = { radar: 5, circle_warning: 10 };
 
 const CARDS_PER_SHEET = 8;
 
+// Mirrors backend/map_poster.py's PAGE_SIZES_MM. Both are A-series, so the
+// poster is one design at two scales rather than two layouts.
+const POSTER_SIZES = ["A3", "A4"];
+
 // Every code minted here carries a batch, so that a whole print run can be
 // withdrawn at once later in the evening. The real cards are "game" and are
 // never withdrawn; the sandbox's posters are "sandbox" and stop working at
@@ -208,6 +212,44 @@ function BatchField({ batch, setBatch }) {
         onChange={(e) => setBatch(e.target.value)}
       />
     </Field>
+  );
+}
+
+// The venue map on one sheet, with a numbered legend of the pubs. A GET like
+// the team cards, and for a stronger reason: it mints nothing at all, it just
+// draws what backend/venues.py already says.
+function MapPoster() {
+  const [size, setSize] = useState("A3");
+
+  return (
+    <Printable
+      title="Map poster"
+      blurb="The map to pin up in the pub, with every pub on it numbered and named underneath. No circles, no drop locations - players read this one."
+      label="Download map poster (PDF)"
+      ready={true}
+      action={() =>
+        adminDownload(
+          "admin_map_poster_pdf",
+          { size: size },
+          `map_poster_${size.toLowerCase()}.pdf`,
+          "GET",
+        )
+      }
+    >
+      <Field label="Paper" hint="A3 is the one to put on a wall.">
+        <select
+          className={styles.input}
+          value={size}
+          onChange={(e) => setSize(e.target.value)}
+        >
+          {POSTER_SIZES.map((paper) => (
+            <option key={paper} value={paper}>
+              {paper}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </Printable>
   );
 }
 
@@ -578,6 +620,7 @@ export function PrintablesPanel() {
         top is the exception: it is sent, not printed.
       </p>
       <SignUpLink />
+      <MapPoster />
       <TeamCards />
       <PubPages />
       <ItemSheets />

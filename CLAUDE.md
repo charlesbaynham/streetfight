@@ -312,6 +312,21 @@ Four things from it that are worth knowing even if you never call the agent:
     the wording changes in one place. Built by the **running server**
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
+  - `map_poster.py` (`npm run mapgen`, `GET /admin_map_poster_pdf`) — the
+    **map** poster: the active venue's map on one sheet at A3 or A4, with a
+    numbered dot per landmark and the legend those numbers belong to. Same
+    toolchain as `team_cards.py`, and built from `ACTIVE_VENUE`, so the legend
+    cannot drift from `venues.py` — add a pub there and it appears here.
+    Circles, drops and couriers are excluded **by prefix**
+    (`OPERATIONAL_PREFIXES`) rather than by remembering: this is the one
+    printable that goes on a wall players read. A **GET**, unlike the two
+    minting printables, because it signs and records nothing. Note where the
+    image comes from: `backend/map_images/<venue key>.<ext>` are symlinks to
+    the one real file in `react-ui/src/images/` that webpack bundles, declared
+    as package data in `pyproject.toml`, because the deployed wheel is built
+    from `backend*` alone and would otherwise have no map on the droplet at
+    all. One file, so nothing can drift; `tests/test_map_poster.py` checks
+    every venue has one and that its aspect matches the venue.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
   - `next_event.py` — the one thing a game is counting down to, and the clock
     that fires it: the vocabulary (`NextEventKind`, `KIND_CIRCLE` /
@@ -566,8 +581,9 @@ Four things from it that are worth knowing even if you never call the agent:
     onboarding screen's sound row is a tap that makes a noise
     (`useSoundCheck.js`) rather than a sentence asking nicely.
     `AdminPrintables.js` (route `/admin/printables`) is everything a game
-    night needs handed out, in one page: team cards, pub certificates and
-    drop-card sheets, each a panel with its own controls and one big button,
+    night needs handed out, in one page: the map poster, team cards, pub
+    certificates and drop-card sheets, each a panel with its own controls and
+    one big button,
     and above them the **sign-up link** - the one thing here that is sent
     rather than printed, so it is a QR and a copyable link (`JoinQRCodes.js`'s
     exported `JoinCard`) and not a PDF. It reads `GET /admin_game_join_url`
