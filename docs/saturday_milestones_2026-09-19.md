@@ -394,7 +394,7 @@ them. And the refusal reaches the player through a new
 through `WebcamView`, because the admin's reference-photo page mounts the same
 camera and has no business showing a fire-cooldown message.
 
-### M1.2 — Starting armour *(status: shipped 2026-09-17, PR #PRNUM)*
+### M1.2 — Starting armour *(status: shipped 2026-09-17, PR #267)*
 
 `STARTING_HIT_POINTS` (2) in `_make_user`, the reset (M2.1), and
 `demo_game`'s arming (which deliberately gives one HP so a hit kills — keep
