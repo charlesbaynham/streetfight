@@ -29,11 +29,19 @@ import { TeamLeaderButton } from "./TeamLeaderPanel";
 import ShotReceivedOverlay from "./ShotReceivedOverlay";
 import ShotRefusedNotice from "./ShotRefusedNotice";
 import useWakeLock from "./useWakeLock";
+import useAudioUnlock from "./useAudioUnlock";
+import useKnockedOutSound from "./useKnockedOutSound";
 
 const isGameRunning = (user) => Boolean(user && user.active);
 
 function GetView({ user }) {
   useWakeLock();
+  // Both before the early returns below, and so alive on the onboarding
+  // screen: the unlock has to be armed by the taps a player spends there
+  // (see useAudioUnlock), and a knockout is seeded from the first state this
+  // component ever sees, whichever screen is showing at the time.
+  useAudioUnlock();
+  useKnockedOutSound(user);
 
   const [triggerShot, setTriggerShot] = useState(0);
   const [triggerPermissionsRecheck, setTriggerPermissionsRecheck] = useState(0);

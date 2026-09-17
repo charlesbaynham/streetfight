@@ -798,9 +798,24 @@ class UserInterface:
         out = []
         for shot in shots:
             target_name = None
+            target_knocked_out = False
             if shot.target_user_id:
                 target = self._session.get(User, shot.target_user_id)
                 target_name = target.name if target else None
+                # Whether this shot was the one that put its target out of the
+                # fight, so the shooter's phone can say so with a sound of its
+                # own rather than the ordinary "confirmed hit". Nothing on the
+                # shot records the blow that did it, so it is read off the
+                # target now: AdminInterface.hit_user takes the hit points down
+                # before it marks the shot checked, so at the only moment this
+                # is acted on -- the tick where the shooter's client first sees
+                # "checked" -- it says what just happened. It is not a claim
+                # about the past: a hit on somebody already down reads the same
+                # way, and a later revival flips it back. Nothing re-reads it
+                # for a shot that was already checked.
+                target_knocked_out = bool(
+                    shot.checked and target and target.hit_points <= 0
+                )
 
             suggestion = _ai_suggestion(shot)
             ai_target_name = None
@@ -817,6 +832,7 @@ class UserInterface:
                     "checked": shot.checked,
                     "result": shot.result,
                     "target_name": target_name,
+                    "target_knocked_out": target_knocked_out,
                     "ai_review_state": shot.ai_review_state,
                     "ai_suggestion": suggestion,
                     "ai_target_name": ai_target_name,
