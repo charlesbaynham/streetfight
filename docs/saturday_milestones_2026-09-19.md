@@ -350,7 +350,7 @@ marks Charles's nineteen and not the nineteen nearest. Both known label
 errors come out right on the new skeleton, so the trace gets them for free.
 **Outstanding: run `prompt.md` at Gemini and hand back the image.**
 
-### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #PRNUM; held from printing until M0.6's redrawn map lands)*
+### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; held from printing until M0.6's redrawn map lands)*
 
 A PDF of the map to pin up in The Speaker: the venue image at A3 (and A4)
 with a numbered legend of the nineteen pubs and House Absolute, the game's
