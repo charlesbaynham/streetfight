@@ -259,15 +259,27 @@ Four things from it that are worth knowing even if you never call the agent:
     handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
     a re-drawn picture fails a test rather than a print run.
   - `printables.py` — the printables the admin page builds on demand
-    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets
-    and the pub certificates, from the *same* functions the two CLIs call, so
-    a sheet printed from a phone and one printed from a terminal are the same
-    sheet. The reason it exists is the signature: a code is signed with the
-    `SECRET_KEY` that minted it and carries that machine's `WEBSITE_URL`, so a
-    run done from a checkout whose `.env` has drifted is a stack of paper
-    nobody at the party can scan, and the failure only shows up when somebody
-    in a pub points a phone at it. Building them in the server makes both
-    right by construction. Its two endpoints are **POST**, unlike the team
+    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets,
+    the pub certificates and the **sandbox posters**, the first two from the
+    *same* functions the two CLIs call, so a sheet printed from a phone and
+    one printed from a terminal are the same sheet. The sandbox sheet
+    (`SANDBOX_CARDS`, `sandbox_sheets_pdf`) has no CLI and no controls beyond
+    how many copies: what the warm-up room hands out is decided here so that
+    the paper and the codes cannot disagree. Every code on it is `unlimited`
+    (a poster is scanned again and again by the same player) and in the
+    `sandbox` batch, so the room goes off in one press at 16:00 — and there is
+    **one code per kind, not one per card**, since eight distinct unlimited
+    codes would be eight identical powers and eight rows in the log. A card's
+    numbers are not free: `num` picks the drawing as well as the amount, which
+    is why the ammunition poster is five bullets (there is an `ammo_5.png` and
+    no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
+    card has artwork. The reason the module exists at all is the signature: a
+    code is signed with the `SECRET_KEY` that minted it and carries that
+    machine's `WEBSITE_URL`, so a run done from a checkout whose `.env` has
+    drifted is a stack of paper nobody at the party can scan, and the failure
+    only shows up when somebody in a pub points a phone at it. Building them
+    in the server makes both right by construction. The minting endpoints are
+    **POST**, unlike the team
     cards' GET, because each call mints *fresh* codes and records them in
     `qr_codes.csv`: a link a browser is free to prefetch would put phantom
     batches in the log and hand the admin a sheet the log does not describe.

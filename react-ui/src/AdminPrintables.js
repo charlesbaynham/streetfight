@@ -50,6 +50,11 @@ const CARDS_PER_SHEET = 8;
 // 16:00.
 const DEFAULT_BATCH = "game";
 
+// How many kinds of poster the sandbox sheet prints - the length of
+// backend/printables.py's SANDBOX_CARDS. Only used to say how many codes a
+// press mints, which is the one thing that panel warns about.
+const SANDBOX_CARD_KINDS = 6;
+
 // The games to choose between, newest-first as the server gives them, with
 // the first one selected. Two panels need this, so it is a hook rather than a
 // copy in each.
@@ -410,6 +415,46 @@ function ItemSheets() {
   );
 }
 
+// The warm-up room's walls. Everything on them is unlimited and everything is
+// in one batch, which is the whole point: a player scans the ammunition poster
+// as often as they like, and the room stops working in a single press at 16:00.
+// No controls but how many copies - what the posters *are* is decided in
+// backend/printables.py's SANDBOX_CARDS, so that the paper and the codes
+// cannot disagree.
+function SandboxSheets() {
+  const [copies, setCopies] = useState(1);
+
+  const sheets = copies * SANDBOX_CARD_KINDS;
+
+  return (
+    <Printable
+      title="Sandbox posters"
+      blurb={`The warm-up room: ammunition, level 2 armour, a med pack and three weapons, ${CARDS_PER_SHEET} copies of each to a sheet. Every one can be scanned again and again by the same player, so they work as posters on a wall.`}
+      warning={`Prints ${sheets} sheet${sheets === 1 ? "" : "s"}, and mints ${SANDBOX_CARD_KINDS} new codes - one per poster. Withdraw the "sandbox" batch at 16:00 to turn them all off.`}
+      label="Mint and download (PDF)"
+      ready={copies >= 1}
+      action={() =>
+        adminDownload(
+          "admin_sandbox_sheets_pdf",
+          { copies: copies },
+          "sandbox_sheets.pdf",
+        )
+      }
+    >
+      <Field label="Copies of each poster" hint="One sheet of 8 per copy.">
+        <input
+          className={styles.input}
+          type="number"
+          min="1"
+          max="5"
+          value={copies}
+          onChange={(e) => setCopies(Number(e.target.value))}
+        />
+      </Field>
+    </Printable>
+  );
+}
+
 export function PrintablesPanel() {
   return (
     <>
@@ -423,6 +468,7 @@ export function PrintablesPanel() {
       <TeamCards />
       <PubPages />
       <ItemSheets />
+      <SandboxSheets />
     </>
   );
 }
