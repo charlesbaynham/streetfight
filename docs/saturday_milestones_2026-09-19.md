@@ -359,7 +359,7 @@ Two-tap confirm on the button, like the demo button.
 
 ## M3 — Countdown and announcements *(by Friday; the biggest player-facing change)*
 
-### M3.1 — "What happens next" on every phone *(status: shipped 2026-09-17, PR #PRNUM)*
+### M3.1 — "What happens next" on every phone *(status: shipped 2026-09-17, PR #258)*
 
 - `Game.next_event_kind` (`"circle"` / `"drop"`), `next_event_at` (epoch
   float), `next_event_note` (the drop's contents, admin-typed) — three
