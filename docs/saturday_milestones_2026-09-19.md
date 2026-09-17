@@ -540,7 +540,7 @@ broadcasts.
 
 ---
 
-## M5 — Sounds *(status: shipped 2026-09-17, PR #TBD)*
+## M5 — Sounds *(status: shipped 2026-09-17, PR #270)*
 
 - **Replace `bang.mp3`** with a sci-fi "pew" (synthesise with numpy → `wave`
   like the `.wav`s were; the file is dropped over the old one, no code).
