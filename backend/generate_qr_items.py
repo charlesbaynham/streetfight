@@ -25,22 +25,8 @@ A4_WIDTH = 3508
 # Space between images
 IMAGE_GUTTER = 100
 
-# What a stranger who finds a card needs to read (roadmap #7). The cards are
-# hidden in a town nobody has told, and a QR code taped to street furniture
-# reads badly to a passer-by or a police officer; a line saying what it is and
-# who to ring turns an incident into a curiosity. Cheap, so every card carries
-# it - including the ones in the pubs' envelopes, which are these same cards.
-CONTACT_NUMBER = "07955 686520"
-CONTACT_LINE = f"This is part of a game - ring {CONTACT_NUMBER}"
-
-# The strip at the foot of each card the line is printed in, and the face it
-# is printed in. It sits *below* the artwork rather than on it: the cards are
-# cut up one at a time, so the line has to be somewhere the scissors leave
-# alone and the drawing does not cover. Half the strip is the gutter that was
-# always there; the rest is taken off the artwork's height, which is already
-# squashed to the card's shape and does not notice another two per cent.
-CONTACT_STRIP = 70
-CONTACT_FONT_PATH = Path(__file__, "../UbuntuMono-R.ttf").resolve()
+# The face anything printed on a card or a poster is set in.
+PRINT_FONT_PATH = Path(__file__, "../UbuntuMono-R.ttf").resolve()
 
 QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 IMAGES_DIR = Path(__file__, "../image_templates").resolve()
@@ -155,7 +141,7 @@ def build_qr_grid(
             box_y = (i // num_x) * box_height
 
             new_width = box_width - round(IMAGE_GUTTER)
-            new_height = box_height - round(IMAGE_GUTTER) - CONTACT_STRIP
+            new_height = box_height - round(IMAGE_GUTTER)
 
             im.paste(
                 sub_img.resize((new_width, new_height)),
@@ -168,22 +154,6 @@ def build_qr_grid(
             # Add a text tag
             draw.text(
                 (box_x + 10, box_y + 10), tag + f"{i + label_offset}", fill="black"
-            )
-
-            # The contact line, centred in the strip below the artwork. It
-            # stays inside the gutter rather than using it up: the bottom row
-            # of a sheet is against the edge of the paper, and a printer with
-            # a 5 mm unprintable margin would swallow a line any lower.
-            font = _contact_font(draw, new_width)
-            draw.text(
-                (
-                    box_x + box_width // 2,
-                    box_y + box_height - round(IMAGE_GUTTER / 2) - CONTACT_STRIP // 2,
-                ),
-                CONTACT_LINE,
-                font=font,
-                fill="black",
-                anchor="mm",
             )
 
         return im.copy()
@@ -199,16 +169,11 @@ def fit_font(
     and a poster filling A4 is wider again.
     """
     for size in range(max_size, 7, -2):
-        font = ImageFont.truetype(str(CONTACT_FONT_PATH), size)
+        font = ImageFont.truetype(str(PRINT_FONT_PATH), size)
         if draw.textlength(text, font=font) <= width_px:
             return font
 
-    return ImageFont.truetype(str(CONTACT_FONT_PATH), 8)
-
-
-def _contact_font(draw: ImageDraw.ImageDraw, width_px: int) -> ImageFont.FreeTypeFont:
-    """The biggest size the contact line fits ``width_px`` at."""
-    return fit_font(draw, CONTACT_LINE, width_px, CONTACT_STRIP)
+    return ImageFont.truetype(str(PRINT_FONT_PATH), 8)
 
 
 def make_qr_grid(

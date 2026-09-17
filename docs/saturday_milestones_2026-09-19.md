@@ -322,7 +322,7 @@ what it awards and a poster read across a room has to say what it is:
 **For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
 `sandbox` batch at 16:00.
 
-### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262)*
+### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262; **removed again 2026-09-17** at Charles's request)*
 
 Roadmap #7's mitigation, never built: every drop card and envelope carries
 "This is part of a game — ring <number>" so a stranger who finds one gets an
@@ -338,6 +338,11 @@ and keeps the full gutter between itself and the box edge, because the
 bottom row of a sheet is against the edge of the paper. The envelopes need
 nothing of their own: what is in them is these same cards.
 `tests/test_generate_qr_items.py` did not exist and does now.
+
+**Removed.** Charles asked for the line off the cards; the cards are the
+artwork, the code and the run label again, and `tests/test_generate_qr_items.py`
+has gone with it. The failure mode #7 named is unmitigated on paper: a stranger
+who finds a card taped under a bench has nothing to read and nobody to ring.
 
 ### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
 

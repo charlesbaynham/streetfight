@@ -23,7 +23,7 @@ rather than writing something new.
 freeze, the balance changes and server-side cooldown, the 16:00 reset and
 code withdrawal, countdowns, the courier, sounds, the two experimental items,
 the team leader view. Items below that it absorbs: #12's redraw (M0.6),
-#8's reprint (M0.2, M0.4, M0.5), #7's contact line (M0.5).
+#8's reprint (M0.2, M0.4, M0.5), #7's contact line (M0.5, since removed).
 
 **Two days out (17 Sept), all of it has merged bar M0.6's drawing, M6's two
 experimental items and M8's annotated map.** The night itself now has its own
@@ -801,10 +801,12 @@ passer-by or a police officer, as somebody taping a device to street furniture.
 - sheltered enough that paper survives rain;
 - inside the game area and on the map (hence #12 first).
 
-**Mitigation to build into the print run** (#8): every card carries a line saying
+**Mitigation to build into the print run** (#8): a line on every card saying
 what it is and a contact number, so anyone who finds one gets an answer rather
-than a fright. Cheap, and it converts the failure mode from "incident" to
-"curiosity".
+than a fright. Built (M0.5, PR #262) and then **removed on 17 September** at
+Charles's request — the cards carry no such line now, so the failure mode is
+back to "incident" rather than "curiosity". Re-adding it is `fit_font` and a
+strip below the artwork.
 
 **Unblocked (28 Aug):** #12 has shipped, so the game area is now a definite
 1300 x 1300 m square centred on House Absolute, and `VenueMap.bounds` will tell

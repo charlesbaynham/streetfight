@@ -417,11 +417,11 @@ one place. Each names the PR that made it.
   (#254). Copying the bullet sprites convincingly was more than a paint-over;
   the sentence says the number outright. Charles can redraw the line over the
   top — the original is one `git show` away.
-- **The drop cards say "This is part of a game - ring 07955 686520"** (#262),
-  in a strip below the artwork. The **pub certificates deliberately do not**:
-  they are handed to a landlord who has been asked and displayed on a wall,
-  which is not the failure mode the contact line is for. One line to add if
-  you disagree.
+- **Nothing printed carries a contact line.** The drop cards had one for a
+  day (#262, "This is part of a game - ring 07955 686520"); Charles had it
+  taken off on 17 September. So a card found by a stranger says nothing about
+  what it is — worth knowing if somebody rings the police about a QR code
+  taped under a bench.
 - **The sandbox ammunition poster is 5 bullets, not 20, and Eat-a-bullet
   borrows Pewster's drawing** (#263). Both because a card's picture is chosen
   by what it awards, and a poster read across a room has to say what it is.

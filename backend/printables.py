@@ -53,7 +53,6 @@ from .generate_pub_pages import mint_pub_items
 from .generate_pub_pages import render_page
 from .generate_qr_items import A4_HEIGHT
 from .generate_qr_items import A4_WIDTH
-from .generate_qr_items import CONTACT_LINE
 from .generate_qr_items import DEFAULT_BATCH
 from .generate_qr_items import base_image_path
 from .generate_qr_items import build_qr_grid
@@ -103,16 +102,12 @@ MAX_SANDBOX_COPIES = 5
 INFINITE_WORD = "INFINITE"
 INFINITE_BAND = _mm(28)
 
-# The strip at the foot of the page for the contact line every printed code
-# carries (generate_qr_items.CONTACT_LINE).
-POSTER_CONTACT_BAND = _mm(12)
-
-# The card face on a poster: as tall as the paper leaves once the two bands
-# are taken off it, and as wide as that height makes it at a card's own
+# The card face on a poster: as tall as the paper leaves once the band is
+# taken off it, and as wide as that height makes it at a card's own
 # proportions. The width follows the height rather than filling the paper,
 # because stretching the drawing would move the QR out of the pocket it is
 # drawn around.
-_POSTER_CARD_H = PAGE_H - INFINITE_BAND - POSTER_CONTACT_BAND - PAGE_MARGIN
+_POSTER_CARD_H = PAGE_H - INFINITE_BAND - PAGE_MARGIN
 POSTER_CARD_BOX = (round(_POSTER_CARD_H * CARD_ASPECT), _POSTER_CARD_H)
 
 
@@ -283,9 +278,9 @@ def infinite_poster(url: str, card: SandboxCard, label: str = "") -> Image.Image
     The card face is laid out at the proportions of a card on a sheet of
     eight, which are A4's own (``A4_WIDTH / 4`` by ``A4_HEIGHT / 2``), so the
     QR lands in the same pocket of the drawing here as it does there. That is
-    what the side margins are: the bands above and below cost the page some
-    height, and the width follows the height rather than the drawing being
-    stretched to fill the paper.
+    what the side margins are: the band costs the page some height, and the
+    width follows the height rather than the drawing being stretched to fill
+    the paper.
     """
     art_w, art_h = POSTER_CARD_BOX
 
@@ -308,17 +303,6 @@ def infinite_poster(url: str, card: SandboxCard, label: str = "") -> Image.Image
         (PAGE_W // 2, INFINITE_BAND // 2),
         INFINITE_WORD,
         font=word_font,
-        fill="black",
-        anchor="mm",
-    )
-
-    contact_font = fit_font(
-        draw, CONTACT_LINE, PAGE_W - 2 * PAGE_MARGIN, POSTER_CONTACT_BAND
-    )
-    draw.text(
-        (PAGE_W // 2, PAGE_H - PAGE_MARGIN - POSTER_CONTACT_BAND // 2),
-        CONTACT_LINE,
-        font=contact_font,
         fill="black",
         anchor="mm",
     )
