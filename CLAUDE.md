@@ -470,8 +470,14 @@ Four things from it that are worth knowing even if you never call the agent:
     `courier` from `/get_circles`, flat as `courier_lat`/`courier_long` off a
     `GameModel` — for the same reason `circleTriplet` exists. Every crate in the
     payload's `drops` is drawn exactly as the game's own `drop_circle_*` is
-    (M4.3): which of the two put one somewhere is nobody's business but the
-    admin's. The crate is a
+    (M4.3) — which of the two put one somewhere is nobody's business but the
+    admin's — with one rule over the lot of them: **the blue ping is on the
+    newest crate only**, and every older one keeps just its icon until it is
+    marked collected. A ping on all three would have the map shouting about a
+    drop that has sat there for half an hour, and shouting three times at
+    once. `drops` arrives oldest first (`Game.drops` is ordered by
+    `time_created`) and the game's own drop circle is drawn ahead of it, so
+    "newest" is simply the last one. The crate is a
     **sibling** of `.dropCircle` and never a child: that class carries the
     `zoom` keyframe that scales the ping to 5× and fades it, which would take
     the crate with it. The courier's dot fades by fix age on the admin map's

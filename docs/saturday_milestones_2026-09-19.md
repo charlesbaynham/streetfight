@@ -646,7 +646,10 @@ and no way to have two crates out at once.
   fired — to a player it is the same event.
 - `/get_circles` and `GameModel` grow `drops: [...]`, and `MapCircles` draws
   each one exactly as it draws the admin's own map-placed drop, which is
-  unchanged and still works.
+  unchanged and still works — except that the **blue ping is on the newest
+  crate only**. The older ones keep their icon until they are collected, so
+  the flashing circle goes on meaning "this one has just landed" rather than
+  becoming three simultaneous alarms about crates half an hour old.
 - The courier page grows the list: each crate with the time it went down and
   a two-tap **Collected** button, from the server rather than from what that
   tab placed, so a reload keeps it.

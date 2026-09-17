@@ -263,7 +263,9 @@ courier starts broadcasting — so have the courier page open.
   announces it in the ticker, clears the courier and stops broadcasting. The
   crate icon appears at the centre of the blue ping. Each press is its own
   crate: putting out a second one leaves the first exactly where it is
-  (M4.3).
+  (M4.3). **The blue ping moves to the newest crate** — the older ones keep
+  their icon on the map, without the ping, until they are collected, so the
+  flashing circle always means "this is the one that has just landed".
 - **Crates on the ground.** Every crate still out, with the time it went
   down, and a **Collected** button on each — also two-tap. Pressing it
   announces "The supply drop has been claimed!", takes the blue circle and
