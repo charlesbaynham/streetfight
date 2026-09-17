@@ -334,7 +334,11 @@ Four things from it that are worth knowing even if you never call the agent:
     which is the half that holds across a restart. `AdminInterface`'s
     `cue_next_event` / `cancel_cue` / `promote_next_circle` are the write
     side, all announcing in the ticker and bumping every player in the game
-    (on `User.game_id`, so a team-less signup hears it too). Note
+    (on `User.game_id`, so a team-less signup hears it too). A **drop**'s zero
+    is an announcement and nothing else — "The courier has set off", the same
+    sentence the players' strip shows at zero (`prose.nextEvent.dropNow`),
+    because the crate is not on anybody's map until the courier starts
+    broadcasting (M4). Keep those two in step. Note
     `promote_next_circle` changes nothing but the cue when there is no next
     circle to promote: an admin who cleared it mid-countdown must not have the
     play area blanked.

@@ -98,6 +98,12 @@ export default function EventCue({ game }) {
         it reaches zero, so place NEXT first. It promotes nothing if NEXT is
         empty.
       </p>
+      <p>
+        A drop cue only announces itself &mdash; at zero the ticker says the
+        courier has set off and the countdown clears. Nothing appears on
+        anybody's map until the courier starts broadcasting from the courier
+        page, so be ready to open it.
+      </p>
     </>
   );
 }
