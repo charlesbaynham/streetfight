@@ -94,6 +94,7 @@ from . import ai_shot_review
 from . import generate_pub_pages
 from . import generate_qr_items
 from . import image_processing
+from . import map_poster
 from . import printables
 from . import reference_photos
 from . import shot_auto_actions
@@ -1354,6 +1355,19 @@ async def admin_game_join_url(game_id: UUID) -> dict:
     nothing."""
     with _identity_admin_errors():
         return identity_admin.game_join_url(game_id)
+
+
+@admin_method(path="/admin_map_poster_pdf", method="GET")
+async def admin_map_poster_pdf(size: str = map_poster.DEFAULT_PAGE_SIZE):
+    """The map poster (backend/map_poster.py): the active venue's map on one
+    sheet, with a numbered legend of the pubs. A GET, unlike the two
+    code-minting printables below: it draws what `venues.py` already says and
+    mints, records and signs nothing."""
+    try:
+        pdf = map_poster.render_pdf(size=size.upper())
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    return _pdf_response(pdf, f"map_poster_{size.lower()}.pdf")
 
 
 @admin_method(path="/admin_team_cards_pdf", method="GET")

@@ -15,6 +15,7 @@ function renderPage() {
   installFetchMock({
     admin_list_games: GAMES,
     admin_game_join_url: { game_url: "https://example.com/?j=signup" },
+    admin_map_poster_pdf: "%PDF-fake",
     admin_team_cards_pdf: "%PDF-fake",
     admin_pub_pages_pdf: "%PDF-fake",
     admin_item_sheets_pdf: "%PDF-fake",
@@ -35,6 +36,19 @@ async function press(name, buttonName) {
     userEvent.click(panel(name).getByRole("button", { name: buttonName })),
   );
 }
+
+test("the map poster is a GET of the chosen paper size, and mints nothing", async () => {
+  renderPage();
+
+  await actAndFlush(() =>
+    userEvent.selectOptions(panel("Map poster").getByRole("combobox"), "A4"),
+  );
+  await press("Map poster", "Download map poster (PDF)");
+
+  const call = getLastAPICall("admin_map_poster_pdf");
+  expect(call.method).toBe("GET");
+  expect(call.query).toEqual({ size: "A4" });
+});
 
 test("the team cards download names the selected game and has no side effects", async () => {
   renderPage();

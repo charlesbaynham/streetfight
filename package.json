@@ -20,6 +20,7 @@
     "bootstrap": "npm i && npm run gen_cert && npm run build && cp .env.dev .env",
     "qrgen": "python -m backend.generate_qr_items",
     "pubgen": "python -m backend.generate_pub_pages",
+    "mapgen": "python -m backend.map_poster",
     "annotateShots": "python -m backend.postprocess_shot_images"
   },
   "cacheDirectories": [

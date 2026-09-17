@@ -312,6 +312,21 @@ Four things from it that are worth knowing even if you never call the agent:
     the wording changes in one place. Built by the **running server**
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
+  - `map_poster.py` (`npm run mapgen`, `GET /admin_map_poster_pdf`) — the
+    **map** poster: the active venue's map on one sheet at A3 or A4, with a
+    numbered dot per landmark and the legend those numbers belong to. Same
+    toolchain as `team_cards.py`, and built from `ACTIVE_VENUE`, so the legend
+    cannot drift from `venues.py` — add a pub there and it appears here.
+    Circles, drops and couriers are excluded **by prefix**
+    (`OPERATIONAL_PREFIXES`) rather than by remembering: this is the one
+    printable that goes on a wall players read. A **GET**, unlike the two
+    minting printables, because it signs and records nothing. Note where the
+    image comes from: `backend/map_images/<venue key>.<ext>` are symlinks to
+    the one real file in `react-ui/src/images/` that webpack bundles, declared
+    as package data in `pyproject.toml`, because the deployed wheel is built
+    from `backend*` alone and would otherwise have no map on the droplet at
+    all. One file, so nothing can drift; `tests/test_map_poster.py` checks
+    every venue has one and that its aspect matches the venue.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
     The `"circle"` event it fires also carries the **courier** (M4.1):
     `Game.courier_lat/long/timestamp/accuracy`, written by
@@ -345,7 +360,11 @@ Four things from it that are worth knowing even if you never call the agent:
     which is the half that holds across a restart. `AdminInterface`'s
     `cue_next_event` / `cancel_cue` / `promote_next_circle` are the write
     side, all announcing in the ticker and bumping every player in the game
-    (on `User.game_id`, so a team-less signup hears it too). Note
+    (on `User.game_id`, so a team-less signup hears it too). A **drop**'s zero
+    is an announcement and nothing else — "The courier has set off", the same
+    sentence the players' strip shows at zero (`prose.nextEvent.dropNow`),
+    because the crate is not on anybody's map until the courier starts
+    broadcasting (M4). Keep those two in step. Note
     `promote_next_circle` changes nothing but the cue when there is no next
     circle to promote: an admin who cleared it mid-countdown must not have the
     play area blanked.
@@ -579,8 +598,9 @@ Four things from it that are worth knowing even if you never call the agent:
     ("Broadcasting - last fix 3 s ago, ±8 m"). It holds the wake lock and
     says so when it has not got one, like the spectator screen.
     `AdminPrintables.js` (route `/admin/printables`) is everything a game
-    night needs handed out, in one page: team cards, pub certificates and
-    drop-card sheets, each a panel with its own controls and one big button,
+    night needs handed out, in one page: the map poster, team cards, pub
+    certificates and drop-card sheets, each a panel with its own controls and
+    one big button,
     and above them the **sign-up link** - the one thing here that is sent
     rather than printed, so it is a QR and a copyable link (`JoinQRCodes.js`'s
     exported `JoinCard`) and not a PDF. It reads `GET /admin_game_join_url`
