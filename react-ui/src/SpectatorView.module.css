@@ -166,6 +166,40 @@
   }
 }
 
+/* What the game has cued up next, with its clock (M3.1). A pill like the
+   others on this bar, in the design's own tokens: amber for a circle that is
+   about to close, since a circle closing is a thing the room can still act
+   on, and the in-flight blue for a drop, which is coming whatever anybody
+   does. Said in words and read with the countdown beside it - never a colour
+   on its own. */
+.headlineCue {
+  align-self: center;
+  padding: 6px 16px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg-2);
+  color: var(--ink);
+  font-size: var(--size-meta);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.headlineCueClock {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.headlineCueCircle {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.headlineCueDrop {
+  border-color: var(--thinking);
+  color: var(--thinking);
+}
+
 /* Said only when it is true, and never animated: it is a note for whoever
    set the screen up, not news for the room. */
 .headlineSleep {

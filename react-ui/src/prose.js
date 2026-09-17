@@ -164,6 +164,22 @@ const prose = {
     closeMapLabel: "Close map",
     closeMapSymbol: "x",
   },
+  // @section nextEvent
+  nextEvent: {
+    // The strip at the top of every phone: what the game has cued up, and how
+    // long is left. The label and the clock are separate entries because the
+    // clock is a live component between them, not a value to interpolate.
+    circleLabel: "Circle closes in",
+    dropLabel: "Drop in",
+    // At zero the countdown has run out but the server has not necessarily
+    // announced yet, so these say what is happening rather than leaving a
+    // stopped 00:00 on screen.
+    circleNow: "The circle is closing",
+    dropNow: "The courier has set off",
+    // Whatever the admin typed about the drop - its contents, in practice -
+    // set off from the countdown rather than run into it.
+    note: (note) => `— ${note}`,
+  },
   // @section onboardingView
   onboardingView: {
     logoAlt: "Streetfight, by Charles and Gaby",
