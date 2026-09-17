@@ -24,7 +24,15 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
-DEFAULT_SHOT_TIMEOUT = 6
+DEFAULT_SHOT_TIMEOUT = 25
+
+# The weapon a player is handed by the 16:00 reset, and the hit points they
+# start it with. A weapon is the pair (shot_damage, shot_timeout), named by
+# item_actions.WEAPON_NAME_LOOKUP -- this one is the Pewster. There is no
+# armour column: level n armour sets hit_points to n + 1, so "starting armour
+# 1" is a starting hit_points of 2.
+BASIC_WEAPON = (1, DEFAULT_SHOT_TIMEOUT)
+STARTING_HIT_POINTS = 2
 
 # The values Shot.ai_review_state can take. They live here, next to the column,
 # rather than in backend.ai_shot_review so that code which only reads the column

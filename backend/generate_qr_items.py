@@ -11,6 +11,7 @@ from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
 from .items import ItemModel
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import ItemType
 from .utils import slugify_string
 
@@ -205,7 +206,7 @@ def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, ast
 @click.option(
     "--timeout",
     "-m",
-    default=6,
+    default=DEFAULT_SHOT_TIMEOUT,
     help="For weapons, the timeout",
 )
 @click.option(

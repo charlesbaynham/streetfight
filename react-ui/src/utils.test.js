@@ -45,11 +45,11 @@ describe("makeAPIURL", () => {
 
 describe("getGunImgFromUser", () => {
   test.each([
-    [{ shot_damage: 0, shot_timeout: 6 }, gun_06],
-    [{ shot_damage: 1, shot_timeout: 6 }, gun_16],
-    [{ shot_damage: 2, shot_timeout: 6 }, gun_26],
-    [{ shot_damage: 3, shot_timeout: 6 }, gun_36],
-    [{ shot_damage: 1, shot_timeout: 1 }, gun_11],
+    [{ shot_damage: 0, shot_timeout: 25 }, gun_06],
+    [{ shot_damage: 1, shot_timeout: 25 }, gun_16],
+    [{ shot_damage: 2, shot_timeout: 25 }, gun_26],
+    [{ shot_damage: 3, shot_timeout: 25 }, gun_36],
+    [{ shot_damage: 1, shot_timeout: 5 }, gun_11],
   ])("returns the right image for %j", (user, expected) => {
     expect(getGunImgFromUser(user)).toBe(expected);
   });
@@ -60,7 +60,7 @@ describe("getGunImgFromUser", () => {
   });
 
   test("returns null for an unrecognised damage/timeout combination", () => {
-    expect(getGunImgFromUser({ shot_damage: 2, shot_timeout: 1 })).toBeNull();
+    expect(getGunImgFromUser({ shot_damage: 2, shot_timeout: 5 })).toBeNull();
   });
 });
 

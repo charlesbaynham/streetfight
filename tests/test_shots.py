@@ -44,16 +44,16 @@ def test_submit_shot_records_shot_timeout(db_session, user_in_team, test_image_s
     have to be frozen at the moment of firing."""
     ui = UserInterface(user_in_team)
     ui.award_ammo(1)
-    ui.set_weapon_data(damage=2, fire_delay=6)
+    ui.set_weapon_data(damage=2, fire_delay=25)
 
     shot_id = ui.submit_shot(test_image_string)
 
-    assert db_session.get(Shot, shot_id).shot_timeout == 6
+    assert db_session.get(Shot, shot_id).shot_timeout == 25
 
     # Picking up a later upgrade must not retroactively change what this
     # shot recorded - it is a snapshot of the moment it was fired.
-    ui.set_weapon_data(damage=3, fire_delay=1)
-    assert db_session.get(Shot, shot_id).shot_timeout == 6
+    ui.set_weapon_data(damage=3, fire_delay=5)
+    assert db_session.get(Shot, shot_id).shot_timeout == 25
 
 
 def test_submit_shot_no_ammo(user_in_team, test_image_string):
