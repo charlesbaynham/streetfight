@@ -669,7 +669,7 @@ it means something - but it does mean the ordinary evening is mostly
 
 ## M6 — The two experimental items *(Friday; after M0.3; drop if not working)*
 
-### M6.1 — Radar *(status: shipped 17 Sept, PR #274)*
+### M6.1 — Radar *(status: shipped 17 Sept, PR #275)*
 
 - Handler: `User.radar_until = now + minutes*60` (nullable column). Refuses
   if already active.
