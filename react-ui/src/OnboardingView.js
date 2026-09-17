@@ -22,6 +22,7 @@ import {
 } from "./utils";
 
 import { Swatch } from "./Swatch";
+import useSoundCheck from "./useSoundCheck";
 import CuriosityFooter from "./CuriosityFooter";
 import styles from "./OnboardingView.module.css";
 import prose from "./prose";
@@ -153,6 +154,7 @@ function OnboardingView({ user }) {
     isLocationBypassActive(),
   );
   const [locationTapCount, setLocationTapCount] = useState(0);
+  const [soundTested, testSound] = useSoundCheck();
 
   // Location doesn't have to be granted to get past this gate, just either
   // granted or bypassed - see LOCATION_BYPASS_TAPS above.
@@ -292,6 +294,24 @@ function OnboardingView({ user }) {
             setCompassPermissionGranted(success);
           }}
           key={"compass"}
+        />,
+      );
+
+    // The sound check. Beside the compass rung and not before it: like that
+    // one it gates nothing, and unlike the two above it there is nothing the
+    // page can verify - see useSoundCheck.js for why it is a tap rather than
+    // a sentence.
+    if (locationStepDone)
+      actionItems.push(
+        <ActionItem
+          text={
+            soundTested
+              ? prose.onboardingView.soundCheckDone
+              : prose.onboardingView.soundCheck
+          }
+          done={soundTested}
+          onClick={testSound}
+          key={"sound"}
         />,
       );
 

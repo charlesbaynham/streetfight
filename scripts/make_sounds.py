@@ -89,8 +89,10 @@ def _bell(t: np.ndarray, freq: float, tau: float) -> np.ndarray:
     fundamental, which is what makes it read as struck rather than blown."""
     out = np.zeros_like(t)
     for harmonic, weight in ((1, 1.0), (2, 0.45), (3, 0.22), (4.2, 0.12)):
-        out += weight * np.sin(2 * math.pi * freq * harmonic * t) * np.exp(
-            -t / (tau / harmonic)
+        out += (
+            weight
+            * np.sin(2 * math.pi * freq * harmonic * t)
+            * np.exp(-t / (tau / harmonic))
         )
     return out
 
@@ -160,7 +162,9 @@ def bang() -> np.ndarray:
     # The crack of it leaving the barrel: a few milliseconds of noise, so the
     # onset has an edge instead of fading in.
     crack = _t(0.02)
-    _place(out, 0.0, 0.5 * _noise(crack.size, seed=1) * _decay(crack, 0.006, attack=0.001))
+    _place(
+        out, 0.0, 0.5 * _noise(crack.size, seed=1) * _decay(crack, 0.006, attack=0.001)
+    )
 
     # A little low body underneath, so it has some weight on a phone speaker
     # that cannot reproduce the sweep's bottom end at all.
@@ -234,7 +238,9 @@ def knocked_out() -> np.ndarray:
     # A second voice an octave down for the grind -- built from odd harmonics
     # rather than a hard square, which at this sample rate would alias into a
     # shimmer that has no business in a power-down.
-    grind_phase = 2 * math.pi * np.cumsum(450 * (31 / 450) ** (spin / spin[-1])) / SAMPLE_RATE
+    grind_phase = (
+        2 * math.pi * np.cumsum(450 * (31 / 450) ** (spin / spin[-1])) / SAMPLE_RATE
+    )
     grind = 0.45 * _square_ish(grind_phase)
     _place(out, 0.14, (glide + grind) * _decay(spin, 0.55, attack=0.02))
 
