@@ -482,7 +482,7 @@ describe("ShotHistoryController", () => {
     const shot = makeShot({
       checked: false,
       shot_damage: 2,
-      shot_timeout: 6,
+      shot_timeout: 25,
     });
     installFetchMock({ user_shots: [shot] });
 

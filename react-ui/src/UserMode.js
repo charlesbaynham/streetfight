@@ -25,7 +25,9 @@ import {
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
+import { TeamLeaderButton } from "./TeamLeaderPanel";
 import ShotReceivedOverlay from "./ShotReceivedOverlay";
+import ShotRefusedNotice from "./ShotRefusedNotice";
 import useWakeLock from "./useWakeLock";
 import useAudioUnlock from "./useAudioUnlock";
 import useKnockedOutSound from "./useKnockedOutSound";
@@ -99,6 +101,7 @@ function GetView({ user }) {
           <div>
             <ButtonAndScoreboard standalone />
             <ShotHistoryButton standalone />
+            <TeamLeaderButton user={user} standalone />
           </div>
         )}
         <div className={styles.mapAndTickerContainer}>
@@ -111,6 +114,7 @@ function GetView({ user }) {
 
       <ShotHistoryController />
       <ShotReceivedOverlay user={user} />
+      <ShotRefusedNotice />
 
       {isAlive ? (
         <CrosshairImage />

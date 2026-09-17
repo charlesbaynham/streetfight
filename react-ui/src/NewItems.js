@@ -10,7 +10,13 @@ const ITEM_PARAMS = {
   armour: ["num"],
   medpack: [],
   weapon: ["shot_damage", "shot_timeout"],
+  radar: ["minutes"],
+  circle_warning: ["minutes"],
 };
+
+// The batch minted into the code, so a set can be withdrawn together. "game"
+// is what everything printed for the night itself carries.
+const DEFAULT_BATCH = "game";
 
 // A loot drop for "No weapon" makes no sense - that entry exists only for
 // AdminMode's per-player select, to describe a player who currently has
@@ -60,6 +66,7 @@ export default function NewItems() {
   const [selectedItemData, setSelectedItemData] = useState({});
   const [collected_only_once, set_collected_only_once] = useState(true);
   const [collected_as_team, set_collected_as_team] = useState(false);
+  const [batch, setBatch] = useState(DEFAULT_BATCH);
 
   const updateItemQR = useCallback(() => {
     const postData = {};
@@ -83,6 +90,7 @@ export default function NewItems() {
         item_type: selectedItemType,
         collected_only_once: collected_only_once,
         collected_as_team: collected_as_team,
+        batch: batch,
       },
       "POST",
       callback,
@@ -94,6 +102,7 @@ export default function NewItems() {
     selectedItemData,
     collected_only_once,
     collected_as_team,
+    batch,
   ]);
 
   useEffect(updateItemQR, [updateItemQR]);
@@ -186,6 +195,15 @@ export default function NewItems() {
         onChange={(_) => {
           set_collected_as_team(!collected_as_team);
         }}
+      />
+
+      <br />
+      <label htmlFor="batch">batch</label>
+      <input
+        id="batch"
+        type="text"
+        value={batch}
+        onChange={(e) => setBatch(e.target.value)}
       />
 
       <br />

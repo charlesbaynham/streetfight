@@ -3,6 +3,7 @@
 .direnv
 .DS_Store
 *.db
+*.db-journal
 node_modules
 result
 /*.png

@@ -68,7 +68,9 @@ Recorded so nobody builds against the plan's numbers.
 - **Armour is hit points above one.** There is no armour column: level *n*
   armour sets `hit_points` to `n + 1` and refuses if you already have that
   much (`item_actions._handle_armour`). "Starting armour 1" therefore means a
-  starting `hit_points` of 2.
+  starting `hit_points` of 2 — which since M1.2 is what everybody has, so a
+  **level-1 armour card is now a no-op for anybody who has not been hit**.
+  Mint level 2 or better.
 - **A medpack only works on a knocked-out player** and revives to 1 HP
   (`item_actions._handle_medpack`). Knocked out lasts `TIME_KNOCKED_OUT` (10
   min) and then becomes dead, which no item cures. Fine for the sandbox's
@@ -78,11 +80,11 @@ Recorded so nobody builds against the plan's numbers.
   bullets drawn. The constant is `generate_pub_pages.BULLETS_PER_TEAM_MEMBER`
   and three tests hard-code the literal 2. Changing the number is an image
   edit as well as a code change.
-- **The cooldown is enforced nowhere on the server.** `submit_shot` checks
-  team, HP and bullets only (`backend/user_interface.py:607-616`); the only
-  timer is `FireButton.js`'s `setTimeout`. Three back-to-back POSTs all
-  return 200 (`docs/r9_walkthrough/A4.md`). `MyWebcam.js` never checks
-  `response.ok`, so a server refusal would be silent today.
+- **The cooldown was enforced nowhere on the server** — fixed by M1.1.
+  `submit_shot` checked team, HP and bullets only; the only timer was
+  `FireButton.js`'s `setTimeout`, so three back-to-back POSTs all returned 200
+  (`docs/r9_walkthrough/A4.md`), and `MyWebcam.js` never checked `response.ok`,
+  so a server refusal would have been silent.
 - **Players cannot see anybody on the map**, teammates included. `MapViewSelf`
   draws the own dot only; `admin_get_locations` is admin-authenticated and
   polled every 5 s by `MapViewAdmin`. `set_location` deliberately fires no
@@ -190,7 +192,7 @@ Print-day procedure, once M0 is merged and deployed: mint everything from
 throwaway sqlite file). Print at actual size, never "fit to page". A second
 press mints a second set.
 
-### M0.1 — The new weapon table *(status: open)*
+### M0.1 — The new weapon table *(status: shipped 2026-09-17, PR #257)*
 
 Default cooldown 25 s, fast weapon 5 s. One PR:
 
@@ -209,6 +211,12 @@ Default cooldown 25 s, fast weapon 5 s. One PR:
   `AdminPrintables.js`'s item-sheet controls.
 - `FireButton.test.js` and any test naming 6 or 1.
 - **Do not** touch `Shot.shot_timeout`'s history; old shots keep their value.
+
+Shipped as specified. `WEAPON_NAME_LOOKUP`'s pairs stayed written out as
+literals rather than built from `DEFAULT_SHOT_TIMEOUT`, because
+`react-ui/src/weapons.test.js` reads them straight out of the file to catch
+the frontend mirror drifting; `tests/test_items.py` now pins `BASIC_WEAPON`
+to the Pewster instead, so the two cannot separate silently.
 
 Lands in: `backend/model.py`, `backend/user_interface.py`,
 `backend/item_actions.py`, `backend/generate_qr_items.py`,
@@ -238,7 +246,7 @@ redraw the line in his own hand over the top of this.
 Lands in: `backend/generate_pub_pages.py`, `backend/image_templates/`,
 `react-ui/src/AdminPrintables.js`, tests.
 
-### M0.3 — Freeze the QR item encoding *(status: open)*
+### M0.3 — Freeze the QR item encoding *(status: shipped 2026-09-17, PR #259)*
 
 The one PR that decides what the cards printed tomorrow *say*. Three
 additions to `items.ItemModel`, all optional, all excluded from the
@@ -272,7 +280,7 @@ Lands in: `backend/items.py`, `backend/model.py` (`ItemType`),
 `backend/main.py`, `react-ui/src/AdminPrintables.js`, `NewItems.js`,
 `tests/test_items.py`.
 
-### M0.4 — The sandbox posters *(status: open; after M0.3)*
+### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #263)*
 
 What the warm-up room's walls carry, and a way to mint them in one press:
 
@@ -284,7 +292,23 @@ What the warm-up room's walls carry, and a way to mint them in one press:
   across a room. Several copies of each.
 - Note in the runbook (M9) that these are revoked at 16:00 (M2.2).
 
-### M0.5 — The drop-card contact line *(status: open; small)*
+Shipped as a **Sandbox posters** panel on the Printables page
+(`printables.SANDBOX_CARDS`, `POST /admin_sandbox_sheets_pdf`): one sheet of
+eight per kind, `copies` of each, every code `unlimited` and `batch="sandbox"`.
+Two deviations from the list above, both because a card's drawing is chosen by
+what it awards and a poster read across a room has to say what it is:
+
+- **Ammunition is 5 bullets, not 20** — there is an `ammo_5.png` and no
+  `ammo_20.png`, and being unlimited, five a scan is no less than twenty.
+- **Eat-a-bullet and Pewster share `weapon_1.png`**, so the Eat-a-bullet
+  poster's drawing reads "Pewster / Damage: 1" (true of both; only the delay
+  differs). Fixing it is artwork Charles would have to draw, plus keying the
+  weapon lookup on the pair rather than the damage.
+
+**For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
+`sandbox` batch at 16:00.
+
+### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262)*
 
 Roadmap #7's mitigation, never built: every drop card and envelope carries
 "This is part of a game — ring <number>" so a stranger who finds one gets an
@@ -292,6 +316,14 @@ answer rather than a fright. Drawn text on the card in `generate_qr_items.py`
 (the artwork is a PNG with a QR pocket, same shape as the pub page); the
 number is a module constant Charles fills in. Verify the sheets still pass
 `tests/test_generate_qr_items.py`.
+
+Shipped: the line is `CONTACT_LINE` in `generate_qr_items.py`, drawn by
+`build_qr_grid` so the CLI and the Printables page both get it. It goes in a
+strip below the artwork, not on it - the artwork gives up 70 px of height -
+and keeps the full gutter between itself and the box edge, because the
+bottom row of a sheet is against the edge of the paper. The envelopes need
+nothing of their own: what is in them is these same cards.
+`tests/test_generate_qr_items.py` did not exist and does now.
 
 ### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
 
@@ -336,7 +368,7 @@ suit the square, legend names match the venue's landmark keys.
 
 ## M1 — Balance and the server-side cooldown *(by Thursday night; on staging Friday)*
 
-### M1.1 — Enforce the cooldown on the server *(status: open; the plan's one "assume they will try to break it")*
+### M1.1 — Enforce the cooldown on the server *(status: shipped 2026-09-17, PR #266; the plan's one "assume they will try to break it")*
 
 - `User.last_shot_at: Float, nullable` (additive) written in `submit_shot`
   beside the bullet decrement — not derived from `Shot.time_created`, which
@@ -353,13 +385,38 @@ suit the square, legend names match the venue's landmark keys.
 - Tests: TDD in `tests/test_shots.py` (three back-to-back shots → 200, 403,
   403; after the timeout → 200; the fast weapon's 5 s) and `FireButton.test.js`.
 
-### M1.2 — Starting armour *(status: open; small, after M0.1)*
+Shipped as specified, with two decisions worth knowing. A shot carrying its
+own `time_created` is **exempt** from the cooldown: that argument is only ever
+passed by the replay and the demo drip (`/api/submit_shot` passes neither, and
+must not), which deal out a simulated hour's shots in whatever order suits
+them. And the refusal reaches the player through a new
+`shotRefusedStore` + `ShotRefusedNotice` rather than a callback threaded
+through `WebcamView`, because the admin's reference-photo page mounts the same
+camera and has no business showing a fire-cooldown message.
+
+### M1.2 — Starting armour *(status: shipped 2026-09-17, PR #267)*
 
 `STARTING_HIT_POINTS` (2) in `_make_user`, the reset (M2.1), and
 `demo_game`'s arming (which deliberately gives one HP so a hit kills — keep
 that, it is the demo's own decision). Players already signed up on live have
 `hit_points = 1`; the reset at 16:00 sets everyone to 2, so no data fix is
 needed. Check `BulletCount.js`'s armour pips render two.
+
+Shipped in `_make_user` (the only place a `User` row is built) and in the
+existing `reset_game`; `demo_game` sets its one HP explicitly, so it was
+untouched. M2.1's new `reset_to_start_state` should use the same constant.
+
+Two things the spec did not anticipate:
+
+- **The pips render *one*, not two, and that is correct.** Armour is hit
+  points above one, so `STARTING_HIT_POINTS = 2` is armour level 1 and
+  `BulletCount.js`'s existing `hit_points - 1` draws one helmet. The visible
+  change is that a fresh player sees a helmet where they used to see a cross.
+- **A level-1 armour card is now worthless to anybody who has not been hit**
+  (`item_actions._handle_armour` refuses armour no better than what you have).
+  Everything being printed is level 2 (`printables.SANDBOX_CARDS`, and M3.1's
+  drop copy), so no reprint is needed — but do not mint level-1 armour.
+  `tests/test_items.py` pins this.
 
 ---
 
@@ -384,7 +441,7 @@ sign-ups included, which `reset_game`'s team walk misses:
 Existing `reset_game` stays for dev. Tests in `tests/test_admin_mode.py`.
 Two-tap confirm on the button, like the demo button.
 
-### M2.2 — Withdraw a batch of codes *(status: open; after M0.3)*
+### M2.2 — Withdraw a batch of codes *(status: shipped 2026-09-17, PR #265)*
 
 - New table `revoked_batches(batch TEXT PK, revoked_at)` — a new table, so it
   creates itself on deploy (rule 2).
@@ -394,6 +451,14 @@ Two-tap confirm on the button, like the demo button.
 - Admin: on the Printables page, a "Withdraw codes" panel: text field
   (default `sandbox`), the list of withdrawn batches, and an un-withdraw.
 - Tests: a withdrawn code 403s, an unbatched legacy code is unaffected.
+
+Shipped as specified. Two things worth knowing at 16:00: the check sits
+*before* anything about the player is looked at, so a withdrawn card is dead
+for everybody and the answer never depends on who scanned it; and the panel's
+button names the batch it is about to withdraw ("Withdraw \"sandbox\""), with a
+red warning for any batch that is not the sandbox, because mistyping `game`
+there would turn off every card in the town. One press rather than two, since
+**Allow again** is in the list directly beneath it.
 
 ---
 
@@ -547,7 +612,7 @@ The admin map always shows it.
 
 ---
 
-## M7 — Team leader view *(Thursday/Friday; small, independent)*
+## M7 — Team leader view *(status: shipped 17 Sept, PR #261)*
 
 - `User.is_team_leader: Boolean default False` (additive). A toggle on the
   admin roster row (`AdminMode.js` `PlayerRow`).
@@ -559,6 +624,16 @@ The admin map always shows it.
   and armband on and matching the app; reference photo taken; knows the
   cooldown and the pub rule.
 - `UserModel.is_team_leader`.
+
+Shipped as specified, with the first-draft checklist above (Charles's own
+wording had not arrived; it is one array in `prose.teamLeader.checklist`).
+The panel is `react-ui/src/TeamLeaderPanel.js`, which also exports the
+`TeamLeaderButton` mounted beside the scoreboard in `BulletCount.js` and, for
+a player who is out, in `UserMode.js`. Both render nothing for a player who
+is not a leader. The admin toggle posts `/admin_set_team_leader`, which fans
+out a `"user"` event to the player and a `"ticker"` one to their game so the
+roster refreshes — the same pair `set_user_name` uses, since there is no
+`"admin"` event of its own.
 
 ---
 

@@ -24,7 +24,15 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
-DEFAULT_SHOT_TIMEOUT = 6
+DEFAULT_SHOT_TIMEOUT = 25
+
+# The weapon a player is handed by the 16:00 reset, and the hit points they
+# start it with. A weapon is the pair (shot_damage, shot_timeout), named by
+# item_actions.WEAPON_NAME_LOOKUP -- this one is the Pewster. There is no
+# armour column: level n armour sets hit_points to n + 1, so "starting armour
+# 1" is a starting hit_points of 2.
+BASIC_WEAPON = (1, DEFAULT_SHOT_TIMEOUT)
+STARTING_HIT_POINTS = 2
 
 # The values Shot.ai_review_state can take. They live here, next to the column,
 # rather than in backend.ai_shot_review so that code which only reads the column
@@ -331,10 +339,28 @@ class User(Base):
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
     )
 
+    # One player per team is nominated at the door as its leader: the person
+    # who is asked to check their team is properly equipped before the game
+    # starts. It is a label and a checklist, not a permission - a leader can do
+    # nothing in the app another player cannot.
+    is_team_leader = Column(Boolean, nullable=False, default=False)
+
     num_bullets = Column(Integer, nullable=False, default=0)
+    # A fresh player gets STARTING_HIT_POINTS, which _make_user passes
+    # explicitly - it is the only place a User row is built. This default is
+    # what a row written any other way would land with, and is left at one so
+    # that a player conjured up outside that path is not silently armoured.
     hit_points = Column(Integer, nullable=False, default=1)
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
+
+    # When this player last fired, in epoch seconds, so the server can refuse
+    # a shot inside their own cooldown (M1.1) - a client-side timer is one
+    # page reload away from being gone. Deliberately not derived from the
+    # player's newest Shot.time_created: that is a DateTime with one-second
+    # resolution, and a reset deletes the rows, which would hand everybody a
+    # free shot. Null for a player who has not fired since the column arrived.
+    last_shot_at = Column(Float, nullable=True)
 
     # The appeal budget (roadmap R8), mechanically ammo: spent when an appeal
     # is lodged, handed back when it is upheld, reset with the rest of a
@@ -445,6 +471,12 @@ class ItemType(str, enum.Enum):
     MEDPACK = "medpack"
     ARMOUR = "armour"
     WEAPON = "weapon"
+    # The two experimental items. An Enum column is a VARCHAR with no check
+    # constraint, so a new member needs no migration; their handlers are not
+    # written yet, and until they are `do_item_actions` raises
+    # NotImplementedError - a RuntimeError, so a scan is refused with a 403.
+    RADAR = "radar"
+    CIRCLE_WARNING = "circle_warning"
 
 
 class TickerEntry(Base):
@@ -510,6 +542,29 @@ class Item(Base):
     )
 
 
+class RevokedBatch(Base):
+    """A print run that has been withdrawn, and so no longer collectable.
+
+    A code is an HMAC over its payload and nothing else, which is what lets a
+    card be printed on Thursday for a server that is deployed on Friday - and
+    is equally why a printed code cannot be recalled. Rotating ``SECRET_KEY``
+    would withdraw everything at once, the team cards included. So every code
+    minted carries a ``batch`` (:class:`backend.items.ItemModel`), and
+    withdrawing one is a row here: at 16:00 the sandbox's wall posters stop
+    working while the game's own cards, minted as "game", carry on.
+
+    The row's presence is the whole of the state, so un-withdrawing is a
+    delete. A code minted before batches existed has no batch at all and can
+    never be withdrawn this way - which is the right answer, since there is
+    nothing to name it by.
+    """
+
+    __tablename__ = "revoked_batches"
+
+    batch = Column(String, primary_key=True, nullable=False)
+    revoked_at = Column(DateTime, server_default=func.now())
+
+
 class GameModel(pydantic.BaseModel):
     id: UUID
 
@@ -545,11 +600,20 @@ class UserModel(pydantic.BaseModel):
     name: Optional[str] = None
 
     team_id: Optional[UUID] = None
+    is_team_leader: bool = False
 
     num_bullets: int
     hit_points: int
     shot_timeout: float
     shot_damage: int
+
+    # The epoch second at which this player may fire again: last_shot_at plus
+    # their own shot_timeout, or None when they are free to fire now. Derived
+    # rather than stored, so the phone counts down to the server's answer
+    # instead of running its own timer - a reload then comes back still
+    # cooling. Not an ORM attribute; get_user_model fills it in.
+    next_shot_at: Optional[float] = None
+
     time_of_death: Optional[float] = None
 
     # Rides the SSE "user" payload beside num_bullets, so a player weighing up

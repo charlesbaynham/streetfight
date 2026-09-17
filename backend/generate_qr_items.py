@@ -8,9 +8,11 @@ import click
 import qrcode
 from PIL import Image
 from PIL import ImageDraw
+from PIL import ImageFont
 
 from .admin_interface import AdminInterface
 from .items import ItemModel
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import ItemType
 from .utils import slugify_string
 
@@ -23,10 +25,37 @@ A4_WIDTH = 3508
 # Space between images
 IMAGE_GUTTER = 100
 
+# What a stranger who finds a card needs to read (roadmap #7). The cards are
+# hidden in a town nobody has told, and a QR code taped to street furniture
+# reads badly to a passer-by or a police officer; a line saying what it is and
+# who to ring turns an incident into a curiosity. Cheap, so every card carries
+# it - including the ones in the pubs' envelopes, which are these same cards.
+CONTACT_NUMBER = "07955 686520"
+CONTACT_LINE = f"This is part of a game - ring {CONTACT_NUMBER}"
+
+# The strip at the foot of each card the line is printed in, and the face it
+# is printed in. It sits *below* the artwork rather than on it: the cards are
+# cut up one at a time, so the line has to be somewhere the scissors leave
+# alone and the drawing does not cover. Half the strip is the gutter that was
+# always there; the rest is taken off the artwork's height, which is already
+# squashed to the card's shape and does not notice another two per cent.
+CONTACT_STRIP = 70
+CONTACT_FONT_PATH = Path(__file__, "../UbuntuMono-R.ttf").resolve()
+
 QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 
 ITEM_TYPES = [i.value for i in ItemType]
+
+# The batch every real code belongs to. A batch is a label minted into the
+# payload so a whole print run can be withdrawn at once (the sandbox's posters
+# are "sandbox", and stop working at 16:00); the game's own codes carry
+# "game" so that they are nameable too, and are never withdrawn.
+DEFAULT_BATCH = "game"
+
+# Radar and circle-warning cards have one drawing each: what varies for them
+# is a number of minutes, which is not something the artwork says.
+SINGLE_ARTWORK_TYPES = {ItemType.RADAR.value, ItemType.CIRCLE_WARNING.value}
 
 
 def build_qr_grid(
@@ -110,7 +139,7 @@ def build_qr_grid(
             box_y = (i // num_x) * box_height
 
             new_width = box_width - round(IMAGE_GUTTER)
-            new_height = box_height - round(IMAGE_GUTTER)
+            new_height = box_height - round(IMAGE_GUTTER) - CONTACT_STRIP
 
             im.paste(
                 sub_img.resize((new_width, new_height)),
@@ -125,7 +154,38 @@ def build_qr_grid(
                 (box_x + 10, box_y + 10), tag + f"{i + label_offset}", fill="black"
             )
 
+            # The contact line, centred in the strip below the artwork. It
+            # stays inside the gutter rather than using it up: the bottom row
+            # of a sheet is against the edge of the paper, and a printer with
+            # a 5 mm unprintable margin would swallow a line any lower.
+            font = _contact_font(draw, new_width)
+            draw.text(
+                (
+                    box_x + box_width // 2,
+                    box_y + box_height - round(IMAGE_GUTTER / 2) - CONTACT_STRIP // 2,
+                ),
+                CONTACT_LINE,
+                font=font,
+                fill="black",
+                anchor="mm",
+            )
+
         return im.copy()
+
+
+def _contact_font(draw: ImageDraw.ImageDraw, width_px: int) -> ImageFont.FreeTypeFont:
+    """The biggest size the contact line fits ``width_px`` at.
+
+    Sized rather than fixed because the grid is a parameter: two codes to a
+    sheet gives cards twice as wide as eight do, and the line should fill
+    either.
+    """
+    for size in range(CONTACT_STRIP, 7, -2):
+        font = ImageFont.truetype(str(CONTACT_FONT_PATH), size)
+        if draw.textlength(CONTACT_LINE, font=font) <= width_px:
+            return font
+
+    return ImageFont.truetype(str(CONTACT_FONT_PATH), 8)
 
 
 def make_qr_grid(
@@ -159,6 +219,8 @@ def base_image_path(itype: str, num, damage) -> Optional[Path]:
     """
     if itype == "weapon":
         path = Path(IMAGES_DIR, f"{itype}_{damage}.png")
+    elif itype in SINGLE_ARTWORK_TYPES:
+        path = Path(IMAGES_DIR, f"{itype}_1.png")
     else:
         path = Path(IMAGES_DIR, f"{itype}_{num}.png")
 
@@ -169,14 +231,37 @@ def base_image_path(itype: str, num, damage) -> Optional[Path]:
     return path
 
 
-def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, asteam):
+def item_data(num, damage, timeout, minutes: Optional[int] = None) -> dict:
+    """The payload dict every mint site hands to ``make_new_item``.
+
+    One dict serves every item type: each type's pydantic schema takes the
+    keys it knows and ignores the rest, so a caller does not have to know
+    that ammo counts bullets and a weapon carries a pair. ``minutes`` is left
+    out entirely when nobody asked for one, so radar and circle-warning cards
+    fall back to the default on their own schema rather than to a number
+    chosen here.
+    """
+    data = {"num": num, "shot_damage": damage, "shot_timeout": timeout}
+    if minutes is not None:
+        data["minutes"] = minutes
+    return data
+
+
+def log_items(
+    urls: Iterable[str], tag: str, num, damage, timeout, onceonly, asteam, batch=None
+):
     """Append the codes minted to ``qr_codes.csv``, the record of every code
-    that has ever been printed."""
+    that has ever been printed.
+
+    ``batch`` is the last column because the file has no header and is read by
+    eye and by column number: a new field goes on the end so that every row
+    written before it still lines up.
+    """
     with open(QR_LOGFILE, "a") as f:
         for i, encoded_url in enumerate(urls):
             item = ItemModel.from_base64(encoded_url)
             f.write(
-                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
+                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam},{batch or ''}\n"
             )
 
 
@@ -205,7 +290,7 @@ def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, ast
 @click.option(
     "--timeout",
     "-m",
-    default=6,
+    default=DEFAULT_SHOT_TIMEOUT,
     help="For weapons, the timeout",
 )
 @click.option(
@@ -243,6 +328,33 @@ def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, ast
     help=("If true, the item is awarded to everyone in the team"),
 )
 @click.option(
+    "--minutes",
+    default=None,
+    type=int,
+    help=(
+        "For radar and circle-warning cards, how long the effect lasts. "
+        "Left out, the item type's own default is used."
+    ),
+)
+@click.option(
+    "--batch",
+    default=DEFAULT_BATCH,
+    show_default=True,
+    help=(
+        "The label minted into every code, so this print run can be withdrawn "
+        "as a set. Pass an empty string for an unbatched code."
+    ),
+)
+@click.option(
+    "--unlimited",
+    is_flag=True,
+    default=False,
+    help=(
+        "Let the same player scan each code as often as they like - the "
+        "sandbox's wall posters. Real cards never set this."
+    ),
+)
+@click.option(
     "--log",
     default=True,
     help=(
@@ -262,6 +374,9 @@ def generate(
     tag: str,
     onceonly: bool,
     asteam: bool,
+    minutes: Optional[int],
+    batch: str,
+    unlimited: bool,
 ):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
@@ -283,20 +398,18 @@ def generate(
     qr_data = [
         AdminInterface().make_new_item(
             type,
-            {
-                "num": num,
-                "shot_damage": damage,
-                "shot_timeout": timeout,
-            },
+            item_data(num, damage, timeout, minutes),
             collected_only_once=onceonly,
             collected_as_team=asteam,
+            batch=batch,
+            unlimited=unlimited,
         )
         for _ in range(x * y)
     ]
     make_qr_grid(iter(qr_data), outfile, x, y, tag=tag, base_image=path_to_base_image)
 
     if log:
-        log_items(qr_data, tag, num, damage, timeout, onceonly, asteam)
+        log_items(qr_data, tag, num, damage, timeout, onceonly, asteam, batch)
 
 
 if __name__ == "__main__":
