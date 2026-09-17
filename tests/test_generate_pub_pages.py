@@ -92,17 +92,18 @@ def test_one_page_arms_a_whole_team_once_and_the_next_team_too(
     UserInterface(user_a2).join_team(UserInterface(user_a1).get_team_model().id)
 
     url = pub.mint_pub_items(1)[0]
+    bullets = pub.BULLETS_PER_TEAM_MEMBER
 
     UserInterface(user_a1).collect_item(url)
 
-    assert UserInterface(user_a1).get_user_model().num_bullets == 2
-    assert UserInterface(user_a2).get_user_model().num_bullets == 2
+    assert UserInterface(user_a1).get_user_model().num_bullets == bullets
+    assert UserInterface(user_a2).get_user_model().num_bullets == bullets
 
     with pytest.raises(HTTPException):
         UserInterface(user_a2).collect_item(url)
 
     UserInterface(user_b).collect_item(url)
-    assert UserInterface(user_b).get_user_model().num_bullets == 2
+    assert UserInterface(user_b).get_user_model().num_bullets == bullets
 
 
 def test_cli_writes_one_pdf_page_per_pub(tmp_path):
