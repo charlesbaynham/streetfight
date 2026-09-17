@@ -35,9 +35,46 @@ The renderer labels **every marker in `meta.json`**, which is every landmark
 in the venue. Adding a pub and re-running is the whole change — there is no
 step where a human or a model has to redraw anything.
 
-What it cannot do is the doodles. The cartwheel beside Wheelwrights Arms is
-the charm of the Kingston map and no renderer will invent one; ink them onto a
-printed copy if you want them.
+## Two layers, and replacing the handwriting
+
+Beside the raster it writes three SVGs — `<name>.svg`, `<name>.map.svg` and
+`<name>.hand.svg`. The drawing is built in two layers:
+
+| Layer | What is on it |
+| --- | --- |
+| `map` | roads, water, parks — and where hand-drawn doodles belong |
+| `handwriting` | every word on the sheet, and the arrows that point at things |
+
+Each is a `<g>` in the combined file and the only thing in its own file, so
+stacking map then handwriting reproduces the whole exactly (verified: the
+layers composite back to the combined with no difference beyond glyph
+antialiasing). The words are real `<text>` in an embedded font rather than
+outlines, so they can be edited as text as well as redrawn.
+
+The arrows sit with the handwriting, not the map, because they belong to the
+words: where a name goes is decided by what room is left, and the arrow is
+what keeps it honest about which pub it means.
+
+**To re-letter the map by hand:**
+
+1. Edit `<name>.hand.svg` — or throw it away and draw your own, in the same
+   2000 × 2000 coordinate space.
+2. `render_venue_map.py --combine-only` rebuilds `<name>.svg` by stacking the
+   two layer files **as they are on disk**. It is pure text; nothing about
+   your lettering has to be understood.
+3. Rasterise that over `<name>.jpg` yourself — Inkscape, or a browser — since
+   that is the file the app and the poster load.
+
+**The renderer will not overwrite lettering.** Every file it writes is signed
+with a hash of its own contents; a file that does not match its signature is
+somebody's work, and re-rendering refuses and names it. `--force` throws the
+edit away deliberately, `--no-svg` refreshes only the raster. The doodles are
+the reason this guard matters: the map layer is the one you would draw a
+cartwheel onto, and it is regenerated whenever the pub list changes.
+
+What the renderer cannot do is invent those doodles. The cartwheel beside
+Wheelwrights Arms is the charm of the Kingston map — but the map layer is now
+a file you can draw into, rather than a flat JPEG.
 
 ## The workflow for the references (and the image-model route)
 
