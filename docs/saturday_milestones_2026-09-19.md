@@ -474,7 +474,7 @@ The admin map always shows it.
 
 ---
 
-## M7 — Team leader view *(status: shipped 17 Sept, PR #TBD)*
+## M7 — Team leader view *(status: shipped 17 Sept, PR #261)*
 
 - `User.is_team_leader: Boolean default False` (additive). A toggle on the
   admin roster row (`AdminMode.js` `PlayerRow`).
