@@ -290,7 +290,7 @@ What the warm-up room's walls carry, and a way to mint them in one press:
   across a room. Several copies of each.
 - Note in the runbook (M9) that these are revoked at 16:00 (M2.2).
 
-### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #TBD)*
+### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262)*
 
 Roadmap #7's mitigation, never built: every drop card and envelope carries
 "This is part of a game — ring <number>" so a stranger who finds one gets an
