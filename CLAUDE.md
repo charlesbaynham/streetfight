@@ -313,6 +313,17 @@ Four things from it that are worth knowing even if you never call the agent:
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
+    The `"circle"` event it fires also carries the **courier** (M4.1):
+    `Game.courier_lat/long/timestamp/accuracy`, written by
+    `AdminInterface.set_courier_location` from `/admin/courier` about once a
+    second while somebody walks a crate to a drop. The write happens every
+    time; the *announcement* is leading-edge throttled to
+    `COURIER_ANNOUNCE_INTERVAL_S` (5 s), because otherwise every fix wakes
+    every phone's circle stream for a dot that moved a metre and a half.
+    `clear_courier` ignores the throttle — a dot left on a map after the crate
+    is down is the one staleness that misleads. Placing the drop goes through
+    the ordinary `set_circles`, so the ticker message and the circle event are
+    the same ones an admin placing it from the map fires.
   - `next_event.py` — the one thing a game is counting down to, and the clock
     that fires it: the vocabulary (`NextEventKind`, `KIND_CIRCLE` /
     `KIND_DROP`) that `Game.next_event_kind` /
@@ -561,6 +572,12 @@ Four things from it that are worth knowing even if you never call the agent:
     with nothing in the browser able to detect it, which is why the
     onboarding screen's sound row is a tap that makes a noise
     (`useSoundCheck.js`) rather than a sentence asking nicely.
+    `AdminCourier.js` (route `/admin/courier`) is the courier's own phone
+    page: a `watchPosition` at the same tier `MapViewSelf` uses when the map
+    is popped out, a two-tap **Place drop here** that sets the drop circle at
+    the current fix and then stops broadcasting, and the state said in words
+    ("Broadcasting - last fix 3 s ago, ±8 m"). It holds the wake lock and
+    says so when it has not got one, like the spectator screen.
     `AdminPrintables.js` (route `/admin/printables`) is everything a game
     night needs handed out, in one page: team cards, pub certificates and
     drop-card sheets, each a panel with its own controls and one big button,

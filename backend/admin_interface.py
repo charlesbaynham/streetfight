@@ -210,6 +210,19 @@ _APPEAL_RESULT_WORDS = {
 }
 
 
+# A broadcasting courier posts a fix about once a second (M4.1), and every
+# announcement wakes the circle stream of every phone in the game. The
+# position is written on every post, but the fan-out is throttled to this, so
+# a player's map is at most this stale while the courier is walking - about
+# seven metres at walking pace, which is inside the accuracy of the fix
+# itself. A courier fix is not a shot.
+COURIER_ANNOUNCE_INTERVAL_S = 5.0
+
+# game id -> when its courier position was last announced. In-process and
+# deliberately not durable: losing it costs one extra announcement.
+_courier_announced_at: dict = {}
+
+
 class CircleTypes(str, Enum):
     EXCLUSION = "EXCLUSION"
     NEXT = "NEXT"
@@ -443,6 +456,58 @@ class AdminInterface:
         self._session.commit()
 
         return g.id
+
+    @db_scoped
+    def set_courier_location(
+        self,
+        game_id: UUID,
+        lat: float,
+        long: float,
+        accuracy: Optional[float] = None,
+    ):
+        """Record where the courier is now (M4.1).
+
+        Called about once a second by /admin/courier while somebody is walking
+        a crate to a drop. The write happens every time; the announcement is
+        throttled to COURIER_ANNOUNCE_INTERVAL_S, because the alternative is
+        waking every player's circle stream once a second for a dot that moves
+        a metre and a half.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        game.courier_lat = lat
+        game.courier_long = long
+        game.courier_timestamp = time.time()
+        game.courier_accuracy = accuracy
+
+        self._session.commit()
+
+        now = time.time()
+        last = _courier_announced_at.get(game_id)
+        if last is None or now - last >= COURIER_ANNOUNCE_INTERVAL_S:
+            _courier_announced_at[game_id] = now
+            trigger_circle_update(game_id)
+
+    @db_scoped
+    def clear_courier(self, game_id: UUID):
+        """The courier has stopped broadcasting: put the dot away.
+
+        Always announces, throttle or no throttle - this one is the difference
+        between a courier who is somewhere and a courier who is nowhere, and a
+        dot left on a map for five seconds after the crate is down is the one
+        staleness that actually misleads.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        game.courier_lat = None
+        game.courier_long = None
+        game.courier_timestamp = None
+        game.courier_accuracy = None
+
+        self._session.commit()
+
+        _courier_announced_at.pop(game_id, None)
+        trigger_circle_update(game_id)
 
     @db_scoped
     def set_circles(

@@ -141,6 +141,24 @@ class Game(Base):
     next_event_at = Column(Float, nullable=True)
     next_event_note = Column(String, nullable=True)
 
+    # Where the courier is right now (M4.1): whoever is walking a crate to a
+    # drop, broadcasting from /admin/courier. It hangs off the Game and not
+    # off a User because the courier is not playing - there is no player row
+    # to put it on, and only one person carries the crate at a time.
+    #
+    # All null means nobody is broadcasting, which is also the state after the
+    # drop is placed: the courier's job ends when the crate is on the ground.
+    # courier_timestamp is what the maps fade the dot by, so a stale fix
+    # reads as stale rather than as a courier standing still.
+    #
+    # courier_accuracy is the browser's own radius-in-metres estimate. Like
+    # User.location_accuracy and Shot.heading it is captured because it cannot
+    # be recovered after the night, and is consumed by nothing yet.
+    courier_lat = Column(Float, nullable=True)
+    courier_long = Column(Float, nullable=True)
+    courier_timestamp = Column(Float, nullable=True)
+    courier_accuracy = Column(Float, nullable=True)
+
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
@@ -591,6 +609,11 @@ class GameModel(pydantic.BaseModel):
     next_event_kind: Optional[str] = None
     next_event_at: Optional[float] = None
     next_event_note: Optional[str] = None
+
+    courier_lat: Optional[float] = None
+    courier_long: Optional[float] = None
+    courier_timestamp: Optional[float] = None
+    courier_accuracy: Optional[float] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
