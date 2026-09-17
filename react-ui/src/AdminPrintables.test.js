@@ -52,7 +52,7 @@ test("minting pub certificates posts the page count and the bullets each is wort
 
   const call = getLastAPICall("admin_pub_pages_pdf");
   expect(call.method).toBe("POST");
-  expect(call.query).toEqual({ count: "6", num_bullets: "2" });
+  expect(call.query).toEqual({ count: "6", num_bullets: "5" });
 });
 
 test("minting drop cards posts the whole item definition", async () => {

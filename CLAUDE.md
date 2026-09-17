@@ -220,7 +220,7 @@ Four things from it that are worth knowing even if you never call the agent:
     cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
     `image_templates/`, and every code minted is recorded in `qr_codes.csv`.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
-    portrait A4 poster per pub, each carrying a single ammo code worth two
+    portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
     (`collected_as_team=True`, `collected_only_once=False`, so one sheet serves
     every team once). The pages are deliberately anonymous — nothing says which
