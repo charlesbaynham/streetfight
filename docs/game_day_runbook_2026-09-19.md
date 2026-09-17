@@ -35,7 +35,7 @@ Every panel that mints says above its button how many codes a press produces.
 | Team cards | **Team cards** | one per team + a spare each | The door code. This is what turns a signed-up player into a team member. |
 | Pub certificates | **Pub certificates** | **22** | 19 pubs are on the venue, The Speaker among them; 22 gives a few spares. 5 bullets to every member of the first team to scan, once per team, every team. |
 | Drop cards | **Drop cards** | as many sheets as you have hiding places | 8 cards to a landscape A4 sheet, every card a distinct item. One press per item type — set **Item** and **Amount per card**, then mint. |
-| Sandbox posters | **Sandbox posters** | 1–5 copies of each | Six kinds, one sheet of eight per kind per copy. Every code is unlimited and batched `sandbox`. |
+| Sandbox posters | **Sandbox posters** | 1–5 copies of each | Six kinds, one A4 page per kind per copy, headed **INFINITE**. Every code is unlimited and batched `sandbox`. |
 | Map poster | **Map poster** | 1 (A3) | **Hold — see below.** |
 
 ### Drop cards: what to mint
@@ -66,6 +66,11 @@ and three weapons (Pewster, Eat-a-bullet, Tracka-Tracka). Every one is
 `unlimited` — the same player can scan the same poster over and over, which is
 the whole point of a warm-up room — and every one is batched `sandbox`, which
 is how they all die at 16:00.
+
+Each is a **portrait A4 page of its own** with **INFINITE** across the top —
+which is how you tell one from a drop card while sorting the print run. They
+carry the same drawings, so anything without that word across the top belongs
+in the box to be hidden round the town, not on a wall.
 
 Two things about the drawings, so they are not a surprise on the wall: the
 ammunition poster is **5 bullets, not 20** (there is no 20-bullet drawing, and

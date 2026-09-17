@@ -290,7 +290,7 @@ Lands in: `backend/items.py`, `backend/model.py` (`ItemType`),
 `backend/main.py`, `react-ui/src/AdminPrintables.js`, `NewItems.js`,
 `tests/test_items.py`.
 
-### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #263)*
+### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #263; re-shaped as one-per-page INFINITE posters 2026-09-17)*
 
 What the warm-up room's walls carry, and a way to mint them in one press:
 
@@ -303,8 +303,12 @@ What the warm-up room's walls carry, and a way to mint them in one press:
 - Note in the runbook (M9) that these are revoked at 16:00 (M2.2).
 
 Shipped as a **Sandbox posters** panel on the Printables page
-(`printables.SANDBOX_CARDS`, `POST /admin_sandbox_sheets_pdf`): one sheet of
-eight per kind, `copies` of each, every code `unlimited` and `batch="sandbox"`.
+(`printables.SANDBOX_CARDS`, `POST /admin_sandbox_sheets_pdf`): one portrait
+A4 page per kind, `copies` of each, every code `unlimited` and
+`batch="sandbox"`. It printed a sheet of eight per kind to begin with, which
+was eight copies of one unlimited code and, carrying the drop cards' own
+artwork, indistinguishable from a sheet to be cut up and hidden — so it is now
+one page per code, headed **INFINITE** (`printables.infinite_poster`).
 Two deviations from the list above, both because a card's drawing is chosen by
 what it awards and a poster read across a room has to say what it is:
 

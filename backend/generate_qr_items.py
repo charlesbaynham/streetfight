@@ -58,6 +58,54 @@ DEFAULT_BATCH = "game"
 SINGLE_ARTWORK_TYPES = {ItemType.RADAR.value, ItemType.CIRCLE_WARNING.value}
 
 
+def load_base_image(
+    base_image: Union[str, Path, None], box_width: int, box_height: int
+) -> Optional[Image.Image]:
+    """The artwork for a card, trimmed of its transparent border and squashed
+    to the box it is drawn in."""
+    if not base_image:
+        return None
+
+    art = Image.open(base_image)
+
+    bbox = art.getbbox()
+    if bbox:
+        art = art.crop(bbox)
+
+    return art.resize((box_width, box_height))
+
+
+def card_face(
+    url: str,
+    box_width: int,
+    box_height: int,
+    base_image_loaded: Optional[Image.Image] = None,
+) -> Image.Image:
+    """One card: the QR code with the artwork drawn over it.
+
+    The artwork carries its own ink-free pocket, so the code goes down first
+    and the drawing is pasted on top through its alpha - which is why the
+    geometry here is in fractions of the box rather than measured off any one
+    picture. ``box_width`` x ``box_height`` is the whole card, so the same
+    face comes out of a card on a sheet of eight and a poster filling A4:
+    :func:`backend.printables.infinite_poster` asks for one at A4's own
+    proportions for exactly that reason.
+    """
+    face = Image.new("RGBA", (box_width, box_height), "white")
+
+    qr = qrcode.make(url, error_correction=qrcode.ERROR_CORRECT_M)
+    qr_size = int(0.75 * min(box_width, box_height))
+    qr = qr.resize((qr_size, qr_size))
+
+    qr_offset = min(box_width // 2 - qr_size // 2, box_height // 2 - qr_size // 2)
+    face.paste(qr, (qr_offset, qr_offset))
+
+    if base_image_loaded:
+        face.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
+
+    return face
+
+
 def build_qr_grid(
     qr_data: Iterable,
     num_x=4,
@@ -78,44 +126,12 @@ def build_qr_grid(
     box_width = A4_WIDTH // num_x
     box_height = A4_HEIGHT // num_y
 
-    if base_image:
-        base_image_loaded = Image.open(base_image)
+    base_image_loaded = load_base_image(base_image, box_width, box_height)
 
-        # Crop the base image to remove all transparent borders
-        bbox = base_image_loaded.getbbox()
-        if bbox:
-            base_image_loaded = base_image_loaded.crop(bbox)
-
-        # Resize it to fill the box
-        base_image_loaded = base_image_loaded.resize((box_width, box_height))
-    else:
-        base_image_loaded = None
-
-    # Make the boxes
-    sub_images = []
-    for i in range(num_x * num_y):
-        # Make a new image for this box
-        sub_img = Image.new("RGBA", (box_width, box_height), "white")
-        ImageDraw.Draw(sub_img)
-
-        # Generate the next QR code
-        qr = qrcode.make(next(qr_data), error_correction=qrcode.ERROR_CORRECT_M)
-        qr_size = int(0.75 * min(box_width, box_height))
-        qr = qr.resize((qr_size, qr_size))
-
-        # Paste the QR code
-        qr_x_offset = box_width // 2 - qr_size // 2
-        qr_y_offset = box_height // 2 - qr_size // 2
-        qr_offset_sz = min(qr_x_offset, qr_y_offset)
-        qr_offset = (qr_offset_sz, qr_offset_sz)
-        sub_img.paste(qr, qr_offset)
-
-        # Paste the base image if it exists
-        if base_image_loaded:
-            sub_img.paste(base_image_loaded, (0, 0), mask=base_image_loaded)
-
-        # Add the sub-image to the list
-        sub_images.append(sub_img)
+    sub_images = [
+        card_face(next(qr_data), box_width, box_height, base_image_loaded)
+        for _ in range(num_x * num_y)
+    ]
 
     # Make the main output image
     with Image.new("RGBA", (A4_WIDTH, A4_HEIGHT), "white") as im:
@@ -173,19 +189,26 @@ def build_qr_grid(
         return im.copy()
 
 
-def _contact_font(draw: ImageDraw.ImageDraw, width_px: int) -> ImageFont.FreeTypeFont:
-    """The biggest size the contact line fits ``width_px`` at.
+def fit_font(
+    draw: ImageDraw.ImageDraw, text: str, width_px: int, max_size: int
+) -> ImageFont.FreeTypeFont:
+    """The biggest size ``text`` fits ``width_px`` at, up to ``max_size``.
 
-    Sized rather than fixed because the grid is a parameter: two codes to a
-    sheet gives cards twice as wide as eight do, and the line should fill
-    either.
+    Sized rather than fixed because the shape being printed on is a
+    parameter: two codes to a sheet gives cards twice as wide as eight do,
+    and a poster filling A4 is wider again.
     """
-    for size in range(CONTACT_STRIP, 7, -2):
+    for size in range(max_size, 7, -2):
         font = ImageFont.truetype(str(CONTACT_FONT_PATH), size)
-        if draw.textlength(CONTACT_LINE, font=font) <= width_px:
+        if draw.textlength(text, font=font) <= width_px:
             return font
 
     return ImageFont.truetype(str(CONTACT_FONT_PATH), 8)
+
+
+def _contact_font(draw: ImageDraw.ImageDraw, width_px: int) -> ImageFont.FreeTypeFont:
+    """The biggest size the contact line fits ``width_px`` at."""
+    return fit_font(draw, CONTACT_LINE, width_px, CONTACT_STRIP)
 
 
 def make_qr_grid(
