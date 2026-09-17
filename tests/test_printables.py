@@ -8,6 +8,9 @@ os.environ["SECRET_KEY"] = "test_secret_key"
 os.environ.setdefault("WEBSITE_URL", "https://example.com")
 
 from backend import printables  # noqa: E402
+from backend.generate_qr_items import base_image_path  # noqa: E402
+from backend.item_actions import WEAPON_NAME_LOOKUP  # noqa: E402
+from backend.items import ItemModel  # noqa: E402
 
 
 @pytest.fixture(autouse=True)
@@ -61,6 +64,73 @@ def test_pub_pages_mint_repeatable_team_ammo(log_to_tmp):
     assert all((row[7], row[8]) == ("False", "True") for row in rows)
 
 
+def test_a_run_labels_its_codes_with_its_batch(log_to_tmp):
+    """A batch is how a whole print run is withdrawn at once later (M2.2), so
+    it has to reach both the payload and the log."""
+    printables.item_sheets_pdf("ammo", num=5, batch="sandbox", unlimited=True)
+
+    rows = [row.split(",") for row in logged_codes(log_to_tmp)]
+    assert all(row[-1] == "sandbox" for row in rows)
+
+
+def test_the_new_timed_cards_print(log_to_tmp):
+    """Radar and circle-warning cards are printed before their handlers are
+    written, so what must work now is minting and drawing them."""
+    pdf = printables.item_sheets_pdf("radar", num=1, minutes=7)
+
+    assert page_count(pdf) == 1
+    assert all(
+        row.split(",")[3] == "ItemType.RADAR" for row in logged_codes(log_to_tmp)
+    )
+
+
+def test_a_sandbox_run_prints_a_sheet_for_every_kind_of_poster(log_to_tmp):
+    pdf = printables.sandbox_sheets_pdf(copies=2)
+
+    assert page_count(pdf) == 2 * len(printables.SANDBOX_CARDS)
+    # One code per kind, not one per card: an unlimited code is claimable by
+    # everybody as often as they like, so a second would be the same power and
+    # a second row to read.
+    assert len(logged_codes(log_to_tmp)) == len(printables.SANDBOX_CARDS)
+
+
+def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
+    """The two properties the warm-up room depends on: a poster can be scanned
+    again by the same player, and the whole room goes off in one press."""
+    for _, url in printables.sandbox_items():
+        item = ItemModel.from_base64(url)
+
+        assert item.validate_signature() is None
+        assert item.unlimited is True
+        assert item.batch == printables.SANDBOX_BATCH
+
+
+def test_every_sandbox_poster_has_a_drawing():
+    """A poster is read across a room, so a bare QR code will not do - and
+    the drawing a card gets is decided by what it awards. This is the test
+    that says why the ammunition poster is 5 bullets and not 20: there is no
+    ammo_20.png."""
+    for card in printables.SANDBOX_CARDS:
+        assert base_image_path(card.itype, card.num, card.damage) is not None, card
+
+
+def test_the_sandbox_hands_out_the_weapons_it_names():
+    """The pairs in SANDBOX_CARDS are literals, so this is what keeps them in
+    step with the weapon table: retune or rename a weapon there and this
+    fails, rather than the sandbox quietly handing out something else."""
+    named = {
+        "pewster": "Pewster",
+        "eat-a-bullet": "Eat-a-bullet",
+        "tracka-tracka": "Tracka-Tracka",
+    }
+
+    weapons = [card for card in printables.SANDBOX_CARDS if card.itype == "weapon"]
+    assert {card.label for card in weapons} == set(named)
+
+    for card in weapons:
+        assert WEAPON_NAME_LOOKUP[(card.damage, card.timeout)] == named[card.label]
+
+
 def test_a_read_only_log_costs_the_record_but_not_the_pdf(mocker):
     """The log sits beside the source tree, which on a deployment is a
     read-only Nix store: a print run must survive not being able to write it."""
@@ -78,6 +148,8 @@ def test_a_read_only_log_costs_the_record_but_not_the_pdf(mocker):
         lambda: printables.item_sheets_pdf(
             "ammo", num=1, sheets=printables.MAX_SHEETS + 1
         ),
+        lambda: printables.sandbox_sheets_pdf(copies=0),
+        lambda: printables.sandbox_sheets_pdf(copies=printables.MAX_SANDBOX_COPIES + 1),
         lambda: printables.pub_pages_pdf(0),
         lambda: printables.pub_pages_pdf(printables.MAX_PUB_PAGES + 1),
     ],
@@ -110,6 +182,13 @@ def test_endpoints_refuse_nonsense_quantities(admin_api_client, log_to_tmp):
     )
 
     assert response.status_code == 400
+
+
+def test_sandbox_endpoint_returns_a_pdf(admin_api_client, log_to_tmp):
+    response = admin_api_client.post("/api/admin_sandbox_sheets_pdf?copies=1")
+
+    assert response.status_code == 200
+    assert page_count(response.content) == len(printables.SANDBOX_CARDS)
 
 
 def test_printables_need_an_admin(api_client, log_to_tmp):

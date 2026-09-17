@@ -29,9 +29,31 @@ import styles from "./AdminPrintables.module.css";
 // so a card asking for one would raise on the first scan.
 const TEAM_COLLECTABLE_TYPES = ["ammo"];
 
-const ITEM_TYPES = ["ammo", "medpack", "armour", "weapon"];
+const ITEM_TYPES = [
+  "ammo",
+  "medpack",
+  "armour",
+  "weapon",
+  "radar",
+  "circle_warning",
+];
+
+// The two items measured in minutes rather than in how much of something they
+// award, with the default each one's payload schema carries (backend/items.py).
+const TIMED_TYPES = { radar: 5, circle_warning: 10 };
 
 const CARDS_PER_SHEET = 8;
+
+// Every code minted here carries a batch, so that a whole print run can be
+// withdrawn at once later in the evening. The real cards are "game" and are
+// never withdrawn; the sandbox's posters are "sandbox" and stop working at
+// 16:00.
+const DEFAULT_BATCH = "game";
+
+// How many kinds of poster the sandbox sheet prints - the length of
+// backend/printables.py's SANDBOX_CARDS. Only used to say how many codes a
+// press mints, which is the one thing that panel warns about.
+const SANDBOX_CARD_KINDS = 6;
 
 // The games to choose between, newest-first as the server gives them, with
 // the first one selected. Two panels need this, so it is a hook rather than a
@@ -166,6 +188,25 @@ function Field({ label, hint, children }) {
   );
 }
 
+// The label minted into every code a press produces. It goes last in every
+// panel because it is the field nobody changes: "game" is right for everything
+// printed for the night itself.
+function BatchField({ batch, setBatch }) {
+  return (
+    <Field
+      label="Batch"
+      hint="Minted into every code, so this run can be withdrawn as a set. Leave it as 'game' for the real cards."
+    >
+      <input
+        className={styles.input}
+        type="text"
+        value={batch}
+        onChange={(e) => setBatch(e.target.value)}
+      />
+    </Field>
+  );
+}
+
 // One A4 page per team, carrying that team's door code. No side effects worth
 // worrying about, so this one is a GET.
 function TeamCards() {
@@ -194,6 +235,7 @@ function TeamCards() {
 function PubPages() {
   const [count, setCount] = useState(6);
   const [bullets, setBullets] = useState(5);
+  const [batch, setBatch] = useState(DEFAULT_BATCH);
 
   return (
     <Printable
@@ -205,7 +247,7 @@ function PubPages() {
       action={() =>
         adminDownload(
           "admin_pub_pages_pdf",
-          { count: count, num_bullets: bullets },
+          { count: count, num_bullets: bullets, batch: batch },
           "pub_pages.pdf",
         )
       }
@@ -229,6 +271,7 @@ function PubPages() {
           onChange={(e) => setBullets(Number(e.target.value))}
         />
       </Field>
+      <BatchField batch={batch} setBatch={setBatch} />
     </Printable>
   );
 }
@@ -241,8 +284,11 @@ function ItemSheets() {
   const [timeout, setTimeoutSeconds] = useState(25);
   const [onceOnly, setOnceOnly] = useState(true);
   const [asTeam, setAsTeam] = useState(false);
+  const [minutes, setMinutes] = useState(TIMED_TYPES.radar);
+  const [batch, setBatch] = useState(DEFAULT_BATCH);
 
   const teamable = TEAM_COLLECTABLE_TYPES.includes(itype);
+  const timed = itype in TIMED_TYPES;
   const cards = sheets * CARDS_PER_SHEET;
 
   return (
@@ -263,6 +309,8 @@ function ItemSheets() {
             timeout: timeout,
             collected_only_once: onceOnly,
             collected_as_team: teamable && asTeam,
+            batch: batch,
+            ...(timed ? { minutes: minutes } : {}),
           },
           `item_cards_${itype}.pdf`,
         )
@@ -273,9 +321,10 @@ function ItemSheets() {
           className={styles.input}
           value={itype}
           onChange={(e) => {
-            setItype(e.target.value);
-            if (!TEAM_COLLECTABLE_TYPES.includes(e.target.value))
-              setAsTeam(false);
+            const chosen = e.target.value;
+            setItype(chosen);
+            if (!TEAM_COLLECTABLE_TYPES.includes(chosen)) setAsTeam(false);
+            if (chosen in TIMED_TYPES) setMinutes(TIMED_TYPES[chosen]);
           }}
         >
           {ITEM_TYPES.map((type) => (
@@ -297,6 +346,17 @@ function ItemSheets() {
           onChange={(e) => setNum(Number(e.target.value))}
         />
       </Field>
+      {timed ? (
+        <Field label="Minutes it lasts">
+          <input
+            className={styles.input}
+            type="number"
+            min="1"
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+          />
+        </Field>
+      ) : null}
       {itype === "weapon" ? (
         <>
           <Field label="Damage per shot">
@@ -350,6 +410,47 @@ function ItemSheets() {
           <span className={styles.hint}> - only ammo can be</span>
         )}
       </label>
+      <BatchField batch={batch} setBatch={setBatch} />
+    </Printable>
+  );
+}
+
+// The warm-up room's walls. Everything on them is unlimited and everything is
+// in one batch, which is the whole point: a player scans the ammunition poster
+// as often as they like, and the room stops working in a single press at 16:00.
+// No controls but how many copies - what the posters *are* is decided in
+// backend/printables.py's SANDBOX_CARDS, so that the paper and the codes
+// cannot disagree.
+function SandboxSheets() {
+  const [copies, setCopies] = useState(1);
+
+  const sheets = copies * SANDBOX_CARD_KINDS;
+
+  return (
+    <Printable
+      title="Sandbox posters"
+      blurb={`The warm-up room: ammunition, level 2 armour, a med pack and three weapons, ${CARDS_PER_SHEET} copies of each to a sheet. Every one can be scanned again and again by the same player, so they work as posters on a wall.`}
+      warning={`Prints ${sheets} sheet${sheets === 1 ? "" : "s"}, and mints ${SANDBOX_CARD_KINDS} new codes - one per poster. Withdraw the "sandbox" batch at 16:00 to turn them all off.`}
+      label="Mint and download (PDF)"
+      ready={copies >= 1}
+      action={() =>
+        adminDownload(
+          "admin_sandbox_sheets_pdf",
+          { copies: copies },
+          "sandbox_sheets.pdf",
+        )
+      }
+    >
+      <Field label="Copies of each poster" hint="One sheet of 8 per copy.">
+        <input
+          className={styles.input}
+          type="number"
+          min="1"
+          max="5"
+          value={copies}
+          onChange={(e) => setCopies(Number(e.target.value))}
+        />
+      </Field>
     </Printable>
   );
 }
@@ -367,6 +468,7 @@ export function PrintablesPanel() {
       <TeamCards />
       <PubPages />
       <ItemSheets />
+      <SandboxSheets />
     </>
   );
 }

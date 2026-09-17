@@ -92,6 +92,7 @@ setup_logging()
 
 from . import ai_shot_review
 from . import generate_pub_pages
+from . import generate_qr_items
 from . import image_processing
 from . import printables
 from . import reference_photos
@@ -1046,6 +1047,8 @@ async def admin_make_new_item(
     item_data: Dict,
     collected_only_once=True,
     collected_as_team=False,
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
 ):
     logger.info("admin_make_new_item")
     try:
@@ -1054,6 +1057,8 @@ async def admin_make_new_item(
             item_data,
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
     except pydantic.ValidationError as e:
         raise HTTPException(400, f"Invalid submission - {e}")
@@ -1328,6 +1333,9 @@ async def admin_item_sheets_pdf(
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
+    minutes: Optional[int] = None,
 ):
     """The drop cards: sheets of eight item codes, to be cut up and hidden."""
     logger.info("admin_item_sheets_pdf - %s", locals())
@@ -1342,6 +1350,9 @@ async def admin_item_sheets_pdf(
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
             tag=tag,
+            batch=batch,
+            unlimited=unlimited,
+            minutes=minutes,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1354,17 +1365,36 @@ async def admin_pub_pages_pdf(
     count: int,
     num_bullets: int = generate_pub_pages.BULLETS_PER_TEAM_MEMBER,
     tag: str = "pub",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
 ):
     """The pub certificates: one A4 poster per pub, each a team-wide ammo
     code the first team to scan it collects for everybody."""
     logger.info("admin_pub_pages_pdf - %s", locals())
 
     try:
-        pdf = printables.pub_pages_pdf(count, num_bullets=num_bullets, tag=tag)
+        pdf = printables.pub_pages_pdf(
+            count, num_bullets=num_bullets, tag=tag, batch=batch
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return _pdf_response(pdf, "pub_pages.pdf")
+
+
+@admin_method(path="/admin_sandbox_sheets_pdf", method="POST")
+async def admin_sandbox_sheets_pdf(copies: int = 1):
+    """The sandbox posters: one sheet of eight for every kind of card the
+    warm-up room carries, every code unlimited so the same player can scan it
+    again and again, and every one in the "sandbox" batch so the whole room is
+    withdrawn in a single press at 16:00."""
+    logger.info("admin_sandbox_sheets_pdf - %s", locals())
+
+    try:
+        pdf = printables.sandbox_sheets_pdf(copies)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, "sandbox_sheets.pdf")
 
 
 def _pdf_response(pdf: bytes, filename: str) -> Response:
