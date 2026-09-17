@@ -567,7 +567,7 @@ broadcasts.
 
 ---
 
-## M5 — Sounds *(any time before Friday; independent)*
+## M5 — Sounds *(status: shipped 2026-09-17, PR #270)*
 
 - **Replace `bang.mp3`** with a sci-fi "pew" (synthesise with numpy → `wave`
   like the `.wav`s were; the file is dropped over the old one, no code).
@@ -585,6 +585,38 @@ broadcasts.
   on mount) and test on an iPhone on staging. The onboarding page's
   permission steps are the natural place to say "sound on".
 - Sounds already present and kept: fire, hit received, your hit, your miss.
+
+Shipped, with four departures from the spec worth knowing:
+
+- **The generator is kept**, as `scripts/make_sounds.py`. The first batch of
+  `.wav`s had none, which made "louder" a guess; every sound in the game is now
+  a function in that file, re-runnable and byte-identical when nothing changed.
+  22050 Hz mono, matching the files that were already there.
+- **`bang.mp3` is now `bang.wav`** (one import line in `FireButton.js`). There
+  is no mp3 encoder in the dev shell, so "dropped over the old one, no code"
+  was not available; the `.mp3` is deleted.
+- **`hit_received.wav` is 2.5 s at 5.4x the average level of the one it
+  replaces** (RMS 0.74 against 0.14), and moved out of the bass: the old one
+  was a 130 Hz thump, and bass is the part of a sound a coat pocket eats. It is
+  a two-tone klaxon now, 56% of its energy above 800 Hz.
+- **`target_knocked_out` is derived, not stored.** Nothing on a `Shot` records
+  the blow that took somebody out, and this milestone did not seem worth a
+  column, so `get_own_shots` reads the target's hit points at the moment the
+  shooter's client first sees the verdict. A hit on somebody already down
+  reads the same way; nothing re-reads it for a shot already checked, so the
+  sound never re-fires. If it is ever wanted as a fact rather than a cue, that
+  needs a nullable column set in `AdminInterface.hit_user`.
+- **The "sound on" line is a tappable test**, not a sentence
+  (`useSoundCheck.js`): a phone on silent is silent and nothing in the browser
+  can find that out, so the player runs the test. It doubles as the gesture
+  that unlocks audio.
+
+M1.2 lands on this one: now that everybody starts with their armour on
+(`STARTING_HIT_POINTS = 2`), a single hit from the basic weapon no longer
+knocks anybody out, so `shot_knockout.wav` is the sound of a *killing* blow
+rather than of any confirmed hit. That is the better outcome - it is rare, so
+it means something - but it does mean the ordinary evening is mostly
+`shot_confirmed.wav`, which is still one of the two original placeholder tones.
 
 ---
 

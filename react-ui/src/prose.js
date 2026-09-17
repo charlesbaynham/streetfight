@@ -196,6 +196,12 @@ const prose = {
     locationError:
       "Couldn't get your location — check Settings > Privacy > Location Services, then tap again.",
     compassPermission: "Grant compass permission:",
+    // The sound check (see useSoundCheck.js). Once it has been tapped the row
+    // keeps an instruction rather than congratulating the player: we know they
+    // pressed it, we have no idea whether they heard it, and the phone being on
+    // silent is the whole failure this is here to catch.
+    soundCheck: "Turn your sound on, then tap to test it:",
+    soundCheckDone: "Heard that? If not, take your phone off silent.",
     // Lowercase, unlike pickOutfit.channelDisplayNames - this reads as part
     // of a sentence ("white t-shirt"), not a fieldset legend.
     garmentNames: { tshirt: "t-shirt", armbands: "armband" },
