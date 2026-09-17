@@ -565,7 +565,7 @@ columns it already cleared.
 
 ## M4 — Live drops: the courier *(by Friday; after M3.1's columns)*
 
-### M4.1 — The courier page *(status: shipped 2026-09-17, PR #TBD)*
+### M4.1 — The courier page *(status: shipped 2026-09-17, PR #273)*
 
 `/admin/courier` (`AdminPage`, nav link), phone-first, three things on it:
 
