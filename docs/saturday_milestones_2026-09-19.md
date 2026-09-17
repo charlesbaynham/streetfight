@@ -414,7 +414,7 @@ sign-ups included, which `reset_game`'s team walk misses:
 Existing `reset_game` stays for dev. Tests in `tests/test_admin_mode.py`.
 Two-tap confirm on the button, like the demo button.
 
-### M2.2 — Withdraw a batch of codes *(status: shipped 2026-09-17, PR #TBD)*
+### M2.2 — Withdraw a batch of codes *(status: shipped 2026-09-17, PR #265)*
 
 - New table `revoked_batches(batch TEXT PK, revoked_at)` — a new table, so it
   creates itself on deploy (rule 2).
