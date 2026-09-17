@@ -51,6 +51,16 @@ function GameSelector({ games, gameId, setGameId }) {
   );
 }
 
+// When a crate went down, on the wall clock: the courier reads this against
+// their own watch and against what an admin is saying on the phone, so it is
+// a time of day rather than "4 minutes ago".
+function dropTimeWords(epochSeconds) {
+  return new Date(epochSeconds * 1000).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 // Seconds since a fix, said the way somebody glancing at a phone reads it
 function ageWords(seconds) {
   if (seconds < 2) return "just now";
@@ -67,8 +77,17 @@ export function CourierPanel() {
   const [broadcasting, setBroadcasting] = useState(false);
   const [fix, setFix] = useState(null);
   const [geoError, setGeoError] = useState(null);
-  const [placed, setPlaced] = useState(false);
   const [armed, setArmed] = useState(false);
+
+  // The crates still on the ground, from the server rather than from what
+  // this tab happens to have placed: the courier's phone gets reloaded, and a
+  // list that only knew about this session's drops would offer no way to
+  // clear the one placed before it.
+  const [drops, setDrops] = useState([]);
+  // Which row's clear button is armed, by drop id. One at a time, like the
+  // place button: this is the only control here that takes something away
+  // from the players, so it gets the same two taps.
+  const [armedClear, setArmedClear] = useState(null);
 
   // Re-render once a second so the "last fix N s ago" line counts up on its
   // own: between fixes nothing else changes, and a frozen age reads as a
@@ -93,6 +112,21 @@ export function CourierPanel() {
     const timeout = setTimeout(() => setArmed(false), ARMED_MS);
     return () => clearTimeout(timeout);
   }, [armed]);
+
+  useEffect(() => {
+    if (!armedClear) return undefined;
+    const timeout = setTimeout(() => setArmedClear(null), ARMED_MS);
+    return () => clearTimeout(timeout);
+  }, [armedClear]);
+
+  const loadDrops = useCallback(() => {
+    if (!gameId) return;
+    sendAPIRequest("admin_list_drops", { game_id: gameId }, "GET", (loaded) =>
+      setDrops(loaded || []),
+    );
+  }, [gameId]);
+
+  useEffect(() => loadDrops(), [loadDrops]);
 
   // The watch itself. Every callback updates what the page says; uploads are
   // throttled, exactly as MapViewSelf does it.
@@ -138,23 +172,37 @@ export function CourierPanel() {
     if (gameId) adminPost("admin_clear_courier", { game_id: gameId });
   }, [gameId]);
 
-  // Placing the drop goes through the ordinary circle endpoint, so the ticker
-  // message and the circle event are the same ones an admin placing it from
-  // the map would fire. Then the courier's job is done, so it stops.
+  // Each crate is its own row (M4.3), so putting a second one out leaves the
+  // first where it is - which placing a DROP circle, the single triplet on
+  // the game, could not do. The players hear the same line either way. Then
+  // this trip is done, so the broadcast stops.
   const placeDrop = useCallback(() => {
     if (!fix || !gameId) return;
-    adminPost("admin_set_circle", {
+    adminPost("admin_place_drop", {
       game_id: gameId,
-      name: "DROP",
       lat: fix.lat,
       long: fix.long,
       radius_km: DROP_RADIUS_KM,
     }).then((response) => {
       if (!response.ok) return;
-      setPlaced(true);
+      loadDrops();
       stop();
     });
-  }, [fix, gameId, stop]);
+  }, [fix, gameId, stop, loadDrops]);
+
+  // Somebody has picked the crate up. Nothing on the server can know that, so
+  // this is the whole mechanism: it announces the claim, takes the circle and
+  // the crate off every map, and takes the row off this list.
+  const clearDrop = useCallback(
+    (dropId) => {
+      adminPost("admin_clear_drop", { drop_id: dropId }).then((response) => {
+        setArmedClear(null);
+        if (!response.ok) return;
+        loadDrops();
+      });
+    },
+    [loadDrops],
+  );
 
   if (games === null) return <p>Loading games...</p>;
   if (games.length === 0) return <p>No games exist yet - create one first.</p>;
@@ -195,7 +243,6 @@ export function CourierPanel() {
         <button
           className={styles.bigButton}
           onClick={() => {
-            setPlaced(false);
             lastUpload.current = 0;
             setBroadcasting(true);
           }}
@@ -223,9 +270,40 @@ export function CourierPanel() {
         ground, so the courier is no longer worth following.
       </p>
 
-      {placed ? (
-        <p className={styles.good}>Drop placed. Crate is down.</p>
-      ) : null}
+      <h2 className={styles.dropsHeading}>Crates on the ground</h2>
+
+      {drops.length === 0 ? (
+        <p className={styles.hint}>
+          Nothing is out. A crate you place appears here until somebody claims
+          it.
+        </p>
+      ) : (
+        <ul className={styles.dropList}>
+          {drops.map((drop) => (
+            <li key={drop.id} className={styles.dropRow}>
+              <span>Dropped at {dropTimeWords(drop.time_created)}</span>
+              <button
+                className={
+                  styles.clearButton +
+                  (armedClear === drop.id ? " " + styles.armed : "")
+                }
+                onClick={() =>
+                  armedClear === drop.id
+                    ? clearDrop(drop.id)
+                    : setArmedClear(drop.id)
+                }
+              >
+                {armedClear === drop.id ? "Tap again" : "Collected"}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <p className={styles.hint}>
+        Marking a crate collected tells the players it has gone and takes it off
+        their maps. Nothing else can: the app never sees anybody pick one up.
+      </p>
 
       {held ? null : (
         <p className={styles.bad}>

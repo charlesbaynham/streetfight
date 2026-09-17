@@ -157,6 +157,15 @@ function courierPosition(circles) {
   };
 }
 
+// The courier's crates (M4.3), as the triplets MapCircles draws. They arrive
+// under the same key in both shapes the server sends - nested in /get_circles
+// and on a GameModel - so unlike the circles there is nothing to reconcile,
+// only a server too old to send them at all to defend against.
+function dropTriplets(circles) {
+  if (!circles || !Array.isArray(circles.drops)) return [];
+  return circles.drops.map((drop) => [drop.lat, drop.long, drop.radius]);
+}
+
 export function MapCirclesFromData({ calculators, circles }) {
   return (
     <MapCircles
@@ -164,6 +173,7 @@ export function MapCirclesFromData({ calculators, circles }) {
       exclusionCircle={circleTriplet(circles, "exclusion")}
       nextCircle={circleTriplet(circles, "next")}
       dropCircle={circleTriplet(circles, "drop")}
+      drops={dropTriplets(circles)}
       courier={courierPosition(circles)}
     />
   );
@@ -223,6 +233,7 @@ function MapCircles({
   exclusionCircle = null,
   nextCircle = null,
   dropCircle = null,
+  drops = [],
   courier = null,
 }) {
   const calculateCircleStyles = useCallback(
@@ -283,30 +294,46 @@ function MapCircles({
       );
   }
 
+  // The admin's own map-placed drop, then every crate the courier has put
+  // out, oldest first (M4.3). Which of the two put a crate somewhere is
+  // nobody's business but the admin's, so they are drawn the same way - but
+  // only the newest gets the blue ping. The ping means "this is the one that
+  // has just landed, go"; leaving one on every crate would have the map
+  // shouting about a drop that has been sitting there for half an hour, and
+  // three of them shouting at once. The crates left behind keep their icon
+  // until somebody marks them collected, because they are still there.
+  const allDrops = [];
   if (dropCircle) {
     const [lat, long, radiusKM] = dropCircle;
-    if (lat && long && radiusKM) {
+    if (lat && long && radiusKM) allDrops.push([lat, long, radiusKM]);
+  }
+  allDrops.push(...drops.filter(([lat, long, r]) => lat && long && r));
+
+  allDrops.forEach(([lat, long, radiusKM], index) => {
+    if (index === allDrops.length - 1) {
       circles.push(
         <div
           className={styles.dropCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
-        />,
-      );
-      // A sibling of the ping, never a child of it: .dropCircle carries the
-      // `zoom` keyframe that scales it to 5x and fades it out, which would
-      // take the crate with it. The ping says "look here"; the crate says
-      // what is here, and has to stay legible while the ping does its thing.
-      circles.push(
-        <img
-          src={crateSrc}
-          alt=""
-          className={styles.dropCrate}
-          style={calculateCentreStyles(lat, long)}
-          data-testid="map-drop-crate"
+          data-testid="map-drop-ping"
         />,
       );
     }
-  }
+    // A sibling of the ping, never a child of it: .dropCircle carries the
+    // `zoom` keyframe that scales it to 5x and fades it out, which would
+    // take the crate with it. The ping says "look here"; the crate says
+    // what is here, and has to stay legible while the ping does its thing -
+    // and outlive it, on every drop but the newest.
+    circles.push(
+      <img
+        src={crateSrc}
+        alt=""
+        className={styles.dropCrate}
+        style={calculateCentreStyles(lat, long)}
+        data-testid="map-drop-crate"
+      />,
+    );
+  });
 
   return (
     <div className={styles.mapCirclesContainer}>

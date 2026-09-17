@@ -33,6 +33,8 @@ from .model import APPEALS_PER_GAME
 from .model import BASIC_WEAPON
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import STARTING_HIT_POINTS
+from .model import Drop
+from .model import DropModel
 from .model import Game
 from .model import GameModel
 from .model import Item
@@ -521,6 +523,73 @@ class AdminInterface:
         trigger_circle_update(game_id)
 
     @db_scoped
+    def place_drop(self, game_id: UUID, lat: float, long: float, radius: float) -> UUID:
+        """Put a crate on the ground where the courier is standing (M4.3).
+
+        A row rather than the ``drop_circle_*`` triplet, so that a second crate
+        does not take the first off the map: see :class:`backend.model.Drop`.
+        The announcement is the same line placing a DROP circle has always
+        fired, because to a player it is the same event.
+        """
+        logger.info("AdminInterface - place_drop %s", game_id)
+
+        # Checked rather than assumed: the drop hangs off a game, and a 404
+        # here is better than a foreign key error on commit
+        self._get_game_orm(game_id)
+
+        drop = Drop(game_id=game_id, lat=lat, long=long, radius=radius)
+        self._session.add(drop)
+        self._session.commit()
+
+        drop_id = drop.id
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.ADMIN_SET_CIRCLE_DROP,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+        trigger_circle_update(game_id)
+
+        return drop_id
+
+    @db_scoped
+    def clear_drop(self, drop_id: UUID):
+        """Somebody has claimed a crate: take it off every map (M4.3).
+
+        Deleting the row is the whole of it - the ticker line is what records
+        that the drop was claimed, and a collected crate has nothing left to
+        say to the courier's list.
+        """
+        logger.info("AdminInterface - clear_drop %s", drop_id)
+
+        drop: Drop = self._session.query(Drop).filter_by(id=drop_id).first()
+        if drop is None:
+            raise HTTPException(404, f"Drop {drop_id} not found")
+
+        game_id = drop.game_id
+        self._session.delete(drop)
+        self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+        trigger_circle_update(game_id)
+
+    @db_scoped
+    def get_drops(self, game_id: UUID) -> List[DropModel]:
+        """Every crate still on the ground in this game, oldest first."""
+        return [
+            DropModel.model_validate(drop)
+            for drop in self._session.query(Drop)
+            .filter_by(game_id=game_id)
+            .order_by(Drop.time_created)
+        ]
+
+    @db_scoped
     def set_circles(
         self, game_id: UUID, name: CircleTypes, lat: float, long: float, radius: float
     ):
@@ -937,6 +1006,9 @@ class AdminInterface:
 
         for item in self._session.query(Item).filter_by(game_id=game_id).all():
             self._session.delete(item)
+
+        for drop in self._session.query(Drop).filter_by(game_id=game_id).all():
+            self._session.delete(drop)
 
         for ticker_entry in (
             self._session.query(TickerEntry).filter_by(game_id=game_id).all()
@@ -2403,6 +2475,13 @@ class AdminInterface:
         ):
             self._session.delete(ticker_entry)
 
+        # Any crate the sandbox hour left lying about (M4.3). Deleted rather
+        # than cleared through clear_drop for the same reason the circles
+        # below go straight onto the columns: that announces to a ticker this
+        # is about to empty.
+        for drop in self._session.query(Drop).filter_by(game_id=game_id).all():
+            self._session.delete(drop)
+
         # All three circles, straight onto the columns rather than through
         # set_circles: that announces each change to a ticker this is about to
         # delete anyway, and would do it three times
@@ -2481,6 +2560,10 @@ class AdminInterface:
             # And their pickups
             for item in user.items:
                 self._session.delete(item)
+
+        # And any crate still on the ground (M4.3)
+        for drop in self._session.query(Drop).filter_by(game_id=game_id).all():
+            self._session.delete(drop)
 
         # Wipe the ticker
         for ticker_entry in (

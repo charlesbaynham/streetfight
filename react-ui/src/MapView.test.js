@@ -116,6 +116,7 @@ const DROP = {
 
 const courier = () => screen.queryByTestId("map-courier-dot");
 const crate = () => screen.queryByTestId("map-drop-crate");
+const pings = () => screen.queryAllByTestId("map-drop-ping");
 
 test("no drop and no courier means neither is drawn", () => {
   renderMap({ circles: {} });
@@ -126,6 +127,49 @@ test("no drop and no courier means neither is drawn", () => {
 test("a drop circle gets a crate at its centre", () => {
   renderMap({ circles: DROP });
   expect(crate()).not.toBeNull();
+  expect(pings()).toHaveLength(1);
+});
+
+test("every crate the courier has out keeps its marker, but only the newest pings", () => {
+  // The admin's single map-placed drop and two of the courier's (M4.3):
+  // three crates, because a second drop must not take the first off the map -
+  // and one blue circle, on the last one placed.
+  renderMap({
+    circles: {
+      ...DROP,
+      drops: [
+        { id: "a", lat: 51.51, long: -0.11, radius: 0.02 },
+        { id: "b", lat: 51.52, long: -0.12, radius: 0.02 },
+      ],
+    },
+  });
+
+  expect(screen.getAllByTestId("map-drop-crate")).toHaveLength(3);
+  expect(pings()).toHaveLength(1);
+});
+
+test("the ping is on the newest crate, wherever that is", () => {
+  renderMap({
+    circles: {
+      drops: [
+        { id: "a", lat: 51.51, long: -0.11, radius: 0.02 },
+        { id: "b", lat: 51.52, long: -0.12, radius: 0.02 },
+      ],
+    },
+  });
+
+  // Drops arrive oldest first and each ping is drawn immediately before the
+  // crate it belongs to, so the one ping on the map sits against the last of
+  // them. (jsdom measures the map box as zero, so the coordinates themselves
+  // say nothing here - the DOM order is what distinguishes the two.)
+  const [ping] = pings();
+  const [, newest] = screen.getAllByTestId("map-drop-crate");
+  expect(newest.previousElementSibling).toBe(ping);
+});
+
+test("a server too old to send any drops draws none", () => {
+  renderMap({ circles: { drops: undefined } });
+  expect(crate()).toBeNull();
 });
 
 test("the courier is drawn from either shape the server sends", () => {

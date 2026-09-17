@@ -110,6 +110,7 @@ from .admin_auth import require_admin_auth
 from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
 from .model import DEFAULT_SHOT_TIMEOUT
+from .model import DropModel
 from .model import GameModel
 from .model import ShotModel
 from .next_event import NextEventKind
@@ -1141,6 +1142,35 @@ async def admin_set_courier_location(
 async def admin_clear_courier(game_id: UUID):
     logger.info("admin_clear_courier - %s", locals())
     AdminInterface().clear_courier(game_id=game_id)
+
+
+@admin_method(path="/admin_place_drop", method="POST")
+async def admin_place_drop(
+    game_id: UUID, lat: float, long: float, radius_km: float
+) -> UUID:
+    """Put a crate on the ground (M4.3), and tell the players it is there.
+
+    The courier's own button. Distinct from placing a DROP circle, which can
+    only ever hold one crate: each of these is a row, cleared on its own when
+    somebody claims it.
+    """
+    logger.info("admin_place_drop - %s", locals())
+    return AdminInterface().place_drop(
+        game_id=game_id, lat=lat, long=long, radius=radius_km
+    )
+
+
+@admin_method(path="/admin_clear_drop", method="POST")
+async def admin_clear_drop(drop_id: UUID):
+    """This crate has been claimed: off the map, out of the courier's list."""
+    logger.info("admin_clear_drop - %s", locals())
+    AdminInterface().clear_drop(drop_id=drop_id)
+
+
+@admin_method(path="/admin_list_drops", method="GET")
+async def admin_list_drops(game_id: UUID) -> List[DropModel]:
+    """Every crate still on the ground, oldest first."""
+    return AdminInterface().get_drops(game_id=game_id)
 
 
 @admin_method(path="/admin_set_circle", method="POST")

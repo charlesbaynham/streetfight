@@ -11,6 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from backend.database import add_missing_columns
 from backend.model import APPEALS_PER_GAME
 from backend.model import Base
+from backend.model import Drop
 from backend.model import Game
 from backend.model import Item
 from backend.model import ItemType
@@ -264,6 +265,7 @@ class TestLiveSchemaUpgrade:
             TickerEntry,
             Item,
             RevokedBatch,
+            Drop,
         }
         mapped = {mapper.class_ for mapper in Base.registry.mappers}
         assert mapped == written, (
@@ -271,7 +273,9 @@ class TestLiveSchemaUpgrade:
             f" cover: {sorted(cls.__name__ for cls in mapped ^ written)}"
         )
 
-        game_id, team_id, user_id, stray_id, shot_id = (uuid() for _ in range(5))
+        game_id, team_id, user_id, stray_id, shot_id, drop_id = (
+            uuid() for _ in range(6)
+        )
 
         with sessionmaker(bind=engine)() as session:
             user = User(id=user_id, name="Pat", game_id=game_id, team_id=team_id)
@@ -302,6 +306,9 @@ class TestLiveSchemaUpgrade:
                 )
             )
             session.add(RevokedBatch(batch="sandbox"))
+            session.add(
+                Drop(id=drop_id, game_id=game_id, lat=51.5, long=-0.13, radius=0.02)
+            )
             session.commit()
 
         with sessionmaker(bind=engine)() as session:
@@ -329,3 +336,4 @@ class TestLiveSchemaUpgrade:
             assert session.get(UserAlias, stray_id).user_id == user_id
             assert session.query(TickerEntry).one().message == "Pat shot somebody"
             assert session.get(RevokedBatch, "sandbox").revoked_at is not None
+            assert session.get(Drop, drop_id).time_created > 0

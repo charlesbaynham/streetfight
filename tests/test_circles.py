@@ -7,7 +7,10 @@ def test_circles_start_empty(user_in_team):
     ui = UserInterface(user_in_team)
 
     for name, value in ui.get_circles().items():
-        assert value is None
+        # The courier's crates are a list rather than a triplet of
+        # coordinates (M4.3), so "nothing there" is an empty one
+        expected = [] if name == "drops" else None
+        assert value == expected
 
 
 def circles_of(user_id):

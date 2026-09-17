@@ -365,9 +365,17 @@ Four things from it that are worth knowing even if you never call the agent:
     `COURIER_ANNOUNCE_INTERVAL_S` (5 s), because otherwise every fix wakes
     every phone's circle stream for a dot that moved a metre and a half.
     `clear_courier` ignores the throttle — a dot left on a map after the crate
-    is down is the one staleness that misleads. Placing the drop goes through
-    the ordinary `set_circles`, so the ticker message and the circle event are
-    the same ones an admin placing it from the map fires.
+    is down is the one staleness that misleads. **Placing a crate is a row**
+    (M4.3): `model.Drop`, through `AdminInterface.place_drop` / `clear_drop` /
+    `get_drops`, because the game's single `drop_circle_*` triplet can only
+    hold the newest one, so a second crate silently took the first off every
+    map. The row *is* the crate — clearing one deletes it, and the ticker line
+    announcing the claim is the record — and nothing in the app can see
+    somebody pick one up, so the courier page's **Collected** button is the
+    only thing that ever takes one off a map. Both announcements are the lines
+    `set_circles` already fired for a DROP circle, since to a player it is the
+    same event; the admin's own map-placed drop still goes through
+    `set_circles` and is drawn identically.
   - `next_event.py` — the one thing a game is counting down to, and the clock
     that fires it: the vocabulary (`NextEventKind`, `KIND_CIRCLE` /
     `KIND_DROP`) that `Game.next_event_kind` /
@@ -465,14 +473,23 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
-    **`MapView.js`'s `MapCircles` draws the courier and the crate as well as
+    **`MapView.js`'s `MapCircles` draws the courier and the crates as well as
     the three circles** (M4.2), despite both being dots: they arrive on the
     circles' own payload, refresh on the circles' own `"circle"` SSE event and
     need the coordinate calculators that layer already holds, so drawing them
     anywhere else would mean a second copy of all three. `courierPosition()`
     reads the courier out of either shape the server sends — nested under
     `courier` from `/get_circles`, flat as `courier_lat`/`courier_long` off a
-    `GameModel` — for the same reason `circleTriplet` exists. The crate is a
+    `GameModel` — for the same reason `circleTriplet` exists. Every crate in the
+    payload's `drops` is drawn exactly as the game's own `drop_circle_*` is
+    (M4.3) — which of the two put one somewhere is nobody's business but the
+    admin's — with one rule over the lot of them: **the blue ping is on the
+    newest crate only**, and every older one keeps just its icon until it is
+    marked collected. A ping on all three would have the map shouting about a
+    drop that has sat there for half an hour, and shouting three times at
+    once. `drops` arrives oldest first (`Game.drops` is ordered by
+    `time_created`) and the game's own drop circle is drawn ahead of it, so
+    "newest" is simply the last one. The crate is a
     **sibling** of `.dropCircle` and never a child: that class carries the
     `zoom` keyframe that scales the ping to 5× and fades it, which would take
     the crate with it. The courier's dot fades by fix age on the admin map's
@@ -653,9 +670,15 @@ Four things from it that are worth knowing even if you never call the agent:
     (`useSoundCheck.js`) rather than a sentence asking nicely.
     `AdminCourier.js` (route `/admin/courier`) is the courier's own phone
     page: a `watchPosition` at the same tier `MapViewSelf` uses when the map
-    is popped out, a two-tap **Place drop here** that sets the drop circle at
-    the current fix and then stops broadcasting, and the state said in words
-    ("Broadcasting - last fix 3 s ago, ±8 m"). It holds the wake lock and
+    is popped out, a two-tap **Place drop here** that puts a crate at the
+    current fix and then stops broadcasting, and the state said in words
+    ("Broadcasting - last fix 3 s ago, ±8 m"). Below that is the list of
+    crates still on the ground (M4.3), each with the time it went down and its
+    own two-tap **Collected** button - the same friction as placing one, since
+    it is the other control here that changes the game for everybody. The list
+    is read from `admin_list_drops` rather than accumulated in this tab, so a
+    reload, or a phone handed to somebody else mid-evening, still knows what
+    is out there. It holds the wake lock and
     says so when it has not got one, like the spectator screen.
     `AdminPrintables.js` (route `/admin/printables`) is everything a game
     night needs handed out, in one page: the map poster, team cards, pub
