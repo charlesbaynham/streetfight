@@ -148,7 +148,7 @@ deployed and crash-loops the service. So make CI the gate:
    after: the file name carries the revision, so a stale snapshot is visible.
 
 Lands in: `tests/live_schema/`, `tests/test_database.py`.
-*(status: shipped 2026-09-17, PR #TBD)*
+*(status: shipped 2026-09-17, PR #255)*
 
 Shipped as `TestLiveSchemaUpgrade` in `tests/test_database.py`, with two
 tests rather than one. The second is the specified insert-and-read-back
