@@ -14,6 +14,62 @@ def circles_of(user_id):
     return UserInterface(user_id).get_circles()
 
 
+def test_placing_the_next_circle_shows_it_to_nobody(user_in_team):
+    """M6.2: it exists, but it is not announced until it is cued - so a player
+    with no early-warning card is sent nulls, which the map draws nothing
+    for."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+
+    circles = circles_of(user_in_team)
+    assert circles["next_circle_lat"] is None
+    assert circles["next_circle_long"] is None
+    assert circles["next_circle_radius"] is None
+
+
+def test_cueing_the_circle_is_what_announces_it(user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    circles = circles_of(user_in_team)
+    assert circles["next_circle_lat"] == 51.5
+    assert circles["next_circle_radius"] == 0.42
+
+
+def test_moving_the_circle_mid_countdown_takes_it_off_every_phone_again(user_in_team):
+    """Placing NEXT always makes it private again: a circle everybody can see
+    must not be left drawn somewhere the admin has just moved it from."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.6, -0.2, 0.3)
+
+    assert circles_of(user_in_team)["next_circle_lat"] is None
+
+
+def test_setting_both_circles_at_once_hides_nothing(user_in_team):
+    """BOTH puts the next circle exactly where the exclusion circle everybody
+    can already see is, so there is nothing left to keep back."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.BOTH, 51.5, -0.1, 0.42)
+
+    assert circles_of(user_in_team)["next_circle_lat"] == 51.5
+
+
+def test_the_admin_sees_the_next_circle_whether_or_not_it_is_public(user_in_team):
+    """The filtering is on the player-facing endpoint only - the admin map and
+    the spectator screen read the columns off a GameModel."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.next_circle_lat == 51.5
+    assert game.next_circle_public is False
+
+
 def test_promoting_the_next_circle_makes_it_the_one_to_be_inside(user_in_team):
     game_id = UserInterface(user_in_team).get_game_id()
     AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)

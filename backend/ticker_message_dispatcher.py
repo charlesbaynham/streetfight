@@ -27,6 +27,8 @@ class TickerMessageType(Enum):
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
     USER_COLLECTED_RADAR = auto()
+    USER_COLLECTED_CIRCLE_WARNING = auto()
+    USER_COLLECTED_CIRCLE_WARNING_PRIVATE = auto()
     USER_GOT_HIT = auto()
     USER_GOT_KNOCKED_OUT = auto()
     ADMIN_HIT_USER = auto()
@@ -95,6 +97,21 @@ TICKER_MESSAGES = {
         TickerTarget.PUBLIC,
         "{user} has radar for the next {num} minutes - keep moving!",
     ),
+    # The early circle-warning card (M6.2). Anonymous, unlike every other
+    # collection: naming the holder would tell thirty people exactly whose
+    # route to watch, which is the whole advantage the card just bought.
+    TickerMessageType.USER_COLLECTED_CIRCLE_WARNING: (
+        TickerTarget.PUBLIC,
+        "Somebody knows where the next circle is...",
+    ),
+    # Which is why the holder is told privately that it was them: the public
+    # line deliberately does not say, and a card that appears to do nothing is
+    # a card the player scans again.
+    TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE: (
+        TickerTarget.PRIVATE_USER,
+        "You will see the next circle on your map for the next {num} minutes, "
+        "before it is announced",
+    ),
     TickerMessageType.ADMIN_HIT_USER: (
         TickerTarget.PUBLIC,
         "Admin hit {user} for {num} damage",
@@ -151,6 +168,9 @@ TICKER_MESSAGES = {
         TickerTarget.PRIVATE_USER,
         "Your appeal was rejected - the referee agreed with the call",
     ),
+    # Retired by M6.2 and deliberately left here: placing NEXT no longer
+    # announces anything, because the circle is not public until it is cued.
+    # Do not wire it back up without reading Game.next_circle_public first.
     TickerMessageType.ADMIN_SET_CIRCLE_NEXT: (
         TickerTarget.PUBLIC,
         "The next circle has been announced! Check the map...",

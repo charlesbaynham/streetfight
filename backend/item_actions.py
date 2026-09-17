@@ -117,6 +117,30 @@ def _handle_radar(user_interface: "UserInterface", item: ItemModel):
     )
 
 
+def _handle_circle_warning(user_interface: "UserInterface", item: ItemModel):
+    user_model: UserModel = user_interface.get_user_model()
+    _check_alive(user_model)
+
+    user_interface.start_circle_warning(item.data["minutes"])
+
+    # Two messages, on purpose. The public one does not name the holder -
+    # saying who would hand everybody the one thing the card was bought to
+    # hide - so the holder is told privately that it was them.
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_CIRCLE_WARNING,
+        {},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE,
+        {"num": item.data["minutes"]},
+        user_id=user_model.id,
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
+
+
 def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
     weapon_data = ItemDataWeapon(**item.data)
     user_model: UserModel = user_interface.get_user_model()
@@ -160,6 +184,7 @@ _ACTIONS = {
     (ItemType.ARMOUR, False): _handle_armour,
     (ItemType.MEDPACK, False): _handle_medpack,
     (ItemType.RADAR, False): _handle_radar,
+    (ItemType.CIRCLE_WARNING, False): _handle_circle_warning,
     (ItemType.WEAPON, False): _handle_weapon,
 }
 
