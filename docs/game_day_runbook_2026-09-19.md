@@ -52,9 +52,12 @@ touching the real cards.
 - Ammunition, med packs and weapons as you like. The weapon table is
   Eat-a-bullet `(1 damage, 5 s)`, Pewster `(1, 25)`, Tracka-Tracka `(2, 25)`,
   OMG `(3, 25)`.
-- **Radar** and **circle warning** cards are minted from the same panel
-  (**Item**, then **Minutes it lasts**). See "the experimental items" below
-  for whether they are worth printing.
+- **Radar** cards are minted from the same panel: **Item** = `radar`, then
+  **Minutes it lasts** (defaults to 5). Print a few — the card is worth as
+  much to everybody else as to the holder, since the scan is announced.
+- **Circle warning** cards: only if M6.2 has shipped. Check its status line in
+  the milestones doc first; an item type with no handler refuses with a 403
+  when scanned, which is a dud card in a hiding place.
 
 ### The sandbox posters
 
@@ -121,7 +124,9 @@ at `https://streetfight-staging.i.houseabsolute.co.uk`:
   question of what it looks like, and nobody has seen it on a real screen.
 - **The sounds**, on an iPhone. Tap the sound-check row on the waiting page
   first — that tap is also what unlocks audio in the browser.
-- **The radar and circle-warning cards**, if they are in (below).
+- **A radar card**: scan one and check the dots and the countdown strip
+  appear, and that the ticker announces it. Circle-warning cards too, if M6.2
+  has landed by then.
 
 Staging's database starts empty; press **Fire demo game** on the admin page to
 fill it with the thirty-player sample cast.
@@ -243,14 +248,35 @@ mid-walk. If broadcasting stops for any reason, the aeroplane fades and then
 disappears from everyone's maps after a minute of silence — a dot left where
 somebody used to be is worse than no dot.
 
-### The experimental items
+### Radar
 
-Radar and early circle warning are the two the plan marks "drop if not
-working" (M6). If they are in, they are minted from the **Drop cards** panel
-like anything else, with a **Minutes it lasts** field. If they are not in, the
-cards simply refuse with a 403 when scanned — so do not print them unless the
-handlers shipped. Check the milestones doc's status lines for M6.1 and M6.2
-before the print run.
+Shipped (M6.1). A player who scans a radar card gets five minutes of everyone
+else's **last known** positions on their map — never live, and the labels say
+so: "last seen 3 min ago", greying as a fix ages. A strip at the top counts
+down the time left. Teammates are green and opponents red, which since R15 is
+the only place anybody is told which is which by eye.
+
+Two things to expect on the night:
+
+- **The scan is announced publicly** — "*X* has radar for the next 5 minutes -
+  keep moving!". That is deliberate: half the card's value is that everybody
+  else starts moving, and a silent radar would be a surprise nobody could
+  argue with.
+- **A player who has reported no fix at all does not appear**, and anybody
+  knocked out or dead is drawn grey and labelled "out" rather than given an
+  age. So a thin-looking radar is usually a quiet phone, not a bug.
+
+A second card while one is running is refused. Both resets clear it, so a
+radar lit during the sandbox hour does not survive the 16:00 button.
+
+### Early circle warning
+
+M6.2, still in progress at the time of writing. It reveals the next circle to
+the holder before it is announced. **Check its status line in the milestones
+doc before printing its cards** — an item type whose handler has not shipped
+refuses with a 403 when scanned, so an unshipped card is a dud in a hiding
+place. The plan marks both of these "drop if not working"; radar landing on
+its own is a perfectly good outcome.
 
 ### Shots
 
@@ -403,6 +429,18 @@ one place. Each names the PR that made it.
 - **A fourth courier column, `courier_accuracy`** (#273), beyond the three the
   spec named: the route accepts an accuracy and dropping it on the floor would
   be worse. Captured, consumed by nothing.
+
+### The experimental items
+
+- **A radar scan is announced publicly** (#275), like every other collection.
+  Half the card's value is that everybody else starts moving; a silent radar
+  would also be a surprise nobody could argue with.
+- **Radar ages travel as "seconds ago", not timestamps** (#275), so a phone
+  with a wrong clock still shows the right age, and the label goes on ageing
+  between polls instead of freezing for five seconds at a time.
+- **Asking for a radar you do not have is an error, not an empty list**
+  (#275): "you have no radar" and "there is nobody out there" must not look
+  the same.
 
 ### People
 

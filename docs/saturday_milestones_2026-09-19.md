@@ -796,6 +796,12 @@ and that are worth knowing separately:
 `docs/roadmap.md`'s #12 and #8 were updated, and the "What the plan assumed"
 section above now says which milestone superseded each of its bullets.
 
+Radar (M6.1) is written up as shipped. The early circle warning (M6.2) had not
+merged when this was written, so the runbook treats that one conditionally and
+says to check its status line before printing its cards — an item type with no
+handler 403s when scanned, which is a dud card in a hiding place. **Refresh
+the runbook's "Early circle warning" section when M6.2 lands.**
+
 ---
 
 ## Order and parallelism
