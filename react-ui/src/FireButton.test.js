@@ -95,16 +95,16 @@ describe("FireButton - firing", () => {
     );
   });
 
-  test("re-enables after the default shot_timeout of 6 seconds", () => {
+  test("re-enables after the default shot_timeout of 25 seconds", () => {
     render(
-      <FireButton user={makeUser({ shot_timeout: 6 })} onClick={jest.fn()} />,
+      <FireButton user={makeUser({ shot_timeout: 25 })} onClick={jest.fn()} />,
     );
 
     fireEvent.click(getButton());
     expect(getButton()).toBeDisabled();
 
     act(() => {
-      jest.advanceTimersByTime(5999);
+      jest.advanceTimersByTime(24999);
     });
     expect(getButton()).toBeDisabled();
     expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
@@ -120,10 +120,10 @@ describe("FireButton - firing", () => {
     );
   });
 
-  test("a shorter shot_timeout (Eat-a-bullet, 1s) re-enables sooner than the default 6s", () => {
+  test("a shorter shot_timeout (Eat-a-bullet, 5s) re-enables sooner than the default 25s", () => {
     render(
       <FireButton
-        user={makeUser({ shot_damage: 1, shot_timeout: 1 })}
+        user={makeUser({ shot_damage: 1, shot_timeout: 5 })}
         onClick={jest.fn()}
       />,
     );
@@ -132,7 +132,7 @@ describe("FireButton - firing", () => {
     expect(getButton()).toBeDisabled();
 
     act(() => {
-      jest.advanceTimersByTime(999);
+      jest.advanceTimersByTime(4999);
     });
     expect(getButton()).toBeDisabled();
 

@@ -47,6 +47,7 @@ from .generate_qr_items import base_image_path
 from .generate_qr_items import build_qr_grid
 from .generate_qr_items import log_items as log_item_codes
 from .generate_qr_items import random_tag
+from .model import DEFAULT_SHOT_TIMEOUT
 from .utils import slugify_string
 
 logger = logging.getLogger(__name__)
@@ -91,7 +92,7 @@ def item_sheets_pdf(
     num: int,
     sheets: int = 1,
     damage: int = 1,
-    timeout: float = 6,
+    timeout: float = DEFAULT_SHOT_TIMEOUT,
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",

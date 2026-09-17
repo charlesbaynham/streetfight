@@ -4,11 +4,11 @@ import prose from "./prose";
 // (shot_damage, shot_timeout) pair to a name a human recognises, or the
 // other way round. Mirrors WEAPON_NAME_LOOKUP in backend/item_actions.py.
 export const WEAPONS = {
-  [prose.weapons.noWeapon]: [0, 6],
-  [prose.weapons.pewster]: [1, 6],
-  [prose.weapons.trackaTracka]: [2, 6],
-  [prose.weapons.omg]: [3, 6],
-  [prose.weapons.eatABullet]: [1, 1],
+  [prose.weapons.noWeapon]: [0, 25],
+  [prose.weapons.pewster]: [1, 25],
+  [prose.weapons.trackaTracka]: [2, 25],
+  [prose.weapons.omg]: [3, 25],
+  [prose.weapons.eatABullet]: [1, 5],
 };
 
 export function weaponName(user) {

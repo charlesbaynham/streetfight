@@ -543,3 +543,23 @@ def test_all_items_validated():
 
     for itype in ItemType:
         assert itype in ITEM_TYPE_VALIDATORS
+
+
+def test_basic_weapon_is_the_pewster():
+    """model.BASIC_WEAPON is what the 16:00 reset hands out, and it has to be
+    a weapon the lookup can name - the two are written as separate literals
+    (the lookup's are read by react-ui/src/weapons.test.js), so nothing else
+    catches them drifting apart."""
+    from backend.item_actions import WEAPON_NAME_LOOKUP
+    from backend.model import BASIC_WEAPON
+    from backend.model import DEFAULT_SHOT_TIMEOUT
+
+    assert WEAPON_NAME_LOOKUP[BASIC_WEAPON] == "Pewster"
+    assert BASIC_WEAPON == (1, DEFAULT_SHOT_TIMEOUT)
+
+    # A fresh sign-up holds no weapon, at the same standard delay.
+    from backend.user_interface import DEFAULT_SHOT_DAMAGE
+
+    assert (
+        WEAPON_NAME_LOOKUP[(DEFAULT_SHOT_DAMAGE, DEFAULT_SHOT_TIMEOUT)] == "No weapon"
+    )

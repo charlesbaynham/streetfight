@@ -67,7 +67,7 @@ test("minting drop cards posts the whole item definition", async () => {
     num: "5",
     sheets: "1",
     damage: "1",
-    timeout: "6",
+    timeout: "25",
     collected_only_once: "true",
     collected_as_team: "false",
   });

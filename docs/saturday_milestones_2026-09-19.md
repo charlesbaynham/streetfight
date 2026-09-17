@@ -164,7 +164,7 @@ Print-day procedure, once M0 is merged and deployed: mint everything from
 throwaway sqlite file). Print at actual size, never "fit to page". A second
 press mints a second set.
 
-### M0.1 — The new weapon table *(status: open)*
+### M0.1 — The new weapon table *(status: shipped 2026-09-17, PR #PRNUM)*
 
 Default cooldown 25 s, fast weapon 5 s. One PR:
 
@@ -183,6 +183,12 @@ Default cooldown 25 s, fast weapon 5 s. One PR:
   `AdminPrintables.js`'s item-sheet controls.
 - `FireButton.test.js` and any test naming 6 or 1.
 - **Do not** touch `Shot.shot_timeout`'s history; old shots keep their value.
+
+Shipped as specified. `WEAPON_NAME_LOOKUP`'s pairs stayed written out as
+literals rather than built from `DEFAULT_SHOT_TIMEOUT`, because
+`react-ui/src/weapons.test.js` reads them straight out of the file to catch
+the frontend mirror drifting; `tests/test_items.py` now pins `BASIC_WEAPON`
+to the Pewster instead, so the two cannot separate silently.
 
 Lands in: `backend/model.py`, `backend/user_interface.py`,
 `backend/item_actions.py`, `backend/generate_qr_items.py`,
