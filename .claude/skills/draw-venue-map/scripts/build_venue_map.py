@@ -22,6 +22,10 @@ Usage:
         --landmark "Westminster Abbey:51.49940,-0.12764" \\
         --out /tmp/venue_westminster
 
+Pubs are looked up on OpenStreetMap and ranked by distance, unless `--pub` is
+given, which replaces the search with exactly the list passed - see
+`docs/venue_map_westminster/build.sh`.
+
 Everything outside the crop is dropped and listed on stdout, so the crop is
 what defines the pub list rather than the other way round.
 """
@@ -181,7 +185,8 @@ def fetch_features(box):
     pad = 0.15 * (box.north - box.south)
     bbox = f"{box.south - pad},{box.west - pad}," f"{box.north + pad},{box.east + pad}"
     classes = "|".join(WIDTHS)
-    return overpass(f"""
+    return overpass(
+        f"""
 [out:json][timeout:120];
 (
   way["highway"~"^({classes})$"]({bbox});
@@ -191,20 +196,47 @@ def fetch_features(box):
   way["leisure"="park"]({bbox});
 );
 out geom;
-""")["elements"]
+"""
+    )["elements"]
+
+
+def parse_pub(spec, box):
+    """One `NAME:LAT,LON[:STREET]`, as given on the command line.
+
+    A pub outside the crop is a mistake in the list or in the framing, not
+    something to quietly drop - a fetched pub can fall outside the box, but a
+    named one was asked for by name.
+    """
+    name, _, rest = spec.partition(":")
+    coords, _, street = rest.partition(":")
+    la, lo = (float(x) for x in coords.split(","))
+    if not box.inside(la, lo):
+        raise SystemExit(
+            f"pub {name!r} is outside the crop. Widen --half-span: it needs at "
+            f"least {haversine(box.centre, (la, lo)):.0f} m plus room to draw."
+        )
+    return dict(
+        name=name,
+        lat=la,
+        lon=lo,
+        street=street,
+        dist=haversine(box.centre, (la, lo)),
+    )
 
 
 def fetch_pubs(box, include_bars):
     kinds = "pub|bar" if include_bars else "pub"
     bbox = f"{box.south},{box.west},{box.north},{box.east}"
-    els = overpass(f"""
+    els = overpass(
+        f"""
 [out:json][timeout:90];
 (
   node["amenity"~"^({kinds})$"]({bbox});
   way["amenity"~"^({kinds})$"]({bbox});
 );
 out center tags;
-""")["elements"]
+"""
+    )["elements"]
     found = {}
     for e in els:
         t = e.get("tags", {})
@@ -667,10 +699,22 @@ def main():
         help="repeatable",
     )
     ap.add_argument(
+        "--pub",
+        action="append",
+        default=[],
+        metavar="NAME:LAT,LON[:STREET]",
+        help=(
+            "a pub to mark, given rather than looked up; repeatable. Any use "
+            "of this replaces the OpenStreetMap search entirely, so the map "
+            "is traced against exactly the list a game will be played on."
+        ),
+    )
+    ap.add_argument(
         "--max-pubs",
         type=int,
         default=14,
-        help="keep this many nearest to the centre (default 14)",
+        help="keep this many nearest to the centre (default 14); "
+        "ignored when --pub is given",
     )
     ap.add_argument(
         "--exclude", action="append", default=[], help="pub name to drop; repeatable"
@@ -695,14 +739,22 @@ def main():
             )
         landmarks.append(dict(name=nm, lat=la, lon=lo))
 
-    print("fetching pubs...")
-    pubs = fetch_pubs(box, args.include_bars)
-    dropped = [p for p in pubs if not box.inside(p["lat"], p["lon"])]
-    pubs = [
-        p
-        for p in pubs
-        if box.inside(p["lat"], p["lon"]) and p["name"] not in args.exclude
-    ][: args.max_pubs]
+    dropped = []
+    if args.pub:
+        # A curated list beats a search: the pubs a game is played on are
+        # chosen, not the nearest N, and the numbering below is the order they
+        # were given in rather than distance from the centre.
+        print(f"using the {len(args.pub)} pubs given on the command line")
+        pubs = [parse_pub(spec, box) for spec in args.pub]
+    else:
+        print("fetching pubs...")
+        pubs = fetch_pubs(box, args.include_bars)
+        dropped = [p for p in pubs if not box.inside(p["lat"], p["lon"])]
+        pubs = [
+            p
+            for p in pubs
+            if box.inside(p["lat"], p["lon"]) and p["name"] not in args.exclude
+        ][: args.max_pubs]
 
     print("fetching roads and water...")
     els = fetch_features(box)

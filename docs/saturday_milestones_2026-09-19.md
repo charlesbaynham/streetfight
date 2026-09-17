@@ -262,7 +262,7 @@ answer rather than a fright. Drawn text on the card in `generate_qr_items.py`
 number is a module constant Charles fills in. Verify the sheets still pass
 `tests/test_generate_qr_items.py`.
 
-### M0.6 — Redraw the map against the nineteen pubs *(status: open; needs Charles for the Gemini round-trip)*
+### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #PRNUM; the drawing itself still needs Charles's Gemini round-trip)*
 
 Roadmap #12, reopened 12 Sept: eleven of the nineteen pubs have no marker.
 Now print-critical, because the poster (M0.7) is this image. Rerun the
@@ -277,6 +277,15 @@ result with `scripts/check_venue_map.py` and wires it in
 (`react-ui/src/images/map_westminster.jpg`, `tests/test_venues.py`). Fixing
 the two known label errors ("Great Peter Street" for Great Smith Street; The
 Speaker's own street unlabelled) is welcome if the trace gives it for free.
+
+**The first half is done.** `docs/venue_map_westminster/` holds the bundle —
+the prompt with all nineteen pubs in it, the four reference images, and a
+`README.md` saying exactly what to attach and what to look at when the
+drawing comes back. The pubs were passed to the builder by hand
+(`build.sh`, the new `--pub` flag) rather than searched for, so the skeleton
+marks Charles's nineteen and not the nineteen nearest. Both known label
+errors come out right on the new skeleton, so the trace gets them for free.
+**Outstanding: run `prompt.md` at Gemini and hand back the image.**
 
 ### M0.7 — A printable map poster *(status: open; new)*
 

@@ -1,0 +1,202 @@
+{
+ "name": "westminster",
+ "centre": [
+  51.4958738,
+  -0.1309233
+ ],
+ "half_span_m": 650.0,
+ "centre_label": "House Absolute",
+ "size_px": 2000,
+ "bounds": {
+  "north": 51.50175221626422,
+  "south": 51.489995383735774,
+  "east": -0.12154441360332188,
+  "west": -0.1403021863966781
+ },
+ "markers": [
+  {
+   "name": "House Absolute",
+   "lat": 51.4958738,
+   "lon": -0.1309233,
+   "kind": "centre",
+   "x_frac": 0.5,
+   "y_frac": 0.5
+  },
+  {
+   "kind": "landmark",
+   "name": "Big Ben",
+   "lat": 51.50073,
+   "lon": -0.12462,
+   "x_frac": 0.83603669633063,
+   "y_frac": 0.08694657015412867
+  },
+  {
+   "kind": "landmark",
+   "name": "Westminster Abbey",
+   "lat": 51.4994,
+   "lon": -0.12764,
+   "x_frac": 0.6750367720182054,
+   "y_frac": 0.2000722778460285
+  },
+  {
+   "kind": "landmark",
+   "name": "Parliament",
+   "lat": 51.499,
+   "lon": -0.1246,
+   "x_frac": 0.8371029209949503,
+   "y_frac": 0.2340950470767023
+  },
+  {
+   "name": "Royal Oak",
+   "lat": 51.494215,
+   "lon": -0.132538,
+   "kind": "pub",
+   "x_frac": 0.4139183517260693,
+   "y_frac": 0.6410924240000432
+  },
+  {
+   "name": "The Loose Box",
+   "lat": 51.494706,
+   "lon": -0.131336,
+   "kind": "pub",
+   "x_frac": 0.47799845405174174,
+   "y_frac": 0.599329474768971
+  },
+  {
+   "name": "White Horse",
+   "lat": 51.495027,
+   "lon": -0.130857,
+   "kind": "pub",
+   "x_frac": 0.5035345347622227,
+   "y_frac": 0.5720262024613281
+  },
+  {
+   "name": "Barley Mow",
+   "lat": 51.495077,
+   "lon": -0.131687,
+   "kind": "pub",
+   "x_frac": 0.45928621119291413,
+   "y_frac": 0.5677733563073427
+  },
+  {
+   "name": "Marquis of Granby",
+   "lat": 51.495177,
+   "lon": -0.127175,
+   "kind": "pub",
+   "x_frac": 0.699826495463661,
+   "y_frac": 0.5592676639999764
+  },
+  {
+   "name": "Windsor Castle",
+   "lat": 51.495169,
+   "lon": -0.137798,
+   "kind": "pub",
+   "x_frac": 0.13350126500972714,
+   "y_frac": 0.5599481193846866
+  },
+  {
+   "name": "The Greencoat Boy",
+   "lat": 51.4963,
+   "lon": -0.135863,
+   "kind": "pub",
+   "x_frac": 0.23665850128275345,
+   "y_frac": 0.4637487393846572
+  },
+  {
+   "name": "The Speaker",
+   "lat": 51.496905,
+   "lon": -0.13226,
+   "kind": "pub",
+   "x_frac": 0.42873887456012694,
+   "y_frac": 0.41228930092312704
+  },
+  {
+   "name": "Grafton Arms",
+   "lat": 51.497468,
+   "lon": -0.134108,
+   "kind": "pub",
+   "x_frac": 0.33021971557689433,
+   "y_frac": 0.36440225323087205
+  },
+  {
+   "name": "Munich Cricket Club",
+   "lat": 51.498199,
+   "lon": -0.132467,
+   "kind": "pub",
+   "x_frac": 0.4177034492844071,
+   "y_frac": 0.30222564246151645
+  },
+  {
+   "name": "Buckingham Arms",
+   "lat": 51.499159,
+   "lon": -0.136793,
+   "kind": "pub",
+   "x_frac": 0.1870790543918421,
+   "y_frac": 0.2205709963077784
+  },
+  {
+   "name": "The Feathers",
+   "lat": 51.49924,
+   "lon": -0.13299,
+   "kind": "pub",
+   "x_frac": 0.3898216743124213,
+   "y_frac": 0.2136813855384189
+  },
+  {
+   "name": "Adam and Eve",
+   "lat": 51.49946,
+   "lon": -0.135622,
+   "kind": "pub",
+   "x_frac": 0.24950650848781877,
+   "y_frac": 0.19496886246160872
+  },
+  {
+   "name": "Sanctuary House",
+   "lat": 51.49952,
+   "lon": -0.131822,
+   "kind": "pub",
+   "x_frac": 0.4520891947087497,
+   "y_frac": 0.18986544707718897
+  },
+  {
+   "name": "Blue Boar",
+   "lat": 51.499544,
+   "lon": -0.13218,
+   "kind": "pub",
+   "x_frac": 0.4330037732174095,
+   "y_frac": 0.18782408092305844
+  },
+  {
+   "name": "The Old Star",
+   "lat": 51.49994,
+   "lon": -0.133724,
+   "kind": "pub",
+   "x_frac": 0.3506912291318513,
+   "y_frac": 0.1541415393844375
+  },
+  {
+   "name": "Westminster Arms",
+   "lat": 51.500555,
+   "lon": -0.129813,
+   "kind": "pub",
+   "x_frac": 0.559191462239762,
+   "y_frac": 0.10183153169247292
+  },
+  {
+   "name": "Two Chairmen",
+   "lat": 51.500631,
+   "lon": -0.131621,
+   "kind": "pub",
+   "x_frac": 0.462804752585173,
+   "y_frac": 0.0953672055386328
+  },
+  {
+   "name": "St Stephen's Tavern",
+   "lat": 51.501146,
+   "lon": -0.125595,
+   "kind": "pub",
+   "x_frac": 0.7840582439449955,
+   "y_frac": 0.05156289015403449
+  }
+ ]
+}
