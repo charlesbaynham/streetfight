@@ -35,7 +35,7 @@ Every panel that mints says above its button how many codes a press produces.
 | Team cards | **Team cards** | one per team + a spare each | The door code. This is what turns a signed-up player into a team member. |
 | Pub certificates | **Pub certificates** | **22** | 19 pubs are on the venue, The Speaker among them; 22 gives a few spares. 5 bullets to every member of the first team to scan, once per team, every team. |
 | Drop cards | **Drop cards** | as many sheets as you have hiding places | 8 cards to a landscape A4 sheet, every card a distinct item. One press per item type — set **Item** and **Amount per card**, then mint. |
-| Sandbox posters | **Sandbox posters** | 1–5 copies of each | Six kinds, one sheet of eight per kind per copy. Every code is unlimited and batched `sandbox`. |
+| Sandbox posters | **Sandbox posters** | 1–5 copies of each | Six kinds, one A4 page per kind per copy, headed **INFINITE**. Every code is unlimited and batched `sandbox`. |
 | Map poster | **Map poster** | 1 (A3) | **Hold — see below.** |
 
 ### Drop cards: what to mint
@@ -66,6 +66,11 @@ and three weapons (Pewster, Eat-a-bullet, Tracka-Tracka). Every one is
 `unlimited` — the same player can scan the same poster over and over, which is
 the whole point of a warm-up room — and every one is batched `sandbox`, which
 is how they all die at 16:00.
+
+Each is a **portrait A4 page of its own** with **INFINITE** across the top —
+which is how you tell one from a drop card while sorting the print run. They
+carry the same drawings, so anything without that word across the top belongs
+in the box to be hidden round the town, not on a wall.
 
 Two things about the drawings, so they are not a surprise on the wall: the
 ammunition poster is **5 bullets, not 20** (there is no 20-bullet drawing, and
@@ -419,11 +424,11 @@ one place. Each names the PR that made it.
   (#254). Copying the bullet sprites convincingly was more than a paint-over;
   the sentence says the number outright. Charles can redraw the line over the
   top — the original is one `git show` away.
-- **The drop cards say "This is part of a game - ring 07955 686520"** (#262),
-  in a strip below the artwork. The **pub certificates deliberately do not**:
-  they are handed to a landlord who has been asked and displayed on a wall,
-  which is not the failure mode the contact line is for. One line to add if
-  you disagree.
+- **Nothing printed carries a contact line.** The drop cards had one for a
+  day (#262, "This is part of a game - ring 07955 686520"); Charles had it
+  taken off on 17 September. So a card found by a stranger says nothing about
+  what it is — worth knowing if somebody rings the police about a QR code
+  taped under a bench.
 - **The sandbox ammunition poster is 5 bullets, not 20, and Eat-a-bullet
   borrows Pewster's drawing** (#263). Both because a card's picture is chosen
   by what it awards, and a poster read across a room has to say what it is.
