@@ -831,7 +831,11 @@ def main():
     for m in meta["markers"]:
         m["x_frac"], m["y_frac"] = box.frac(m["lat"], m["lon"])
     p_meta = os.path.join(args.out, "meta.json")
-    json.dump(meta, open(p_meta, "w"), indent=1)
+    with open(p_meta, "w") as fh:
+        # The trailing newline is not cosmetic: this file is committed, and
+        # pre-commit's end-of-file-fixer fails the bundle without it.
+        json.dump(meta, fh, indent=1)
+        fh.write("\n")
 
     side = 2 * args.half_span
     print(f"\nwrote {args.out}/")
