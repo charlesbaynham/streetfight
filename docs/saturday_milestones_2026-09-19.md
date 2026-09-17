@@ -422,7 +422,7 @@ Two things the spec did not anticipate:
 
 ## M2 — The 16:00 transition *(by Friday)*
 
-### M2.1 — Reset to start state *(status: shipped 2026-09-17, PR #TBD)*
+### M2.1 — Reset to start state *(status: shipped 2026-09-17, PR #268)*
 
 One `AdminInterface.reset_to_start_state(game_id)` and one big button in
 `GamePanel`, **refusing unless the game is paused** (say so in the code: the
