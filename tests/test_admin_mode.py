@@ -1089,3 +1089,72 @@ def test_reset_to_start_state_refuses_while_the_game_is_running(
     # And it refused before touching anything
     assert db_session.query(Shot).filter_by(game_id=game_id).count() == 1
     assert UserInterface(player).get_user_model().num_bullets == 4
+
+
+def test_setting_the_courier_location_writes_it_to_the_game(db_session, user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    AdminInterface().set_courier_location(game_id, 51.5, -0.13, accuracy=8.0)
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    assert game.courier_lat == 51.5
+    assert game.courier_long == -0.13
+    assert game.courier_accuracy == 8.0
+    assert game.courier_timestamp is not None
+
+
+def test_clearing_the_courier_puts_the_dot_away(db_session, user_in_team):
+    game_id = game_of_user(user_in_team)
+    AdminInterface().set_courier_location(game_id, 51.5, -0.13, accuracy=8.0)
+
+    AdminInterface().clear_courier(game_id)
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    assert game.courier_lat is None
+    assert game.courier_long is None
+    assert game.courier_timestamp is None
+    assert game.courier_accuracy is None
+
+
+def test_the_courier_fan_out_is_throttled_but_the_position_is_not(
+    db_session, user_in_team, mocker
+):
+    """A courier posts about once a second and every announcement wakes every
+    player's circle stream, so the announcement is throttled - but the
+    position itself is written every time, or the map would lag the throttle
+    as well as the fix."""
+    game_id = game_of_user(user_in_team)
+    announce = mocker.patch("backend.admin_interface.trigger_circle_update")
+
+    AdminInterface().set_courier_location(game_id, 51.5, -0.13)
+    assert announce.call_count == 1
+
+    # Three more inside the window: written, not announced
+    for offset in (0.0001, 0.0002, 0.0003):
+        AdminInterface().set_courier_location(game_id, 51.5 + offset, -0.13)
+    assert announce.call_count == 1
+
+    game = db_session.query(Game).filter_by(id=game_id).one()
+    assert game.courier_lat == pytest.approx(51.5003)
+
+    # Once the window is past, the next fix is announced again. Backdating the
+    # recorded announcement rather than patching time.time: that patch is
+    # process-wide (admin_interface.time *is* the stdlib module), and a clock
+    # moved under the session machinery breaks tests that run after this one.
+    admin_interface._courier_announced_at[game_id] -= (
+        admin_interface.COURIER_ANNOUNCE_INTERVAL_S + 1
+    )
+    AdminInterface().set_courier_location(game_id, 51.6, -0.13)
+    assert announce.call_count == 2
+
+
+def test_clearing_the_courier_always_announces(user_in_team, mocker):
+    """A dot left on the map after the crate is down is the one staleness that
+    actually misleads, so the clear ignores the throttle."""
+    game_id = game_of_user(user_in_team)
+    AdminInterface().set_courier_location(game_id, 51.5, -0.13)
+
+    announce = mocker.patch("backend.admin_interface.trigger_circle_update")
+    AdminInterface().clear_courier(game_id)
+
+    assert announce.call_count == 1

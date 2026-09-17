@@ -565,7 +565,7 @@ columns it already cleared.
 
 ## M4 — Live drops: the courier *(by Friday; after M3.1's columns)*
 
-### M4.1 — The courier page *(status: open)*
+### M4.1 — The courier page *(status: shipped 2026-09-17, PR #273)*
 
 `/admin/courier` (`AdminPage`, nav link), phone-first, three things on it:
 
@@ -580,6 +580,25 @@ columns it already cleared.
 - **Stop broadcasting** without placing.
 - Status in words: "Broadcasting — last fix 2 s ago, ±8 m" / "Not
   broadcasting". Holds the wake lock (`useWakeLock.js`).
+
+Shipped as specified. `backend/admin_interface.py` gains
+`set_courier_location` / `clear_courier` directly before `set_circles`, with
+`POST /admin_set_courier_location` and `/admin_clear_courier` before the
+`admin_set_circle` route; the page is `react-ui/src/AdminCourier.js`. Three
+notes:
+
+- **A fourth column, `courier_accuracy`.** The route's signature in this
+  section takes `accuracy`, and accepting a parameter and dropping it on the
+  floor is worse than a nullable column. Captured, consumed by nothing yet -
+  the same standing as `User.location_accuracy` and `Shot.heading`. M4.2 is
+  free to size the dot by it or ignore it.
+- **The throttle is leading-edge and server-side.** Every fix is written;
+  only the fan-out is rationed, so a player's map is at most five seconds
+  stale while the courier walks - about seven metres, inside the accuracy of
+  the fix itself. `clear_courier` ignores it deliberately.
+- **The drop circle is placed at a 20 m radius** (`DROP_RADIUS_KM`), since it
+  marks where the crate is rather than an area to search. Nothing in the
+  spec fixed a number; change the constant if it reads too tight on the map.
 
 ### M4.2 — The courier and the crate on every map *(status: open)*
 

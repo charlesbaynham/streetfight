@@ -1111,6 +1111,28 @@ async def admin_set_team_leader(user_id: UUID, is_team_leader: bool):
     AdminInterface().set_team_leader(user_id=user_id, is_team_leader=is_team_leader)
 
 
+@admin_method(path="/admin_set_courier_location", method="POST")
+async def admin_set_courier_location(
+    game_id: UUID, lat: float, long: float, accuracy: Optional[float] = None
+):
+    """Where the courier is now (M4.1). Posted about once a second while
+    somebody is walking a crate to a drop; the fan-out to the players is
+    throttled server-side.
+
+    Deliberately not logged, unlike every other admin route here: at one call
+    a second it would be most of the log for as long as a drop takes.
+    """
+    AdminInterface().set_courier_location(
+        game_id=game_id, lat=lat, long=long, accuracy=accuracy
+    )
+
+
+@admin_method(path="/admin_clear_courier", method="POST")
+async def admin_clear_courier(game_id: UUID):
+    logger.info("admin_clear_courier - %s", locals())
+    AdminInterface().clear_courier(game_id=game_id)
+
+
 @admin_method(path="/admin_set_circle", method="POST")
 async def admin_set_circle(
     game_id: UUID, name: CircleTypes, lat: float, long: float, radius_km: float
