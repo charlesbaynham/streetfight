@@ -245,6 +245,15 @@ Four things from it that are worth knowing even if you never call the agent:
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
+  - `next_event.py` — the one thing a game is counting down to: the vocabulary
+    (`KIND_CIRCLE` / `KIND_DROP`) that `Game.next_event_kind` /
+    `next_event_at` / `next_event_note` are written in. Those three columns
+    ride out to every phone on `UserModel` (`user_interface._next_event`,
+    read off `User.game` so a signed-up player with no team gets it too), so
+    the `"user"` SSE event each client already listens to is what keeps the
+    countdown current — there is no second stream and nothing polls. Null
+    together means nothing is cued, which is what `NextEventStrip.js` draws
+    nothing for.
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
   - `sse_event_streams.py` + `asyncio_triggers.py` — SSE streams and the
@@ -313,6 +322,19 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
+  - `src/NextEventStrip.js` — the band across the top of every player's
+    screen saying what the game has cued up and how long is left, drawn from
+    `/user_info`'s `next_event_*` (see `backend/next_event.py`). Mounted in
+    `UserMode.js` above `monitorsContainer` **and** above the waiting page,
+    since somebody at the door with the game still paused is exactly who wants
+    to know a drop is ten minutes out. It renders nothing at all when nothing
+    is cued, and nothing for a kind it does not recognise — a tab left open
+    through a deploy shows no cue rather than a wrong one. The clock is
+    `GuideImages.js`'s `CountdownTimer` (now exported, and counting total
+    minutes rather than minutes-past-the-hour), and at zero the strip says
+    what is happening rather than sitting on a stopped 00:00 until the server
+    clears the cue. The spectator screen carries the same thing as a pill on
+    its headline.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `ShotQueue.js`'s `RankedCandidates` shows each candidate's own colours
     beside the ranking, in the scheme's channel order — which is the review's

@@ -359,7 +359,7 @@ Two-tap confirm on the button, like the demo button.
 
 ## M3 — Countdown and announcements *(by Friday; the biggest player-facing change)*
 
-### M3.1 — "What happens next" on every phone *(status: open)*
+### M3.1 — "What happens next" on every phone *(status: shipped 2026-09-17, PR #PRNUM)*
 
 - `Game.next_event_kind` (`"circle"` / `"drop"`), `next_event_at` (epoch
   float), `next_event_note` (the drop's contents, admin-typed) — three
@@ -372,6 +372,14 @@ Two-tap confirm on the button, like the demo button.
   "Drop in 04:30 — 2× level 2 armour, a Tracka-Tracka, a medpack". Prose in
   `prose.js`. Shown on the waiting page too. Nothing when nothing is cued.
 - Spectator screen shows the same (nice-to-have).
+
+Shipped as the carriage only: the columns, the ride out on `UserModel`, the
+strip and the spectator screen's pill. Nothing sets the columns yet, so the
+`trigger_update_event("user", …)` fan-out lands with the setter that needs it
+(`cue_next_event`, M3.2) rather than here. The kind strings live in a new
+`backend/next_event.py`, which is where M3.2's timer goes. The strip sits above
+the waiting page too, and reads the cue off `User.game` rather than the team's,
+so a signed-up player with no team still sees it.
 
 ### M3.2 — Cue the next circle *(status: open)*
 
