@@ -350,7 +350,7 @@ marks Charles's nineteen and not the nineteen nearest. Both known label
 errors come out right on the new skeleton, so the trace gets them for free.
 **Outstanding: run `prompt.md` at Gemini and hand back the image.**
 
-### M0.7 — A printable map poster *(status: open; new)*
+### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #PRNUM; held from printing until M0.6's redrawn map lands)*
 
 A PDF of the map to pin up in The Speaker: the venue image at A3 (and A4)
 with a numbered legend of the nineteen pubs and House Absolute, the game's
@@ -359,10 +359,30 @@ wall players read. Same toolchain as `team_cards.py` (Pillow, `make_qr`'s
 `DPI` and `_mm`, `UbuntuMono-R.ttf`), built from `ACTIVE_VENUE` so the legend
 cannot drift from `venues.py`. `GET /admin_map_poster_pdf` (GET, since it
 mints nothing) and a panel on the Printables page; a CLI entry too
-(`npm run mapgen`). Reads the image from `react-ui/src/images/` via
-`mapImages.js`'s key — on a deployment the source tree is a read-only Nix
-store path, which is readable. Test: one page, A3 portrait or landscape to
+(`npm run mapgen`). Test: one page, A3 portrait or landscape to
 suit the square, legend names match the venue's landmark keys.
+
+**Shipped, and it differs from the spec in two places.**
+
+- A3 *portrait* with the legend under the map, and A4 as the same design
+  scaled — the two sizes share an aspect ratio, so there is one layout, not
+  two. The paper is a query parameter, A3 by default.
+- The poster **draws its own numbered markers** on the map. A numbered legend
+  is unusable without numbers on the map, and the current drawing labels the
+  ten pubs it was traced from rather than the nineteen in play. The numbering
+  is the venue's own order, which is also the order M0.6's skeleton numbers
+  them in, so when the redraw lands the poster's numbers and the drawing's
+  agree.
+- **Where the image comes from is not what this milestone assumed.** The
+  deployed wheel is built from `backend*` alone (checked — there is no
+  `react-ui` in it), so reading `react-ui/src/images/` would have worked in a
+  checkout and failed on the droplet. `backend/map_images/<venue key>.<ext>`
+  are symlinks to the one real file webpack bundles, shipped as package data.
+
+**Held from printing** until M0.6's redrawn map is in: the poster is only as
+good as the image, and eleven of the nineteen pubs are still unlabelled on
+the drawing. Nothing has to change here when it lands — drop the new file
+over `react-ui/src/images/map_westminster.jpg` and reprint.
 
 ---
 

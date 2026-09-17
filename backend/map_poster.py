@@ -63,6 +63,11 @@ LEGEND_HEADING = "WHERE EVERYTHING IS"
 # it says where the pubs are and nothing about where the circles will be.
 OPERATIONAL_PREFIXES = ("CIRCLE", "DROP_", "COURIER")
 
+# Title-casing a landmark key gives "Marquis Of Granby", which is not how the
+# pub is written on its own sign. Anything here is lowered unless it starts
+# the name.
+MINOR_WORDS = frozenset({"a", "and", "at", "in", "of", "on", "the"})
+
 # ---------------------------------------------------------------------------
 # The look. Millimetres are A3 millimetres; A4 is the same design scaled.
 # ---------------------------------------------------------------------------
@@ -79,8 +84,7 @@ RULE = (70, 64, 58)
 
 MARGIN_MM = 12.0
 TITLE_MM = 17.0
-DATE_MM = 5.0
-VENUE_MM = 6.5
+VENUE_MM = 6.0
 LEGEND_HEADING_MM = 4.5
 LEGEND_MM = 4.0
 
@@ -141,7 +145,11 @@ def legend_label(name: str) -> str:
     """A landmark key as it is written on the page. `venues.py` is the source
     of truth for the words, so nothing here can call a pub something the
     admin's own circle dropdown does not."""
-    return name.replace("_", " ").title()
+    words = name.replace("_", " ").title().split()
+    return " ".join(
+        word if i == 0 or word.lower() not in MINOR_WORDS else word.lower()
+        for i, word in enumerate(words)
+    )
 
 
 def _marker_positions(venue: Venue, names: List[str]) -> List[Tuple[float, float]]:
@@ -245,9 +253,14 @@ def render_poster(venue: Venue = None, size: str = DEFAULT_PAGE_SIZE) -> Image.I
     y = margin + page.px(4)
     y = _centred(draw, page, y, GAME_NAME, page.font(TITLE_MM))
     y += page.px(1)
-    y = _centred(draw, page, y, venue.name.upper(), page.font(VENUE_MM))
-    y += page.px(0.5)
-    y = _centred(draw, page, y, GAME_DATE, page.font(DATE_MM), fill=RULE)
+    y = _centred(
+        draw,
+        page,
+        y,
+        f"{venue.name.upper()}  -  {GAME_DATE}",
+        page.font(VENUE_MM),
+        fill=RULE,
+    )
     y += page.px(4)
 
     # The legend's height is known, so the map takes whatever is left: the

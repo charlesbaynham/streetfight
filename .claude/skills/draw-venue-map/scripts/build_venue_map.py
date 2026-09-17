@@ -185,7 +185,8 @@ def fetch_features(box):
     pad = 0.15 * (box.north - box.south)
     bbox = f"{box.south - pad},{box.west - pad}," f"{box.north + pad},{box.east + pad}"
     classes = "|".join(WIDTHS)
-    return overpass(f"""
+    return overpass(
+        f"""
 [out:json][timeout:120];
 (
   way["highway"~"^({classes})$"]({bbox});
@@ -195,7 +196,8 @@ def fetch_features(box):
   way["leisure"="park"]({bbox});
 );
 out geom;
-""")["elements"]
+"""
+    )["elements"]
 
 
 def parse_pub(spec, box):
@@ -225,14 +227,16 @@ def parse_pub(spec, box):
 def fetch_pubs(box, include_bars):
     kinds = "pub|bar" if include_bars else "pub"
     bbox = f"{box.south},{box.west},{box.north},{box.east}"
-    els = overpass(f"""
+    els = overpass(
+        f"""
 [out:json][timeout:90];
 (
   node["amenity"~"^({kinds})$"]({bbox});
   way["amenity"~"^({kinds})$"]({bbox});
 );
 out center tags;
-""")["elements"]
+"""
+    )["elements"]
     found = {}
     for e in els:
         t = e.get("tags", {})
