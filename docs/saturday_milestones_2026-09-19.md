@@ -526,7 +526,7 @@ not in the trigger registry. **Decision worth revisiting:**
 `promote_next_circle` changes nothing but the cue when NEXT is empty, rather
 than blanking the exclusion circle.
 
-### M3.3 — Cue a drop *(status: shipped 2026-09-17, PR #PRNUM)*
+### M3.3 — Cue a drop *(status: shipped 2026-09-17, PR #271)*
 
 **"Drop in N minutes"** (default 5) with a contents field → `next_event_*`
 with the note. At zero: ticker "The courier has set off", cue cleared, and
