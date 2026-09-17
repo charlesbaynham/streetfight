@@ -328,11 +328,20 @@ def test_image_string():
     return Path(__file__, "../sample_base64_image.txt").resolve().read_text()
 
 
+# A weapon that can be fired again immediately. The server-side cooldown
+# (M1.1) refuses a second shot inside the player's own shot_timeout, which is
+# the whole point of it -- but a test about queue ordering, backlogs or
+# adjudication is about what happens to a shot *after* it lands, and should
+# not have to wait 25 s to queue a second one. The cooldown has its own tests
+# in tests/test_shots.py.
+NO_FIRE_DELAY = 0
+
+
 @pytest.fixture
 def shot_from_user_in_team(user_in_team, test_image_string):
     ui = UserInterface(user_in_team)
     ui.award_ammo(1)
-    ui.set_weapon_data(1, 6)
+    ui.set_weapon_data(1, NO_FIRE_DELAY)
     ui.submit_shot(test_image_string)
 
     return AdminInterface().get_shots_ids()[0]

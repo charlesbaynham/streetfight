@@ -78,11 +78,11 @@ Recorded so nobody builds against the plan's numbers.
   bullets drawn. The constant is `generate_pub_pages.BULLETS_PER_TEAM_MEMBER`
   and three tests hard-code the literal 2. Changing the number is an image
   edit as well as a code change.
-- **The cooldown is enforced nowhere on the server.** `submit_shot` checks
-  team, HP and bullets only (`backend/user_interface.py:607-616`); the only
-  timer is `FireButton.js`'s `setTimeout`. Three back-to-back POSTs all
-  return 200 (`docs/r9_walkthrough/A4.md`). `MyWebcam.js` never checks
-  `response.ok`, so a server refusal would be silent today.
+- **The cooldown was enforced nowhere on the server** — fixed by M1.1.
+  `submit_shot` checked team, HP and bullets only; the only timer was
+  `FireButton.js`'s `setTimeout`, so three back-to-back POSTs all returned 200
+  (`docs/r9_walkthrough/A4.md`), and `MyWebcam.js` never checked `response.ok`,
+  so a server refusal would have been silent.
 - **Players cannot see anybody on the map**, teammates included. `MapViewSelf`
   draws the own dot only; `admin_get_locations` is admin-authenticated and
   polled every 5 s by `MapViewAdmin`. `set_location` deliberately fires no
@@ -342,7 +342,7 @@ suit the square, legend names match the venue's landmark keys.
 
 ## M1 — Balance and the server-side cooldown *(by Thursday night; on staging Friday)*
 
-### M1.1 — Enforce the cooldown on the server *(status: open; the plan's one "assume they will try to break it")*
+### M1.1 — Enforce the cooldown on the server *(status: shipped 2026-09-17, PR #PRNUM; the plan's one "assume they will try to break it")*
 
 - `User.last_shot_at: Float, nullable` (additive) written in `submit_shot`
   beside the bullet decrement — not derived from `Shot.time_created`, which
@@ -358,6 +358,15 @@ suit the square, legend names match the venue's landmark keys.
   finding) — a silent 403 would look like the app eating shots.
 - Tests: TDD in `tests/test_shots.py` (three back-to-back shots → 200, 403,
   403; after the timeout → 200; the fast weapon's 5 s) and `FireButton.test.js`.
+
+Shipped as specified, with two decisions worth knowing. A shot carrying its
+own `time_created` is **exempt** from the cooldown: that argument is only ever
+passed by the replay and the demo drip (`/api/submit_shot` passes neither, and
+must not), which deal out a simulated hour's shots in whatever order suits
+them. And the refusal reaches the player through a new
+`shotRefusedStore` + `ShotRefusedNotice` rather than a callback threaded
+through `WebcamView`, because the admin's reference-photo page mounts the same
+camera and has no business showing a fire-cooldown message.
 
 ### M1.2 — Starting armour *(status: open; small, after M0.1)*
 

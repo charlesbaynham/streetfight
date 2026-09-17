@@ -346,6 +346,7 @@ export function makeUser(overrides = {}) {
     appeals_remaining: 3,
     shot_damage: 1,
     shot_timeout: 25,
+    next_shot_at: null,
     identity_slot: null,
     outfit_wardrobe: null,
     outfit_provided: null,

@@ -1958,6 +1958,9 @@ class AdminInterface:
             user.hit_points = 1
             user.time_of_death = None
             user.appeals_remaining = APPEALS_PER_GAME
+            # Otherwise a reset leaves everybody holding the cooldown from
+            # whatever they fired last (M1.1), which a reset has just deleted.
+            user.last_shot_at = None
 
             # The kit-check photos are photographs of identifiable people and
             # have no meaning once the night they were taken for is over.

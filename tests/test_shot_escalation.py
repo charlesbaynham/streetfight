@@ -24,6 +24,8 @@ from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 from backend.vision_client import get_escalation_client
 
+from .shared_fixtures import NO_FIRE_DELAY
+
 SCHEME = default_scheme()
 
 # Four candidates, each in a different outfit.
@@ -888,7 +890,7 @@ async def test_the_semaphore_bounds_concurrent_escalation_calls(
     # the semaphore is process-wide, not per-shot.
     second_shooter = UserInterface(candidates[0])
     second_shooter.award_ammo(1)
-    second_shooter.set_weapon_data(1, 6)
+    second_shooter.set_weapon_data(1, NO_FIRE_DELAY)
     second_shooter.submit_shot(test_image_string)
     second_shot = next(
         shot_id
