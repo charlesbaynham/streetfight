@@ -290,7 +290,10 @@ class Hand:
 
     def put(self, x, y, text):
         """Place `text` near (x, y), then draw an arrow from it to the point."""
-        gap, step, margin = 18, 34, 14
+        # The gap has to clear the arrowhead, or the arrow is all head and
+        # reads as a stray caret beside the name. The knockout box's own
+        # padding comes off it too, so the shaft is `gap` minus that.
+        gap, step, margin = 40, 34, 14
         best = None
         for ring in range(0, 9):
             for side in ("r", "l"):
@@ -331,7 +334,7 @@ class Hand:
         if dist < 6:
             return
         # Stop just short, so the nib does not sit on top of the thing.
-        back = min(9, dist * 0.3)
+        back = min(6, dist * 0.2)
         end = (end[0] - dx / dist * back, end[1] - dy / dist * back)
         dx, dy = end[0] - start[0], end[1] - start[1]
         mid = ((start[0] + end[0]) / 2, (start[1] + end[1]) / 2)
@@ -340,9 +343,11 @@ class Hand:
         curve = bezier(start, ctrl, end)
         self.sheet.line(LAYER_HAND, curve, PEN)
 
-        # A two-stroke head, angled off the direction the curve arrives from.
+        # A two-stroke head, angled off the direction the curve arrives from,
+        # and sized to the arrow: a fixed head on a short arrow swallows the
+        # shaft, which is what made these read as carets rather than arrows.
         angle = math.atan2(end[1] - curve[-2][1], end[0] - curve[-2][0])
-        size = 11
+        size = max(5.0, min(10.0, dist * 0.3))
         for turn in (2.5, -2.5):
             self.sheet.line(
                 LAYER_HAND,
