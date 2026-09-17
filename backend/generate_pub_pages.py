@@ -1,4 +1,4 @@
-"""A4 pub certificates: one page, one QR code, two bullets for a whole team.
+"""A4 pub certificates: one page, one QR code, five bullets a head for a whole team.
 
 A different shape from the drop codes in :mod:`backend.generate_qr_items`,
 which pack eight small cards onto a landscape sheet to be cut up and hidden.
@@ -34,6 +34,7 @@ import logging
 from pathlib import Path
 from typing import Iterable
 from typing import List
+from typing import Optional
 from typing import Tuple
 
 import click
@@ -42,6 +43,7 @@ from PIL import Image
 from PIL import ImageDraw
 
 from .admin_interface import AdminInterface
+from .generate_qr_items import DEFAULT_BATCH
 from .generate_qr_items import IMAGES_DIR
 from .generate_qr_items import QR_LOGFILE
 from .items import ItemModel
@@ -49,7 +51,7 @@ from .items import ItemModel
 logger = logging.getLogger(__name__)
 
 DPI = 300
-BULLETS_PER_TEAM_MEMBER = 2
+BULLETS_PER_TEAM_MEMBER = 5
 
 ARTWORK = Path(IMAGES_DIR, "reusable bullets.png")
 
@@ -172,7 +174,11 @@ def pocket_ink_pixels() -> int:
     return sum(alpha.histogram()[17:])
 
 
-def mint_pub_items(count: int, num_bullets: int = BULLETS_PER_TEAM_MEMBER) -> List[str]:
+def mint_pub_items(
+    count: int,
+    num_bullets: int = BULLETS_PER_TEAM_MEMBER,
+    batch: Optional[str] = DEFAULT_BATCH,
+) -> List[str]:
     """``count`` distinct ammo codes, each claimable once by every team."""
     admin = AdminInterface()
 
@@ -182,17 +188,22 @@ def mint_pub_items(count: int, num_bullets: int = BULLETS_PER_TEAM_MEMBER) -> Li
             {"num": num_bullets},
             collected_only_once=False,
             collected_as_team=True,
+            batch=batch,
         )
         for _ in range(count)
     ]
 
 
-def log_items(urls: Iterable[str], tag: str, num_bullets: int) -> None:
+def log_items(
+    urls: Iterable[str], tag: str, num_bullets: int, batch: Optional[str] = None
+) -> None:
     """Append to the same ``qr_codes.csv`` the drop codes are recorded in."""
     with open(QR_LOGFILE, "a") as f:
         for i, url in enumerate(urls):
             item = ItemModel.from_base64(url)
-            f.write(f"{item.id},{tag},{i},{item.itype},{num_bullets},,,False,True\n")
+            f.write(
+                f"{item.id},{tag},{i},{item.itype},{num_bullets},,,False,True,{batch or ''}\n"
+            )
 
 
 @click.command()
@@ -224,8 +235,17 @@ def log_items(urls: Iterable[str], tag: str, num_bullets: int) -> None:
     default="pub",
     help="Written into qr_codes.csv beside each code.",
 )
+@click.option(
+    "--batch",
+    default=DEFAULT_BATCH,
+    show_default=True,
+    help=(
+        "The label minted into every code, so this print run can be withdrawn "
+        "as a set. Pass an empty string for an unbatched code."
+    ),
+)
 @click.option("--log/--no-log", default=True, help="Record the codes minted.")
-def generate(count: int, num: int, outfile: str, tag: str, log: bool):
+def generate(count: int, num: int, outfile: str, tag: str, batch: str, log: bool):
     """Mint a PDF of A4 pub certificates, one page and one code per pub.
 
     Codes are signed with SECRET_KEY and carry WEBSITE_URL, so both must be
@@ -235,7 +255,7 @@ def generate(count: int, num: int, outfile: str, tag: str, log: bool):
     if count < 1:
         raise click.ClickException("Nothing to print: --count must be at least 1.")
 
-    urls = mint_pub_items(count, num)
+    urls = mint_pub_items(count, num, batch)
     pages = [render_page(url, f"{tag}{i}") for i, url in enumerate(urls)]
 
     pages[0].save(
@@ -244,7 +264,7 @@ def generate(count: int, num: int, outfile: str, tag: str, log: bool):
     click.echo(f"Wrote {len(pages)} page(s) to {outfile}")
 
     if log:
-        log_items(urls, tag, num)
+        log_items(urls, tag, num, batch)
         click.echo(f"Recorded {len(urls)} code(s) in {QR_LOGFILE}")
 
 

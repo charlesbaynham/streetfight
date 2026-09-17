@@ -143,6 +143,7 @@ function useSpectatorData() {
     ticker,
     identity,
     refreshAll,
+    refreshGames,
     refreshShots,
   };
 }
@@ -368,6 +369,7 @@ function Headline({
       {game && !game.active ? (
         <span className={styles.headlinePaused}>Paused</span>
       ) : null}
+      <HeadlineCue game={game} now={now} />
       {/* One string, and the number is not picked out in green: on this page
           colour means certainty, and a count is not a verdict. */}
       <span className={styles.headlineAlive}>
@@ -390,6 +392,41 @@ function Headline({
         {fullscreenActive ? "Exit full screen" : "Full screen"}
       </button>
     </header>
+  );
+}
+
+// What the game has cued up next and how long is left (M3.1), off the same
+// GameModel the rest of this bar reads. Nothing at all when nothing is cued,
+// which is most of the night, and nothing for a kind this bundle does not
+// know - a screen left running through a deploy shows no cue rather than a
+// wrong one.
+function HeadlineCue({ game, now }) {
+  const kind = game ? game.next_event_kind : null;
+  if (!game || typeof game.next_event_at !== "number") return null;
+  if (kind !== "circle" && kind !== "drop") return null;
+
+  const isDrop = kind === "drop";
+  const seconds = secondsUntil(game.next_event_at, now);
+
+  return (
+    <span
+      className={
+        styles.headlineCue +
+        " " +
+        (isDrop ? styles.headlineCueDrop : styles.headlineCueCircle)
+      }
+    >
+      {seconds > 0 ? (
+        <>
+          {isDrop ? "Drop in" : "Circle closes in"}{" "}
+          <span className={styles.headlineCueClock}>{countdown(seconds)}</span>
+        </>
+      ) : isDrop ? (
+        "Courier on the way"
+      ) : (
+        "Circle closing"
+      )}
+    </span>
   );
 }
 
@@ -694,6 +731,7 @@ function SpectatorScreen() {
     identity,
     shotsLoaded,
     refreshAll,
+    refreshGames,
     refreshShots,
   } = useSpectatorData();
   const thumbnails = useThumbnails(shots);
@@ -766,6 +804,12 @@ function SpectatorScreen() {
     >
       <UpdateListener update_type="admin" callback={refreshAll} />
       <UpdateListener update_type="shots" callback={refreshShots} />
+      {/* The circles and the courier ride on the game this screen passes
+          straight to the map (rather than on /get_circles, which resolves the
+          game from a player session this browser does not have), so the
+          circle event has to refetch the game or the courier's aeroplane
+          never moves here. It is already throttled to ~5s server-side. */}
+      <UpdateListener update_type="circle" callback={refreshGames} />
 
       <Headline
         game={game}

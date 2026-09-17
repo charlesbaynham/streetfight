@@ -10,12 +10,18 @@ from .model import UserState
 if TYPE_CHECKING:
     from .user_interface import UserInterface
 
+# A weapon is the pair (shot_damage, shot_timeout). Everything but
+# Eat-a-bullet fires at the standard delay, model.DEFAULT_SHOT_TIMEOUT, and
+# (1, 25) is model.BASIC_WEAPON -- the pairs are written out as literals
+# because react-ui/src/weapons.test.js reads them straight out of this file
+# to check the frontend's mirror (react-ui/src/weapons.js, and the gun art
+# map in react-ui/src/utils.js) has not drifted. Change one, change all four.
 WEAPON_NAME_LOOKUP = {
-    (1, 1): "Eat-a-bullet",
-    (0, 6): "No weapon",
-    (1, 6): "Pewster",
-    (2, 6): "Tracka-Tracka",
-    (3, 6): "OMG",
+    (1, 5): "Eat-a-bullet",
+    (0, 25): "No weapon",
+    (1, 25): "Pewster",
+    (2, 25): "Tracka-Tracka",
+    (3, 25): "OMG",
 }
 
 
@@ -94,6 +100,47 @@ def _handle_medpack(user_interface: "UserInterface", item: ItemModel):
     )
 
 
+def _handle_radar(user_interface: "UserInterface", item: ItemModel):
+    user_model: UserModel = user_interface.get_user_model()
+    _check_alive(user_model)
+
+    user_interface.start_radar(item.data["minutes"])
+
+    # Public, like every other collection: knowing that somebody can see you
+    # is half of what makes the card worth having, and the other half is that
+    # everybody else starts moving.
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_RADAR,
+        {"user": user_model.name, "num": item.data["minutes"]},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
+
+
+def _handle_circle_warning(user_interface: "UserInterface", item: ItemModel):
+    user_model: UserModel = user_interface.get_user_model()
+    _check_alive(user_model)
+
+    user_interface.start_circle_warning(item.data["minutes"])
+
+    # Two messages, on purpose. The public one does not name the holder -
+    # saying who would hand everybody the one thing the card was bought to
+    # hide - so the holder is told privately that it was them.
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_CIRCLE_WARNING,
+        {},
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
+    tk.send_ticker_message(
+        tk.TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE,
+        {"num": item.data["minutes"]},
+        user_id=user_model.id,
+        team_id=user_model.team_id,
+        game_id=user_model.game_id,
+    )
+
+
 def _handle_weapon(user_interface: "UserInterface", item: ItemModel):
     weapon_data = ItemDataWeapon(**item.data)
     user_model: UserModel = user_interface.get_user_model()
@@ -136,6 +183,8 @@ _ACTIONS = {
     (ItemType.AMMO, True): _handle_ammo_team,
     (ItemType.ARMOUR, False): _handle_armour,
     (ItemType.MEDPACK, False): _handle_medpack,
+    (ItemType.RADAR, False): _handle_radar,
+    (ItemType.CIRCLE_WARNING, False): _handle_circle_warning,
     (ItemType.WEAPON, False): _handle_weapon,
 }
 

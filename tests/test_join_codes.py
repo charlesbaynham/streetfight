@@ -22,6 +22,8 @@ from backend.model import User
 from backend.qr_signing import sign_payload
 from backend.user_interface import UserInterface
 
+from .shared_fixtures import NO_FIRE_DELAY
+
 # Mocking the environment variables for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
 os.environ.setdefault("WEBSITE_URL", "https://streetfight.example.com")
@@ -646,12 +648,12 @@ def test_admin_delete_user(
         collected_as_team=False,
     ).sign()
     UserInterface(user_a).collect_item(item.to_base64())
-    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_a).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(user_a).submit_shot(test_image_string)
 
     # B shoots A, and the admin validates the hit (so B's shot targets A)
     UserInterface(user_b).award_ammo(1)
-    UserInterface(user_b).set_weapon_data(1, 6)
+    UserInterface(user_b).set_weapon_data(1, NO_FIRE_DELAY)
     shot_b = UserInterface(user_b).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_b, user_a)
 
@@ -704,7 +706,7 @@ def test_admin_delete_team(
         collected_as_team=False,
     ).sign()
     UserInterface(user_a).collect_item(item.to_base64())
-    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_a).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(user_a).submit_shot(test_image_string)
 
     response = admin_api_client.post(f"/api/admin_delete_team?team_id={team_a}")
@@ -733,7 +735,7 @@ def test_admin_delete_team_removes_shots_from_players_who_switched_out(
     old_team_id = db_session.get(User, user_in_team).team_id
 
     UserInterface(user_in_team).award_ammo(1)
-    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(user_in_team).submit_shot(test_image_string)
 
     new_team_id = team_factory()
@@ -786,7 +788,7 @@ def test_admin_delete_game(
         collected_as_team=False,
     ).sign()
     UserInterface(user_a).collect_item(item.to_base64())
-    UserInterface(user_a).set_weapon_data(1, 6)
+    UserInterface(user_a).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(user_a).submit_shot(test_image_string)
 
     admin_api_client.post(

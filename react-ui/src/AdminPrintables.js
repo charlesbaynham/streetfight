@@ -29,9 +29,39 @@ import styles from "./AdminPrintables.module.css";
 // so a card asking for one would raise on the first scan.
 const TEAM_COLLECTABLE_TYPES = ["ammo"];
 
-const ITEM_TYPES = ["ammo", "medpack", "armour", "weapon"];
+const ITEM_TYPES = [
+  "ammo",
+  "medpack",
+  "armour",
+  "weapon",
+  "radar",
+  "circle_warning",
+];
+
+// The two items measured in minutes rather than in how much of something they
+// award, with the default each one's payload schema carries (backend/items.py).
+const TIMED_TYPES = { radar: 5, circle_warning: 10 };
 
 const CARDS_PER_SHEET = 8;
+
+// Mirrors backend/map_poster.py's PAGE_SIZES_MM. Both are A-series, so the
+// poster is one design at two scales rather than two layouts.
+const POSTER_SIZES = ["A3", "A4"];
+
+// Every code minted here carries a batch, so that a whole print run can be
+// withdrawn at once later in the evening. The real cards are "game" and are
+// never withdrawn; the sandbox's posters are "sandbox" and stop working at
+// 16:00.
+const DEFAULT_BATCH = "game";
+
+// How many kinds of poster the sandbox sheet prints - the length of
+// backend/printables.py's SANDBOX_CARDS. Only used to say how many codes a
+// press mints, which is the one thing that panel warns about.
+const SANDBOX_CARD_KINDS = 6;
+
+// The batch the sandbox posters are minted into (backend/printables.py's
+// SANDBOX_BATCH), and so the one that gets withdrawn at 16:00.
+const SANDBOX_BATCH = "sandbox";
 
 // The games to choose between, newest-first as the server gives them, with
 // the first one selected. Two panels need this, so it is a hook rather than a
@@ -166,6 +196,63 @@ function Field({ label, hint, children }) {
   );
 }
 
+// The label minted into every code a press produces. It goes last in every
+// panel because it is the field nobody changes: "game" is right for everything
+// printed for the night itself.
+function BatchField({ batch, setBatch }) {
+  return (
+    <Field
+      label="Batch"
+      hint="Minted into every code, so this run can be withdrawn as a set. Leave it as 'game' for the real cards."
+    >
+      <input
+        className={styles.input}
+        type="text"
+        value={batch}
+        onChange={(e) => setBatch(e.target.value)}
+      />
+    </Field>
+  );
+}
+
+// The venue map on one sheet, with a numbered legend of the pubs. A GET like
+// the team cards, and for a stronger reason: it mints nothing at all, it just
+// draws what backend/venues.py already says.
+function MapPoster() {
+  const [size, setSize] = useState("A3");
+
+  return (
+    <Printable
+      title="Map poster"
+      blurb="The map to pin up in the pub, with every pub on it numbered and named underneath. No circles, no drop locations - players read this one."
+      label="Download map poster (PDF)"
+      ready={true}
+      action={() =>
+        adminDownload(
+          "admin_map_poster_pdf",
+          { size: size },
+          `map_poster_${size.toLowerCase()}.pdf`,
+          "GET",
+        )
+      }
+    >
+      <Field label="Paper" hint="A3 is the one to put on a wall.">
+        <select
+          className={styles.input}
+          value={size}
+          onChange={(e) => setSize(e.target.value)}
+        >
+          {POSTER_SIZES.map((paper) => (
+            <option key={paper} value={paper}>
+              {paper}
+            </option>
+          ))}
+        </select>
+      </Field>
+    </Printable>
+  );
+}
+
 // One A4 page per team, carrying that team's door code. No side effects worth
 // worrying about, so this one is a GET.
 function TeamCards() {
@@ -193,7 +280,8 @@ function TeamCards() {
 
 function PubPages() {
   const [count, setCount] = useState(6);
-  const [bullets, setBullets] = useState(2);
+  const [bullets, setBullets] = useState(5);
+  const [batch, setBatch] = useState(DEFAULT_BATCH);
 
   return (
     <Printable
@@ -205,7 +293,7 @@ function PubPages() {
       action={() =>
         adminDownload(
           "admin_pub_pages_pdf",
-          { count: count, num_bullets: bullets },
+          { count: count, num_bullets: bullets, batch: batch },
           "pub_pages.pdf",
         )
       }
@@ -229,6 +317,7 @@ function PubPages() {
           onChange={(e) => setBullets(Number(e.target.value))}
         />
       </Field>
+      <BatchField batch={batch} setBatch={setBatch} />
     </Printable>
   );
 }
@@ -238,11 +327,14 @@ function ItemSheets() {
   const [num, setNum] = useState(5);
   const [sheets, setSheets] = useState(1);
   const [damage, setDamage] = useState(1);
-  const [timeout, setTimeoutSeconds] = useState(6);
+  const [timeout, setTimeoutSeconds] = useState(25);
   const [onceOnly, setOnceOnly] = useState(true);
   const [asTeam, setAsTeam] = useState(false);
+  const [minutes, setMinutes] = useState(TIMED_TYPES.radar);
+  const [batch, setBatch] = useState(DEFAULT_BATCH);
 
   const teamable = TEAM_COLLECTABLE_TYPES.includes(itype);
+  const timed = itype in TIMED_TYPES;
   const cards = sheets * CARDS_PER_SHEET;
 
   return (
@@ -263,6 +355,8 @@ function ItemSheets() {
             timeout: timeout,
             collected_only_once: onceOnly,
             collected_as_team: teamable && asTeam,
+            batch: batch,
+            ...(timed ? { minutes: minutes } : {}),
           },
           `item_cards_${itype}.pdf`,
         )
@@ -273,9 +367,10 @@ function ItemSheets() {
           className={styles.input}
           value={itype}
           onChange={(e) => {
-            setItype(e.target.value);
-            if (!TEAM_COLLECTABLE_TYPES.includes(e.target.value))
-              setAsTeam(false);
+            const chosen = e.target.value;
+            setItype(chosen);
+            if (!TEAM_COLLECTABLE_TYPES.includes(chosen)) setAsTeam(false);
+            if (chosen in TIMED_TYPES) setMinutes(TIMED_TYPES[chosen]);
           }}
         >
           {ITEM_TYPES.map((type) => (
@@ -297,6 +392,17 @@ function ItemSheets() {
           onChange={(e) => setNum(Number(e.target.value))}
         />
       </Field>
+      {timed ? (
+        <Field label="Minutes it lasts">
+          <input
+            className={styles.input}
+            type="number"
+            min="1"
+            value={minutes}
+            onChange={(e) => setMinutes(Number(e.target.value))}
+          />
+        </Field>
+      ) : null}
       {itype === "weapon" ? (
         <>
           <Field label="Damage per shot">
@@ -350,7 +456,157 @@ function ItemSheets() {
           <span className={styles.hint}> - only ammo can be</span>
         )}
       </label>
+      <BatchField batch={batch} setBatch={setBatch} />
     </Printable>
+  );
+}
+
+// The warm-up room's walls. Everything on them is unlimited and everything is
+// in one batch, which is the whole point: a player scans the ammunition poster
+// as often as they like, and the room stops working in a single press at 16:00.
+// No controls but how many copies - what the posters *are* is decided in
+// backend/printables.py's SANDBOX_CARDS, so that the paper and the codes
+// cannot disagree.
+function SandboxSheets() {
+  const [copies, setCopies] = useState(1);
+
+  const sheets = copies * SANDBOX_CARD_KINDS;
+
+  return (
+    <Printable
+      title="Sandbox posters"
+      blurb={`The warm-up room: ammunition, level 2 armour, a med pack and three weapons, ${CARDS_PER_SHEET} copies of each to a sheet. Every one can be scanned again and again by the same player, so they work as posters on a wall.`}
+      warning={`Prints ${sheets} sheet${sheets === 1 ? "" : "s"}, and mints ${SANDBOX_CARD_KINDS} new codes - one per poster. Withdraw the "sandbox" batch at 16:00 to turn them all off.`}
+      label="Mint and download (PDF)"
+      ready={copies >= 1}
+      action={() =>
+        adminDownload(
+          "admin_sandbox_sheets_pdf",
+          { copies: copies },
+          "sandbox_sheets.pdf",
+        )
+      }
+    >
+      <Field label="Copies of each poster" hint="One sheet of 8 per copy.">
+        <input
+          className={styles.input}
+          type="number"
+          min="1"
+          max="5"
+          value={copies}
+          onChange={(e) => setCopies(Number(e.target.value))}
+        />
+      </Field>
+    </Printable>
+  );
+}
+
+// The only recall a printed code has. A card cannot be un-printed and
+// rotating SECRET_KEY would take the team cards with it, so every code is
+// minted carrying a batch and this turns one off: the sandbox's posters stop
+// working at 16:00 while the game's own cards carry on.
+//
+// Not a Printable - nothing is built and nothing is downloaded - but the same
+// shape: one field, one big button, and the state said in words underneath.
+// The button names the batch it is about to withdraw, and a batch that is not
+// the sandbox gets a warning first: mistyping "game" here at 16:00 would turn
+// off every card in the town. It is one press rather than two because the way
+// back is right there in the list below it.
+function WithdrawCodes() {
+  const [batch, setBatch] = useState(SANDBOX_BATCH);
+  const [revoked, setRevoked] = useState(null);
+  const [failure, setFailure] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    sendAPIRequest("admin_revoked_batches", null, "GET", setRevoked);
+  }, []);
+
+  const named = batch.trim();
+
+  const change = (endpoint, which) => {
+    setBusy(true);
+    setFailure(null);
+    sendAPIRequest(endpoint, { batch: which }, "POST", setRevoked)
+      .then((response) => {
+        if (!response.ok) setFailure(`Failed (${response.status})`);
+      })
+      .catch(() => setFailure("Failed - no response from the server"))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <section className={styles.panel} aria-label="Withdraw codes">
+      <h3 className={styles.panelTitle}>Withdraw codes</h3>
+      <p className={styles.blurb}>
+        Stops every code minted into a batch from working, wherever the paper
+        has got to. Withdraw <b>{SANDBOX_BATCH}</b> at 16:00 to close the
+        warm-up room. Codes minted before batches existed carry none and cannot
+        be withdrawn this way.
+      </p>
+      <Field label="Batch">
+        <input
+          className={styles.input}
+          type="text"
+          value={batch}
+          onChange={(e) => setBatch(e.target.value)}
+        />
+      </Field>
+      {named && named !== SANDBOX_BATCH ? (
+        <p className={styles.warning}>
+          "{named}" is not the sandbox. Every card in the town minted into it
+          stops working.
+        </p>
+      ) : null}
+      <button
+        className={styles.destructive}
+        onClick={() => change("admin_withdraw_batch", named)}
+        disabled={busy || !named}
+      >
+        {busy ? "Working..." : `Withdraw "${named || "..."}"`}
+      </button>
+      {failure ? (
+        <span className={`${styles.status} ${styles.statusBad}`}>
+          {failure}
+        </span>
+      ) : null}
+      <WithdrawnBatches revoked={revoked} busy={busy} onRestore={change} />
+    </section>
+  );
+}
+
+// What is withdrawn right now, in words rather than by the absence of a list -
+// "nothing is withdrawn" and "we have not asked yet" are different states, and
+// an admin at 16:00 needs to know which one they are looking at.
+function WithdrawnBatches({ revoked, busy, onRestore }) {
+  if (revoked === null) {
+    return <span className={styles.status}>Checking...</span>;
+  }
+
+  if (revoked.length === 0) {
+    return (
+      <p className={styles.hint}>
+        Nothing is withdrawn - every code minted still works.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.hint}>Withdrawn:</p>
+      {revoked.map((entry) => (
+        <div className={styles.batchRow} key={entry.batch}>
+          <span className={styles.batchName}>{entry.batch}</span>
+          <button
+            className={styles.rowAction}
+            disabled={busy}
+            onClick={() => onRestore("admin_restore_batch", entry.batch)}
+          >
+            Allow again
+          </button>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -364,9 +620,12 @@ export function PrintablesPanel() {
         top is the exception: it is sent, not printed.
       </p>
       <SignUpLink />
+      <MapPoster />
       <TeamCards />
       <PubPages />
       <ItemSheets />
+      <SandboxSheets />
+      <WithdrawCodes />
     </>
   );
 }

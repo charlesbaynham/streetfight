@@ -6,18 +6,21 @@ import prose from "./prose";
 
 describe("weaponName", () => {
   test.each([
-    [{ shot_damage: 0, shot_timeout: 6 }, prose.weapons.noWeapon],
-    [{ shot_damage: 1, shot_timeout: 6 }, prose.weapons.pewster],
-    [{ shot_damage: 2, shot_timeout: 6 }, prose.weapons.trackaTracka],
-    [{ shot_damage: 3, shot_timeout: 6 }, prose.weapons.omg],
-    [{ shot_damage: 1, shot_timeout: 1 }, prose.weapons.eatABullet],
+    [{ shot_damage: 0, shot_timeout: 25 }, prose.weapons.noWeapon],
+    [{ shot_damage: 1, shot_timeout: 25 }, prose.weapons.pewster],
+    [{ shot_damage: 2, shot_timeout: 25 }, prose.weapons.trackaTracka],
+    [{ shot_damage: 3, shot_timeout: 25 }, prose.weapons.omg],
+    [{ shot_damage: 1, shot_timeout: 5 }, prose.weapons.eatABullet],
   ])("maps %j to %s", (user, expected) => {
     expect(weaponName(user)).toBe(expected);
   });
 
   test("returns null for a damage/timeout combination not in the table", () => {
     expect(weaponName({ shot_damage: 9, shot_timeout: 9 })).toBeNull();
-    expect(weaponName({ shot_damage: 2, shot_timeout: 1 })).toBeNull();
+    expect(weaponName({ shot_damage: 2, shot_timeout: 5 })).toBeNull();
+    // The old table's numbers, so a half-done renumbering fails here.
+    expect(weaponName({ shot_damage: 1, shot_timeout: 6 })).toBeNull();
+    expect(weaponName({ shot_damage: 1, shot_timeout: 1 })).toBeNull();
   });
 
   // The frontend keeps its own copy of the backend's WEAPON_NAME_LOOKUP
@@ -54,7 +57,7 @@ describe("weaponName", () => {
       backendEntries.map((e) => `${e.damage},${e.timeout}`),
     );
     for (let damage = 0; damage <= 4; damage++) {
-      for (const timeout of [0, 1, 2, 6, 7]) {
+      for (const timeout of [0, 1, 5, 6, 24, 25, 26]) {
         if (!known.has(`${damage},${timeout}`)) {
           expect(
             weaponName({ shot_damage: damage, shot_timeout: timeout }),

@@ -43,6 +43,17 @@ What that changes, in practice:
   `ALTER TABLE`. Anything else — a rename, a drop, a type change, a `NOT NULL`
   column without a scalar default — is still in genuine tension with the live
   state: raise the cost to Charles before writing it, not after.
+  **`tests/test_database.py`'s `TestLiveSchemaUpgrade` is the gate**: it takes
+  the committed snapshot of the live schema (`tests/live_schema/`, one file,
+  named for the date and the revision live was running), upgrades a copy of it
+  the way a deploy would, and then compares it against a database built fresh
+  from the models and writes a row through every mapped class. So a rename, a
+  drop, a type change or an undefaulted `NOT NULL` column fails CI on the pull
+  request rather than crash-looping the service. Two things to keep up:
+  refresh the snapshot whenever live moves — `python
+  tests/live_schema/refresh.py <rev>` writes the new file from that revision's
+  models, then delete the old one and point `SNAPSHOT` at it — and give any
+  new ORM class a row in that test, which it will demand by name.
 - **The identity scheme is frozen.** Renumbering symbols, reordering or
   re-hexing a palette (`backend/identity/config.py`), or changing what a slot
   decodes to would re-clothe players who have already chosen. Treat those
@@ -72,6 +83,16 @@ lands in, the ground rules every session follows (what is safe on the live
 database, how QR codes decouple printing from deploying), and the print
 deadline of Thursday 17 September that orders everything. Take scope from it,
 and update its status lines when something ships.
+
+**`docs/game_day_runbook_2026-09-19.md` is the night itself**: the plan's §5
+as a checklist with the button behind every step named — the print run with
+counts, the Friday droplet resize, the 16:00 transition in order (pause →
+**Reset to start state** → withdraw the `sandbox` batch → ten minutes →
+WhatsApp → start), cueing circles and drops, the courier page, and what
+happens when a countdown fires while the server is restarting. It also
+gathers, in one section, every decision the parallel sessions took while
+Charles was asleep, each naming the PR that made it. If you change something
+an admin presses on the night, change that file too.
 
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
 the files each item lands in and the open questions still outstanding. Read it
@@ -168,6 +189,15 @@ Four things from it that are worth knowing even if you never call the agent:
     event triggering.
   - `user_interface.py` / `admin_interface.py` — game logic (player-facing and
     admin operations: shot validation, HP/ammo, weapons, circles, resets).
+    There are **two** resets and they are not interchangeable. `reset_game` is
+    the dev one: it walks the game's *teams*, and it deletes the reference
+    photos. `reset_to_start_state` (M2.1) is the one pressed on the night,
+    between the sandbox hour and the game proper: it walks every player by
+    `game_id` so a sign-up who has not reached the door yet is included
+    (roadmap R15), it clears the shots, items, ticker, circles and any cued
+    event, and it **keeps** the reference photos, identities, teams, locations
+    and team leaders. It refuses unless the game is paused, which is
+    deliberate friction rather than a precondition worth relaxing.
   - `shot_identification.py` — which player a shot photograph shows: builds the
     candidate set and the location term, and scores the reading against each
     candidate's *effective word* via `identity/decoder.py`.
@@ -204,12 +234,47 @@ Four things from it that are worth knowing even if you never call the agent:
     that **ammo is the only type that can be collected on behalf of a team**:
     `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
     team handler for armour, medpacks or weapons, so asking for one raises
-    `NotImplementedError`.
+    `NotImplementedError` — a `RuntimeError`, so `collect_item` turns it into a
+    403. Every `ItemType` has a handler now. The two experimental ones
+    (M6) work the same way: `RADAR` sets `User.radar_until` and
+    `CIRCLE_WARNING` sets `User.circle_warning_until`, both to
+    `now + minutes*60`, and both **refuse while one is already running** —
+    which costs the player nothing, because the refusal rolls the whole scan
+    back, so no `Item` row is written and the card is still good for later.
+    The circle warning is the one collection that is announced
+    *anonymously* ("Somebody knows where the next circle is..."), since naming
+    the holder would hand everybody the advantage the card just bought; the
+    holder gets a private line of their own so the card is not silent. **A printed code is an HMAC over its
+    payload and nothing else**, which is what decouples the print run from the
+    deploy — so a field added to `ItemModel` after codes are in circulation
+    joins the signed message *only when it is not at its default*
+    (`_late_signed_parts`), and `to_base64` leaves it out of the encoding too,
+    because every character is a character the QR has to carry and the pub
+    certificate's code is at the size where one more version means modules too
+    fine to print. Two such fields exist: `batch`, the label a whole print run
+    is withdrawn by (M2.2; "game" for the night's own codes, "sandbox" for the
+    warm-up room's posters), and `unlimited`, which skips the duplicate check
+    outright so the same player can rescan a wall poster —
+    `collected_only_once=False` is not enough on its own, since that lets the
+    *next* player claim it rather than the same one twice.
   - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
     cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
-    `image_templates/`, and every code minted is recorded in `qr_codes.csv`.
+    `image_templates/`, named by what the card awards (`ammo_5.png`) or, for a
+    weapon, by its damage — except radar and circle-warning cards, which have
+    one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
+    number of minutes the picture does not say. Every code minted is recorded
+    in `qr_codes.csv`, whose last column is the batch; the file has no header
+    and is read by column number, so a new field goes on the end. Every card
+    also carries the **contact line** (`CONTACT_LINE`, roadmap #7): what it is
+    and a number to ring, so a stranger who finds one taped under a pub bench
+    gets an answer rather than a fright. It is drawn in a strip below the
+    artwork rather than on it, and that strip is taken out of the artwork's
+    height while keeping the whole gutter between the line and the box edge —
+    the bottom row of a sheet is against the edge of the paper, and a printer
+    with a 5 mm unprintable margin would swallow a line any lower. The size is
+    measured to the card (`_contact_font`), since the grid is a parameter.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
-    portrait A4 poster per pub, each carrying a single ammo code worth two
+    portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
     (`collected_as_team=True`, `collected_only_once=False`, so one sheet serves
     every team once). The pages are deliberately anonymous — nothing says which
@@ -220,15 +285,35 @@ Four things from it that are worth knowing even if you never call the agent:
     handwriting, and `tests/test_generate_pub_pages.py` re-measures it so that
     a re-drawn picture fails a test rather than a print run.
   - `printables.py` — the printables the admin page builds on demand
-    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets
-    and the pub certificates, from the *same* functions the two CLIs call, so
-    a sheet printed from a phone and one printed from a terminal are the same
-    sheet. The reason it exists is the signature: a code is signed with the
-    `SECRET_KEY` that minted it and carries that machine's `WEBSITE_URL`, so a
-    run done from a checkout whose `.env` has drifted is a stack of paper
-    nobody at the party can scan, and the failure only shows up when somebody
-    in a pub points a phone at it. Building them in the server makes both
-    right by construction. Its two endpoints are **POST**, unlike the team
+    (`/admin/printables`, `react-ui/src/AdminPrintables.js`): the drop sheets,
+    the pub certificates and the **sandbox posters**, the first two from the
+    *same* functions the two CLIs call, so a sheet printed from a phone and
+    one printed from a terminal are the same sheet. The sandbox sheet
+    (`SANDBOX_CARDS`, `sandbox_sheets_pdf`) has no CLI and no controls beyond
+    how many copies: what the warm-up room hands out is decided here so that
+    the paper and the codes cannot disagree. Every code on it is `unlimited`
+    (a poster is scanned again and again by the same player) and in the
+    `sandbox` batch, so the room goes off in one press at 16:00 — and there is
+    **one code per kind, not one per card**, since eight distinct unlimited
+    codes would be eight identical powers and eight rows in the log. A card's
+    numbers are not free: `num` picks the drawing as well as the amount, which
+    is why the ammunition poster is five bullets (there is an `ammo_5.png` and
+    no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
+    card has artwork. The page's last panel prints nothing: **Withdraw codes**
+    (`RevokedBatch` in `model.py`, `AdminInterface.withdraw_batch` /
+    `restore_batch`) is the only recall a printed code has, since a card
+    cannot be un-printed and rotating `SECRET_KEY` would take the team cards
+    with it. `collect_item` checks it immediately after the signature, before
+    anything about the player is looked at — the card is dead for everybody.
+    The row's presence is the whole state, so un-withdrawing is a delete, and
+    a code minted before batches existed carries none and can never be
+    withdrawn this way. The reason the module exists at all is the signature: a
+    code is signed with the `SECRET_KEY` that minted it and carries that
+    machine's `WEBSITE_URL`, so a run done from a checkout whose `.env` has
+    drifted is a stack of paper nobody at the party can scan, and the failure
+    only shows up when somebody in a pub points a phone at it. Building them
+    in the server makes both right by construction. The minting endpoints are
+    **POST**, unlike the team
     cards' GET, because each call mints *fresh* codes and records them in
     `qr_codes.csv`: a link a browser is free to prefetch would put phantom
     batches in the log and hand the admin a sheet the log does not describe.
@@ -244,7 +329,62 @@ Four things from it that are worth knowing even if you never call the agent:
     the wording changes in one place. Built by the **running server**
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
+  - `map_poster.py` (`npm run mapgen`, `GET /admin_map_poster_pdf`) — the
+    **map** poster: the active venue's map on one sheet at A3 or A4, with a
+    numbered dot per landmark and the legend those numbers belong to. Same
+    toolchain as `team_cards.py`, and built from `ACTIVE_VENUE`, so the legend
+    cannot drift from `venues.py` — add a pub there and it appears here.
+    Circles, drops and couriers are excluded **by prefix**
+    (`OPERATIONAL_PREFIXES`) rather than by remembering: this is the one
+    printable that goes on a wall players read. A **GET**, unlike the two
+    minting printables, because it signs and records nothing. Note where the
+    image comes from: `backend/map_images/<venue key>.<ext>` are symlinks to
+    the one real file in `react-ui/src/images/` that webpack bundles, declared
+    as package data in `pyproject.toml`, because the deployed wheel is built
+    from `backend*` alone and would otherwise have no map on the droplet at
+    all. One file, so nothing can drift; `tests/test_map_poster.py` checks
+    every venue has one and that its aspect matches the venue.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
+    The `"circle"` event it fires also carries the **courier** (M4.1):
+    `Game.courier_lat/long/timestamp/accuracy`, written by
+    `AdminInterface.set_courier_location` from `/admin/courier` about once a
+    second while somebody walks a crate to a drop. The write happens every
+    time; the *announcement* is leading-edge throttled to
+    `COURIER_ANNOUNCE_INTERVAL_S` (5 s), because otherwise every fix wakes
+    every phone's circle stream for a dot that moved a metre and a half.
+    `clear_courier` ignores the throttle — a dot left on a map after the crate
+    is down is the one staleness that misleads. Placing the drop goes through
+    the ordinary `set_circles`, so the ticker message and the circle event are
+    the same ones an admin placing it from the map fires.
+  - `next_event.py` — the one thing a game is counting down to, and the clock
+    that fires it: the vocabulary (`NextEventKind`, `KIND_CIRCLE` /
+    `KIND_DROP`) that `Game.next_event_kind` /
+    `next_event_at` / `next_event_note` are written in. Those three columns
+    ride out to every phone on `UserModel` (`user_interface._next_event`,
+    read off `User.game` so a signed-up player with no team gets it too), so
+    the `"user"` SSE event each client already listens to is what keeps the
+    countdown current — there is no second stream and nothing polls. Null
+    together means nothing is cued, which is what `NextEventStrip.js` draws
+    nothing for. The timer is an in-process asyncio task per game (`arm` /
+    `disarm`), and it is **deliberately not durable**: what survives a restart
+    is `next_event_at`, and `sweep()` rebuilds the timers from it in a startup
+    hook in `main.py` — re-arming what is still in the future and firing at
+    once anything whose moment passed while the process was down, since a
+    circle that should have closed ten minutes ago should close now rather
+    than never. Double-firing is guarded twice over: arming a cue cancels the
+    game's pending task, and `AdminInterface.fire_next_event` re-reads the
+    deadline and does nothing if it is not the one the timer was armed for —
+    which is the half that holds across a restart. `AdminInterface`'s
+    `cue_next_event` / `cancel_cue` / `promote_next_circle` are the write
+    side, all announcing in the ticker and bumping every player in the game
+    (on `User.game_id`, so a team-less signup hears it too). A **drop**'s zero
+    is an announcement and nothing else — "The courier has set off", the same
+    sentence the players' strip shows at zero (`prose.nextEvent.dropNow`),
+    because the crate is not on anybody's map until the courier starts
+    broadcasting (M4). Keep those two in step. Note
+    `promote_next_circle` changes nothing but the cue when there is no next
+    circle to promote: an admin who cleared it mid-countdown must not have the
+    play area blanked.
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
   - `sse_event_streams.py` + `asyncio_triggers.py` — SSE streams and the
@@ -313,6 +453,55 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
+    **`MapView.js`'s `MapCircles` draws the courier and the crate as well as
+    the three circles** (M4.2), despite both being dots: they arrive on the
+    circles' own payload, refresh on the circles' own `"circle"` SSE event and
+    need the coordinate calculators that layer already holds, so drawing them
+    anywhere else would mean a second copy of all three. `courierPosition()`
+    reads the courier out of either shape the server sends — nested under
+    `courier` from `/get_circles`, flat as `courier_lat`/`courier_long` off a
+    `GameModel` — for the same reason `circleTriplet` exists. The crate is a
+    **sibling** of `.dropCircle` and never a child: that class carries the
+    `zoom` keyframe that scales the ping to 5× and fades it, which would take
+    the crate with it. The courier's dot fades by fix age on the admin map's
+    own rule (`alphaForAge`) and disappears past `COURIER_STALE_AFTER_S`,
+    ticking on its own so the fade keeps moving when no fixes are arriving —
+    an aeroplane sitting where somebody used to be is worse than none. The
+    artwork in `images/art/courier.svg` is a **placeholder** for Gaby's own
+    drawing; replacing the file is the whole change. The spectator screen
+    passes the `GameModel` straight to the map rather than using
+    `/get_circles` (it has no player session), so it listens for `"circle"`
+    itself to refetch the game.
+    `RadarLayer.js` is the radar card's two halves (M6.1): a `RadarStrip`
+    mounted in `UserMode.js` beside `NextEventStrip`, which reads
+    `radar_until` off `/user_info` and counts it down, and a layer mounted
+    inside `MapView.js`'s zoomable content, which polls `GET /radar` every
+    five seconds and draws a dot and a "3 min ago" label per contact, fading
+    with the age of the fix. The strip is what tells the layer there is a
+    radar at all, through a module-level store in that file — the same shape
+    as `shotRefusalStore.js`, and for the same reason: the admin map and the
+    spectator screen mount the same `MapView`, and have no business polling a
+    player's radar. The ages travel as `seconds_ago` rather than timestamps,
+    so the phone's clock never has to agree with the server's; the phone
+    re-bases each one on arrival and goes on ageing it between polls.
+  - `src/NextEventStrip.js` — the band across the top of every player's
+    screen saying what the game has cued up and how long is left, drawn from
+    `/user_info`'s `next_event_*` (see `backend/next_event.py`). Mounted in
+    `UserMode.js` above `monitorsContainer` **and** above the waiting page,
+    since somebody at the door with the game still paused is exactly who wants
+    to know a drop is ten minutes out. It renders nothing at all when nothing
+    is cued, and nothing for a kind it does not recognise — a tab left open
+    through a deploy shows no cue rather than a wrong one. The clock is
+    `GuideImages.js`'s `CountdownTimer` (now exported, and counting total
+    minutes rather than minutes-past-the-hour), and at zero the strip says
+    what is happening rather than sitting on a stopped 00:00 until the server
+    clears the cue. The spectator screen carries the same thing as a pill on
+    its headline. The admin end is `src/EventCue.js`, in `AdminMode.js`'s
+    `GamePanel` under the circle controls: it says in words whether anything
+    is cued, starts one (ten minutes for a circle, five for a drop) and calls
+    it off. Placing the NEXT circle and saying when it closes are deliberately
+    two separate acts — the cue promotes whatever NEXT holds when it reaches
+    zero, and promotes nothing if NEXT is empty.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `ShotQueue.js`'s `RankedCandidates` shows each candidate's own colours
     beside the ranking, in the scheme's channel order — which is the review's
@@ -393,6 +582,13 @@ Four things from it that are worth knowing even if you never call the agent:
     sample of a tie rather than a ranking, which is why `closest_count` rides
     alongside them and the page says how many share that distance. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
+    `TeamLeaderPanel.js` is the checklist shown to the one player per team an
+    admin nominates on the roster (`User.is_team_leader`, M7): open on the
+    waiting page, where a leader has the time to read it and their team is
+    still in front of them, and behind a button beside the scoreboard
+    (`BulletCount.js`, and `UserMode.js` for a player who is out) once the
+    game is running. The flag is a label and a checklist, never a permission
+    - a leader can do nothing in the app another player cannot.
     `SpectatorView.js` (route `/admin/spectator`) is the big-screen dashboard
     for people who are not playing - a laptop wired to a TV, left alone all
     evening (roadmap R11). Read-only, and it has **three faces**: the map face
@@ -422,15 +618,37 @@ Four things from it that are worth knowing even if you never call the agent:
     Dismissing one also acknowledges every *older* hit, but never a newer
     one, so a fresh phone with a long history costs one tap while a second
     hit that lands behind the card still gets its own. Sounds are all
-    frontend: the card plays `hit_received.wav`, the fire button `bang.mp3`,
-    and `useShotOutcomeSounds` in `ShotHistory.js` plays
-    `shot_confirmed.wav` / `shot_missed.wav` the moment one of the player's
-    own shots is ruled on - seeded silently from the first list it sees, so a
-    reload replays nothing. Those `.wav`s were synthesised (numpy → `wave`),
-    so replacing one is just dropping a better file over it.
+    frontend: the card plays `hit_received.wav`, the fire button `bang.wav`,
+    `useKnockedOutSound.js` plays `knocked_out.wav` when the player's own
+    state turns "knocked out", and `useShotOutcomeSounds` in `ShotHistory.js`
+    plays `shot_confirmed.wav` / `shot_missed.wav` - or `shot_knockout.wav`,
+    when `get_own_shots` says the hit took the target's last hit point
+    (`target_knocked_out`) - the moment one of the player's own shots is
+    ruled on. Both hooks are **seeded silently** from the first state they
+    see, so a reload replays nothing; that discipline is the point of both,
+    since every one of these fires off a list the page refetches. Every
+    `.wav` is generated by `scripts/make_sounds.py` (numpy → `wave`, 22050
+    mono), so re-tuning one means editing the function that made it and
+    re-running the script rather than recording something; replacing one
+    wholesale is still just dropping a better file over it. Two things about
+    audio on a phone are worth knowing before touching any of this: a
+    browser will not play anything until a user gesture, and Howler (under
+    `use-sound`) only arms that unlock once a sound *object* exists - so
+    `useAudioUnlock.js` holds one from the moment user mode mounts,
+    onboarding included, and never plays it. And a phone on silent is silent
+    with nothing in the browser able to detect it, which is why the
+    onboarding screen's sound row is a tap that makes a noise
+    (`useSoundCheck.js`) rather than a sentence asking nicely.
+    `AdminCourier.js` (route `/admin/courier`) is the courier's own phone
+    page: a `watchPosition` at the same tier `MapViewSelf` uses when the map
+    is popped out, a two-tap **Place drop here** that sets the drop circle at
+    the current fix and then stops broadcasting, and the state said in words
+    ("Broadcasting - last fix 3 s ago, ±8 m"). It holds the wake lock and
+    says so when it has not got one, like the spectator screen.
     `AdminPrintables.js` (route `/admin/printables`) is everything a game
-    night needs handed out, in one page: team cards, pub certificates and
-    drop-card sheets, each a panel with its own controls and one big button,
+    night needs handed out, in one page: the map poster, team cards, pub
+    certificates and drop-card sheets, each a panel with its own controls and
+    one big button,
     and above them the **sign-up link** - the one thing here that is sent
     rather than printed, so it is a QR and a copyable link (`JoinQRCodes.js`'s
     exported `JoinCard`) and not a PDF. It reads `GET /admin_game_join_url`
@@ -438,7 +656,10 @@ Four things from it that are worth knowing even if you never call the agent:
     pins team colours on the way past - neither of which the sign-up link,
     wanted days before any team exists, has any use for. The two panels that
     mint codes say above the button how many a press mints, since a second
-    press is a second set rather than a re-download of the first.
+    press is a second set rather than a re-download of the first, and each of
+    them ends with a **Batch** field (`BatchField`), which is last because it
+    is the one nobody changes: "game" is right for everything printed for the
+    night itself.
     `ReferencePhotos.js` (route `/admin/reference`, with the player being
     checked at `/admin/reference/<user id>` and the game in `?game=`) is the
     door kit-check page
@@ -507,8 +728,9 @@ Four things from it that are worth knowing even if you never call the agent:
     the door: no ammo and *no weapon at all* (`DEFAULT_SHOT_DAMAGE` is zero),
     so a confirmed hit would take nobody's last hit point and nothing on the
     dashboard would ever change. Each of the thirty gets `DEMO_BULLETS` (50),
-    the weakest weapon (damage 1, the standard delay) and one hit point — no
-    armour, so a hit kills.
+    the weakest weapon (damage 1, the standard delay) and one hit point — set
+    explicitly, *below* the `STARTING_HIT_POINTS` a real player gets, so that
+    a hit kills and the dashboard visibly moves.
   - **It unpauses the game**, through `AdminInterface.set_game_active` so the
     ticker and the players' clients hear about it.
   - **It refuses to run at all** if any player in a team is not one of the
@@ -997,6 +1219,36 @@ Three deployment targets share one service definition:
   runs on this session part-way through, and a `@db_scoped` call from another
   interface **commits**, expiring every ORM object, so a later attribute read
   reloads one and autoflushes.
+- **A player starts with one piece of armour on.** There is no armour column:
+  level *n* armour sets `hit_points` to `n + 1`, so `model.STARTING_HIT_POINTS`
+  (2) *is* armour level 1, and `BulletCount.js` draws `hit_points - 1` helmets.
+  `UserInterface._make_user` is the only place a `User` row is built, so it is
+  the only place that has to say so; the column default stays at 1 so that a
+  row written any other way is not silently armoured. Two consequences:
+  a **level-1 armour card does nothing** for anybody who has not been hit
+  (`item_actions._handle_armour` refuses armour no better than what you have),
+  so mint level 2 or better; and `demo_game` deliberately arms its cast
+  *below* this, at one hit point, so that a hit kills and the dashboard moves.
+- **The fire cooldown is the server's rule, not the button's.** `submit_shot`
+  refuses a shot fired less than the player's own `shot_timeout` after their
+  last one (`User.last_shot_at`, epoch seconds, written beside the bullet
+  decrement), with a 403 whose `detail` says how long is left. Before that the
+  only timer was `FireButton.js`'s `setTimeout`, so a reload, a second tab or
+  a hand-rolled POST fired as fast as you could press. Three things about it
+  are deliberate: it is checked **before** the photograph is stored and the
+  bullet spent, so a refused shot costs nothing; `last_shot_at` is its own
+  column rather than the newest `Shot.time_created`, which has one-second
+  resolution and is deleted by a reset; and a shot carrying its own
+  `time_created` is **exempt**, because that argument is only ever passed by
+  the replay and the demo drip, which deal out a simulated hour in whatever
+  order suits them. `UserModel.next_shot_at` is the derived epoch second the
+  phone counts down to (`FireButton.js`), so a reload comes back still
+  cooling; it is clamped there to the player's own cooldown, since the
+  server's clock and the phone's need not agree. `MyWebcam.js` now checks
+  `response.ok` and publishes the refusal through `shotRefusalStore.js` to
+  `ShotRefusedNotice.js` — a store rather than a prop threaded through
+  `WebcamView`, because the admin's reference-photo page mounts the same
+  camera and must not show a player's cooldown message.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

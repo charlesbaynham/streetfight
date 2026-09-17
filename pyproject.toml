@@ -52,7 +52,7 @@ where = ["."]
 include = ["backend*"]
 
 [tool.setuptools.package-data]
-backend = ["*.ttf", "*.txt", "image_templates/*"]
+backend = ["*.ttf", "*.txt", "image_templates/*", "map_images/*"]
 # The demo game is an admin button, so it runs wherever the server runs and
 # cannot reach a checkout. Only what a replay reads travels with the package:
 # the world file and the ten cropped photographs, not the 25MB of generated

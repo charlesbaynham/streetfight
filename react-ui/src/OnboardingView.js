@@ -22,7 +22,9 @@ import {
 } from "./utils";
 
 import { Swatch } from "./Swatch";
+import useSoundCheck from "./useSoundCheck";
 import CuriosityFooter from "./CuriosityFooter";
+import TeamLeaderPanel from "./TeamLeaderPanel";
 import styles from "./OnboardingView.module.css";
 import prose from "./prose";
 
@@ -153,6 +155,7 @@ function OnboardingView({ user }) {
     isLocationBypassActive(),
   );
   const [locationTapCount, setLocationTapCount] = useState(0);
+  const [soundTested, testSound] = useSoundCheck();
 
   // Location doesn't have to be granted to get past this gate, just either
   // granted or bypassed - see LOCATION_BYPASS_TAPS above.
@@ -295,6 +298,24 @@ function OnboardingView({ user }) {
         />,
       );
 
+    // The sound check. Beside the compass rung and not before it: like that
+    // one it gates nothing, and unlike the two above it there is nothing the
+    // page can verify - see useSoundCheck.js for why it is a tap rather than
+    // a sentence.
+    if (locationStepDone)
+      actionItems.push(
+        <ActionItem
+          text={
+            soundTested
+              ? prose.onboardingView.soundCheckDone
+              : prose.onboardingView.soundCheck
+          }
+          done={soundTested}
+          onClick={testSound}
+          key={"sound"}
+        />,
+      );
+
     // Teams are scanned in at the door (roadmap R15): a player who signed
     // up through the game link arrives here with an outfit and no team.
     if (locationStepDone)
@@ -342,6 +363,10 @@ function OnboardingView({ user }) {
               (FullscreenButton) is drawn while the game is waiting. */}
           <CuriosityFooter className={styles.curiosityFooter} />
           {getActionItems()}
+          {/* Renders nothing unless this player was nominated a leader at the
+              door (M7). Below the join steps, because a leader's own join
+              comes first. */}
+          <TeamLeaderPanel user={user} />
         </div>
       </AnimatePresence>
     </div>

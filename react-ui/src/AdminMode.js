@@ -6,9 +6,11 @@ import { sendAPIRequest } from "./utils";
 import { AdminPage, adminDownload, adminPost } from "./AdminCommon";
 import NewItems from "./NewItems";
 import JoinQRCodes from "./JoinQRCodes";
+import ResetToStartButton from "./ResetToStartButton";
 import UpdateListener from "./UpdateListener";
 import { MapViewAdmin } from "./MapView";
 import CircleControl from "./CircleControl";
+import EventCue from "./EventCue";
 import TickerView from "./TickerView";
 import { WEAPONS, weaponName } from "./weapons";
 
@@ -316,6 +318,9 @@ function GamePanel({ game }) {
           <h3>Circles</h3>
           <CircleControl game_id={game.id} />
 
+          <h3>Countdown</h3>
+          <EventCue game={game} />
+
           <h3>Ticker</h3>
           <TickerView admin game_id={game.id} num_messages={10} />
           <SendTickerMessage game_id={game.id} />
@@ -324,6 +329,9 @@ function GamePanel({ game }) {
 
       <h3>Join QR codes</h3>
       <JoinQRCodes game_id={game.id} />
+
+      <h3>Reset to start state</h3>
+      <ResetToStartButton game={game} />
     </>
   );
 }
@@ -476,6 +484,18 @@ function PlayerRow({ user, teams, freeSlotsByGame, allUsers }) {
         disabled={!mergeTargetId}
       >
         Merge
+      </button>{" "}
+      {/* Nominating a leader (M7) only decides who is shown the checklist of
+          what "properly equipped" means - it grants nothing. */}
+      <button
+        onClick={() =>
+          adminPost("admin_set_team_leader", {
+            user_id: user.id,
+            is_team_leader: !user.is_team_leader,
+          })
+        }
+      >
+        {user.is_team_leader ? "Team leader \u2713" : "Make team leader"}
       </button>
     </li>
   );
@@ -740,7 +760,11 @@ function AdminPanel() {
 
       <h2>Map</h2>
       <Row>
-        <MapViewAdmin />
+        {/* The game's own circles rather than /get_circles, which since M6.2
+        keeps the next circle back from players until it is cued. The admin
+        map always shows it - and this endpoint is admin-authenticated, where
+        /get_circles resolves the game from the caller's player session. */}
+        <MapViewAdmin circles={games[0]} />
       </Row>
     </>
   );

@@ -26,6 +26,9 @@ class TickerMessageType(Enum):
     USER_COLLECTED_ARMOUR = auto()
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
+    USER_COLLECTED_RADAR = auto()
+    USER_COLLECTED_CIRCLE_WARNING = auto()
+    USER_COLLECTED_CIRCLE_WARNING_PRIVATE = auto()
     USER_GOT_HIT = auto()
     USER_GOT_KNOCKED_OUT = auto()
     ADMIN_HIT_USER = auto()
@@ -45,6 +48,12 @@ class TickerMessageType(Enum):
     ADMIN_SET_CIRCLE_BOTH = auto()
     ADMIN_SET_CIRCLE_DROP = auto()
     ADMIN_CLEARED_CIRCLE_DROP = auto()
+    CUE_CIRCLE = auto()
+    CUE_DROP = auto()
+    CUE_DROP_WITH_CONTENTS = auto()
+    COURIER_SET_OFF = auto()
+    CUE_CANCELLED = auto()
+    CIRCLE_CLOSED = auto()
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
@@ -81,6 +90,27 @@ TICKER_MESSAGES = {
     TickerMessageType.USER_COLLECTED_WEAPON: (
         TickerTarget.PUBLIC,
         "{user} collected a {weapon}",
+    ),
+    # The radar card (M6.1). Said out loud and with the duration in it: the
+    # card's value is partly that everybody else knows to start moving.
+    TickerMessageType.USER_COLLECTED_RADAR: (
+        TickerTarget.PUBLIC,
+        "{user} has radar for the next {num} minutes - keep moving!",
+    ),
+    # The early circle-warning card (M6.2). Anonymous, unlike every other
+    # collection: naming the holder would tell thirty people exactly whose
+    # route to watch, which is the whole advantage the card just bought.
+    TickerMessageType.USER_COLLECTED_CIRCLE_WARNING: (
+        TickerTarget.PUBLIC,
+        "Somebody knows where the next circle is...",
+    ),
+    # Which is why the holder is told privately that it was them: the public
+    # line deliberately does not say, and a card that appears to do nothing is
+    # a card the player scans again.
+    TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE: (
+        TickerTarget.PRIVATE_USER,
+        "You will see the next circle on your map for the next {num} minutes, "
+        "before it is announced",
     ),
     TickerMessageType.ADMIN_HIT_USER: (
         TickerTarget.PUBLIC,
@@ -138,6 +168,9 @@ TICKER_MESSAGES = {
         TickerTarget.PRIVATE_USER,
         "Your appeal was rejected - the referee agreed with the call",
     ),
+    # Retired by M6.2 and deliberately left here: placing NEXT no longer
+    # announces anything, because the circle is not public until it is cued.
+    # Do not wire it back up without reading Game.next_circle_public first.
     TickerMessageType.ADMIN_SET_CIRCLE_NEXT: (
         TickerTarget.PUBLIC,
         "The next circle has been announced! Check the map...",
@@ -157,6 +190,40 @@ TICKER_MESSAGES = {
     TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP: (
         TickerTarget.PUBLIC,
         "The supply drop has been claimed!",
+    ),
+    # The countdown messages (M3.2/M3.3). {num} is how long is left, already
+    # in words ("10 minutes"), because the number alone would need a unit and
+    # the unit depends on the number.
+    TickerMessageType.CUE_CIRCLE: (
+        TickerTarget.PUBLIC,
+        "The circle closes in {num} - get inside it!",
+    ),
+    TickerMessageType.CUE_DROP: (
+        TickerTarget.PUBLIC,
+        "A supply drop lands in {num}",
+    ),
+    # Two templates rather than one with an empty tail: the contents are
+    # optional, and "A supply drop lands in 5 minutes - " is worse than no
+    # mention of them at all.
+    TickerMessageType.CUE_DROP_WITH_CONTENTS: (
+        TickerTarget.PUBLIC,
+        "A supply drop lands in {num} - {note}",
+    ),
+    # Said at the moment the countdown reaches zero. The same words as the
+    # strip on the players' phones shows then (prose.nextEvent.dropNow) -
+    # somebody who looks up from the ticker to the top of their screen should
+    # read the same sentence twice, not two accounts of one event.
+    TickerMessageType.COURIER_SET_OFF: (
+        TickerTarget.PUBLIC,
+        "The courier has set off",
+    ),
+    TickerMessageType.CUE_CANCELLED: (
+        TickerTarget.PUBLIC,
+        "The countdown has been called off",
+    ),
+    TickerMessageType.CIRCLE_CLOSED: (
+        TickerTarget.PUBLIC,
+        "The circle has closed - if you're outside, get moving!",
     ),
     TickerMessageType.MISSED_SHOT: (
         TickerTarget.PRIVATE_USER,

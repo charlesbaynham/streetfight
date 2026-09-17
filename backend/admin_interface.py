@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from collections import namedtuple
 from enum import Enum
 from typing import List
@@ -15,6 +16,7 @@ from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from . import next_event
 from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
@@ -28,11 +30,14 @@ from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
 from .model import APPEALS_PER_GAME
+from .model import BASIC_WEAPON
 from .model import DEFAULT_SHOT_TIMEOUT
+from .model import STARTING_HIT_POINTS
 from .model import Game
 from .model import GameModel
 from .model import Item
 from .model import ItemType
+from .model import RevokedBatch
 from .model import Shot
 from .model import ShotModel
 from .model import Team
@@ -205,6 +210,19 @@ _APPEAL_RESULT_WORDS = {
 }
 
 
+# A broadcasting courier posts a fix about once a second (M4.1), and every
+# announcement wakes the circle stream of every phone in the game. The
+# position is written on every post, but the fan-out is throttled to this, so
+# a player's map is at most this stale while the courier is walking - about
+# seven metres at walking pace, which is inside the accuracy of the fix
+# itself. A courier fix is not a shot.
+COURIER_ANNOUNCE_INTERVAL_S = 5.0
+
+# game id -> when its courier position was last announced. In-process and
+# deliberately not durable: losing it costs one extra announcement.
+_courier_announced_at: dict = {}
+
+
 class CircleTypes(str, Enum):
     EXCLUSION = "EXCLUSION"
     NEXT = "NEXT"
@@ -220,8 +238,11 @@ CIRCLE_TICKER_MESSAGES = {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION,
         True: None,
     },
+    # NEXT says nothing either way since M6.2: the circle it places is not
+    # public until it is cued, so announcing it would be announcing something
+    # nobody but an early-warning holder can see.
     CircleTypes.NEXT: {
-        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT,
+        False: None,
         True: None,
     },
     CircleTypes.BOTH: {
@@ -233,6 +254,33 @@ CIRCLE_TICKER_MESSAGES = {
         True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP,
     },
 }
+
+# What the ticker says when a countdown starts, by the kind being counted down
+# to (backend/next_event.py). Same shape as CIRCLE_TICKER_MESSAGES above.
+CUE_TICKER_MESSAGES = {
+    next_event.KIND_CIRCLE: tk.TickerMessageType.CUE_CIRCLE,
+    next_event.KIND_DROP: tk.TickerMessageType.CUE_DROP,
+}
+
+# What a drop's announcement says instead when the admin typed what is in it.
+# Worth saying twice - it is the whole reason anybody runs for a drop, and the
+# ticker is read by people who are not looking at the strip at the top of
+# their screen.
+CUE_TICKER_MESSAGES_WITH_NOTE = {
+    next_event.KIND_DROP: tk.TickerMessageType.CUE_DROP_WITH_CONTENTS,
+}
+
+
+def _countdown_words(seconds: float) -> str:
+    """How long is left, said the way somebody would say it out loud.
+
+    The ticker line is read once, in passing, by somebody walking: "10
+    minutes" is what that wants, not "600s" and not "09:58".
+    """
+    if seconds < 90:
+        return f"{round(seconds)} seconds"
+    minutes = round(seconds / 60)
+    return "1 minute" if minutes == 1 else f"{minutes} minutes"
 
 
 class AdminInterface:
@@ -421,6 +469,58 @@ class AdminInterface:
         return g.id
 
     @db_scoped
+    def set_courier_location(
+        self,
+        game_id: UUID,
+        lat: float,
+        long: float,
+        accuracy: Optional[float] = None,
+    ):
+        """Record where the courier is now (M4.1).
+
+        Called about once a second by /admin/courier while somebody is walking
+        a crate to a drop. The write happens every time; the announcement is
+        throttled to COURIER_ANNOUNCE_INTERVAL_S, because the alternative is
+        waking every player's circle stream once a second for a dot that moves
+        a metre and a half.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        game.courier_lat = lat
+        game.courier_long = long
+        game.courier_timestamp = time.time()
+        game.courier_accuracy = accuracy
+
+        self._session.commit()
+
+        now = time.time()
+        last = _courier_announced_at.get(game_id)
+        if last is None or now - last >= COURIER_ANNOUNCE_INTERVAL_S:
+            _courier_announced_at[game_id] = now
+            trigger_circle_update(game_id)
+
+    @db_scoped
+    def clear_courier(self, game_id: UUID):
+        """The courier has stopped broadcasting: put the dot away.
+
+        Always announces, throttle or no throttle - this one is the difference
+        between a courier who is somewhere and a courier who is nowhere, and a
+        dot left on a map for five seconds after the crate is down is the one
+        staleness that actually misleads.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        game.courier_lat = None
+        game.courier_long = None
+        game.courier_timestamp = None
+        game.courier_accuracy = None
+
+        self._session.commit()
+
+        _courier_announced_at.pop(game_id, None)
+        trigger_circle_update(game_id)
+
+    @db_scoped
     def set_circles(
         self, game_id: UUID, name: CircleTypes, lat: float, long: float, radius: float
     ):
@@ -439,6 +539,10 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            # Private again (M6.2), placed or cleared: an admin who moves the
+            # circle mid-countdown must take the old one off every phone
+            # rather than leave a public circle sitting somewhere it is not.
+            game.next_circle_public = False
         elif name == CircleTypes.BOTH:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
@@ -446,6 +550,9 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            # BOTH puts the next circle exactly where the exclusion circle
+            # everybody can already see is, so there is nothing left to hide.
+            game.next_circle_public = True
         elif name == CircleTypes.DROP:
             game.drop_circle_lat = lat
             game.drop_circle_long = long
@@ -468,6 +575,252 @@ class AdminInterface:
 
         # Trigger a circle update
         trigger_circle_update(game_id)
+
+    def _game_user_ids(self, game_id: UUID) -> List[UUID]:
+        """Everybody in a game, whether or not they are in a team yet.
+
+        On ``User.game_id`` rather than by walking the teams the way
+        :meth:`set_game_active` does: a player who has signed up through the
+        game-wide link and has not been handed a team is exactly who the
+        waiting page - and so the countdown strip - is for.
+        """
+        return [
+            row[0]
+            for row in self._session.query(User.id).filter(User.game_id == game_id)
+        ]
+
+    @staticmethod
+    def _clear_cue(game: Game) -> None:
+        """Wipe a game's cue. All three columns together, always: null
+        ``next_event_at`` is what "nothing is cued" means everywhere else."""
+        game.next_event_kind = None
+        game.next_event_at = None
+        game.next_event_note = None
+
+    @db_scoped
+    def cue_next_event(
+        self,
+        game_id: UUID,
+        kind: str,
+        seconds: float,
+        note: Optional[str] = None,
+    ) -> float:
+        """Start the countdown to the next circle or the next drop.
+
+        Returns the deadline it set, in epoch seconds. Replaces whatever was
+        cued before, cue and timer together - there is only ever one thing
+        coming next.
+
+        The timer is armed here rather than in the route for the usual reason
+        (``CLAUDE.md``: announce beside the state change): the route is not the
+        only caller, and a cue written with no clock behind it is a countdown
+        that reaches zero and does nothing.
+        """
+        logger.info("AdminInterface - cue_next_event %s/%s/%ss", game_id, kind, seconds)
+
+        try:
+            kind = next_event.NextEventKind(kind).value
+        except ValueError:
+            raise HTTPException(400, f"Unknown event kind {kind}")
+        if seconds <= 0:
+            raise HTTPException(400, "A countdown has to be to some time in the future")
+
+        game: Game = self._get_game_orm(game_id)
+        deadline = time.time() + seconds
+
+        game.next_event_kind = kind
+        game.next_event_at = deadline
+        game.next_event_note = note.strip() if note and note.strip() else None
+
+        # Cueing the circle is what makes it public (M6.2) - "the circle
+        # closes in ten minutes" is not an announcement anybody can act on
+        # without being shown which circle.
+        if kind == next_event.KIND_CIRCLE:
+            game.next_circle_public = True
+
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        note = game.next_event_note
+        message_type = CUE_TICKER_MESSAGES[kind]
+        if note:
+            message_type = CUE_TICKER_MESSAGES_WITH_NOTE.get(kind, message_type)
+
+        tk.send_ticker_message(
+            message_type,
+            {"num": _countdown_words(seconds), "note": note},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        # The circle the countdown is about has just become visible to
+        # everybody (M6.2), so every open map has to refetch it
+        if kind == next_event.KIND_CIRCLE:
+            trigger_circle_update(game_id)
+
+        next_event.arm(game_id, deadline)
+
+        return deadline
+
+    @db_scoped
+    def cancel_cue(self, game_id: UUID) -> None:
+        """Call the countdown off. The circle or drop it was counting down to
+        is left exactly as it is - only the clock goes."""
+        logger.info("AdminInterface - cancel_cue %s", game_id)
+
+        game: Game = self._get_game_orm(game_id)
+        if game.next_event_at is None:
+            return
+
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.CUE_CANCELLED,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        next_event.disarm(game_id)
+
+    @db_scoped
+    def fire_next_event(
+        self, game_id: UUID, expected_at: Optional[float] = None
+    ) -> bool:
+        """Act on a game's cue because its moment has come. Returns whether
+        anything happened.
+
+        ``expected_at`` is the deadline the caller thinks it is firing.
+        Checking it here is the double-firing guard: a timer that slept
+        through a re-cue, or through an admin cancelling and starting again,
+        finds a different deadline in the database and does nothing. The
+        timers themselves are cancelled on a re-cue too
+        (:func:`next_event.arm`), so this is the second line rather than the
+        first - but it is the one that holds when the process restarted in
+        between.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        if game.next_event_at is None:
+            logger.info("Game %s has no cue to fire", game_id)
+            return False
+
+        if (
+            expected_at is not None
+            and abs(game.next_event_at - expected_at) > next_event.DEADLINE_EPSILON_S
+        ):
+            logger.info(
+                "Not firing game %s's cue: it was re-cued while the clock ran",
+                game_id,
+            )
+            return False
+
+        kind = game.next_event_kind
+        logger.info("AdminInterface - fire_next_event %s (%s)", game_id, kind)
+
+        if kind == next_event.KIND_CIRCLE:
+            self.promote_next_circle(game_id)
+            return True
+
+        # A drop's zero is an announcement and nothing else (M3.3): the crate
+        # is not on the map until the courier starts broadcasting from
+        # /admin/courier (M4), so there is no circle to place here. Clearing
+        # the cue is what stops thirty phones sitting at 00:00.
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.COURIER_SET_OFF,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+        return True
+
+    @db_scoped
+    def promote_next_circle(self, game_id: UUID) -> bool:
+        """Make the announced next circle the one people have to be inside.
+
+        Copies the next circle over the exclusion circle, clears the next
+        circle and the cue, says so in the ticker and fires the circle event
+        so every open map redraws.
+
+        Returns False, having changed nothing but the cue, when there is no
+        next circle to promote: an admin who cleared it while the clock ran
+        must not have the play area silently blanked instead.
+        """
+        logger.info("AdminInterface - promote_next_circle %s", game_id)
+
+        game: Game = self._get_game_orm(game_id)
+        promoted = (
+            game.next_circle_lat is not None
+            and game.next_circle_long is not None
+            and game.next_circle_radius is not None
+        )
+
+        if promoted:
+            game.exclusion_circle_lat = game.next_circle_lat
+            game.exclusion_circle_long = game.next_circle_long
+            game.exclusion_circle_radius = game.next_circle_radius
+            game.next_circle_lat = None
+            game.next_circle_long = None
+            game.next_circle_radius = None
+            game.next_circle_public = False
+        else:
+            logger.warning(
+                "Game %s has no next circle to promote - clearing the cue only",
+                game_id,
+            )
+
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        if promoted:
+            tk.send_ticker_message(
+                tk.TickerMessageType.CIRCLE_CLOSED,
+                {},
+                game_id=game_id,
+                session=self._session,
+            )
+            trigger_circle_update(game_id)
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        next_event.disarm(game_id)
+
+        return promoted
+
+    @db_scoped
+    def get_cued_games(self) -> List[Tuple[UUID, float]]:
+        """``(game_id, deadline)`` for every game with a live cue.
+
+        The startup sweep's input (:func:`next_event.sweep`): the timers are
+        in-process and die with it, but the deadlines are columns and do not.
+        """
+        rows = (
+            self._session.query(Game.id, Game.next_event_at)
+            .filter(Game.next_event_at.isnot(None))
+            .all()
+        )
+        return [(row[0], row[1]) for row in rows]
 
     @db_scoped
     def create_team(
@@ -1468,6 +1821,24 @@ class AdminInterface:
                 session=ui.get_session(),
             )
 
+    @db_scoped
+    def set_team_leader(self, user_id: UUID, is_team_leader: bool):
+        """Nominate (or stand down) one player as their team's leader.
+
+        A label, not a permission: it only decides whether the player is shown
+        the leader's checklist of what "properly equipped" means.
+        """
+        user = self._get_user_orm(user_id)
+        user.is_team_leader = is_team_leader
+        self._session.commit()
+
+        # The player's own screen, so the panel appears without a reload; and
+        # the game's ticker event, which is what wakes the admin roster (see
+        # generate_any_game_updates - there is no "admin" event of its own).
+        trigger_update_event("user", user_id)
+        if user.game_id is not None:
+            trigger_update_event("ticker", user.game_id)
+
     def set_user_name(self, user_id, name: str):
         with UserInterface(user_id) as ui:
             ui.set_name(name)
@@ -1704,6 +2075,8 @@ class AdminInterface:
         item_data: dict,
         collected_only_once=True,
         collected_as_team=False,
+        batch: Optional[str] = None,
+        unlimited: bool = False,
     ) -> str:
         """Makes a new item with the given settings and encodes it into a URL
 
@@ -1723,6 +2096,8 @@ class AdminInterface:
             item_data (dict): The data for the item - a dict that depends on the item type
             collected_only_once (bool, optional): Whether the item can only be collected once. Defaults to True. Otherwise can be collected by other users / teams even after first collection.
             collected_as_team (bool, optional): Whether the item is collected as a team. Defaults to False.
+            batch (str, optional): A label minted into the payload so a set of codes can be withdrawn together. Defaults to None (unbatched, as every code printed before batches existed).
+            unlimited (bool, optional): Whether the same player may scan this code any number of times - the sandbox's wall posters. Defaults to False.
         """
         logger.info("make_new_item item_type=%s, item_data=%s", item_type, item_data)
         try:
@@ -1739,6 +2114,8 @@ class AdminInterface:
             data=item_data,
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
         item.sign()
 
@@ -1749,6 +2126,56 @@ class AdminInterface:
         encoded_url = add_params_to_url(os.environ["WEBSITE_URL"], {"d": encoded_item})
 
         return encoded_url
+
+    @db_scoped
+    def withdraw_batch(self, batch: str) -> List[dict]:
+        """Stop every code minted into ``batch`` from being collectable.
+
+        The only recall a printed code has: it cannot be un-printed, and
+        rotating ``SECRET_KEY`` would take the team cards with it. Idempotent,
+        because the admin pressing it twice at 16:00 means the same thing as
+        pressing it once.
+        """
+        batch = batch.strip()
+        if not batch:
+            raise HTTPException(400, "Name the batch to withdraw.")
+
+        logger.info("withdraw_batch %s", batch)
+
+        if not self._session.get(RevokedBatch, batch):
+            self._session.add(RevokedBatch(batch=batch))
+
+        return self._revoked_batches()
+
+    @db_scoped
+    def restore_batch(self, batch: str) -> List[dict]:
+        """Let a withdrawn batch be collected again - the undo for a press of
+        the wrong button, since the row's presence is the whole state."""
+        logger.info("restore_batch %s", batch)
+
+        revoked = self._session.get(RevokedBatch, batch.strip())
+        if revoked:
+            self._session.delete(revoked)
+
+        return self._revoked_batches()
+
+    @db_scoped
+    def get_revoked_batches(self) -> List[dict]:
+        return self._revoked_batches()
+
+    def _revoked_batches(self) -> List[dict]:
+        """Every withdrawn batch, most recently withdrawn first."""
+        return [
+            {
+                "batch": revoked.batch,
+                "revoked_at": (
+                    revoked.revoked_at.isoformat() if revoked.revoked_at else None
+                ),
+            }
+            for revoked in self._session.query(RevokedBatch)
+            .order_by(RevokedBatch.revoked_at.desc())
+            .all()
+        ]
 
     @db_scoped
     def get_locations(self, game_id: UUID = None):
@@ -1916,6 +2343,97 @@ class AdminInterface:
         return self._session.query(Game.id).all()
 
     @db_scoped
+    def reset_to_start_state(self, game_id: UUID):
+        """Put a game back to how it should look the moment before it starts.
+
+        This is the 16:00 button on the night (M2.1), not `reset_game`: the
+        sandbox hour has to be swept away, but everything earned at the door
+        has to survive it. So it keeps the reference photos, the identities,
+        the teams, the last known locations and the nominated team leaders,
+        and resets everything the sandbox touched.
+
+        It **refuses unless the game is paused**, and that friction is
+        deliberate: this wipes every shot and every scanned item in the game,
+        and pausing first is both a second pair of eyes on a destructive
+        button and the thing the runbook asks for anyway. Do not quietly
+        relax it into a pause-then-reset.
+
+        Unlike `reset_game` it walks the players by `game_id` rather than
+        through the teams, so a player who signed up and has not yet scanned
+        a team card at the door is reset too (roadmap R15) - `reset_game`'s
+        team walk cannot see them at all.
+        """
+        game: Game = self._get_game_orm(game_id=game_id)
+
+        if game.active:
+            raise HTTPException(
+                400, "Pause the game before resetting it to the start state"
+            )
+
+        users: list[User] = self._session.query(User).filter_by(game_id=game_id).all()
+
+        for user in users:
+            user.num_bullets = 0
+            user.hit_points = STARTING_HIT_POINTS
+            user.time_of_death = None
+            user.shot_damage, user.shot_timeout = BASIC_WEAPON
+            user.appeals_remaining = APPEALS_PER_GAME
+            # Otherwise everybody starts the real game holding the cooldown
+            # from a sandbox shot that no longer exists (M1.1)
+            user.last_shot_at = None
+            # A radar or a circle warning lit in the sandbox hour must not
+            # still be running when the real game starts (M6.1, M6.2)
+            user.radar_until = None
+            user.circle_warning_until = None
+
+        # By game rather than by shooter: a shot outlives the team its shooter
+        # was in, and this has to empty the queue whoever is left in it
+        for shot in self._session.query(Shot).filter_by(game_id=game_id).all():
+            self._session.delete(shot)
+
+        # The sandbox codes have been scanned; deleting the rows re-arms the
+        # once-only ones, which is harmless here because the batch they belong
+        # to is withdrawn separately (M2.2) and the real codes are unscanned
+        for item in list(game.items):
+            item.users.clear()
+            self._session.delete(item)
+
+        for ticker_entry in (
+            self._session.query(TickerEntry).filter_by(game_id=game_id).all()
+        ):
+            self._session.delete(ticker_entry)
+
+        # All three circles, straight onto the columns rather than through
+        # set_circles: that announces each change to a ticker this is about to
+        # delete anyway, and would do it three times
+        for prefix in ("exclusion", "next", "drop"):
+            for field in ("lat", "long", "radius"):
+                setattr(game, f"{prefix}_circle_{field}", None)
+        game.next_circle_public = False
+
+        # And whatever was cued to happen next (M3.1), which was cued against
+        # the sandbox clock
+        game.next_event_kind = None
+        game.next_event_at = None
+        game.next_event_note = None
+        # ...and the in-process clock behind it. Leaving it running is not
+        # unsafe - fire_next_event re-reads the columns and finds nothing to
+        # do - but a task asleep on a deadline that no longer exists is a
+        # thing to explain later (M3.2).
+        next_event.disarm(game_id)
+
+        # Read before the commit expires them
+        user_ids = [user.id for user in users]
+
+        self._session.commit()
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+        trigger_update_event("shots", game_id)
+        trigger_update_event("ticker", game_id)
+        trigger_circle_update(game_id)
+
+    @db_scoped
     def reset_game(self, game_id: UUID, keep_weapons=True):
         """
         Reset the game, including all scores, items etc. But not usernames
@@ -1937,9 +2455,14 @@ class AdminInterface:
         # For each user, reset their stats
         for user in users:
             user.num_bullets = 0
-            user.hit_points = 1
+            user.hit_points = STARTING_HIT_POINTS
             user.time_of_death = None
             user.appeals_remaining = APPEALS_PER_GAME
+            # Otherwise a reset leaves everybody holding the cooldown from
+            # whatever they fired last (M1.1), which a reset has just deleted.
+            user.last_shot_at = None
+            user.radar_until = None
+            user.circle_warning_until = None
 
             # The kit-check photos are photographs of identifiable people and
             # have no meaning once the night they were taken for is over.

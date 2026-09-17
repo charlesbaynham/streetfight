@@ -1,0 +1,62 @@
+/* Phone-first, one column of large targets: this is driven one-handed by
+   somebody carrying a crate. Same tones as ReferencePhotos - green and red
+   are answers, and the state is always said in words. */
+.page {
+  max-width: 30em;
+}
+
+.status {
+  display: inline-block;
+  padding: 0.2em 0.7em;
+  border-radius: 1em;
+  border: 1px solid #ccc;
+  background: #f4f4f4;
+  font-size: 0.95em;
+}
+
+.statusGood {
+  background: #d6f5df;
+  border-color: #37a05a;
+  font-weight: bold;
+}
+
+.statusNone {
+  background: #eeeeee;
+  border-color: #aaaaaa;
+  color: #555;
+}
+
+.bigButton {
+  width: 100%;
+  min-height: 3.5em;
+  margin: 0.5em 0;
+  font-size: 1.1em;
+  font-weight: 600;
+}
+
+/* The one button that changes the game for everybody, so it is set apart from
+   the broadcast toggle above it */
+.place {
+  margin-top: 1.5em;
+}
+
+.armed {
+  background: #c0392b;
+  border-color: #c0392b;
+  color: white;
+}
+
+.hint {
+  font-size: 0.9em;
+  color: #555;
+}
+
+.good {
+  color: #256c3a;
+  font-weight: bold;
+}
+
+.bad {
+  color: #c0392b;
+  font-weight: bold;
+}

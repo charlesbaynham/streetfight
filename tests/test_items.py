@@ -1,4 +1,5 @@
 import os
+import time
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -6,13 +7,18 @@ import pydantic
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.admin_interface import AdminInterface
+from backend.admin_interface import CircleTypes
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
+from backend.model import STARTING_HIT_POINTS
 from backend.model import Item
 from backend.model import User
 from backend.model import UserState
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
+
+from .shared_fixtures import strip_armour
 
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
@@ -182,6 +188,65 @@ def test_signing_is_deterministic_and_uses_shared_helper():
     )
 
 
+# The exact signature the scheme produced before `batch` and `unlimited`
+# existed, over SAMPLE_ARMOUR_DATA and the SECRET_KEY set at the top of this
+# file. Every drop card, pub poster and WhatsApp link already in circulation
+# was signed by that scheme, so this literal is the print freeze written down:
+# if a change to the payload moves it, codes that are already out stop
+# scanning.
+FROZEN_ARMOUR_SIGNATURE = (
+    "d06957d3a7b16c690b243fe57b3267e8c4434b688eed66be70ea00d9f9e361e2"
+)
+
+
+def test_a_payload_without_the_late_fields_signs_exactly_as_it_always_did():
+    item = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+
+    assert item.batch is None
+    assert item.unlimited is False
+    assert item.sig == FROZEN_ARMOUR_SIGNATURE
+
+
+def test_an_already_printed_code_still_validates(valid_encoded_signed_lv1_armour):
+    """The same thing from the scanner's end: a card carrying a signature made
+    before the fields existed is still good."""
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
+    item.sig = FROZEN_ARMOUR_SIGNATURE
+
+    assert item.validate_signature() is None
+
+
+@pytest.mark.parametrize("field, value", [("batch", "sandbox"), ("unlimited", True)])
+def test_setting_a_late_field_changes_the_signature(field, value):
+    """They are left out of the message at their defaults, not ignored: a code
+    that claims a batch it was not minted with must fail."""
+    item = ItemModel(**SAMPLE_ARMOUR_DATA, **{field: value}).sign()
+
+    assert item.sig != FROZEN_ARMOUR_SIGNATURE
+
+    tampered = ItemModel(**SAMPLE_ARMOUR_DATA, **{field: value})
+    tampered.sig = FROZEN_ARMOUR_SIGNATURE
+    assert tampered.validate_signature() == "Signature mismatch"
+
+
+def test_the_two_late_fields_cannot_be_confused_for_each_other():
+    """They are named in the signed message, so a batch literally called
+    "unlimited=True" is not the same payload as an unlimited code."""
+    batched = ItemModel(**SAMPLE_ARMOUR_DATA, batch="unlimited=True").sign()
+    unlimited = ItemModel(**SAMPLE_ARMOUR_DATA, unlimited=True).sign()
+
+    assert batched.sig != unlimited.sig
+
+
+def test_an_empty_batch_is_no_batch_at_all():
+    """A cleared text field on the Printables page must not mint codes into a
+    batch that cannot be named - and must sign as an unbatched code does."""
+    item = ItemModel(**SAMPLE_ARMOUR_DATA, batch="").sign()
+
+    assert item.batch is None
+    assert item.sig == FROZEN_ARMOUR_SIGNATURE
+
+
 def test_old_scrypt_signed_item_parses_but_fails_validation():
     encoded = ItemModel(**OLD_SCRYPT_SIGNED_ARMOUR_DATA).to_base64()
 
@@ -201,6 +266,11 @@ def test_old_scrypt_signed_item_cannot_be_collected(user_in_team):
 
 
 def test_collect_item_valid(valid_encoded_signed_lv1_armour, user_in_team):
+    # Level-1 armour is worth nothing to a player who still has their starting
+    # armour (M1.2), and _handle_armour refuses it - so this test, which is
+    # about collecting an item at all, hands the card to somebody who can use
+    # it. See test_starting_armour_makes_a_level_1_card_useless below.
+    strip_armour(user_in_team)
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
 
@@ -226,6 +296,7 @@ def test_collect_item_invalid_signature(valid_encoded_signed_lv1_armour, user_in
 
 
 def test_collect_item_duplicate_item(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
@@ -268,12 +339,14 @@ def test_cannot_collect_same_weapon_twice(user_in_team):
 
 
 def test_collecting_armour_when_alive(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
 def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     UserInterface(user_in_team).hit(1)
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
@@ -282,6 +355,7 @@ def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_te
 def test_collecting_armour_doesnt_stack(user_in_team):
     armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
     UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
@@ -297,6 +371,7 @@ def test_collecting_armour_doesnt_stack(user_in_team):
 def test_collecting_better_armour_works_and_worse_armour_fails(user_in_team):
     armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
     UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
@@ -327,6 +402,7 @@ def test_collecting_ammo_when_alive(valid_encoded_ammo, user_in_team):
 
 
 def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(valid_encoded_medpack)
@@ -334,6 +410,7 @@ def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
 
 
 def test_collecting_revive_while_knocked_out(valid_encoded_medpack, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     UserInterface(user_in_team).hit(1)
     assert UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
@@ -346,6 +423,7 @@ def test_collecting_revive_while_knocked_out(valid_encoded_medpack, user_in_team
 def test_collecting_revive_while_dead(db_session, valid_encoded_medpack, user_in_team):
     from backend.user_interface import TIME_KNOCKED_OUT
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     UserInterface(user_in_team).hit(1)
 
@@ -426,6 +504,115 @@ def test_same_users_collect_repeat_item(two_users_in_different_teams):
     with pytest.raises(HTTPException):
         UserInterface(user_a).collect_item(encoded_repeatable_item)
     assert UserInterface(user_a).get_user_model().num_bullets == 1
+
+
+def test_unlimited_item_can_be_collected_again_by_the_same_user(
+    two_users_in_different_teams,
+):
+    """What a sandbox wall poster is. collected_only_once=False is not enough
+    on its own - that lets the *next* player claim it, not the same one
+    twice."""
+    user_a, _ = two_users_in_different_teams
+
+    poster = ItemModel(**SAMPLE_AMMO_DATA)
+    poster.collected_only_once = False
+    poster.unlimited = True
+    encoded = poster.sign().to_base64()
+
+    for expected in (1, 2, 3):
+        UserInterface(user_a).collect_item(encoded)
+        assert UserInterface(user_a).get_user_model().num_bullets == expected
+
+
+def test_an_unlimited_item_is_recorded_once(db_session, two_users_in_different_teams):
+    """Rescanning must not pile up association rows for the one item."""
+    user_a, _ = two_users_in_different_teams
+
+    poster = ItemModel(**SAMPLE_AMMO_DATA)
+    poster.unlimited = True
+    encoded = poster.sign().to_base64()
+
+    UserInterface(user_a).collect_item(encoded)
+    UserInterface(user_a).collect_item(encoded)
+
+    items = db_session.query(User).filter_by(id=user_a).one().items
+    assert [item.id for item in items] == [SAMPLE_AMMO_DATA["id"]]
+
+
+def test_a_withdrawn_batch_cannot_be_collected(valid_encoded_ammo, user_in_team):
+    """The only recall a printed code has: the card is still in somebody's
+    hand, so the refusal has to come from the server."""
+    batched = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+
+    AdminInterface().withdraw_batch("sandbox")
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(batched)
+
+    assert refusal.value.status_code == 403
+    assert "withdrawn" in refusal.value.detail
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+
+
+def test_withdrawing_one_batch_leaves_the_others_alone(user_in_team):
+    """The whole reason a batch exists: the sandbox closes at 16:00 and the
+    game's own cards carry on."""
+    sandbox = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+    game = (
+        ItemModel(**{**SAMPLE_AMMO_DATA, "id": get_uuid()}, batch="game")
+        .sign()
+        .to_base64()
+    )
+
+    AdminInterface().withdraw_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(game)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(sandbox)
+
+
+def test_a_code_minted_before_batches_existed_is_untouched(
+    valid_encoded_ammo, user_in_team
+):
+    """An unbatched code has nothing to name it by, so no press can withdraw
+    it - and a withdrawal must not catch it by accident either."""
+    AdminInterface().withdraw_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_batch_can_be_allowed_again(user_in_team):
+    """The undo for a press of the wrong button at 16:00."""
+    batched = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+
+    AdminInterface().withdraw_batch("sandbox")
+    AdminInterface().restore_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(batched)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+    assert AdminInterface().get_revoked_batches() == []
+
+
+def test_withdrawing_twice_is_the_same_as_withdrawing_once():
+    """An admin pressing it again means the same thing as pressing it once."""
+    AdminInterface().withdraw_batch("sandbox")
+    revoked = AdminInterface().withdraw_batch("sandbox")
+
+    assert [entry["batch"] for entry in revoked] == ["sandbox"]
+
+
+def test_a_batch_has_to_be_named_to_be_withdrawn():
+    """A cleared text field would otherwise withdraw a batch called "", which
+    is nothing - and mints no evidence that the press did nothing."""
+    with pytest.raises(HTTPException) as refusal:
+        AdminInterface().withdraw_batch("   ")
+
+    assert refusal.value.status_code == 400
 
 
 def test_collect_team_item(two_users_in_different_teams, user_factory):
@@ -526,6 +713,165 @@ def test_collect_item_announces_message(valid_encoded_ammo, user_in_team, mocker
     )
 
 
+def test_radar_and_circle_warning_carry_a_duration():
+    """M0.3 freezes what these two cards *say*; M6 writes the handlers. The
+    payload has to be right now, because the cards are printed now."""
+    radar = ItemModel(**{**SAMPLE_AMMO_DATA, "itype": "radar", "data": {}})
+    warning = ItemModel(
+        **{**SAMPLE_AMMO_DATA, "itype": "circle_warning", "data": {"minutes": 20}}
+    )
+
+    assert radar.data == {"minutes": 5}
+    assert warning.data == {"minutes": 20}
+
+
+def _radar_card(minutes=None):
+    data = {} if minutes is None else {"minutes": minutes}
+    return ItemModel(
+        **{**SAMPLE_AMMO_DATA, "id": get_uuid(), "itype": "radar", "data": data}
+    ).sign()
+
+
+def test_radar_card_starts_the_radar(user_in_team):
+    before = time.time()
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    radar_until = UserInterface(user_in_team).get_user_model().radar_until
+
+    assert before + 5 * 60 <= radar_until <= time.time() + 5 * 60
+
+
+def test_a_second_radar_card_is_refused_while_the_first_runs(user_in_team, db_session):
+    """Refusing keeps the card: the scan rolls back, so no Item row is written
+    and the player can use it once the first one has run out."""
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    second = _radar_card(minutes=5)
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(second.to_base64())
+    assert refusal.value.status_code == 403
+
+    # Wind the first radar into the past, as five minutes of play would
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"radar_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    UserInterface(user_in_team).collect_item(second.to_base64())
+    assert UserInterface(user_in_team).get_user_model().radar_until > time.time()
+
+
+def test_radar_is_refused_until_a_card_is_scanned(user_in_team):
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).get_radar()
+
+    assert refusal.value.status_code == 403
+
+
+def test_radar_shows_everybody_else_and_how_old_their_fix_is(
+    two_users_in_different_teams,
+):
+    me, them = two_users_in_different_teams
+
+    UserInterface(me).set_location(51.0, -1.0, accuracy=8.0)
+    UserInterface(them).set_location(51.1, -1.1, accuracy=12.0)
+
+    UserInterface(me).collect_item(_radar_card(minutes=5).to_base64())
+
+    contacts = UserInterface(me).get_radar()
+
+    assert len(contacts) == 1
+    (contact,) = contacts
+    assert contact["lat"] == 51.1
+    assert contact["long"] == -1.1
+    assert contact["accuracy"] == 12.0
+    assert contact["state"] == UserState.ALIVE
+    # Last seen, never live: every row says how stale it is
+    assert 0 <= contact["seconds_ago"] < 60
+
+
+def test_radar_leaves_out_anybody_who_has_never_reported_a_fix(
+    two_users_in_different_teams,
+):
+    me, _them = two_users_in_different_teams
+
+    UserInterface(me).collect_item(_radar_card(minutes=5).to_base64())
+
+    assert UserInterface(me).get_radar() == []
+
+
+def _circle_warning_card(minutes=None):
+    data = {} if minutes is None else {"minutes": minutes}
+    return ItemModel(
+        **{
+            **SAMPLE_AMMO_DATA,
+            "id": get_uuid(),
+            "itype": "circle_warning",
+            "data": data,
+        }
+    ).sign()
+
+
+def test_a_circle_warning_card_shows_the_next_circle_early(user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+
+    # Placing it tells nobody: it is not public until the admin cues it
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
+
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    circles = UserInterface(user_in_team).get_circles()
+    assert circles["next_circle_lat"] == 51.5
+    assert circles["next_circle_radius"] == 0.42
+
+
+def test_a_second_circle_warning_is_refused_while_the_first_runs(user_in_team):
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(
+            _circle_warning_card(minutes=10).to_base64()
+        )
+
+    assert refusal.value.status_code == 403
+
+
+def test_an_expired_circle_warning_stops_showing_the_next_circle(
+    user_in_team, db_session
+):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"circle_warning_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
+
+
+def test_an_expired_radar_is_refused_like_no_radar_at_all(user_in_team, db_session):
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"radar_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).get_radar()
+
+    assert refusal.value.status_code == 403
+
+
 def test_all_items_handled():
     from backend.item_actions import _ACTIONS
     from backend.model import ItemType
@@ -543,3 +889,48 @@ def test_all_items_validated():
 
     for itype in ItemType:
         assert itype in ITEM_TYPE_VALIDATORS
+
+
+def test_basic_weapon_is_the_pewster():
+    """model.BASIC_WEAPON is what the 16:00 reset hands out, and it has to be
+    a weapon the lookup can name - the two are written as separate literals
+    (the lookup's are read by react-ui/src/weapons.test.js), so nothing else
+    catches them drifting apart."""
+    from backend.item_actions import WEAPON_NAME_LOOKUP
+    from backend.model import BASIC_WEAPON
+    from backend.model import DEFAULT_SHOT_TIMEOUT
+
+    assert WEAPON_NAME_LOOKUP[BASIC_WEAPON] == "Pewster"
+    assert BASIC_WEAPON == (1, DEFAULT_SHOT_TIMEOUT)
+
+    # A fresh sign-up holds no weapon, at the same standard delay.
+    from backend.user_interface import DEFAULT_SHOT_DAMAGE
+
+    assert (
+        WEAPON_NAME_LOOKUP[(DEFAULT_SHOT_DAMAGE, DEFAULT_SHOT_TIMEOUT)] == "No weapon"
+    )
+
+
+def test_starting_armour_makes_a_level_1_card_useless(
+    valid_encoded_signed_lv1_armour, user_in_team
+):
+    """A consequence of M1.2 worth pinning down, because it decides what is
+    worth printing: a player starts on STARTING_HIT_POINTS, which *is* level 1
+    armour, so a level-1 armour card does nothing for anybody who has not been
+    hit yet. Everything in the drop and sandbox sets is level 2
+    (`printables.SANDBOX_CARDS`), which still works.
+    """
+    assert (
+        UserInterface(user_in_team).get_user_model().hit_points == STARTING_HIT_POINTS
+    )
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
+
+    # ...and level 2 is still worth picking up.
+    armour_lv2 = ItemModel(**SAMPLE_ARMOUR_DATA)
+    armour_lv2.data = ItemDataArmour(num=2).model_dump()
+    armour_lv2.sign()
+
+    UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 3

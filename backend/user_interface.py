@@ -29,9 +29,12 @@ from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
 from .model import APPEAL_REASONS
+from .model import DEFAULT_SHOT_TIMEOUT
+from .model import STARTING_HIT_POINTS
 from .model import Game
 from .model import GameModel
 from .model import Item
+from .model import RevokedBatch
 from .model import Shot
 from .model import Team
 from .model import TeamModel
@@ -49,9 +52,17 @@ logger = logging.getLogger(__name__)
 # 10 minutes to get to safety
 TIME_KNOCKED_OUT = 10 * 60
 
-# Default weapon settings
-DEFAULT_SHOT_TIMEOUT = 6.0
+# What a fresh sign-up holds: no weapon at all. The fire delay is the model's
+# single DEFAULT_SHOT_TIMEOUT, so there is one number rather than two that can
+# drift apart.
 DEFAULT_SHOT_DAMAGE = 0
+
+# How far inside their own cooldown a player is allowed to fire anyway (M1.1).
+# It covers the round trip and a phone whose clock runs slightly fast; it is
+# deliberately a small fraction of even the fastest weapon's delay, because
+# the whole point of moving the timer to the server is that reloading the page
+# -- or opening a second tab -- must not buy anybody a shot.
+SHOT_COOLDOWN_TOLERANCE_S = 0.5
 
 make_user_lock = RLock()
 
@@ -235,6 +246,75 @@ def _outfit_appearance(user: User) -> Tuple[Optional[dict], Optional[dict]]:
     return wardrobe, provided
 
 
+def _courier_payload(game: GameModel) -> Optional[dict]:
+    """Where the courier is, for /get_circles, or None if nobody is walking.
+
+    A fix with no coordinates is nobody: ``clear_courier`` nulls all four
+    columns together, and a half-written row would otherwise draw an
+    aeroplane at the equator.
+    """
+    if game.courier_lat is None or game.courier_long is None:
+        return None
+    return {
+        "lat": game.courier_lat,
+        "long": game.courier_long,
+        "timestamp": game.courier_timestamp,
+        "accuracy": game.courier_accuracy,
+    }
+
+
+def _next_event(user: User) -> Tuple[Optional[str], Optional[float], Optional[str]]:
+    """The cue the player's game is counting down to: ``(kind, at, note)``,
+    or three Nones when nothing is cued (backend/next_event.py).
+
+    Read off ``User.game`` rather than ``User.team.game``: a player who has
+    signed up but not yet been handed a team is exactly who the waiting page
+    is for, and they have a game and no team (see ``User.game_id``). The team
+    is kept as a fallback for any row written before ``game_id`` existed.
+    """
+    game = user.game or (user.team.game if user.team else None)
+    if game is None:
+        return None, None, None
+    return game.next_event_kind, game.next_event_at, game.next_event_note
+
+
+def _cooldown_remaining(user: User, at_epoch: float) -> float:
+    """Seconds of ``user``'s fire delay still to run at ``at_epoch``.
+
+    Zero or negative means they may fire. Null ``last_shot_at`` is a player
+    who has not fired since the column arrived, which includes everybody on
+    the live database the day it deploys -- they get one free shot each, which
+    is the right way round for a column with no history.
+    """
+    if user.last_shot_at is None:
+        return 0.0
+    return user.last_shot_at + user.shot_timeout - at_epoch
+
+
+def _next_shot_at(user: User) -> Optional[float]:
+    """The epoch second at which ``user`` may fire again, or None if that is
+    now. Derived rather than stored so that the phone counts down to the
+    server's answer instead of running a timer of its own: a reload then comes
+    back still cooling, which is exactly the hole this closes.
+    """
+    remaining = _cooldown_remaining(user, time.time())
+    if remaining <= 0:
+        return None
+    return user.last_shot_at + user.shot_timeout
+
+
+def _epoch_of(stamp: datetime.datetime) -> float:
+    """A database timestamp as epoch seconds.
+
+    Naive means UTC here -- that is what ``func.now()`` writes on both SQLite
+    and Postgres, and what ``shot_identification.shot_epoch`` assumes when it
+    reads the same column back.
+    """
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=datetime.timezone.utc)
+    return stamp.timestamp()
+
+
 def touch_user(user_interface: "UserInterface"):
     logger.debug("Touching user %s", user_interface.user_id)
     user = (
@@ -329,6 +409,7 @@ class UserInterface:
             id=self.user_id,
             shot_damage=DEFAULT_SHOT_DAMAGE,
             shot_timeout=DEFAULT_SHOT_TIMEOUT,
+            hit_points=STARTING_HIT_POINTS,
         )
         self._session.add(user)
         self._session.commit()
@@ -397,7 +478,13 @@ class UserInterface:
         if not u:
             return None
         model = UserModel.model_validate(u)
+        model.next_shot_at = _next_shot_at(u)
         model.outfit_wardrobe, model.outfit_provided = _outfit_appearance(u)
+        (
+            model.next_event_kind,
+            model.next_event_at,
+            model.next_event_note,
+        ) = _next_event(u)
         return model
 
     @db_scoped
@@ -615,6 +702,25 @@ class UserInterface:
         if user.num_bullets <= 0:
             raise HTTPException(403, "User has no ammo")
 
+        # The cooldown, enforced here rather than only in FireButton's timer:
+        # a reload, a second tab or a hand-rolled POST all skip a client-side
+        # timer, and this is the one rule the plan assumed somebody would try
+        # to break. Checked before the photograph is stored and before the
+        # bullet is spent, so a shot that is refused costs the player nothing.
+        #
+        # Only a shot fired *now* is subject to it. A caller who supplies
+        # `time_created` is the replay or the demo drip (the docstring above:
+        # the route passes neither, and must not), dealing out a simulated
+        # hour's shots in whatever order suits it - and a player has no way to
+        # reach this with a time of their own choosing.
+        fired_at = _epoch_of(time_created) if time_created is not None else time.time()
+        if time_created is None:
+            remaining = _cooldown_remaining(user, fired_at)
+            if remaining > SHOT_COOLDOWN_TOLERANCE_S:
+                raise HTTPException(
+                    403, f"Still reloading - {remaining:.1f} s of cooldown left"
+                )
+
         # Read before anything below dirties the session: an attribute read
         # on an expired object autoflushes, and a flush clears the dirty flag
         # @db_scoped uses to decide whether to announce anything at all (the
@@ -654,6 +760,7 @@ class UserInterface:
         self._session.add(shot_entry)
 
         user.num_bullets -= 1
+        user.last_shot_at = fired_at
 
         # Save to folder
         save_image(base64_image=image_base64, name=user.name)
@@ -708,9 +815,24 @@ class UserInterface:
         out = []
         for shot in shots:
             target_name = None
+            target_knocked_out = False
             if shot.target_user_id:
                 target = self._session.get(User, shot.target_user_id)
                 target_name = target.name if target else None
+                # Whether this shot was the one that put its target out of the
+                # fight, so the shooter's phone can say so with a sound of its
+                # own rather than the ordinary "confirmed hit". Nothing on the
+                # shot records the blow that did it, so it is read off the
+                # target now: AdminInterface.hit_user takes the hit points down
+                # before it marks the shot checked, so at the only moment this
+                # is acted on -- the tick where the shooter's client first sees
+                # "checked" -- it says what just happened. It is not a claim
+                # about the past: a hit on somebody already down reads the same
+                # way, and a later revival flips it back. Nothing re-reads it
+                # for a shot that was already checked.
+                target_knocked_out = bool(
+                    shot.checked and target and target.hit_points <= 0
+                )
 
             suggestion = _ai_suggestion(shot)
             ai_target_name = None
@@ -727,6 +849,7 @@ class UserInterface:
                     "checked": shot.checked,
                     "result": shot.result,
                     "target_name": target_name,
+                    "target_knocked_out": target_knocked_out,
                     "ai_review_state": shot.ai_review_state,
                     "ai_suggestion": suggestion,
                     "ai_target_name": ai_target_name,
@@ -850,6 +973,12 @@ class UserInterface:
 
         return shot.image_base64
 
+    def _batch_is_revoked(self, batch: str) -> bool:
+        return (
+            self._session.query(RevokedBatch.batch).filter_by(batch=batch).first()
+            is not None
+        )
+
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
         """
@@ -868,6 +997,13 @@ class UserInterface:
                 403, f"The scanned item is invalid - error {item_validation_error}"
             )
 
+        # Withdrawn codes are refused next, before anything about this player
+        # is looked at: the card is dead for everybody, and the answer should
+        # not depend on who scanned it. A code minted before batches existed
+        # carries no batch and so can never be withdrawn this way.
+        if item.batch and self._batch_is_revoked(item.batch):
+            raise HTTPException(403, "This code has been withdrawn")
+
         user: User = self.get_user()
 
         if user.team is None:
@@ -880,7 +1016,12 @@ class UserInterface:
 
         already_collected = False
 
-        if item_from_db:
+        # An `unlimited` code skips the duplicate check outright: it is what
+        # the sandbox's wall posters are, and the warm-up room only works if a
+        # player can walk back to the ammunition poster and scan it again.
+        # collected_only_once=False is not enough on its own - that lets the
+        # *next* player claim it, not the same one twice.
+        if item_from_db and not item.unlimited:
             if item.collected_only_once:
                 already_collected = True
             else:
@@ -901,7 +1042,10 @@ class UserInterface:
             raise HTTPException(403, str(e))
 
         if item_from_db:
-            user.items.append(item_from_db)
+            # An unlimited code brings its scanner back here over and over;
+            # the association row is already there after the first time.
+            if item_from_db not in user.items:
+                user.items.append(item_from_db)
         else:
             user.items.append(
                 Item(
@@ -919,17 +1063,135 @@ class UserInterface:
         if game_model is None:
             return None
 
+        # The next circle is not everybody's to see (M6.2). Until the admin
+        # cues it, the only players who get it are the ones holding a live
+        # early-warning card; everybody else is sent nulls, which is what the
+        # map already draws nothing for. The admin map and the spectator
+        # screen read a GameModel straight off the server and are unaffected -
+        # this is the player-facing endpoint only.
+        show_next = game_model.next_circle_public or self._circle_warning_is_live()
+
         return {
             "exclusion_circle_lat": game_model.exclusion_circle_lat,
             "exclusion_circle_long": game_model.exclusion_circle_long,
             "exclusion_circle_radius": game_model.exclusion_circle_radius,
-            "next_circle_lat": game_model.next_circle_lat,
-            "next_circle_long": game_model.next_circle_long,
-            "next_circle_radius": game_model.next_circle_radius,
+            "next_circle_lat": game_model.next_circle_lat if show_next else None,
+            "next_circle_long": game_model.next_circle_long if show_next else None,
+            "next_circle_radius": game_model.next_circle_radius if show_next else None,
             "drop_circle_lat": game_model.drop_circle_lat,
             "drop_circle_long": game_model.drop_circle_long,
             "drop_circle_radius": game_model.drop_circle_radius,
+            # Nested rather than four more flat keys (M4.2): the circles are
+            # a fixed part of the map and the courier is somebody who is
+            # either there or not, and "courier": null says that in one read.
+            # The maps fade the dot by the timestamp, so it has to travel
+            # with the position rather than being inferred from the refetch.
+            "courier": _courier_payload(game_model),
         }
+
+    @db_scoped
+    def _circle_warning_is_live(self) -> bool:
+        """Is this player holding an early circle warning that has not run
+        out? (M6.2)"""
+        until = self.get_user().circle_warning_until
+        return until is not None and until > time.time()
+
+    @db_scoped
+    def start_circle_warning(self, minutes: float) -> float:
+        """Show this player the next circle before it is announced (M6.2).
+
+        Refuses while one is already running, for the same reason
+        :meth:`start_radar` does - the scan rolls back, so the card survives.
+
+        The circle appears on the holder's map on the next ``"circle"`` event,
+        and has to *disappear* from it when the warning runs out: nothing else
+        would fire then, so a sleep-then-trigger is scheduled for the moment
+        it expires. It is in-process and does not survive a restart, which
+        costs one stale circle on one phone until the next circle event - the
+        price of not building a second durable timer for an experimental card.
+        """
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.circle_warning_until is not None and user.circle_warning_until > now:
+            raise RuntimeError("You already know where the next circle is")
+
+        user.circle_warning_until = now + minutes * 60
+
+        # Beside the state change rather than in the route, like every other
+        # announcement here: the card can be scanned from more than one place.
+        self.announce_after_commit("circle", user.game_id)
+        asyncio_triggers.schedule_update_event(
+            "circle", user.game_id, timeout=minutes * 60
+        )
+
+        return user.circle_warning_until
+
+    @db_scoped
+    def start_radar(self, minutes: float) -> float:
+        """Light up this player's radar for a while (M6.1).
+
+        Refuses while one is already running rather than stacking or extending
+        it. Nothing is lost by that: ``do_item_actions`` raising rolls the
+        whole scan back, so no Item row is written and the card is still good
+        - the player keeps it for when the first one runs out.
+        """
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.radar_until is not None and user.radar_until > now:
+            raise RuntimeError("Your radar is already running")
+
+        user.radar_until = now + minutes * 60
+        return user.radar_until
+
+    @db_scoped
+    def get_radar(self) -> List[dict]:
+        """Where everybody else in this game was last seen (M6.1).
+
+        Refused with a 403 rather than answered with an empty list when the
+        radar is not running: the card buys a view of the game, and "you have
+        no radar" and "there is nobody out there" must not look the same.
+
+        The plan is explicit that this is *last seen* and never live, so every
+        row carries its own age. That age goes out as ``seconds_ago`` rather
+        than as a timestamp so the phone's clock never has to agree with the
+        server's: it re-bases each one against its own clock as it arrives and
+        goes on ageing it between polls.
+        """
+        from .admin_interface import AdminInterface
+
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.radar_until is None or user.radar_until <= now:
+            raise HTTPException(403, "Your radar is not running")
+
+        # Read this off the ORM object before calling out: AdminInterface's
+        # own @db_scoped commits, which expires every object on this session,
+        # so a later attribute read would reload the row and autoflush.
+        game_id = user.game_id
+        if game_id is None:
+            raise HTTPException(403, "You are not in a game")
+
+        locations = AdminInterface(session=self.get_session()).get_locations(game_id)
+
+        return [
+            {
+                "name": row["user"],
+                "team": row["team"],
+                "lat": row["latitude"],
+                "long": row["longitude"],
+                "seconds_ago": now - row["timestamp"],
+                "accuracy": row["accuracy"],
+                "state": row["state"],
+            }
+            for row in locations
+            if row["user_id"] != self.user_id
+            and row["latitude"] is not None
+            and row["longitude"] is not None
+            and row["timestamp"] is not None
+        ]
 
     @db_scoped
     def get_messages(

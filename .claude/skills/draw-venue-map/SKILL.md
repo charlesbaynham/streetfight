@@ -21,7 +21,9 @@ The output is a georeferenced image plus a `Venue` for `backend/venues.py`.
 3. **Landmarks and pubs.** Yours. `build_venue_map.py` pulls every pub inside
    the crop from OpenStreetMap and ranks them by distance from the centre; you
    pass the landmarks worth drawing. Then curate: a hand-drawn map carries
-   about twenty markers before it turns to soup.
+   about twenty markers before it turns to soup. If the list is already
+   settled — a game is played on the pubs somebody chose, not on the
+   nearest N — pass them with `--pub` and skip the search entirely.
 4. **Render the references.** `build_venue_map.py` again.
 5. **Hand over the prompt.** It writes `prompt.md` for this venue. Give the
    user the prompt *and* the four images.
@@ -76,6 +78,14 @@ and a `Venue` snippet.
 
 `--exclude "Name"` drops a pub by name; `--include-bars` widens the search
 beyond `amenity=pub`. Re-run freely — tiles are cached under `.tilecache`.
+
+`--pub "Name:LAT,LON:Street"` gives a pub outright. Any use of it replaces
+the OpenStreetMap search, so the markers are exactly the list passed,
+numbered in the order given rather than by distance — which is what you want
+when the venue already exists and its pub list is the one a game will be
+played on. A named pub outside the crop is an error rather than a silent
+drop. `docs/venue_map_westminster/build.sh` is a worked example: the
+nineteen Westminster pubs, straight out of `backend/venues.py`.
 
 ## Handing it to the user
 

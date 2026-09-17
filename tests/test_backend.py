@@ -150,6 +150,9 @@ def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_t
 
 
 def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
+    """Placing NEXT announces nothing since M6.2: the circle exists, but a
+    player is sent nulls for it until the admin cues it, so nothing is drawn
+    where it is going to be."""
     UserInterface(api_user_id).join_team(one_team)
 
     game_id = UserInterface(api_user_id).get_user_model().game_id
@@ -160,9 +163,56 @@ def test_get_circles_in_game_circle_next_set(api_client, api_user_id, one_team):
     assert response["exclusion_circle_lat"] is None
     assert response["exclusion_circle_long"] is None
     assert response["exclusion_circle_radius"] is None
+    assert response["next_circle_lat"] is None
+    assert response["next_circle_long"] is None
+    assert response["next_circle_radius"] is None
+
+
+def test_get_circles_in_game_circle_next_cued(api_client, api_user_id, one_team):
+    """Cueing it is what announces it - "the circle closes in ten minutes" is
+    not something anybody can act on without being shown which circle."""
+    UserInterface(api_user_id).join_team(one_team)
+
+    game_id = UserInterface(api_user_id).get_user_model().game_id
+    AdminInterface().set_circles(game_id, name="NEXT", lat=51.0, long=0.0, radius=1.0)
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    response = api_client.get("/api/get_circles").json()
     assert response["next_circle_lat"] == 51.0
     assert response["next_circle_long"] == 0.0
     assert response["next_circle_radius"] == 1.0
+
+
+def test_get_circles_in_game_circle_both_set(api_client, api_user_id, one_team):
+    """BOTH keeps nothing back: it puts the next circle exactly where the
+    exclusion circle everybody can already see is."""
+    UserInterface(api_user_id).join_team(one_team)
+
+    game_id = UserInterface(api_user_id).get_user_model().game_id
+    AdminInterface().set_circles(game_id, name="BOTH", lat=51.0, long=0.0, radius=1.0)
+
+    response = api_client.get("/api/get_circles").json()
+    assert response["exclusion_circle_lat"] == 51.0
+    assert response["next_circle_lat"] == 51.0
+    assert response["next_circle_radius"] == 1.0
+
+
+def test_admin_sees_a_next_circle_that_players_cannot(
+    admin_api_client, api_user_id, one_team
+):
+    """The filtering is on the player-facing endpoint alone. The admin map
+    reads the game itself, and always shows where the next circle is."""
+    UserInterface(api_user_id).join_team(one_team)
+
+    game_id = UserInterface(api_user_id).get_user_model().game_id
+    AdminInterface().set_circles(game_id, name="NEXT", lat=51.0, long=0.0, radius=1.0)
+
+    assert admin_api_client.get("/api/get_circles").json()["next_circle_lat"] is None
+
+    games = admin_api_client.get("/api/admin_list_games").json()
+    (game,) = [g for g in games if g["id"] == str(game_id)]
+    assert game["next_circle_lat"] == 51.0
+    assert game["next_circle_public"] is False
 
 
 def test_make_game(admin_api_client):

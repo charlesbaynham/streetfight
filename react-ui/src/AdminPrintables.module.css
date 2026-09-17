@@ -105,3 +105,42 @@
   justify-content: center;
   margin-top: 0.8em;
 }
+
+/* Withdrawing a batch is the one press on this page that changes the game
+   rather than producing paper, so it gets the red tone the failure status
+   uses rather than the green of "make me a PDF". */
+.destructive {
+  composes: action;
+  border-color: #c0392b;
+  background: #fbdddd;
+}
+
+/* One withdrawn batch: the name, and the way back. A roster row's height,
+   like ReferencePhotos' - this is pressed one-handed. */
+.batchRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5em;
+  min-height: 3.2em;
+  padding: 0 0.6em;
+  margin-bottom: 0.3em;
+  border: 1px solid #adb5bd;
+  border-radius: 0.4em;
+  background: white;
+}
+
+.batchName {
+  font-weight: bold;
+  overflow-wrap: anywhere;
+}
+
+.rowAction {
+  min-height: 2.6em;
+  padding: 0 0.8em;
+  border: 1px solid #2f6f3e;
+  border-radius: 0.4em;
+  background: #d6f5df;
+  font-weight: bold;
+  white-space: nowrap;
+}

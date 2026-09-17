@@ -29,6 +29,12 @@ const prose = {
   // @section fireButton
   fireButton: {
     fireButtonAlt: "Fire button",
+    // Said when the server turns a shot down (M1.1). The reason comes from
+    // the backend, so it is not in here; this is the frame around it, and the
+    // fallback for a refusal that arrived with nothing to say.
+    shotRefused: (reason) => `Shot not taken: ${reason}`,
+    shotRefusedUnknown: "Shot not taken. Try again.",
+    dismissRefusal: "Dismiss",
   },
   // @section fullscreenButton
   fullscreenButton: {
@@ -164,6 +170,22 @@ const prose = {
     closeMapLabel: "Close map",
     closeMapSymbol: "x",
   },
+  // @section nextEvent
+  nextEvent: {
+    // The strip at the top of every phone: what the game has cued up, and how
+    // long is left. The label and the clock are separate entries because the
+    // clock is a live component between them, not a value to interpolate.
+    circleLabel: "Circle closes in",
+    dropLabel: "Drop in",
+    // At zero the countdown has run out but the server has not necessarily
+    // announced yet, so these say what is happening rather than leaving a
+    // stopped 00:00 on screen.
+    circleNow: "The circle is closing",
+    dropNow: "The courier has set off",
+    // Whatever the admin typed about the drop - its contents, in practice -
+    // set off from the countdown rather than run into it.
+    note: (note) => `— ${note}`,
+  },
   // @section onboardingView
   onboardingView: {
     logoAlt: "Streetfight, by Charles and Gaby",
@@ -174,6 +196,12 @@ const prose = {
     locationError:
       "Couldn't get your location — check Settings > Privacy > Location Services, then tap again.",
     compassPermission: "Grant compass permission:",
+    // The sound check (see useSoundCheck.js). Once it has been tapped the row
+    // keeps an instruction rather than congratulating the player: we know they
+    // pressed it, we have no idea whether they heard it, and the phone being on
+    // silent is the whole failure this is here to catch.
+    soundCheck: "Turn your sound on, then tap to test it:",
+    soundCheckDone: "Heard that? If not, take your phone off silent.",
     // Lowercase, unlike pickOutfit.channelDisplayNames - this reads as part
     // of a sentence ("white t-shirt"), not a fieldset legend.
     garmentNames: { tshirt: "t-shirt", armbands: "armband" },
@@ -269,6 +297,18 @@ const prose = {
   popup: {
     scrollHintLabel: "Scroll down for more",
   },
+  // @section radar
+  radar: {
+    // The band at the top of the screen while a radar card is running. The
+    // clock is a live component between the two, not a value to interpolate.
+    stripLabel: "Radar",
+    stripTail: "left",
+    // Beside each contact on the map. The card promises where somebody was
+    // last seen and never where they are, so every dot says its own age.
+    lastSeen: (minutes) => `${minutes} min ago`,
+    justNow: "just now",
+    out: "out",
+  },
   // @section scoreboard
   scoreboard: {
     playerHeader: "Player",
@@ -342,6 +382,27 @@ const prose = {
   swatch: {
     unknownTitle: "not in palette",
     unknownSymbol: "?",
+  },
+  // @section teamLeader
+  // The leader's checklist. Charles has not supplied his own wording yet, so
+  // this is the milestones doc's first draft (M7). Each item is something the
+  // leader can look at and answer yes or no to for every member of their team
+  // - "knows the rules" is not on the list, because nobody can check it.
+  teamLeader: {
+    buttonText: "Team leader",
+    heading: "You are a team leader",
+    intro:
+      "Before the game starts, go round your team and check each of these. " +
+      "Nobody else is going to.",
+    checklist: [
+      "Everyone has the app open, with the camera and location allowed.",
+      "Everyone has scanned the team card, and the app says the right team.",
+      "Hats and armbands are on, and match the colours the app shows.",
+      "Everyone has had their photo taken at the desk.",
+      "Everyone knows they have to wait between shots, and that a pub code is worth ammo to the whole team.",
+    ],
+    footer:
+      "Anything you cannot fix, bring to the desk before the game starts.",
   },
   // @section userMode
   userMode: {

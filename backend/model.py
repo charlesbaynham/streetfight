@@ -24,7 +24,15 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import relationship
 from sqlalchemy_utils import UUIDType
 
-DEFAULT_SHOT_TIMEOUT = 6
+DEFAULT_SHOT_TIMEOUT = 25
+
+# The weapon a player is handed by the 16:00 reset, and the hit points they
+# start it with. A weapon is the pair (shot_damage, shot_timeout), named by
+# item_actions.WEAPON_NAME_LOOKUP -- this one is the Pewster. There is no
+# armour column: level n armour sets hit_points to n + 1, so "starting armour
+# 1" is a starting hit_points of 2.
+BASIC_WEAPON = (1, DEFAULT_SHOT_TIMEOUT)
+STARTING_HIT_POINTS = 2
 
 # The values Shot.ai_review_state can take. They live here, next to the column,
 # rather than in backend.ai_shot_review so that code which only reads the column
@@ -116,6 +124,49 @@ class Game(Base):
     drop_circle_lat = Column(Float, nullable=True)
     drop_circle_long = Column(Float, nullable=True)
     drop_circle_radius = Column(Float, nullable=True)
+
+    # What the players are told is coming next, and when (M3.1). The kind is
+    # one of backend.next_event's KIND_CIRCLE / KIND_DROP, next_event_at is
+    # the epoch second it lands at, and next_event_note is the free text an
+    # admin typed to go with it - the drop's contents, in practice. All three
+    # are null together when nothing is cued, and are cleared together when
+    # the cue fires or is cancelled, so next_event_at is the one field to test
+    # for "is anything cued".
+    #
+    # They live on the Game rather than in a table of their own because only
+    # one thing is ever cued at a time, and because a column can ride out to
+    # every phone on UserModel, where the existing "user" SSE refetch delivers
+    # it with no new stream.
+    next_event_kind = Column(String, nullable=True)
+    next_event_at = Column(Float, nullable=True)
+    next_event_note = Column(String, nullable=True)
+
+    # Where the courier is right now (M4.1): whoever is walking a crate to a
+    # drop, broadcasting from /admin/courier. It hangs off the Game and not
+    # off a User because the courier is not playing - there is no player row
+    # to put it on, and only one person carries the crate at a time.
+    #
+    # All null means nobody is broadcasting, which is also the state after the
+    # drop is placed: the courier's job ends when the crate is on the ground.
+    # courier_timestamp is what the maps fade the dot by, so a stale fix
+    # reads as stale rather than as a courier standing still.
+    #
+    # courier_accuracy is the browser's own radius-in-metres estimate. Like
+    # User.location_accuracy and Shot.heading it is captured because it cannot
+    # be recovered after the night, and is consumed by nothing yet.
+    courier_lat = Column(Float, nullable=True)
+    courier_long = Column(Float, nullable=True)
+    courier_timestamp = Column(Float, nullable=True)
+    courier_accuracy = Column(Float, nullable=True)
+
+    # Has the next circle been announced to the players (M6.2)? Placing NEXT
+    # no longer tells anybody: the cue (M3.2) is what makes it public, and
+    # until then the only players who see it are the ones holding a live
+    # early-warning card. Placing or clearing NEXT puts this back to False, so
+    # moving the circle mid-countdown takes it off every phone again. The
+    # admin map and the spectator screen read the columns directly and always
+    # see it.
+    next_circle_public = Column(Boolean, nullable=False, default=False)
 
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
@@ -315,10 +366,28 @@ class User(Base):
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
     )
 
+    # One player per team is nominated at the door as its leader: the person
+    # who is asked to check their team is properly equipped before the game
+    # starts. It is a label and a checklist, not a permission - a leader can do
+    # nothing in the app another player cannot.
+    is_team_leader = Column(Boolean, nullable=False, default=False)
+
     num_bullets = Column(Integer, nullable=False, default=0)
+    # A fresh player gets STARTING_HIT_POINTS, which _make_user passes
+    # explicitly - it is the only place a User row is built. This default is
+    # what a row written any other way would land with, and is left at one so
+    # that a player conjured up outside that path is not silently armoured.
     hit_points = Column(Integer, nullable=False, default=1)
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
+
+    # When this player last fired, in epoch seconds, so the server can refuse
+    # a shot inside their own cooldown (M1.1) - a client-side timer is one
+    # page reload away from being gone. Deliberately not derived from the
+    # player's newest Shot.time_created: that is a DateTime with one-second
+    # resolution, and a reset deletes the rows, which would hand everybody a
+    # free shot. Null for a player who has not fired since the column arrived.
+    last_shot_at = Column(Float, nullable=True)
 
     # The appeal budget (roadmap R8), mechanically ammo: spent when an appeal
     # is lodged, handed back when it is upheld, reset with the rest of a
@@ -336,6 +405,17 @@ class User(Base):
 
     time_of_death = Column(Float, nullable=True)
     "Timestamp at which this user transitions from dying to dead"
+
+    # The radar card (M6.1): the epoch second at which the holder stops being
+    # able to see where everybody else last was. Null, or a moment in the
+    # past, means no radar - so it expires by itself and nothing has to tidy
+    # it up, and a reset that clears the items leaves nothing behind either.
+    radar_until = Column(Float, nullable=True)
+
+    # The early circle-warning card (M6.2), the same shape: the epoch second
+    # at which the holder stops seeing the next circle before it is announced.
+    # Null or past means no warning.
+    circle_warning_until = Column(Float, nullable=True)
 
     # The player's identity slot (backend/identity/): a member of
     # default_scheme().usable_slots() that determines the canonical colour
@@ -429,6 +509,12 @@ class ItemType(str, enum.Enum):
     MEDPACK = "medpack"
     ARMOUR = "armour"
     WEAPON = "weapon"
+    # The two experimental items. An Enum column is a VARCHAR with no check
+    # constraint, so a new member needs no migration; their handlers are not
+    # written yet, and until they are `do_item_actions` raises
+    # NotImplementedError - a RuntimeError, so a scan is refused with a 403.
+    RADAR = "radar"
+    CIRCLE_WARNING = "circle_warning"
 
 
 class TickerEntry(Base):
@@ -494,6 +580,29 @@ class Item(Base):
     )
 
 
+class RevokedBatch(Base):
+    """A print run that has been withdrawn, and so no longer collectable.
+
+    A code is an HMAC over its payload and nothing else, which is what lets a
+    card be printed on Thursday for a server that is deployed on Friday - and
+    is equally why a printed code cannot be recalled. Rotating ``SECRET_KEY``
+    would withdraw everything at once, the team cards included. So every code
+    minted carries a ``batch`` (:class:`backend.items.ItemModel`), and
+    withdrawing one is a row here: at 16:00 the sandbox's wall posters stop
+    working while the game's own cards, minted as "game", carry on.
+
+    The row's presence is the whole of the state, so un-withdrawing is a
+    delete. A code minted before batches existed has no batch at all and can
+    never be withdrawn this way - which is the right answer, since there is
+    nothing to name it by.
+    """
+
+    __tablename__ = "revoked_batches"
+
+    batch = Column(String, primary_key=True, nullable=False)
+    revoked_at = Column(DateTime, server_default=func.now())
+
+
 class GameModel(pydantic.BaseModel):
     id: UUID
 
@@ -517,6 +626,17 @@ class GameModel(pydantic.BaseModel):
     drop_circle_long: Optional[float] = None
     drop_circle_radius: Optional[float] = None
 
+    next_event_kind: Optional[str] = None
+    next_event_at: Optional[float] = None
+    next_event_note: Optional[str] = None
+
+    courier_lat: Optional[float] = None
+    courier_long: Optional[float] = None
+    courier_timestamp: Optional[float] = None
+    courier_accuracy: Optional[float] = None
+
+    next_circle_public: bool = False
+
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
@@ -525,12 +645,27 @@ class UserModel(pydantic.BaseModel):
     name: Optional[str] = None
 
     team_id: Optional[UUID] = None
+    is_team_leader: bool = False
 
     num_bullets: int
     hit_points: int
     shot_timeout: float
     shot_damage: int
+
+    # The epoch second at which this player may fire again: last_shot_at plus
+    # their own shot_timeout, or None when they are free to fire now. Derived
+    # rather than stored, so the phone counts down to the server's answer
+    # instead of running its own timer - a reload then comes back still
+    # cooling. Not an ORM attribute; get_user_model fills it in.
+    next_shot_at: Optional[float] = None
+
     time_of_death: Optional[float] = None
+
+    # Rides out with the rest so the phone knows its radar is running without
+    # asking: scanning the card is a write on this player, so the "user" SSE
+    # event they already listen to carries it. RadarLayer.js is what polls,
+    # and only while this says it is worth polling.
+    radar_until: Optional[float] = None
 
     # Rides the SSE "user" payload beside num_bullets, so a player weighing up
     # an appeal always has the count in front of them without a poll
@@ -562,6 +697,14 @@ class UserModel(pydantic.BaseModel):
     # model_validate.
     outfit_wardrobe: Optional[Dict[str, Dict[str, Optional[str]]]] = None
     outfit_provided: Optional[Dict[str, Dict[str, Optional[str]]]] = None
+
+    # What the game says is coming next, copied off the player's Game so that
+    # the "user" SSE event every phone already listens to carries it (M3.1).
+    # Null when nothing is cued. Not ORM attributes either, so get_user_model
+    # fills them in after model_validate, like the two above.
+    next_event_kind: Optional[str] = None
+    next_event_at: Optional[float] = None
+    next_event_note: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

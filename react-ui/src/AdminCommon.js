@@ -183,6 +183,7 @@ export function AdminNav() {
       </AdminNavLink>
       <AdminNavLink to="/admin/spectator">Spectator screen</AdminNavLink>
       <AdminNavLink to="/admin/printables">Printables</AdminNavLink>
+      <AdminNavLink to="/admin/courier">Courier</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">
         Identity overrides
