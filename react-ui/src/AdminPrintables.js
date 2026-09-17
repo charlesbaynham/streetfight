@@ -193,7 +193,7 @@ function TeamCards() {
 
 function PubPages() {
   const [count, setCount] = useState(6);
-  const [bullets, setBullets] = useState(2);
+  const [bullets, setBullets] = useState(5);
 
   return (
     <Printable

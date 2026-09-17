@@ -32,7 +32,10 @@ function getTimeRemaining(timestamp) {
   const now = new Date().getTime();
   const timeRemaining = Math.max(0, timestamp - now); // Ensure time doesn't go negative
 
-  const minutes = Math.floor((timeRemaining / (1000 * 60)) % 60);
+  // Total minutes, not minutes-past-the-hour: a cue an admin sets ninety
+  // minutes out must not read 30:00 (the knocked-out clock never gets near an
+  // hour, so this changes nothing for it).
+  const minutes = Math.floor(timeRemaining / (1000 * 60));
   const seconds = Math.floor((timeRemaining / 1000) % 60);
 
   const formattedMinutes = minutes.toString().padStart(2, "0");
@@ -41,14 +44,20 @@ function getTimeRemaining(timestamp) {
   return `${formattedMinutes}:${formattedSeconds}`;
 }
 
-function CountdownTimer({ deadline }) {
-  const [output, setOutput] = useState("");
+// mm:ss down to a deadline in epoch milliseconds, ticking every second and
+// floored at 00:00. Exported for NextEventStrip.js - one formatter, so the
+// knocked-out clock and the "what happens next" strip count the same way.
+export function CountdownTimer({ deadline }) {
+  const [output, setOutput] = useState(() => getTimeRemaining(deadline));
 
   const update = useCallback(() => {
     setOutput(getTimeRemaining(deadline));
   }, [setOutput, deadline]);
 
   useEffect(() => {
+    // Render the first value straight away rather than a second late: a strip
+    // that appears blank is a strip nobody trusts.
+    update();
     const timer_id = setInterval(update, 1000);
     return () => {
       clearInterval(timer_id);

@@ -349,6 +349,9 @@ export function makeUser(overrides = {}) {
     identity_slot: null,
     outfit_wardrobe: null,
     outfit_provided: null,
+    next_event_kind: null,
+    next_event_at: null,
+    next_event_note: null,
     ...overrides,
   };
 }

@@ -125,6 +125,22 @@ class Game(Base):
     drop_circle_long = Column(Float, nullable=True)
     drop_circle_radius = Column(Float, nullable=True)
 
+    # What the players are told is coming next, and when (M3.1). The kind is
+    # one of backend.next_event's KIND_CIRCLE / KIND_DROP, next_event_at is
+    # the epoch second it lands at, and next_event_note is the free text an
+    # admin typed to go with it - the drop's contents, in practice. All three
+    # are null together when nothing is cued, and are cleared together when
+    # the cue fires or is cancelled, so next_event_at is the one field to test
+    # for "is anything cued".
+    #
+    # They live on the Game rather than in a table of their own because only
+    # one thing is ever cued at a time, and because a column can ride out to
+    # every phone on UserModel, where the existing "user" SSE refetch delivers
+    # it with no new stream.
+    next_event_kind = Column(String, nullable=True)
+    next_event_at = Column(Float, nullable=True)
+    next_event_note = Column(String, nullable=True)
+
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
@@ -525,6 +541,10 @@ class GameModel(pydantic.BaseModel):
     drop_circle_long: Optional[float] = None
     drop_circle_radius: Optional[float] = None
 
+    next_event_kind: Optional[str] = None
+    next_event_at: Optional[float] = None
+    next_event_note: Optional[str] = None
+
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 
 
@@ -570,6 +590,14 @@ class UserModel(pydantic.BaseModel):
     # model_validate.
     outfit_wardrobe: Optional[Dict[str, Dict[str, Optional[str]]]] = None
     outfit_provided: Optional[Dict[str, Dict[str, Optional[str]]]] = None
+
+    # What the game says is coming next, copied off the player's Game so that
+    # the "user" SSE event every phone already listens to carries it (M3.1).
+    # Null when nothing is cued. Not ORM attributes either, so get_user_model
+    # fills them in after model_validate, like the two above.
+    next_event_kind: Optional[str] = None
+    next_event_at: Optional[float] = None
+    next_event_note: Optional[str] = None
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

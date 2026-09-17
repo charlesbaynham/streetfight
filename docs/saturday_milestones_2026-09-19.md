@@ -147,7 +147,33 @@ deployed and crash-loops the service. So make CI the gate:
 3. **Refresh the snapshot when live moves**, in the deploy PR or straight
    after: the file name carries the revision, so a stale snapshot is visible.
 
-Lands in: `tests/live_schema/`, `tests/test_database.py`. Status: open.
+Lands in: `tests/live_schema/`, `tests/test_database.py`.
+*(status: shipped 2026-09-17, PR #255)*
+
+Shipped as `TestLiveSchemaUpgrade` in `tests/test_database.py`, with two
+tests rather than one. The second is the specified insert-and-read-back
+through every mapped class (and it fails by name if a new ORM class has no
+row, so the coverage cannot quietly rot). The first is the one that does most
+of the work: it compares the upgraded database against a database built fresh
+from the current models, column by column, which is what actually catches a
+rename or a drop — a dropped *nullable* column leaves the ORM perfectly able
+to write a row, so writing one proves nothing. It catches a type change too,
+which the write does not, since sqlite barely has types. An undefaulted `NOT
+NULL` column fails earlier still, inside `add_missing_columns`. All four
+shapes were confirmed by throwaway edits to `model.py`, and both permitted
+shapes (a nullable column, a scalar-defaulted `NOT NULL` one) confirmed to
+pass.
+
+Refreshing the snapshot is a script rather than a recipe:
+`python tests/live_schema/refresh.py <rev>` loads that revision's
+`backend/model.py` on its own, runs `create_all()` into a throwaway sqlite
+file and writes `tests/live_schema/<today>_<rev7>.sql`. Delete the file it
+replaces and point `TestLiveSchemaUpgrade.SNAPSHOT` at the new one.
+
+Knowingly not covered: an index added to an existing table, which
+`create_all()` also fails to apply to live. It costs speed rather than
+correctness, and nothing here could tell an intended new index from an
+accident.
 
 ---
 
@@ -195,7 +221,12 @@ Lands in: `backend/model.py`, `backend/user_interface.py`,
 `backend/printables.py`, `backend/main.py`, `react-ui/src/weapons.js`,
 `react-ui/src/utils.js`, `react-ui/src/AdminPrintables.js`.
 
-### M0.2 — Pub poster: five bullets *(status: open)*
+### M0.2 — Pub poster: five bullets *(status: shipped 17 Sept, PR #254)*
+
+The artwork's "2x" was erased and "5x" redrawn with Pillow in the same
+purple (`#8103D0`) and pen weight; the bullets are still drawn twice, since
+adding three more convincingly is more than a Pillow paint-over. Charles can
+redraw the line in his own hand over the top of this.
 
 - `BULLETS_PER_TEAM_MEMBER = 5` (`generate_pub_pages.py:52`), the module
   docstring, `AdminPrintables.js:196`'s `useState(2)`, the three literal 2s in
@@ -268,7 +299,7 @@ answer rather than a fright. Drawn text on the card in `generate_qr_items.py`
 number is a module constant Charles fills in. Verify the sheets still pass
 `tests/test_generate_qr_items.py`.
 
-### M0.6 — Redraw the map against the nineteen pubs *(status: open; needs Charles for the Gemini round-trip)*
+### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
 
 Roadmap #12, reopened 12 Sept: eleven of the nineteen pubs have no marker.
 Now print-critical, because the poster (M0.7) is this image. Rerun the
@@ -283,6 +314,15 @@ result with `scripts/check_venue_map.py` and wires it in
 (`react-ui/src/images/map_westminster.jpg`, `tests/test_venues.py`). Fixing
 the two known label errors ("Great Peter Street" for Great Smith Street; The
 Speaker's own street unlabelled) is welcome if the trace gives it for free.
+
+**The first half is done.** `docs/venue_map_westminster/` holds the bundle —
+the prompt with all nineteen pubs in it, the four reference images, and a
+`README.md` saying exactly what to attach and what to look at when the
+drawing comes back. The pubs were passed to the builder by hand
+(`build.sh`, the new `--pub` flag) rather than searched for, so the skeleton
+marks Charles's nineteen and not the nineteen nearest. Both known label
+errors come out right on the new skeleton, so the trace gets them for free.
+**Outstanding: run `prompt.md` at Gemini and hand back the image.**
 
 ### M0.7 — A printable map poster *(status: open; new)*
 
@@ -365,7 +405,7 @@ Two-tap confirm on the button, like the demo button.
 
 ## M3 — Countdown and announcements *(by Friday; the biggest player-facing change)*
 
-### M3.1 — "What happens next" on every phone *(status: open)*
+### M3.1 — "What happens next" on every phone *(status: shipped 2026-09-17, PR #258)*
 
 - `Game.next_event_kind` (`"circle"` / `"drop"`), `next_event_at` (epoch
   float), `next_event_note` (the drop's contents, admin-typed) — three
@@ -378,6 +418,14 @@ Two-tap confirm on the button, like the demo button.
   "Drop in 04:30 — 2× level 2 armour, a Tracka-Tracka, a medpack". Prose in
   `prose.js`. Shown on the waiting page too. Nothing when nothing is cued.
 - Spectator screen shows the same (nice-to-have).
+
+Shipped as the carriage only: the columns, the ride out on `UserModel`, the
+strip and the spectator screen's pill. Nothing sets the columns yet, so the
+`trigger_update_event("user", …)` fan-out lands with the setter that needs it
+(`cue_next_event`, M3.2) rather than here. The kind strings live in a new
+`backend/next_event.py`, which is where M3.2's timer goes. The strip sits above
+the waiting page too, and reads the cue off `User.game` rather than the team's,
+so a signed-up player with no team still sees it.
 
 ### M3.2 — Cue the next circle *(status: open)*
 

@@ -822,7 +822,7 @@ and the Millbank government blocks are most of the eastern half.
    `backend/generate_pub_pages.py` (`npm run pubgen -- --count 19`) writes a
    PDF of portrait A4 posters, one page and one code per pub, reusing the
    `reusable bullets.png` artwork from last time. Each code is ammo worth
-   **two bullets to every member** of the first team to scan it, claimable
+   **five bullets to every member** of the first team to scan it, claimable
    once per team and once by every team. The pages say nothing about which pub
    they are for, so no register has to be kept.
 
