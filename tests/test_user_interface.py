@@ -14,6 +14,8 @@ from backend.identity.config import hex_for
 from backend.model import User
 from backend.user_interface import UserInterface
 
+from .shared_fixtures import NO_FIRE_DELAY
+
 SCHEME = default_scheme()
 
 # Two slots whose canonical outfits share no colour in any channel, so a
@@ -79,16 +81,22 @@ def test_user_shots_respect_ammo(db_session, team_factory, user_factory, test_im
 
     UserInterface(user_id).join_team(team_id)
 
-    # Give the user some bullets
+    # Bullets, and a weapon with no fire delay: this test is about running out
+    # of ammo, and the server-side cooldown (M1.1) would otherwise refuse
+    # shots two and three for a reason it is not about.
     user = db_session.query(User).filter_by(id=user_id).first()
     user.num_bullets = 3
+    user.shot_timeout = NO_FIRE_DELAY
     db_session.commit()
 
     for _ in range(3):
         UserInterface(user_id).submit_shot(test_image)
 
-    with pytest.raises(HTTPException):
+    # ...and the refusal has to be the ammo one, now that there is a second
+    # thing in submit_shot that answers with a 403.
+    with pytest.raises(HTTPException) as refusal:
         UserInterface(user_id).submit_shot(test_image)
+    assert refusal.value.detail == "User has no ammo"
 
 
 def test_user_cannot_shoot_when_dead(

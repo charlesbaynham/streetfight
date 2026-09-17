@@ -29,6 +29,12 @@ const prose = {
   // @section fireButton
   fireButton: {
     fireButtonAlt: "Fire button",
+    // Said when the server turns a shot down (M1.1). The reason comes from
+    // the backend, so it is not in here; this is the frame around it, and the
+    // fallback for a refusal that arrived with nothing to say.
+    shotRefused: (reason) => `Shot not taken: ${reason}`,
+    shotRefusedUnknown: "Shot not taken. Try again.",
+    dismissRefusal: "Dismiss",
   },
   // @section fullscreenButton
   fullscreenButton: {

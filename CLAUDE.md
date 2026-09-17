@@ -1088,6 +1088,26 @@ Three deployment targets share one service definition:
   runs on this session part-way through, and a `@db_scoped` call from another
   interface **commits**, expiring every ORM object, so a later attribute read
   reloads one and autoflushes.
+- **The fire cooldown is the server's rule, not the button's.** `submit_shot`
+  refuses a shot fired less than the player's own `shot_timeout` after their
+  last one (`User.last_shot_at`, epoch seconds, written beside the bullet
+  decrement), with a 403 whose `detail` says how long is left. Before that the
+  only timer was `FireButton.js`'s `setTimeout`, so a reload, a second tab or
+  a hand-rolled POST fired as fast as you could press. Three things about it
+  are deliberate: it is checked **before** the photograph is stored and the
+  bullet spent, so a refused shot costs nothing; `last_shot_at` is its own
+  column rather than the newest `Shot.time_created`, which has one-second
+  resolution and is deleted by a reset; and a shot carrying its own
+  `time_created` is **exempt**, because that argument is only ever passed by
+  the replay and the demo drip, which deal out a simulated hour in whatever
+  order suits them. `UserModel.next_shot_at` is the derived epoch second the
+  phone counts down to (`FireButton.js`), so a reload comes back still
+  cooling; it is clamped there to the player's own cooldown, since the
+  server's clock and the phone's need not agree. `MyWebcam.js` now checks
+  `response.ok` and publishes the refusal through `shotRefusalStore.js` to
+  `ShotRefusedNotice.js` — a store rather than a prop threaded through
+  `WebcamView`, because the admin's reference-photo page mounts the same
+  camera and must not show a player's cooldown message.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

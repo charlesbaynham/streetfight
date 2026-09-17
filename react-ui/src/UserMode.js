@@ -27,6 +27,7 @@ import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
 import { TeamLeaderButton } from "./TeamLeaderPanel";
 import ShotReceivedOverlay from "./ShotReceivedOverlay";
+import ShotRefusedNotice from "./ShotRefusedNotice";
 import useWakeLock from "./useWakeLock";
 
 const isGameRunning = (user) => Boolean(user && user.active);
@@ -105,6 +106,7 @@ function GetView({ user }) {
 
       <ShotHistoryController />
       <ShotReceivedOverlay user={user} />
+      <ShotRefusedNotice />
 
       {isAlive ? (
         <CrosshairImage />

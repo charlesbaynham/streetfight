@@ -24,6 +24,8 @@ from backend.user_interface import UserInterface
 from backend.vision_client import FakeVisionClient
 from backend.vision_client import VisionError
 
+from .shared_fixtures import NO_FIRE_DELAY
+
 SCHEME = default_scheme()
 
 TARGET_SLOT = 7
@@ -645,7 +647,7 @@ def test_an_ambiguous_head_blocks_and_an_admin_resolution_cascades(
 ):
     ui = UserInterface(user_in_team)
     ui.award_ammo(2)
-    ui.set_weapon_data(1, 6)
+    ui.set_weapon_data(1, NO_FIRE_DELAY)
     older = ui.submit_shot(test_image_string)
     newer = ui.submit_shot(test_image_string)
     set_shot_time(db_session, older, datetime(2026, 1, 1, 12, 0, 0))
@@ -676,10 +678,10 @@ def test_a_knockout_mid_drain_refunds_the_victims_shot_and_continues(
 ):
     shooter_ui = UserInterface(user_in_team)
     shooter_ui.award_ammo(2)
-    shooter_ui.set_weapon_data(1, 6)
+    shooter_ui.set_weapon_data(1, NO_FIRE_DELAY)
     victim_ui = UserInterface(target_with_slot)
     victim_ui.award_ammo(1)
-    victim_ui.set_weapon_data(1, 6)
+    victim_ui.set_weapon_data(1, NO_FIRE_DELAY)
 
     kill_shot = shooter_ui.submit_shot(test_image_string)
     victims_shot = victim_ui.submit_shot(test_image_string)
@@ -716,7 +718,7 @@ def test_a_shot_queued_behind_a_kill_resolves_against_the_dead_target(
     enqueue = mocker.patch("backend.shot_escalation.enqueue_escalation")
     ui = UserInterface(user_in_team)
     ui.award_ammo(3)
-    ui.set_weapon_data(1, 6)
+    ui.set_weapon_data(1, NO_FIRE_DELAY)
     kill_shot = ui.submit_shot(test_image_string)
     after_death = ui.submit_shot(test_image_string)
     later_shot = ui.submit_shot(test_image_string)

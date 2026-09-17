@@ -142,3 +142,114 @@ describe("FireButton - firing", () => {
     expect(getButton()).toBeEnabled();
   });
 });
+
+// The cooldown is the server's to decide (M1.1): submit_shot refuses a shot
+// fired inside one, and UserModel.next_shot_at says when the player may fire
+// again. Counting down to that instead of to a local setTimeout is what makes
+// a reload come back still cooling rather than handing over a fresh button.
+describe("FireButton - the server's cooldown", () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  // next_shot_at is epoch *seconds*, as the backend sends it.
+  const secondsFromNow = (seconds) => (Date.now() + seconds * 1000) / 1000;
+
+  test("a player who arrives mid-cooldown starts disabled, without clicking", () => {
+    render(
+      <FireButton
+        user={makeUser({ shot_timeout: 25, next_shot_at: secondsFromNow(10) })}
+        onClick={jest.fn()}
+      />,
+    );
+
+    expect(getButton()).toBeDisabled();
+    expect(screen.getByAltText(prose.fireButton.fireButtonAlt).src).toContain(
+      fireButtonImgCooldown,
+    );
+  });
+
+  test("...and re-enables when the server's moment arrives, not a whole timeout later", () => {
+    render(
+      <FireButton
+        user={makeUser({ shot_timeout: 25, next_shot_at: secondsFromNow(10) })}
+        onClick={jest.fn()}
+      />,
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(9999);
+    });
+    expect(getButton()).toBeDisabled();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(getButton()).toBeEnabled();
+  });
+
+  test("a next_shot_at already in the past leaves the button ready", () => {
+    render(
+      <FireButton
+        user={makeUser({ shot_timeout: 25, next_shot_at: secondsFromNow(-5) })}
+        onClick={jest.fn()}
+      />,
+    );
+
+    expect(getButton()).toBeEnabled();
+  });
+
+  test("a wildly optimistic next_shot_at is clamped to the player's own cooldown", () => {
+    // A phone whose clock is hours behind the server's would otherwise read
+    // its own cooldown as hours long and lock the player out of the game.
+    render(
+      <FireButton
+        user={makeUser({
+          shot_timeout: 25,
+          next_shot_at: secondsFromNow(3600),
+        })}
+        onClick={jest.fn()}
+      />,
+    );
+
+    expect(getButton()).toBeDisabled();
+
+    act(() => {
+      jest.advanceTimersByTime(25000);
+    });
+    expect(getButton()).toBeEnabled();
+  });
+
+  test("a server cooldown longer than the local one wins after a click", () => {
+    // The player fires; the server comes back saying they are cooling for
+    // longer than this phone thought (a slow round trip, a clock a little
+    // behind). The button must not re-enable early and earn them a 403.
+    const { rerender } = render(
+      <FireButton user={makeUser({ shot_timeout: 5 })} onClick={jest.fn()} />,
+    );
+
+    fireEvent.click(getButton());
+    expect(getButton()).toBeDisabled();
+
+    rerender(
+      <FireButton
+        user={makeUser({ shot_timeout: 5, next_shot_at: secondsFromNow(5) })}
+        onClick={jest.fn()}
+      />,
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(4999);
+    });
+    expect(getButton()).toBeDisabled();
+
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(getButton()).toBeEnabled();
+  });
+});

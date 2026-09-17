@@ -350,6 +350,14 @@ class User(Base):
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
 
+    # When this player last fired, in epoch seconds, so the server can refuse
+    # a shot inside their own cooldown (M1.1) - a client-side timer is one
+    # page reload away from being gone. Deliberately not derived from the
+    # player's newest Shot.time_created: that is a DateTime with one-second
+    # resolution, and a reset deletes the rows, which would hand everybody a
+    # free shot. Null for a player who has not fired since the column arrived.
+    last_shot_at = Column(Float, nullable=True)
+
     # The appeal budget (roadmap R8), mechanically ammo: spent when an appeal
     # is lodged, handed back when it is upheld, reset with the rest of a
     # player's stats in AdminInterface.reset_game.
@@ -594,6 +602,14 @@ class UserModel(pydantic.BaseModel):
     hit_points: int
     shot_timeout: float
     shot_damage: int
+
+    # The epoch second at which this player may fire again: last_shot_at plus
+    # their own shot_timeout, or None when they are free to fire now. Derived
+    # rather than stored, so the phone counts down to the server's answer
+    # instead of running its own timer - a reload then comes back still
+    # cooling. Not an ORM attribute; get_user_model fills it in.
+    next_shot_at: Optional[float] = None
+
     time_of_death: Optional[float] = None
 
     # Rides the SSE "user" payload beside num_bullets, so a player weighing up
