@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import os
+import time
 from collections import namedtuple
 from enum import Enum
 from typing import List
@@ -15,6 +16,7 @@ from sqlalchemy import and_
 from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
+from . import next_event
 from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
@@ -233,6 +235,25 @@ CIRCLE_TICKER_MESSAGES = {
         True: tk.TickerMessageType.ADMIN_CLEARED_CIRCLE_DROP,
     },
 }
+
+# What the ticker says when a countdown starts, by the kind being counted down
+# to (backend/next_event.py). Same shape as CIRCLE_TICKER_MESSAGES above.
+CUE_TICKER_MESSAGES = {
+    next_event.KIND_CIRCLE: tk.TickerMessageType.CUE_CIRCLE,
+    next_event.KIND_DROP: tk.TickerMessageType.CUE_DROP,
+}
+
+
+def _countdown_words(seconds: float) -> str:
+    """How long is left, said the way somebody would say it out loud.
+
+    The ticker line is read once, in passing, by somebody walking: "10
+    minutes" is what that wants, not "600s" and not "09:58".
+    """
+    if seconds < 90:
+        return f"{round(seconds)} seconds"
+    minutes = round(seconds / 60)
+    return "1 minute" if minutes == 1 else f"{minutes} minutes"
 
 
 class AdminInterface:
@@ -468,6 +489,225 @@ class AdminInterface:
 
         # Trigger a circle update
         trigger_circle_update(game_id)
+
+    def _game_user_ids(self, game_id: UUID) -> List[UUID]:
+        """Everybody in a game, whether or not they are in a team yet.
+
+        On ``User.game_id`` rather than by walking the teams the way
+        :meth:`set_game_active` does: a player who has signed up through the
+        game-wide link and has not been handed a team is exactly who the
+        waiting page - and so the countdown strip - is for.
+        """
+        return [
+            row[0]
+            for row in self._session.query(User.id).filter(User.game_id == game_id)
+        ]
+
+    @staticmethod
+    def _clear_cue(game: Game) -> None:
+        """Wipe a game's cue. All three columns together, always: null
+        ``next_event_at`` is what "nothing is cued" means everywhere else."""
+        game.next_event_kind = None
+        game.next_event_at = None
+        game.next_event_note = None
+
+    @db_scoped
+    def cue_next_event(
+        self,
+        game_id: UUID,
+        kind: str,
+        seconds: float,
+        note: Optional[str] = None,
+    ) -> float:
+        """Start the countdown to the next circle or the next drop.
+
+        Returns the deadline it set, in epoch seconds. Replaces whatever was
+        cued before, cue and timer together - there is only ever one thing
+        coming next.
+
+        The timer is armed here rather than in the route for the usual reason
+        (``CLAUDE.md``: announce beside the state change): the route is not the
+        only caller, and a cue written with no clock behind it is a countdown
+        that reaches zero and does nothing.
+        """
+        logger.info("AdminInterface - cue_next_event %s/%s/%ss", game_id, kind, seconds)
+
+        try:
+            kind = next_event.NextEventKind(kind).value
+        except ValueError:
+            raise HTTPException(400, f"Unknown event kind {kind}")
+        if seconds <= 0:
+            raise HTTPException(400, "A countdown has to be to some time in the future")
+
+        game: Game = self._get_game_orm(game_id)
+        deadline = time.time() + seconds
+
+        game.next_event_kind = kind
+        game.next_event_at = deadline
+        game.next_event_note = note.strip() if note and note.strip() else None
+
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        tk.send_ticker_message(
+            CUE_TICKER_MESSAGES[kind],
+            {"num": _countdown_words(seconds)},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        next_event.arm(game_id, deadline)
+
+        return deadline
+
+    @db_scoped
+    def cancel_cue(self, game_id: UUID) -> None:
+        """Call the countdown off. The circle or drop it was counting down to
+        is left exactly as it is - only the clock goes."""
+        logger.info("AdminInterface - cancel_cue %s", game_id)
+
+        game: Game = self._get_game_orm(game_id)
+        if game.next_event_at is None:
+            return
+
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.CUE_CANCELLED,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        next_event.disarm(game_id)
+
+    @db_scoped
+    def fire_next_event(
+        self, game_id: UUID, expected_at: Optional[float] = None
+    ) -> bool:
+        """Act on a game's cue because its moment has come. Returns whether
+        anything happened.
+
+        ``expected_at`` is the deadline the caller thinks it is firing.
+        Checking it here is the double-firing guard: a timer that slept
+        through a re-cue, or through an admin cancelling and starting again,
+        finds a different deadline in the database and does nothing. The
+        timers themselves are cancelled on a re-cue too
+        (:func:`next_event.arm`), so this is the second line rather than the
+        first - but it is the one that holds when the process restarted in
+        between.
+        """
+        game: Game = self._get_game_orm(game_id)
+
+        if game.next_event_at is None:
+            logger.info("Game %s has no cue to fire", game_id)
+            return False
+
+        if (
+            expected_at is not None
+            and abs(game.next_event_at - expected_at) > next_event.DEADLINE_EPSILON_S
+        ):
+            logger.info(
+                "Not firing game %s's cue: it was re-cued while the clock ran",
+                game_id,
+            )
+            return False
+
+        kind = game.next_event_kind
+        logger.info("AdminInterface - fire_next_event %s (%s)", game_id, kind)
+
+        if kind == next_event.KIND_CIRCLE:
+            self.promote_next_circle(game_id)
+            return True
+
+        # M3.3 gives the drop its courier. Until then the cue is cleared so
+        # that a countdown which has reached zero stops being one, rather than
+        # sitting at 00:00 on thirty phones forever.
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+        self._session.commit()
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+        return True
+
+    @db_scoped
+    def promote_next_circle(self, game_id: UUID) -> bool:
+        """Make the announced next circle the one people have to be inside.
+
+        Copies the next circle over the exclusion circle, clears the next
+        circle and the cue, says so in the ticker and fires the circle event
+        so every open map redraws.
+
+        Returns False, having changed nothing but the cue, when there is no
+        next circle to promote: an admin who cleared it while the clock ran
+        must not have the play area silently blanked instead.
+        """
+        logger.info("AdminInterface - promote_next_circle %s", game_id)
+
+        game: Game = self._get_game_orm(game_id)
+        promoted = (
+            game.next_circle_lat is not None
+            and game.next_circle_long is not None
+            and game.next_circle_radius is not None
+        )
+
+        if promoted:
+            game.exclusion_circle_lat = game.next_circle_lat
+            game.exclusion_circle_long = game.next_circle_long
+            game.exclusion_circle_radius = game.next_circle_radius
+            game.next_circle_lat = None
+            game.next_circle_long = None
+            game.next_circle_radius = None
+        else:
+            logger.warning(
+                "Game %s has no next circle to promote - clearing the cue only",
+                game_id,
+            )
+
+        self._clear_cue(game)
+        user_ids = self._game_user_ids(game_id)
+
+        self._session.commit()
+
+        if promoted:
+            tk.send_ticker_message(
+                tk.TickerMessageType.CIRCLE_CLOSED,
+                {},
+                game_id=game_id,
+                session=self._session,
+            )
+            trigger_circle_update(game_id)
+
+        for user_id in user_ids:
+            trigger_update_event("user", user_id)
+
+        next_event.disarm(game_id)
+
+        return promoted
+
+    @db_scoped
+    def get_cued_games(self) -> List[Tuple[UUID, float]]:
+        """``(game_id, deadline)`` for every game with a live cue.
+
+        The startup sweep's input (:func:`next_event.sweep`): the timers are
+        in-process and die with it, but the deadlines are columns and do not.
+        """
+        rows = (
+            self._session.query(Game.id, Game.next_event_at)
+            .filter(Game.next_event_at.isnot(None))
+            .all()
+        )
+        return [(row[0], row[1]) for row in rows]
 
     @db_scoped
     def create_team(

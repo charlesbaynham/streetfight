@@ -108,6 +108,7 @@ from .admin_auth import require_admin_auth
 from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
 from .model import GameModel
+from .next_event import NextEventKind
 from .model import ShotModel
 from .ticker import Ticker
 from .user_id import get_user_id
@@ -1107,6 +1108,28 @@ async def admin_set_circle(
     )
 
 
+@admin_method(path="/admin_cue_next_event", method="POST")
+async def admin_cue_next_event(
+    game_id: UUID,
+    kind: NextEventKind,
+    minutes: float,
+    note: Optional[str] = None,
+):
+    """Start the countdown the players' phones show. Minutes, not seconds:
+    this is typed on a phone in a hurry, and every real cue is a round number
+    of them."""
+    logger.info("admin_cue_next_event - %s", locals())
+    return AdminInterface().cue_next_event(
+        game_id=game_id, kind=kind.value, seconds=minutes * 60, note=note
+    )
+
+
+@admin_method(path="/admin_cancel_cue", method="POST")
+async def admin_cancel_cue(game_id: UUID):
+    logger.info("admin_cancel_cue - %s", locals())
+    AdminInterface().cancel_cue(game_id=game_id)
+
+
 Landmark = Enum("Landmark", {k: k for k in ACTIVE_VENUE.landmarks})
 
 
@@ -1442,6 +1465,23 @@ def _make_debug_entries() -> None:
     from .reset_db import make_debug_entries_if_wanted
 
     make_debug_entries_if_wanted()
+
+
+@app.on_event("startup")
+async def _rearm_event_cues() -> None:
+    """Rebuild the countdown timers from the database.
+
+    The timers are in-process asyncio tasks and die with the process; the
+    deadlines are columns and do not. Without this, deploying in the middle of
+    a ten-minute countdown would leave thirty phones counting down to a circle
+    that never closed - and the admin with no sign that anything was wrong.
+    See backend/next_event.py.
+    """
+    from . import next_event
+
+    found = next_event.sweep()
+    if found:
+        logger.info("Re-armed %d event cue(s) at startup", found)
 
 
 app.include_router(router, prefix="/api")
