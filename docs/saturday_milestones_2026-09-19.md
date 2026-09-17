@@ -366,7 +366,7 @@ suit the square, legend names match the venue's landmark keys.
 
 ## M1 — Balance and the server-side cooldown *(by Thursday night; on staging Friday)*
 
-### M1.1 — Enforce the cooldown on the server *(status: shipped 2026-09-17, PR #PRNUM; the plan's one "assume they will try to break it")*
+### M1.1 — Enforce the cooldown on the server *(status: shipped 2026-09-17, PR #266; the plan's one "assume they will try to break it")*
 
 - `User.last_shot_at: Float, nullable` (additive) written in `submit_shot`
   beside the bullet decrement — not derived from `Shot.time_created`, which
