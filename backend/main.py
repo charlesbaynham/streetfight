@@ -1097,6 +1097,12 @@ async def admin_set_user_name(user_id: UUID, name: str):
     AdminInterface().set_user_name(user_id=user_id, name=name)
 
 
+@admin_method(path="/admin_set_team_leader", method="POST")
+async def admin_set_team_leader(user_id: UUID, is_team_leader: bool):
+    logger.info("admin_set_team_leader - %s", locals())
+    AdminInterface().set_team_leader(user_id=user_id, is_team_leader=is_team_leader)
+
+
 @admin_method(path="/admin_set_circle", method="POST")
 async def admin_set_circle(
     game_id: UUID, name: CircleTypes, lat: float, long: float, radius_km: float

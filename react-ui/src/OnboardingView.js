@@ -23,6 +23,7 @@ import {
 
 import { Swatch } from "./Swatch";
 import CuriosityFooter from "./CuriosityFooter";
+import TeamLeaderPanel from "./TeamLeaderPanel";
 import styles from "./OnboardingView.module.css";
 import prose from "./prose";
 
@@ -342,6 +343,10 @@ function OnboardingView({ user }) {
               (FullscreenButton) is drawn while the game is waiting. */}
           <CuriosityFooter className={styles.curiosityFooter} />
           {getActionItems()}
+          {/* Renders nothing unless this player was nominated a leader at the
+              door (M7). Below the join steps, because a leader's own join
+              comes first. */}
+          <TeamLeaderPanel user={user} />
         </div>
       </AnimatePresence>
     </div>

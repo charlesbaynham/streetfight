@@ -141,6 +141,28 @@ def test_user_in_team(user_in_team):
     assert UserInterface(user_in_team).get_user_model().team_id is not None
 
 
+def test_a_player_is_not_a_team_leader_until_an_admin_says_so(user_in_team):
+    """The leader flag (M7) rides on the user model, which is what user_info
+    serves, so the waiting page can show the checklist without a second call."""
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is False
+
+    AdminInterface().set_team_leader(user_in_team, True)
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is True
+
+    AdminInterface().set_team_leader(user_in_team, False)
+    assert UserInterface(user_in_team).get_user_model().is_team_leader is False
+
+
+def test_a_signed_up_player_with_no_team_can_be_made_a_leader(user_factory):
+    """Teams are scanned in at the door (R15), so a leader may be nominated
+    before the app knows which team they lead."""
+    user_id = user_factory()
+
+    AdminInterface().set_team_leader(user_id, True)
+
+    assert UserInterface(user_id).get_user_model().is_team_leader is True
+
+
 def test_outfit_wardrobe_is_none_before_an_outfit_is_picked(user_in_team):
     model = UserInterface(user_in_team).get_user_model()
     assert model.outfit_wardrobe is None

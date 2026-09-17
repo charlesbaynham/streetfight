@@ -1,0 +1,52 @@
+/* The waiting page's box. Width matched to OnboardingView's stacked items so
+   it lines up with the join steps it sits under. */
+.panel {
+  width: 80vw;
+  max-width: 150mm;
+  box-sizing: border-box;
+  margin: 3mm 0 0;
+  padding: 3mm 6mm;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 6mm;
+}
+
+.checklist h2 {
+  font-size: larger;
+  margin: 0 0 0.4em;
+}
+
+.checklist p {
+  margin: 0 0 0.6em;
+}
+
+.checklist ul {
+  margin: 0 0 0.6em;
+  padding-left: 1.2em;
+}
+
+.checklist li {
+  margin-bottom: 0.4em;
+}
+
+.footer {
+  font-style: italic;
+}
+
+/* Same shape as Scoreboard's own button, which this sits beside */
+.showChecklistButton {
+  background: none;
+  color: inherit;
+  border: none;
+  font: inherit;
+  cursor: pointer;
+  outline: inherit;
+  padding: 0.5em;
+  text-align: center;
+  width: 100%;
+}
+
+.standalone {
+  padding: 2em 1em;
+  background-color: #00000088;
+  color: white;
+}

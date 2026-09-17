@@ -331,6 +331,12 @@ class User(Base):
         "Team", lazy="joined", foreign_keys=team_id, back_populates="users"
     )
 
+    # One player per team is nominated at the door as its leader: the person
+    # who is asked to check their team is properly equipped before the game
+    # starts. It is a label and a checklist, not a permission - a leader can do
+    # nothing in the app another player cannot.
+    is_team_leader = Column(Boolean, nullable=False, default=False)
+
     num_bullets = Column(Integer, nullable=False, default=0)
     hit_points = Column(Integer, nullable=False, default=1)
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
@@ -545,6 +551,7 @@ class UserModel(pydantic.BaseModel):
     name: Optional[str] = None
 
     team_id: Optional[UUID] = None
+    is_team_leader: bool = False
 
     num_bullets: int
     hit_points: int

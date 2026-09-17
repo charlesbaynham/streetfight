@@ -25,6 +25,7 @@ import {
 } from "./utils";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
+import { TeamLeaderButton } from "./TeamLeaderPanel";
 import ShotReceivedOverlay from "./ShotReceivedOverlay";
 import useWakeLock from "./useWakeLock";
 
@@ -91,6 +92,7 @@ function GetView({ user }) {
           <div>
             <ButtonAndScoreboard standalone />
             <ShotHistoryButton standalone />
+            <TeamLeaderButton user={user} standalone />
           </div>
         )}
         <div className={styles.mapAndTickerContainer}>
