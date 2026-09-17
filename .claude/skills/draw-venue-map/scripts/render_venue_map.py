@@ -102,7 +102,10 @@ LAYERS = (LAYER_MAP, LAYER_HAND)
 OUT_PX = 2000
 SS = 3  # supersample: PIL does not antialias lines, so draw big and shrink
 
-INK = "#000000"
+# Sepia ink rather than black, to sit on the paper rather than on top of it.
+# 12.3:1 against PAPER, so it is still well past AAA on a phone in the dark
+# and at A3 - which is the constraint, not the look.
+INK = "#2f2418"
 PAPER = "#f2e7d0"  # aged paper; the road corridors are this too, not white
 WATER = "#a9c6d6"
 PARK = "#c9d7ab"
