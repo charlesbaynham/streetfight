@@ -376,7 +376,16 @@ def draw_markers(d, box, size, scale, pubs, landmarks, centre_label, names):
             )
         return x, y
 
-    marker(*box.centre, CENTRE_BLUE, centre_label, square=True)
+    if centre_label:
+        marker(*box.centre, CENTRE_BLUE, centre_label, square=True)
+    else:
+        # Nothing is at the centre; it is only the framing anchor the prompt
+        # tells the model to preserve. Draw it as a crosshair so it cannot be
+        # mistaken for a marker and traced onto the drawing.
+        cx, cy = box.project(*box.centre, size)
+        arm, w = int(60 * scale), max(2, int(4 * scale))
+        d.line([cx - arm, cy, cx + arm, cy], fill=CENTRE_BLUE, width=w)
+        d.line([cx, cy - arm, cx, cy + arm], fill=CENTRE_BLUE, width=w)
     for lm in landmarks:
         marker(lm["lat"], lm["lon"], LANDMARK_PURPLE, lm["name"])
     for i, p in enumerate(pubs, 1):
@@ -555,15 +564,13 @@ merely looks plausible.
   GROUND TRUTH for where things are.
 - `03_road_skeleton.png` - the same area stripped back to the major roads, the
   water, the parks and labelled markers. Red = pubs, purple = landmarks, blue =
-  {centre_label}. **This is the layout to trace.**
+  {centre_legend}. **This is the layout to trace.**
 
 ## Task
 
 Redraw the area shown in `02_osm_accurate.png` and `03_road_skeleton.png` in
 the hand-drawn style of the two Kingston images. Same square extent, same
-framing, north up. Do not crop, rotate, zoom or re-centre: {centre_label} is at
-the exact centre of `03_road_skeleton.png` and must be at the exact centre of
-your output.
+framing, north up. Do not crop, rotate, zoom or re-centre: {centre_anchor}
 
 ## What must be accurate - this matters more than the styling
 
@@ -616,8 +623,8 @@ A single square image, black ink on white, no border or frame, no legend, no
 compass rose, no scale bar.
 
 Before you finish, check your drawing against `03_road_skeleton.png` once
-more: is {centre_label} still at the exact centre, is every pub on the right
-street, and does every road you drew exist in the reference?
+more: {centre_check}, is every pub on the right street, and does every road
+you drew exist in the reference?
 """
 
 
@@ -627,17 +634,40 @@ def write_prompt(path, name, box, pubs, landmarks, centre_label):
         rows.append(f"| {i} | {p['name']} | {p['street'] or 'see the skeleton'} |")
     lm = ""
     if landmarks:
-        lm = (
-            "\n## Also mark\n\n"
-            + "".join(f"- **{x['name']}**\n" for x in landmarks)
-            + f"- **{centre_label}** - at the dead centre of the map.\n"
+        lm = "\n## Also mark\n\n" + "".join(f"- **{x['name']}**\n" for x in landmarks)
+        if centre_label:
+            lm += f"- **{centre_label}** - at the dead centre of the map.\n"
+    if centre_label:
+        centre_legend = centre_label
+        centre_anchor = (
+            f"{centre_label} is at the exact centre of `03_road_skeleton.png` "
+            "and must be at the exact centre of your output."
+        )
+        centre_check = f"is {centre_label} still at the exact centre"
+    else:
+        # Nothing stands at the centre, so the crosshair is the anchor. The
+        # framing still has to survive exactly: the venue's reference points
+        # are the crop's corners, so a drawing that re-centres is unusable
+        # however good it looks.
+        centre_legend = "the centre crosshair"
+        centre_anchor = (
+            "the thin blue crosshair on `03_road_skeleton.png` marks the exact "
+            "centre of the frame, and that same point must fall at the exact "
+            "centre of your output. It is a framing guide, not a place: "
+            "nothing stands there, so do not draw the crosshair and do not "
+            "label it."
+        )
+        centre_check = (
+            "does the point under the blue crosshair still sit at the exact centre"
         )
     title = name.replace("_", " ").replace("-", " ").title()
     open(path, "w").write(
         PROMPT.format(
             title=title,
             title_upper=title.upper(),
-            centre_label=centre_label,
+            centre_legend=centre_legend,
+            centre_anchor=centre_anchor,
+            centre_check=centre_check,
             pub_table="\n".join(rows),
             landmark_block=lm,
         )
@@ -649,7 +679,11 @@ def venue_snippet(name, box, pubs, landmarks, centre_label, width_px):
         out = "".join(c if c.isalnum() else "_" for c in s.upper())
         return "_".join(x for x in out.split("_") if x)
 
-    lines = [f'        "{key(centre_label)}": ' f"({box.centre[0]}, {box.centre[1]}),"]
+    lines = []
+    if centre_label:
+        lines.append(
+            f'        "{key(centre_label)}": ({box.centre[0]}, {box.centre[1]}),'
+        )
     for x in landmarks + pubs:
         lines.append(f'        "{key(x["name"])}": ({x["lat"]}, {x["lon"]}),')
     return f"""{name.upper()} = Venue(
@@ -685,7 +719,10 @@ def main():
     ap.add_argument(
         "--centre-label",
         default="Home",
-        help="what to call the centre point on the map",
+        help="what to call the centre point on the map; pass an empty string "
+        "when the centre is only a framing point and nothing is drawn there, "
+        "which is what lets the crop be sized to fit the markers rather than "
+        "be pinned symmetric about one of them",
     )
     ap.add_argument(
         "--landmark",
@@ -781,7 +818,13 @@ def main():
         centre_label=args.centre_label,
         size_px=OUT_PX,
         bounds=dict(north=box.north, south=box.south, east=box.east, west=box.west),
-        markers=[dict(name=args.centre_label, lat=lat, lon=lon, kind="centre")]
+        markers=(
+            # An unlabelled centre is a framing point, not a marker: there is
+            # nothing drawn there for check_venue_map.py to ring.
+            [dict(name=args.centre_label, lat=lat, lon=lon, kind="centre")]
+            if args.centre_label
+            else []
+        )
         + [dict(kind="landmark", **x) for x in landmarks]
         + [dict(name=p["name"], lat=p["lat"], lon=p["lon"], kind="pub") for p in pubs],
     )

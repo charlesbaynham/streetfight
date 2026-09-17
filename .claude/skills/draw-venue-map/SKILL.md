@@ -32,21 +32,43 @@ The output is a georeferenced image plus a `Venue` for `backend/venues.py`.
 
 ## Sizing the play area
 
-Three constraints usually pin the size down, and it is worth showing the user
-that rather than asking them to pick a number:
+The map is always a square, symmetric about its centre, so the size follows
+from where the centre is. **Ask first whether the centre has to be a place at
+all** — that is the choice that decides how much paper the drawing gets, and
+it is easy to miss:
 
-- the centre is at the middle of the map,
-- the map is symmetric about it,
-- some landmark must be in frame.
+- **Pinned to a place.** Some landmark sits at the dead centre. Then a marker
+  *d* metres away forces a half-span of at least *d*, plus enough margin to
+  draw it in — about 100 m.
+- **Sized to the markers.** Nothing is pinned, so the centre is the middle of
+  the markers' bounding box and the half-span is the tightest that fits them.
 
-A landmark *d* metres from the centre therefore forces a half-span of at least
-*d*, plus enough margin to draw it in — about 100 m. For Westminster, Big Ben
-is 537 m north of the house, so 650 m was the smallest half-span that worked,
-giving 1300 × 1300 m. The Kingston map covers 1153 × 1116 m, which is a good
-sanity check: much bigger and the drawing gets too sparse to navigate by.
+Westminster shows the difference. Pinned to House Absolute, Big Ben 537 m
+north forced 650 m, giving 1300 × 1300 m. Freed, the same nineteen pubs and
+four landmarks fit inside 458 m of their own centre, and 575 m — 1150 × 1150 m
+— leaves every one of them at least 117 m of drawing room. That is a quarter
+less ground for the same sheet of paper.
 
+The Kingston map covers 1153 × 1116 m, which is a good sanity check either
+way: much bigger and the drawing gets too sparse to navigate by.
+
+Put the arithmetic in front of the user rather than asking them for a number.
 `build_venue_map.py` refuses a landmark outside the crop and tells you the
 minimum half-span it needs.
+
+### A centre with nothing on it
+
+Pass `--centre-label ""` when the centre is only a framing point. The skeleton
+then gets a thin blue crosshair there instead of a labelled marker, the prompt
+tells the model to keep that point at the centre *without drawing or labelling
+it*, and `meta.json` leaves it out of the markers — otherwise
+`check_venue_map.py` rings a spot with nothing under it and every overlay
+looks like a failure.
+
+The framing still matters exactly as much: the venue's reference points are
+the crop's corners, so a drawing that re-crops is unusable however good it
+looks. Freeing the centre changes which corners those are, so `ref_1` and
+`ref_2` in `backend/venues.py` move with the image, not before it.
 
 ## Building the references
 

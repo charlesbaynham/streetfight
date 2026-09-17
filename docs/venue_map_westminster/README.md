@@ -49,14 +49,45 @@ tracing, and one bad marker condemns the whole drawing — they fail in groups.
   prompt and images gave a scrambled map on one model and a near-exact trace
   on another.
 
+## The crop changed on 17 September
+
+It used to be pinned to House Absolute — the crop symmetric about it, which
+forced 1300 × 1300 m because Big Ben is 537 m north. Nothing actually needs
+House Absolute at the centre, so the crop is now sized to the markers instead:
+the centre is the middle of the nineteen pubs, Big Ben, Parliament, the Abbey
+and House Absolute, and the half-span is the tightest that fits them with room
+to draw.
+
+That makes it **1150 × 1150 m**, a quarter less ground on the same sheet of
+paper, which is the whole point of redrawing — nineteen pubs in the middle of
+a 1300 m square is what made the old one hard to read. It also lands within
+3 m of the Kingston map's 1153 m, the size this style is tuned for. Every
+marker has at least 117 m to the nearest edge; Parliament, Windsor Castle and
+Big Ben are the three closest to one.
+
+House Absolute is now an ordinary landmark. **Nothing stands at the centre**
+(the nearest pub is 105 m away), so the skeleton carries a thin blue crosshair
+there instead of a marker, and the prompt tells the model to keep that point
+centred without drawing or labelling it.
+
 ## What must not move
 
-The framing. House Absolute at the exact centre, 1300 × 1300 m square, north
-up. The venue's two reference points in `backend/venues.py` *are* this crop's
-corners (51.501752, −0.140302 and 51.489995, −0.121544), so a drawing that
-keeps the framing drops straight in with no georeferencing work, and one that
-does not is unusable however pretty it is. If the returned image is not
-square, the framing changed: re-roll.
+The framing. 1150 × 1150 m square, north up, the crosshair's point at dead
+centre. A drawing that re-crops is unusable however pretty it is, and if what
+comes back is not square the framing changed: re-roll.
+
+**The venue's reference points move with the image, not before it.** They
+*are* this crop's corners, so `backend/venues.py` needs these the moment the
+new drawing is wired in — and must keep the old ones until then, because they
+describe the map that is live:
+
+```python
+ref_1=MapReferencePoint(x=0, y=0, lat=51.502881, long=-0.139506),
+ref_2=MapReferencePoint(x=W, y=H, lat=51.492481, long=-0.122912),
+```
+
+(was 51.501752, −0.140302 and 51.489995, −0.121544.) `corner_width_km` wants a
+look too: 0.2 was chosen for 1300 m across 1024 px, and both numbers change.
 
 ## The files
 
@@ -70,6 +101,10 @@ square, the framing changed: re-roll.
 The pubs were passed to the builder by hand rather than searched for on
 OpenStreetMap, because the nineteen are Charles's choice and a nearest-N
 search returns a different set. That is what `--pub` is for.
+
+`check_venue_map.py` rings the 23 markers and not the centre — there is
+nothing drawn under the crosshair, so a ring there would look like a failure
+on every overlay.
 
 The `Venue` snippet `build.sh` prints at the end is **not** to be pasted over
 `backend/venues.py`: the names here are how people say them, so the keys it

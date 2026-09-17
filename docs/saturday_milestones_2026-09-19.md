@@ -367,6 +367,17 @@ drawing comes back. The pubs were passed to the builder by hand
 (`build.sh`, the new `--pub` flag) rather than searched for, so the skeleton
 marks Charles's nineteen and not the nineteen nearest. Both known label
 errors come out right on the new skeleton, so the trace gets them for free.
+**Re-cropped 17 Sept at Charles's request.** The crop was pinned to House
+Absolute, which forced 1300 x 1300 m because Big Ben is 537 m north of it.
+Nothing needs it centred, so the crop is now sized to the markers: centre at
+the middle of the nineteen pubs and four landmarks, half-span 575 m, giving
+1150 x 1150 m - a quarter less ground on the same paper, and within 3 m of
+Kingston's 1153 m. House Absolute becomes an ordinary landmark and the centre
+is an unlabelled crosshair (`--centre-label ""`, new in the skill's builder).
+**`backend/venues.py`'s reference points move with the image**: 51.502881,
+-0.139506 and 51.492481, -0.122912, to be applied only when the drawing lands,
+along with a fresh look at `corner_width_km`.
+
 **Outstanding: run `prompt.md` at Gemini and hand back the image.**
 
 ### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; held from printing until M0.6's redrawn map lands)*

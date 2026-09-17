@@ -2,11 +2,26 @@
 # Rebuild the reference bundle for the Westminster map redraw (roadmap #12,
 # milestone M0.6). Run from the repo root; writes back into this directory.
 #
-# The framing is not a choice: House Absolute is at the exact centre, the crop
-# is symmetric about it, and Big Ben (537 m north) has to be in frame, which
-# forces 650 m. The existing venue's reference points ARE these crop corners,
-# so a drawing that keeps the framing drops in with no georeferencing work.
-# Do not change --centre or --half-span.
+# The framing is sized to the markers rather than pinned to one of them
+# (changed 17 Sept 2026, at Charles's request). The crop used to be symmetric
+# about House Absolute, which forced 650 m because Big Ben is 537 m north of
+# it; nothing needs House Absolute at the centre, so the centre is now the
+# geometric middle of the nineteen pubs, Big Ben, Parliament, the Abbey and
+# House Absolute. That fits everything within 458 m, so 575 m gives every
+# marker at least 117 m of drawing room and makes the crop 1150 x 1150 m,
+# against 1300 before -- which is a quarter less ground for the same paper,
+# and the whole reason to redraw. It also lands on Kingston's 1153 m, the size
+# this hand-drawn style is tuned for.
+#
+# Nothing stands at that centre (the nearest pub is 105 m away), so
+# --centre-label is empty: the builder draws a crosshair there instead of a
+# marker and the prompt tells the model to preserve it without drawing it.
+# House Absolute becomes an ordinary landmark.
+#
+# The venue's reference points ARE the crop corners, so they must be updated
+# to match (see README.md) when the drawing lands -- and a drawing that
+# re-crops is unusable however good it looks. Do not change --centre or
+# --half-span without changing them together.
 #
 # The pubs are passed in rather than searched for: they are the nineteen
 # Charles chose (backend/venues.py), with OpenStreetMap's coordinates, and a
@@ -20,9 +35,10 @@ out="$(cd "$(dirname "$0")" && pwd)"
 
 uv run python .claude/skills/draw-venue-map/scripts/build_venue_map.py \
     --name westminster \
-    --centre 51.4958738,-0.1309233 \
-    --half-span 650 \
-    --centre-label "House Absolute" \
+    --centre 51.497681,-0.131209 \
+    --half-span 575 \
+    --centre-label "" \
+    --landmark "House Absolute:51.4958738,-0.1309233" \
     --landmark "Big Ben:51.50073,-0.12462" \
     --landmark "Westminster Abbey:51.49940,-0.12764" \
     --landmark "Parliament:51.49900,-0.12460" \
