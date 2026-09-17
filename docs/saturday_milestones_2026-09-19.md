@@ -600,7 +600,7 @@ notes:
   marks where the crate is rather than an area to search. Nothing in the
   spec fixed a number; change the constant if it reads too tight on the map.
 
-### M4.2 — The courier and the crate on every map *(status: shipped 2026-09-17, PR #PRNUM)*
+### M4.2 — The courier and the crate on every map *(status: shipped 2026-09-17, PR #274)*
 
 - `/get_circles` grows `courier: {lat, long, timestamp} | null`; the
   `"circle"` SSE event is fired (throttled) when the courier moves, so
