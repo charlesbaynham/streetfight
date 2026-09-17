@@ -297,6 +297,18 @@ const prose = {
   popup: {
     scrollHintLabel: "Scroll down for more",
   },
+  // @section radar
+  radar: {
+    // The band at the top of the screen while a radar card is running. The
+    // clock is a live component between the two, not a value to interpolate.
+    stripLabel: "Radar",
+    stripTail: "left",
+    // Beside each contact on the map. The card promises where somebody was
+    // last seen and never where they are, so every dot says its own age.
+    lastSeen: (minutes) => `${minutes} min ago`,
+    justNow: "just now",
+    out: "out",
+  },
   // @section scoreboard
   scoreboard: {
     playerHeader: "Player",
