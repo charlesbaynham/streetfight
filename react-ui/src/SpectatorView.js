@@ -368,6 +368,7 @@ function Headline({
       {game && !game.active ? (
         <span className={styles.headlinePaused}>Paused</span>
       ) : null}
+      <HeadlineCue game={game} now={now} />
       {/* One string, and the number is not picked out in green: on this page
           colour means certainty, and a count is not a verdict. */}
       <span className={styles.headlineAlive}>
@@ -390,6 +391,41 @@ function Headline({
         {fullscreenActive ? "Exit full screen" : "Full screen"}
       </button>
     </header>
+  );
+}
+
+// What the game has cued up next and how long is left (M3.1), off the same
+// GameModel the rest of this bar reads. Nothing at all when nothing is cued,
+// which is most of the night, and nothing for a kind this bundle does not
+// know - a screen left running through a deploy shows no cue rather than a
+// wrong one.
+function HeadlineCue({ game, now }) {
+  const kind = game ? game.next_event_kind : null;
+  if (!game || typeof game.next_event_at !== "number") return null;
+  if (kind !== "circle" && kind !== "drop") return null;
+
+  const isDrop = kind === "drop";
+  const seconds = secondsUntil(game.next_event_at, now);
+
+  return (
+    <span
+      className={
+        styles.headlineCue +
+        " " +
+        (isDrop ? styles.headlineCueDrop : styles.headlineCueCircle)
+      }
+    >
+      {seconds > 0 ? (
+        <>
+          {isDrop ? "Drop in" : "Circle closes in"}{" "}
+          <span className={styles.headlineCueClock}>{countdown(seconds)}</span>
+        </>
+      ) : isDrop ? (
+        "Courier on the way"
+      ) : (
+        "Circle closing"
+      )}
+    </span>
   );
 }
 

@@ -1,4 +1,4 @@
-"""A4 pub certificates: one page, one QR code, two bullets for a whole team.
+"""A4 pub certificates: one page, one QR code, five bullets a head for a whole team.
 
 A different shape from the drop codes in :mod:`backend.generate_qr_items`,
 which pack eight small cards onto a landscape sheet to be cut up and hidden.
@@ -51,7 +51,7 @@ from .items import ItemModel
 logger = logging.getLogger(__name__)
 
 DPI = 300
-BULLETS_PER_TEAM_MEMBER = 2
+BULLETS_PER_TEAM_MEMBER = 5
 
 ARTWORK = Path(IMAGES_DIR, "reusable bullets.png")
 

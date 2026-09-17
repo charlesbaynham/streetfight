@@ -1,0 +1,51 @@
+/* A band across the top of the player's screen, over the camera view. The
+   same translucent-black panel as BulletCount, so it reads as part of the
+   HUD rather than as a notification. Full width and above everything else in
+   the column: it is the one thing on the screen with a deadline on it. */
+.strip {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 0.5em 0.8em;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  text-align: center;
+  border-bottom-width: 3px;
+  border-bottom-style: solid;
+}
+
+/* index.css sets `* { font-size: 12px }`, which beats inheritance - so every
+   size here is set on the element itself. This is read at arm's length, in
+   the dark, while moving. */
+.strip span {
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.clock {
+  font-weight: bold;
+  /* Tabular figures so the strip does not twitch every second */
+  font-variant-numeric: tabular-nums;
+  font-size: 19px;
+}
+
+.label {
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.note {
+  display: block;
+  font-size: 13px;
+  opacity: 0.85;
+}
+
+/* The two kinds are told apart by the edge, matching the circle each draws on
+   the map: the closing circle is the one that costs hit points, the drop is
+   the blue ping. */
+.stripCircle {
+  border-bottom-color: rgb(196, 64, 48);
+}
+
+.stripDrop {
+  border-bottom-color: rgb(64, 120, 235);
+}

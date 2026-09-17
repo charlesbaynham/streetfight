@@ -15,6 +15,7 @@ import styles from "./UserMode.module.css";
 import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
+import NextEventStrip from "./NextEventStrip";
 import prose from "./prose";
 
 import {
@@ -69,11 +70,20 @@ function GetView({ user }) {
   // Show the user the onboarding view if they haven't set their name, the game
   // isn't running, or if permissions aren't granted properly
   if (user.name === null || !isGameRunning(user) || !permissionsGranted) {
-    return <OnboardingView user={user} />;
+    // The strip goes above the waiting page too: somebody standing at the
+    // door with the game still paused is exactly who wants to know a drop is
+    // ten minutes out. It renders nothing when nothing is cued.
+    return (
+      <>
+        <NextEventStrip user={user} />
+        <OnboardingView user={user} />
+      </>
+    );
   }
 
   return (
     <>
+      <NextEventStrip user={user} />
       <div className={styles.monitorsContainer}>
         {isAlive ? (
           <BulletCount user={user} />

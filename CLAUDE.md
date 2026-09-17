@@ -43,6 +43,17 @@ What that changes, in practice:
   `ALTER TABLE`. Anything else — a rename, a drop, a type change, a `NOT NULL`
   column without a scalar default — is still in genuine tension with the live
   state: raise the cost to Charles before writing it, not after.
+  **`tests/test_database.py`'s `TestLiveSchemaUpgrade` is the gate**: it takes
+  the committed snapshot of the live schema (`tests/live_schema/`, one file,
+  named for the date and the revision live was running), upgrades a copy of it
+  the way a deploy would, and then compares it against a database built fresh
+  from the models and writes a row through every mapped class. So a rename, a
+  drop, a type change or an undefaulted `NOT NULL` column fails CI on the pull
+  request rather than crash-looping the service. Two things to keep up:
+  refresh the snapshot whenever live moves — `python
+  tests/live_schema/refresh.py <rev>` writes the new file from that revision's
+  models, then delete the old one and point `SNAPSHOT` at it — and give any
+  new ORM class a row in that test, which it will demand by name.
 - **The identity scheme is frozen.** Renumbering symbols, reordering or
   re-hexing a palette (`backend/identity/config.py`), or changing what a slot
   decodes to would re-clothe players who have already chosen. Treat those
@@ -229,7 +240,7 @@ Four things from it that are worth knowing even if you never call the agent:
     in `qr_codes.csv`, whose last column is the batch; the file has no header
     and is read by column number, so a new field goes on the end.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
-    portrait A4 poster per pub, each carrying a single ammo code worth two
+    portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
     (`collected_as_team=True`, `collected_only_once=False`, so one sheet serves
     every team once). The pages are deliberately anonymous — nothing says which
@@ -265,6 +276,15 @@ Four things from it that are worth knowing even if you never call the agent:
     (`GET /admin_team_cards_pdf`), not a CLI, because the team ids the codes
     carry only exist in the live database. Print at actual size.
   - `circles.py` — geographic game zones (exclusion / next / drop circles).
+  - `next_event.py` — the one thing a game is counting down to: the vocabulary
+    (`KIND_CIRCLE` / `KIND_DROP`) that `Game.next_event_kind` /
+    `next_event_at` / `next_event_note` are written in. Those three columns
+    ride out to every phone on `UserModel` (`user_interface._next_event`,
+    read off `User.game` so a signed-up player with no team gets it too), so
+    the `"user"` SSE event each client already listens to is what keeps the
+    countdown current — there is no second stream and nothing polls. Null
+    together means nothing is cued, which is what `NextEventStrip.js` draws
+    nothing for.
   - `venues.py` — where a game is played: the map image, its georeferencing and
     the landmarks circles can be placed at. See the venues note below.
   - `sse_event_streams.py` + `asyncio_triggers.py` — SSE streams and the
@@ -333,6 +353,19 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
+  - `src/NextEventStrip.js` — the band across the top of every player's
+    screen saying what the game has cued up and how long is left, drawn from
+    `/user_info`'s `next_event_*` (see `backend/next_event.py`). Mounted in
+    `UserMode.js` above `monitorsContainer` **and** above the waiting page,
+    since somebody at the door with the game still paused is exactly who wants
+    to know a drop is ten minutes out. It renders nothing at all when nothing
+    is cued, and nothing for a kind it does not recognise — a tab left open
+    through a deploy shows no cue rather than a wrong one. The clock is
+    `GuideImages.js`'s `CountdownTimer` (now exported, and counting total
+    minutes rather than minutes-past-the-hour), and at zero the strip says
+    what is happening rather than sitting on a stopped 00:00 until the server
+    clears the cue. The spectator screen carries the same thing as a pill on
+    its headline.
   - Views: `UserMode.js`, `AdminMode.js`, `ShotQueue.js`, `MapView.js`, etc.
     `ShotQueue.js`'s `RankedCandidates` shows each candidate's own colours
     beside the ranking, in the scheme's channel order — which is the review's
