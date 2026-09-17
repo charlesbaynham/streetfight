@@ -584,6 +584,13 @@ Shipped, with four departures from the spec worth knowing:
   can find that out, so the player runs the test. It doubles as the gesture
   that unlocks audio.
 
+M1.2 lands on this one: now that everybody starts with their armour on
+(`STARTING_HIT_POINTS = 2`), a single hit from the basic weapon no longer
+knocks anybody out, so `shot_knockout.wav` is the sound of a *killing* blow
+rather than of any confirmed hit. That is the better outcome - it is rare, so
+it means something - but it does mean the ordinary evening is mostly
+`shot_confirmed.wav`, which is still one of the two original placeholder tones.
+
 ---
 
 ## M6 — The two experimental items *(Friday; after M0.3; drop if not working)*

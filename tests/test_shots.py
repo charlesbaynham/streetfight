@@ -138,30 +138,39 @@ def test_hit_recorded_in_shot_history(two_users_in_different_teams, test_image_s
 def test_knockout_flagged_in_shot_history(
     two_users_in_different_teams, test_image_string
 ):
-    """A hit that takes the target's last hit point is reported as a knockout,
-    so the shooter's phone can play a sound of its own for it (M5)."""
+    """The hit that takes the target's last hit point is reported as a
+    knockout, so the shooter's phone can play a sound of its own for it (M5).
+
+    Two shots, because since M1.2 everybody starts with their armour on
+    (STARTING_HIT_POINTS = 2) and a single hit from the basic weapon leaves
+    them standing. The knockout is the second one.
+    """
     shooter, target = two_users_in_different_teams
-    shot_id = submit_a_shot(shooter, test_image_string)
+    first = submit_a_shot(shooter, test_image_string)
+    AdminInterface().hit_user(first, target)
+    second = submit_a_shot(shooter, test_image_string)
 
-    AdminInterface().hit_user(shot_id, target)
+    AdminInterface().hit_user(second, target)
 
-    (shot,) = UserInterface(shooter).get_own_shots()
-    assert shot["result"] == "hit"
-    assert shot["target_knocked_out"] is True
+    knockout = {shot["id"]: shot for shot in UserInterface(shooter).get_own_shots()}[
+        second
+    ]
+    assert knockout["result"] == "hit"
+    assert knockout["target_knocked_out"] is True
 
 
-def test_hit_on_an_armoured_target_is_not_a_knockout(
+def test_hit_that_leaves_the_target_standing_is_not_a_knockout(
     two_users_in_different_teams, test_image_string
 ):
     """The other half: a hit the target walks away from is an ordinary hit."""
     shooter, target = two_users_in_different_teams
-    UserInterface(target).award_HP(1)  # armour: two hit points, damage is one
     shot_id = submit_a_shot(shooter, test_image_string)
 
     AdminInterface().hit_user(shot_id, target)
 
     (shot,) = UserInterface(shooter).get_own_shots()
     assert shot["result"] == "hit"
+    assert UserInterface(target).get_user_model().hit_points > 0
     assert shot["target_knocked_out"] is False
 
 
