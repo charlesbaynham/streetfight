@@ -58,6 +58,16 @@ tomorrow-morning deadline that nothing else has.
 
 Recorded so nobody builds against the plan's numbers.
 
+**This is the code as it stood on 16 September, and most of it has since been
+fixed — it is kept as the record of what each milestone was answering, not as
+a description of the code.** Superseded by: M0.1 (the cooldown numbers and the
+weapon table), M0.2 (the pub poster's "2x"), M1.1 (nothing enforced the
+cooldown server-side; `MyWebcam.js` ignoring `response.ok`), M1.2 (starting
+armour), M2.1 (`reset_game` was the only reset), M2.2 (revocation was
+greenfield), M3 (nothing was timed), M4 (players could see nobody on the map —
+the courier is the first player-facing position of anybody else), M7 (no team
+leader concept). Still true as written: `Game` has no venue.
+
 - **The cooldowns are 6 s and 1 s today, not "~8 s" and "~4 s".** A weapon is
   the pair `(shot_damage, shot_timeout)` on the player
   (`backend/model.py:318-321`), named by `item_actions.WEAPON_NAME_LOOKUP`:
@@ -739,7 +749,7 @@ where she will stand.
 
 ---
 
-## M9 — The game-day runbook and the paper trail *(Friday)*
+## M9 — The game-day runbook and the paper trail *(status: shipped 2026-09-17, PR #PRNUM)*
 
 `docs/game_day_runbook_2026-09-19.md`: the plan's §5 as a checklist with the
 button behind each step named — pause, **Reset to start state**, **Withdraw
@@ -749,6 +759,23 @@ restarting. Plus the Thursday print list with counts, and the **Friday
 droplet resize** (snapshot, power off, resize CPU/RAM, power on, verify) —
 see the reminder at the top of this file. Update `docs/roadmap.md`
 (#12 shipped, #8's print run) and `CLAUDE.md` for anything that moved.
+
+Shipped as `docs/game_day_runbook_2026-09-19.md`, written against the merged
+code rather than the specs. Three things in it that the item did not ask for
+and that are worth knowing separately:
+
+- A **"Decisions taken by the sessions"** section gathering every judgement
+  call from PRs #254–#275 in one place, each naming its PR, so Charles can
+  overrule them without reading twenty PR bodies.
+- A **"When things go wrong"** section: the startup sweep, the cooldown
+  refusal a player will report as "the app is eating my shots", a second
+  phone, and the additive-only rule for a hotfix on the night.
+- The print list carries the **level-1 armour trap** (M1.2's consequence) as a
+  rule rather than a note, since it is the one way to print a stack of cards
+  that does nothing.
+
+`docs/roadmap.md`'s #12 and #8 were updated, and the "What the plan assumed"
+section above now says which milestone superseded each of its bullets.
 
 ---
 

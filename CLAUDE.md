@@ -84,6 +84,16 @@ database, how QR codes decouple printing from deploying), and the print
 deadline of Thursday 17 September that orders everything. Take scope from it,
 and update its status lines when something ships.
 
+**`docs/game_day_runbook_2026-09-19.md` is the night itself**: the plan's §5
+as a checklist with the button behind every step named — the print run with
+counts, the Friday droplet resize, the 16:00 transition in order (pause →
+**Reset to start state** → withdraw the `sandbox` batch → ten minutes →
+WhatsApp → start), cueing circles and drops, the courier page, and what
+happens when a countdown fires while the server is restarting. It also
+gathers, in one section, every decision the parallel sessions took while
+Charles was asleep, each naming the PR that made it. If you change something
+an admin presses on the night, change that file too.
+
 `docs/roadmap.md` is the roadmap: the agreed future work, re-prioritised, with
 the files each item lands in and the open questions still outstanding. Read it
 before starting anything substantial - several items are deliberately sequenced
