@@ -147,7 +147,33 @@ deployed and crash-loops the service. So make CI the gate:
 3. **Refresh the snapshot when live moves**, in the deploy PR or straight
    after: the file name carries the revision, so a stale snapshot is visible.
 
-Lands in: `tests/live_schema/`, `tests/test_database.py`. Status: open.
+Lands in: `tests/live_schema/`, `tests/test_database.py`.
+*(status: shipped 2026-09-17, PR #255)*
+
+Shipped as `TestLiveSchemaUpgrade` in `tests/test_database.py`, with two
+tests rather than one. The second is the specified insert-and-read-back
+through every mapped class (and it fails by name if a new ORM class has no
+row, so the coverage cannot quietly rot). The first is the one that does most
+of the work: it compares the upgraded database against a database built fresh
+from the current models, column by column, which is what actually catches a
+rename or a drop — a dropped *nullable* column leaves the ORM perfectly able
+to write a row, so writing one proves nothing. It catches a type change too,
+which the write does not, since sqlite barely has types. An undefaulted `NOT
+NULL` column fails earlier still, inside `add_missing_columns`. All four
+shapes were confirmed by throwaway edits to `model.py`, and both permitted
+shapes (a nullable column, a scalar-defaulted `NOT NULL` one) confirmed to
+pass.
+
+Refreshing the snapshot is a script rather than a recipe:
+`python tests/live_schema/refresh.py <rev>` loads that revision's
+`backend/model.py` on its own, runs `create_all()` into a throwaway sqlite
+file and writes `tests/live_schema/<today>_<rev7>.sql`. Delete the file it
+replaces and point `TestLiveSchemaUpgrade.SNAPSHOT` at the new one.
+
+Knowingly not covered: an index added to an existing table, which
+`create_all()` also fails to apply to live. It costs speed rather than
+correctness, and nothing here could tell an intended new index from an
+accident.
 
 ---
 
