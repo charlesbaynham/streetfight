@@ -708,7 +708,7 @@ Shipped as specified. Three things worth knowing beyond the spec:
 - Both resets clear `radar_until`, so a radar lit in the sandbox hour does
   not survive the 16:00 button.
 
-### M6.2 — Early circle warning *(status: shipped 17 Sept, PR #TBD)*
+### M6.2 — Early circle warning *(status: shipped 17 Sept, PR #277)*
 
 Reveals the next circle to the holder before it is announced. That needs a
 circle that exists but is not public: add `Game.next_circle_public: Boolean
