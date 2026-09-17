@@ -33,6 +33,7 @@ from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
 from .model import Item
+from .model import RevokedBatch
 from .model import Shot
 from .model import Team
 from .model import TeamModel
@@ -872,6 +873,12 @@ class UserInterface:
 
         return shot.image_base64
 
+    def _batch_is_revoked(self, batch: str) -> bool:
+        return (
+            self._session.query(RevokedBatch.batch).filter_by(batch=batch).first()
+            is not None
+        )
+
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
         """
@@ -889,6 +896,13 @@ class UserInterface:
             raise HTTPException(
                 403, f"The scanned item is invalid - error {item_validation_error}"
             )
+
+        # Withdrawn codes are refused next, before anything about this player
+        # is looked at: the card is dead for everybody, and the answer should
+        # not depend on who scanned it. A code minted before batches existed
+        # carries no batch and so can never be withdrawn this way.
+        if item.batch and self._batch_is_revoked(item.batch):
+            raise HTTPException(403, "This code has been withdrawn")
 
         user: User = self.get_user()
 

@@ -33,6 +33,7 @@ from .model import Game
 from .model import GameModel
 from .model import Item
 from .model import ItemType
+from .model import RevokedBatch
 from .model import Shot
 from .model import ShotModel
 from .model import Team
@@ -1773,6 +1774,56 @@ class AdminInterface:
         encoded_url = add_params_to_url(os.environ["WEBSITE_URL"], {"d": encoded_item})
 
         return encoded_url
+
+    @db_scoped
+    def withdraw_batch(self, batch: str) -> List[dict]:
+        """Stop every code minted into ``batch`` from being collectable.
+
+        The only recall a printed code has: it cannot be un-printed, and
+        rotating ``SECRET_KEY`` would take the team cards with it. Idempotent,
+        because the admin pressing it twice at 16:00 means the same thing as
+        pressing it once.
+        """
+        batch = batch.strip()
+        if not batch:
+            raise HTTPException(400, "Name the batch to withdraw.")
+
+        logger.info("withdraw_batch %s", batch)
+
+        if not self._session.get(RevokedBatch, batch):
+            self._session.add(RevokedBatch(batch=batch))
+
+        return self._revoked_batches()
+
+    @db_scoped
+    def restore_batch(self, batch: str) -> List[dict]:
+        """Let a withdrawn batch be collected again - the undo for a press of
+        the wrong button, since the row's presence is the whole state."""
+        logger.info("restore_batch %s", batch)
+
+        revoked = self._session.get(RevokedBatch, batch.strip())
+        if revoked:
+            self._session.delete(revoked)
+
+        return self._revoked_batches()
+
+    @db_scoped
+    def get_revoked_batches(self) -> List[dict]:
+        return self._revoked_batches()
+
+    def _revoked_batches(self) -> List[dict]:
+        """Every withdrawn batch, most recently withdrawn first."""
+        return [
+            {
+                "batch": revoked.batch,
+                "revoked_at": (
+                    revoked.revoked_at.isoformat() if revoked.revoked_at else None
+                ),
+            }
+            for revoked in self._session.query(RevokedBatch)
+            .order_by(RevokedBatch.revoked_at.desc())
+            .all()
+        ]
 
     @db_scoped
     def get_locations(self, game_id: UUID = None):

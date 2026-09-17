@@ -530,6 +530,29 @@ class Item(Base):
     )
 
 
+class RevokedBatch(Base):
+    """A print run that has been withdrawn, and so no longer collectable.
+
+    A code is an HMAC over its payload and nothing else, which is what lets a
+    card be printed on Thursday for a server that is deployed on Friday - and
+    is equally why a printed code cannot be recalled. Rotating ``SECRET_KEY``
+    would withdraw everything at once, the team cards included. So every code
+    minted carries a ``batch`` (:class:`backend.items.ItemModel`), and
+    withdrawing one is a row here: at 16:00 the sandbox's wall posters stop
+    working while the game's own cards, minted as "game", carry on.
+
+    The row's presence is the whole of the state, so un-withdrawing is a
+    delete. A code minted before batches existed has no batch at all and can
+    never be withdrawn this way - which is the right answer, since there is
+    nothing to name it by.
+    """
+
+    __tablename__ = "revoked_batches"
+
+    batch = Column(String, primary_key=True, nullable=False)
+    revoked_at = Column(DateTime, server_default=func.now())
+
+
 class GameModel(pydantic.BaseModel):
     id: UUID
 

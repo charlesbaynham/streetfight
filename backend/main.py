@@ -1397,6 +1397,33 @@ async def admin_sandbox_sheets_pdf(copies: int = 1):
     return _pdf_response(pdf, "sandbox_sheets.pdf")
 
 
+# Withdrawing a batch (M2.2). The only recall a printed code has: a card
+# cannot be un-printed, and rotating SECRET_KEY would take the team cards with
+# it. POST for the two that change something, GET for the list.
+
+
+@admin_method(path="/admin_withdraw_batch", method="POST")
+async def admin_withdraw_batch(batch: str) -> List[dict]:
+    """Stop every code minted into ``batch`` from being collectable - what
+    turns the sandbox's posters off at 16:00. Returns the batches now
+    withdrawn, so the page never has to ask twice."""
+    logger.info("admin_withdraw_batch %s", batch)
+    return AdminInterface().withdraw_batch(batch)
+
+
+@admin_method(path="/admin_restore_batch", method="POST")
+async def admin_restore_batch(batch: str) -> List[dict]:
+    """Let a withdrawn batch be collected again."""
+    logger.info("admin_restore_batch %s", batch)
+    return AdminInterface().restore_batch(batch)
+
+
+@admin_method(path="/admin_revoked_batches", method="GET")
+async def admin_revoked_batches() -> List[dict]:
+    """Every batch currently withdrawn, most recent first."""
+    return AdminInterface().get_revoked_batches()
+
+
 def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(
         content=pdf,

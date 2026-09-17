@@ -55,6 +55,10 @@ const DEFAULT_BATCH = "game";
 // press mints, which is the one thing that panel warns about.
 const SANDBOX_CARD_KINDS = 6;
 
+// The batch the sandbox posters are minted into (backend/printables.py's
+// SANDBOX_BATCH), and so the one that gets withdrawn at 16:00.
+const SANDBOX_BATCH = "sandbox";
+
 // The games to choose between, newest-first as the server gives them, with
 // the first one selected. Two panels need this, so it is a hook rather than a
 // copy in each.
@@ -455,6 +459,115 @@ function SandboxSheets() {
   );
 }
 
+// The only recall a printed code has. A card cannot be un-printed and
+// rotating SECRET_KEY would take the team cards with it, so every code is
+// minted carrying a batch and this turns one off: the sandbox's posters stop
+// working at 16:00 while the game's own cards carry on.
+//
+// Not a Printable - nothing is built and nothing is downloaded - but the same
+// shape: one field, one big button, and the state said in words underneath.
+// The button names the batch it is about to withdraw, and a batch that is not
+// the sandbox gets a warning first: mistyping "game" here at 16:00 would turn
+// off every card in the town. It is one press rather than two because the way
+// back is right there in the list below it.
+function WithdrawCodes() {
+  const [batch, setBatch] = useState(SANDBOX_BATCH);
+  const [revoked, setRevoked] = useState(null);
+  const [failure, setFailure] = useState(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    sendAPIRequest("admin_revoked_batches", null, "GET", setRevoked);
+  }, []);
+
+  const named = batch.trim();
+
+  const change = (endpoint, which) => {
+    setBusy(true);
+    setFailure(null);
+    sendAPIRequest(endpoint, { batch: which }, "POST", setRevoked)
+      .then((response) => {
+        if (!response.ok) setFailure(`Failed (${response.status})`);
+      })
+      .catch(() => setFailure("Failed - no response from the server"))
+      .finally(() => setBusy(false));
+  };
+
+  return (
+    <section className={styles.panel} aria-label="Withdraw codes">
+      <h3 className={styles.panelTitle}>Withdraw codes</h3>
+      <p className={styles.blurb}>
+        Stops every code minted into a batch from working, wherever the paper
+        has got to. Withdraw <b>{SANDBOX_BATCH}</b> at 16:00 to close the
+        warm-up room. Codes minted before batches existed carry none and cannot
+        be withdrawn this way.
+      </p>
+      <Field label="Batch">
+        <input
+          className={styles.input}
+          type="text"
+          value={batch}
+          onChange={(e) => setBatch(e.target.value)}
+        />
+      </Field>
+      {named && named !== SANDBOX_BATCH ? (
+        <p className={styles.warning}>
+          "{named}" is not the sandbox. Every card in the town minted into it
+          stops working.
+        </p>
+      ) : null}
+      <button
+        className={styles.destructive}
+        onClick={() => change("admin_withdraw_batch", named)}
+        disabled={busy || !named}
+      >
+        {busy ? "Working..." : `Withdraw "${named || "..."}"`}
+      </button>
+      {failure ? (
+        <span className={`${styles.status} ${styles.statusBad}`}>
+          {failure}
+        </span>
+      ) : null}
+      <WithdrawnBatches revoked={revoked} busy={busy} onRestore={change} />
+    </section>
+  );
+}
+
+// What is withdrawn right now, in words rather than by the absence of a list -
+// "nothing is withdrawn" and "we have not asked yet" are different states, and
+// an admin at 16:00 needs to know which one they are looking at.
+function WithdrawnBatches({ revoked, busy, onRestore }) {
+  if (revoked === null) {
+    return <span className={styles.status}>Checking...</span>;
+  }
+
+  if (revoked.length === 0) {
+    return (
+      <p className={styles.hint}>
+        Nothing is withdrawn - every code minted still works.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <p className={styles.hint}>Withdrawn:</p>
+      {revoked.map((entry) => (
+        <div className={styles.batchRow} key={entry.batch}>
+          <span className={styles.batchName}>{entry.batch}</span>
+          <button
+            className={styles.rowAction}
+            disabled={busy}
+            onClick={() => onRestore("admin_restore_batch", entry.batch)}
+          >
+            Allow again
+          </button>
+        </div>
+      ))}
+    </>
+  );
+}
+
 export function PrintablesPanel() {
   return (
     <>
@@ -469,6 +582,7 @@ export function PrintablesPanel() {
       <PubPages />
       <ItemSheets />
       <SandboxSheets />
+      <WithdrawCodes />
     </>
   );
 }

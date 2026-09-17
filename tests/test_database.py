@@ -14,6 +14,7 @@ from backend.model import Base
 from backend.model import Game
 from backend.model import Item
 from backend.model import ItemType
+from backend.model import RevokedBatch
 from backend.model import Shot
 from backend.model import Team
 from backend.model import TickerEntry
@@ -262,6 +263,7 @@ class TestLiveSchemaUpgrade:
             UserAlias,
             TickerEntry,
             Item,
+            RevokedBatch,
         }
         mapped = {mapper.class_ for mapper in Base.registry.mappers}
         assert mapped == written, (
@@ -299,6 +301,7 @@ class TestLiveSchemaUpgrade:
                     message="Pat shot somebody",
                 )
             )
+            session.add(RevokedBatch(batch="sandbox"))
             session.commit()
 
         with sessionmaker(bind=engine)() as session:
@@ -325,3 +328,4 @@ class TestLiveSchemaUpgrade:
             assert session.get(Shot, shot_id).checked is False
             assert session.get(UserAlias, stray_id).user_id == user_id
             assert session.query(TickerEntry).one().message == "Pat shot somebody"
+            assert session.get(RevokedBatch, "sandbox").revoked_at is not None
