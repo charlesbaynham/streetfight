@@ -189,7 +189,7 @@ Lands in: `backend/model.py`, `backend/user_interface.py`,
 `backend/printables.py`, `backend/main.py`, `react-ui/src/weapons.js`,
 `react-ui/src/utils.js`, `react-ui/src/AdminPrintables.js`.
 
-### M0.2 — Pub poster: five bullets *(status: shipped 17 Sept, PR #PRNUM)*
+### M0.2 — Pub poster: five bullets *(status: shipped 17 Sept, PR #254)*
 
 The artwork's "2x" was erased and "5x" redrawn with Pillow in the same
 purple (`#8103D0`) and pen weight; the bullets are still drawn twice, since
