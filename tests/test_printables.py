@@ -191,6 +191,22 @@ def test_sandbox_endpoint_returns_a_pdf(admin_api_client, log_to_tmp):
     assert page_count(response.content) == len(printables.SANDBOX_CARDS)
 
 
+def test_withdrawing_a_batch_over_the_api_returns_the_new_list(admin_api_client):
+    admin_api_client.post("/api/admin_withdraw_batch?batch=sandbox")
+
+    listed = admin_api_client.get("/api/admin_revoked_batches")
+    assert [entry["batch"] for entry in listed.json()] == ["sandbox"]
+
+    restored = admin_api_client.post("/api/admin_restore_batch?batch=sandbox")
+    assert restored.json() == []
+
+
+def test_withdrawing_needs_an_admin(api_client):
+    response = api_client.post("/api/admin_withdraw_batch?batch=game")
+
+    assert response.status_code == 403
+
+
 def test_printables_need_an_admin(api_client, log_to_tmp):
     response = api_client.post("/api/admin_pub_pages_pdf?count=1")
 

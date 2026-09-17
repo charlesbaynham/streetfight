@@ -6,6 +6,7 @@ import pydantic
 import pytest
 from fastapi.exceptions import HTTPException
 
+from backend.admin_interface import AdminInterface
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
 from backend.model import Item
@@ -524,6 +525,82 @@ def test_an_unlimited_item_is_recorded_once(db_session, two_users_in_different_t
 
     items = db_session.query(User).filter_by(id=user_a).one().items
     assert [item.id for item in items] == [SAMPLE_AMMO_DATA["id"]]
+
+
+def test_a_withdrawn_batch_cannot_be_collected(valid_encoded_ammo, user_in_team):
+    """The only recall a printed code has: the card is still in somebody's
+    hand, so the refusal has to come from the server."""
+    batched = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+
+    AdminInterface().withdraw_batch("sandbox")
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(batched)
+
+    assert refusal.value.status_code == 403
+    assert "withdrawn" in refusal.value.detail
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+
+
+def test_withdrawing_one_batch_leaves_the_others_alone(user_in_team):
+    """The whole reason a batch exists: the sandbox closes at 16:00 and the
+    game's own cards carry on."""
+    sandbox = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+    game = (
+        ItemModel(**{**SAMPLE_AMMO_DATA, "id": get_uuid()}, batch="game")
+        .sign()
+        .to_base64()
+    )
+
+    AdminInterface().withdraw_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(game)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(sandbox)
+
+
+def test_a_code_minted_before_batches_existed_is_untouched(
+    valid_encoded_ammo, user_in_team
+):
+    """An unbatched code has nothing to name it by, so no press can withdraw
+    it - and a withdrawal must not catch it by accident either."""
+    AdminInterface().withdraw_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_batch_can_be_allowed_again(user_in_team):
+    """The undo for a press of the wrong button at 16:00."""
+    batched = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+
+    AdminInterface().withdraw_batch("sandbox")
+    AdminInterface().restore_batch("sandbox")
+
+    UserInterface(user_in_team).collect_item(batched)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+    assert AdminInterface().get_revoked_batches() == []
+
+
+def test_withdrawing_twice_is_the_same_as_withdrawing_once():
+    """An admin pressing it again means the same thing as pressing it once."""
+    AdminInterface().withdraw_batch("sandbox")
+    revoked = AdminInterface().withdraw_batch("sandbox")
+
+    assert [entry["batch"] for entry in revoked] == ["sandbox"]
+
+
+def test_a_batch_has_to_be_named_to_be_withdrawn():
+    """A cleared text field would otherwise withdraw a batch called "", which
+    is nothing - and mints no evidence that the press did nothing."""
+    with pytest.raises(HTTPException) as refusal:
+        AdminInterface().withdraw_batch("   ")
+
+    assert refusal.value.status_code == 400
 
 
 def test_collect_team_item(two_users_in_different_teams, user_factory):

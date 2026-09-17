@@ -414,7 +414,7 @@ sign-ups included, which `reset_game`'s team walk misses:
 Existing `reset_game` stays for dev. Tests in `tests/test_admin_mode.py`.
 Two-tap confirm on the button, like the demo button.
 
-### M2.2 — Withdraw a batch of codes *(status: open; after M0.3)*
+### M2.2 — Withdraw a batch of codes *(status: shipped 2026-09-17, PR #TBD)*
 
 - New table `revoked_batches(batch TEXT PK, revoked_at)` — a new table, so it
   creates itself on deploy (rule 2).
@@ -424,6 +424,14 @@ Two-tap confirm on the button, like the demo button.
 - Admin: on the Printables page, a "Withdraw codes" panel: text field
   (default `sandbox`), the list of withdrawn batches, and an un-withdraw.
 - Tests: a withdrawn code 403s, an unbatched legacy code is unaffected.
+
+Shipped as specified. Two things worth knowing at 16:00: the check sits
+*before* anything about the player is looked at, so a withdrawn card is dead
+for everybody and the answer never depends on who scanned it; and the panel's
+button names the batch it is about to withdraw ("Withdraw \"sandbox\""), with a
+red warning for any batch that is not the sandbox, because mistyping `game`
+there would turn off every card in the town. One press rather than two, since
+**Allow again** is in the list directly beneath it.
 
 ---
 

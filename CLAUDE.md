@@ -273,7 +273,15 @@ Four things from it that are worth knowing even if you never call the agent:
     numbers are not free: `num` picks the drawing as well as the amount, which
     is why the ammunition poster is five bullets (there is an `ammo_5.png` and
     no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
-    card has artwork. The reason the module exists at all is the signature: a
+    card has artwork. The page's last panel prints nothing: **Withdraw codes**
+    (`RevokedBatch` in `model.py`, `AdminInterface.withdraw_batch` /
+    `restore_batch`) is the only recall a printed code has, since a card
+    cannot be un-printed and rotating `SECRET_KEY` would take the team cards
+    with it. `collect_item` checks it immediately after the signature, before
+    anything about the player is looked at — the card is dead for everybody.
+    The row's presence is the whole state, so un-withdrawing is a delete, and
+    a code minted before batches existed carries none and can never be
+    withdrawn this way. The reason the module exists at all is the signature: a
     code is signed with the `SECRET_KEY` that minted it and carries that
     machine's `WEBSITE_URL`, so a run done from a checkout whose `.env` has
     drifted is a stack of paper nobody at the party can scan, and the failure
