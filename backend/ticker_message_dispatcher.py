@@ -26,6 +26,7 @@ class TickerMessageType(Enum):
     USER_COLLECTED_ARMOUR = auto()
     USER_COLLECTED_MEDPACK = auto()
     USER_COLLECTED_WEAPON = auto()
+    USER_COLLECTED_RADAR = auto()
     USER_GOT_HIT = auto()
     USER_GOT_KNOCKED_OUT = auto()
     ADMIN_HIT_USER = auto()
@@ -87,6 +88,12 @@ TICKER_MESSAGES = {
     TickerMessageType.USER_COLLECTED_WEAPON: (
         TickerTarget.PUBLIC,
         "{user} collected a {weapon}",
+    ),
+    # The radar card (M6.1). Said out loud and with the duration in it: the
+    # card's value is partly that everybody else knows to start moving.
+    TickerMessageType.USER_COLLECTED_RADAR: (
+        TickerTarget.PUBLIC,
+        "{user} has radar for the next {num} minutes - keep moving!",
     ),
     TickerMessageType.ADMIN_HIT_USER: (
         TickerTarget.PUBLIC,

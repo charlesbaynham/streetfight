@@ -16,6 +16,7 @@ import OnboardingView from "./OnboardingView";
 import FullscreenButton from "./FullscreenButton";
 import { MapViewSelf } from "./MapView";
 import NextEventStrip from "./NextEventStrip";
+import { RadarStrip } from "./RadarLayer";
 import prose from "./prose";
 
 import {
@@ -94,6 +95,7 @@ function GetView({ user }) {
   return (
     <>
       <NextEventStrip user={user} />
+      <RadarStrip user={user} />
       <div className={styles.monitorsContainer}>
         {isAlive ? (
           <BulletCount user={user} />

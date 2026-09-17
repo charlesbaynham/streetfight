@@ -677,7 +677,7 @@ it means something - but it does mean the ordinary evening is mostly
 
 ## M6 — The two experimental items *(Friday; after M0.3; drop if not working)*
 
-### M6.1 — Radar *(status: open)*
+### M6.1 — Radar *(status: shipped 17 Sept, PR #275)*
 
 - Handler: `User.radar_until = now + minutes*60` (nullable column). Refuses
   if already active.
@@ -688,6 +688,25 @@ it means something - but it does mean the ordinary evening is mostly
   explicit that this is last-seen, never live — greyed as the fix ages, and a
   strip "Radar: 4:12 left". Polls every 5 s while active (the admin map's
   pattern); no SSE needed.
+
+Shipped as specified. Three things worth knowing beyond the spec:
+
+- The two halves of the frontend are one file, `react-ui/src/RadarLayer.js`.
+  The strip is mounted in `UserMode.js` (it has `/user_info`, so the countdown
+  needs no poll of its own) and the dots inside `MapView.js`'s zoomable
+  content; the strip tells the layer there is a radar to draw through a
+  module-level store, the same shape as `shotRefusalStore.js`. That is what
+  keeps the admin map and the spectator screen — which mount the same
+  `MapView` — from polling a player's radar.
+- A contact with no fix at all is left out, and anybody not on their feet is
+  drawn grey and labelled "out" rather than with an age. A teammate is green
+  and an opponent red: since R15 nobody can tell teams apart by eye, so the
+  radar is the only place it gets said.
+- The scan is announced publicly ("*X* has radar for the next 5 minutes -
+  keep moving!"), like every other collection. Half the card's value is that
+  everybody else starts moving.
+- Both resets clear `radar_until`, so a radar lit in the sandbox hour does
+  not survive the 16:00 button.
 
 ### M6.2 — Early circle warning *(status: open)*
 

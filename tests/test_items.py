@@ -1,4 +1,5 @@
 import os
+import time
 from uuid import UUID
 from uuid import uuid4 as get_uuid
 
@@ -25,7 +26,7 @@ os.environ["SECRET_KEY"] = "test_secret_key"
 # The item types whose cards are printed before their handlers are written
 # (M0.3 freezes the encoding; M6 writes the effects). Scanning one is a 403
 # until then, which is what an unmapped type has always done.
-AWAITING_HANDLERS = {ItemType.RADAR, ItemType.CIRCLE_WARNING}
+AWAITING_HANDLERS = {ItemType.CIRCLE_WARNING}
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
@@ -730,12 +731,103 @@ def test_radar_and_circle_warning_carry_a_duration():
 
 
 def test_an_item_with_no_handler_yet_is_refused_rather_than_crashing(user_in_team):
-    """Until M6 lands, scanning one of the new cards is a 403 - the same
-    answer an unmapped type has always given."""
-    radar = ItemModel(**{**SAMPLE_AMMO_DATA, "itype": "radar", "data": {}}).sign()
+    """Until the rest of M6 lands, scanning a card whose handler is not
+    written is a 403 - the same answer an unmapped type has always given."""
+    warning = ItemModel(
+        **{**SAMPLE_AMMO_DATA, "itype": "circle_warning", "data": {}}
+    ).sign()
 
     with pytest.raises(HTTPException) as refusal:
-        UserInterface(user_in_team).collect_item(radar.to_base64())
+        UserInterface(user_in_team).collect_item(warning.to_base64())
+
+    assert refusal.value.status_code == 403
+
+
+def _radar_card(minutes=None):
+    data = {} if minutes is None else {"minutes": minutes}
+    return ItemModel(
+        **{**SAMPLE_AMMO_DATA, "id": get_uuid(), "itype": "radar", "data": data}
+    ).sign()
+
+
+def test_radar_card_starts_the_radar(user_in_team):
+    before = time.time()
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    radar_until = UserInterface(user_in_team).get_user_model().radar_until
+
+    assert before + 5 * 60 <= radar_until <= time.time() + 5 * 60
+
+
+def test_a_second_radar_card_is_refused_while_the_first_runs(user_in_team, db_session):
+    """Refusing keeps the card: the scan rolls back, so no Item row is written
+    and the player can use it once the first one has run out."""
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    second = _radar_card(minutes=5)
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(second.to_base64())
+    assert refusal.value.status_code == 403
+
+    # Wind the first radar into the past, as five minutes of play would
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"radar_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    UserInterface(user_in_team).collect_item(second.to_base64())
+    assert UserInterface(user_in_team).get_user_model().radar_until > time.time()
+
+
+def test_radar_is_refused_until_a_card_is_scanned(user_in_team):
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).get_radar()
+
+    assert refusal.value.status_code == 403
+
+
+def test_radar_shows_everybody_else_and_how_old_their_fix_is(
+    two_users_in_different_teams,
+):
+    me, them = two_users_in_different_teams
+
+    UserInterface(me).set_location(51.0, -1.0, accuracy=8.0)
+    UserInterface(them).set_location(51.1, -1.1, accuracy=12.0)
+
+    UserInterface(me).collect_item(_radar_card(minutes=5).to_base64())
+
+    contacts = UserInterface(me).get_radar()
+
+    assert len(contacts) == 1
+    (contact,) = contacts
+    assert contact["lat"] == 51.1
+    assert contact["long"] == -1.1
+    assert contact["accuracy"] == 12.0
+    assert contact["state"] == UserState.ALIVE
+    # Last seen, never live: every row says how stale it is
+    assert 0 <= contact["seconds_ago"] < 60
+
+
+def test_radar_leaves_out_anybody_who_has_never_reported_a_fix(
+    two_users_in_different_teams,
+):
+    me, _them = two_users_in_different_teams
+
+    UserInterface(me).collect_item(_radar_card(minutes=5).to_base64())
+
+    assert UserInterface(me).get_radar() == []
+
+
+def test_an_expired_radar_is_refused_like_no_radar_at_all(user_in_team, db_session):
+    UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
+
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"radar_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).get_radar()
 
     assert refusal.value.status_code == 403
 

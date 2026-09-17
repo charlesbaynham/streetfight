@@ -1082,6 +1082,72 @@ class UserInterface:
         }
 
     @db_scoped
+    def start_radar(self, minutes: float) -> float:
+        """Light up this player's radar for a while (M6.1).
+
+        Refuses while one is already running rather than stacking or extending
+        it. Nothing is lost by that: ``do_item_actions`` raising rolls the
+        whole scan back, so no Item row is written and the card is still good
+        - the player keeps it for when the first one runs out.
+        """
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.radar_until is not None and user.radar_until > now:
+            raise RuntimeError("Your radar is already running")
+
+        user.radar_until = now + minutes * 60
+        return user.radar_until
+
+    @db_scoped
+    def get_radar(self) -> List[dict]:
+        """Where everybody else in this game was last seen (M6.1).
+
+        Refused with a 403 rather than answered with an empty list when the
+        radar is not running: the card buys a view of the game, and "you have
+        no radar" and "there is nobody out there" must not look the same.
+
+        The plan is explicit that this is *last seen* and never live, so every
+        row carries its own age. That age goes out as ``seconds_ago`` rather
+        than as a timestamp so the phone's clock never has to agree with the
+        server's: it re-bases each one against its own clock as it arrives and
+        goes on ageing it between polls.
+        """
+        from .admin_interface import AdminInterface
+
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.radar_until is None or user.radar_until <= now:
+            raise HTTPException(403, "Your radar is not running")
+
+        # Read this off the ORM object before calling out: AdminInterface's
+        # own @db_scoped commits, which expires every object on this session,
+        # so a later attribute read would reload the row and autoflush.
+        game_id = user.game_id
+        if game_id is None:
+            raise HTTPException(403, "You are not in a game")
+
+        locations = AdminInterface(session=self.get_session()).get_locations(game_id)
+
+        return [
+            {
+                "name": row["user"],
+                "team": row["team"],
+                "lat": row["latitude"],
+                "long": row["longitude"],
+                "seconds_ago": now - row["timestamp"],
+                "accuracy": row["accuracy"],
+                "state": row["state"],
+            }
+            for row in locations
+            if row["user_id"] != self.user_id
+            and row["latitude"] is not None
+            and row["longitude"] is not None
+            and row["timestamp"] is not None
+        ]
+
+    @db_scoped
     def get_messages(
         self, num, private=False, newest_first=True
     ) -> List[Tuple[str, str, Optional[UUID]]]:
