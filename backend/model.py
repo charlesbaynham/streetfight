@@ -112,6 +112,15 @@ class Game(Base):
     teams = relationship("Team", lazy=True, back_populates="game")
     shots = relationship("Shot", lazy=True, back_populates="game")
     items = relationship("Item", lazy=True, back_populates="game")
+    # The crates the courier has put out and nobody has claimed yet (M4.3).
+    # Oldest first, which is the order the courier dropped them in and so the
+    # order their list on /admin/courier reads in.
+    drops = relationship(
+        "Drop",
+        lazy=True,
+        back_populates="game",
+        order_by="Drop.time_created",
+    )
 
     exclusion_circle_lat = Column(Float, nullable=True)
     exclusion_circle_long = Column(Float, nullable=True)
@@ -603,6 +612,50 @@ class RevokedBatch(Base):
     revoked_at = Column(DateTime, server_default=func.now())
 
 
+class Drop(Base):
+    """A crate the courier has put on the ground (M4.3).
+
+    One row per crate, so several can be out at once and each is cleared on
+    its own when somebody claims it. That is the whole reason this is a table
+    rather than three more columns on ``Game``: the single ``drop_circle_*``
+    triplet that predates it can only ever hold the newest crate, so putting
+    out a second one silently took the first off every map while the crate was
+    still sitting under a bench.
+
+    The row *is* the crate. Clearing one deletes it, rather than marking it
+    collected: the ticker line announcing the claim is the record of what
+    happened, and a table of crates that are no longer there is a thing the
+    courier's list would then have to filter.
+    """
+
+    __tablename__ = "drops"
+
+    id = Column(UUIDType, primary_key=True, nullable=False, default=get_uuid)
+
+    game_id = Column(UUIDType, ForeignKey("games.id"), nullable=False)
+    game = relationship("Game", lazy="joined", back_populates="drops")
+
+    lat = Column(Float, nullable=False)
+    long = Column(Float, nullable=False)
+    radius = Column(Float, nullable=False)
+
+    # An epoch second, like Game.courier_timestamp and unlike Shot's DateTime:
+    # it is shown as a wall-clock time on the courier's own phone, and a number
+    # the browser can hand straight to Date() cannot pick up a timezone on the
+    # way.
+    time_created = Column(Float, nullable=False, default=time.time)
+
+
+class DropModel(pydantic.BaseModel):
+    id: UUID
+    lat: float
+    long: float
+    radius: float
+    time_created: float
+
+    model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
+
+
 class GameModel(pydantic.BaseModel):
     id: UUID
 
@@ -625,6 +678,11 @@ class GameModel(pydantic.BaseModel):
     drop_circle_lat: Optional[float] = None
     drop_circle_long: Optional[float] = None
     drop_circle_radius: Optional[float] = None
+
+    # Every crate still on the ground (M4.3). The drop_circle_* triplet above
+    # is the admin's own map-placed drop and is unrelated; both are drawn the
+    # same way.
+    drops: List["DropModel"] = []
 
     next_event_kind: Optional[str] = None
     next_event_at: Optional[float] = None

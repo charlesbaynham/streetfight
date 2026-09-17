@@ -253,16 +253,28 @@ courier starts broadcasting — so have the courier page open.
 
 ### The courier page
 
-**`/admin/courier`**, on the phone that is carrying the crate. Three things:
+**`/admin/courier`**, on the phone that is carrying the crate. Four things:
 
 - **Broadcast my location.** Posts a fix about once a second. The page says
   where you are in words — "Broadcasting — last fix 2 s ago, ±8 m". Players
   see an aeroplane on their maps, at most five seconds behind you.
 - **Place drop here.** Two-tap — the first tap arms it and it says "Tap again
-  to put the crate here". Sets the drop circle at your current fix (20 m
-  radius), announces it in the ticker, clears the courier and stops
-  broadcasting. The crate icon appears at the centre of the blue ping.
+  to put the crate here". Puts a crate at your current fix (20 m radius),
+  announces it in the ticker, clears the courier and stops broadcasting. The
+  crate icon appears at the centre of the blue ping. Each press is its own
+  crate: putting out a second one leaves the first exactly where it is
+  (M4.3).
+- **Crates on the ground.** Every crate still out, with the time it went
+  down, and a **Collected** button on each — also two-tap. Pressing it
+  announces "The supply drop has been claimed!", takes the blue circle and
+  the crate off every map, and drops the row off this list. Nothing else can
+  do that: **the app never sees anybody pick a crate up**, so if nobody
+  presses this the crate stays on the maps all night.
 - **Stop broadcasting** without placing, if the run is abandoned.
+
+The list comes from the server, so it survives a reload and shows a crate
+somebody else placed — hand the phone over mid-evening and the list comes
+with it.
 
 The page holds a screen wake lock, so the phone will not lock itself
 mid-walk. If broadcasting stops for any reason, the aeroplane fades and then

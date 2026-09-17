@@ -630,6 +630,27 @@ would never move there. The courier image is a placeholder
 (`images/art/courier.svg`) until Gaby's arrives — replacing the file is the
 whole change.
 
+### M4.3 — Clearing a crate once it has been claimed *(status: shipped 2026-09-17)*
+
+Nothing in the app can see somebody pick a crate up, so taking it off the map
+is a button somebody presses — and until this item there was no such button
+and no way to have two crates out at once.
+
+- A **`drops` table** (`backend/model.py`'s `Drop`), one row per crate, so a
+  second drop no longer takes the first off every map the way the single
+  `drop_circle_*` triplet did. The row *is* the crate: clearing one deletes
+  it, and the ticker line announcing the claim is the record.
+- `AdminInterface.place_drop` / `clear_drop` / `get_drops`, behind
+  `admin_place_drop`, `admin_clear_drop` and `admin_list_drops`. Both
+  announcements are the lines placing and clearing a DROP circle already
+  fired — to a player it is the same event.
+- `/get_circles` and `GameModel` grow `drops: [...]`, and `MapCircles` draws
+  each one exactly as it draws the admin's own map-placed drop, which is
+  unchanged and still works.
+- The courier page grows the list: each crate with the time it went down and
+  a two-tap **Collected** button, from the server rather than from what that
+  tab placed, so a reload keeps it.
+
 ---
 
 ## M5 — Sounds *(status: shipped 2026-09-17, PR #270)*

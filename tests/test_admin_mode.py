@@ -13,6 +13,7 @@ from backend.image_processing import load_image
 from backend.model import APPEALS_PER_GAME
 from backend.model import BASIC_WEAPON
 from backend.model import STARTING_HIT_POINTS
+from backend.model import Drop
 from backend.model import Game
 from backend.model import Item
 from backend.model import ItemType
@@ -1114,6 +1115,74 @@ def test_clearing_the_courier_puts_the_dot_away(db_session, user_in_team):
     assert game.courier_long is None
     assert game.courier_timestamp is None
     assert game.courier_accuracy is None
+
+
+def test_placing_a_drop_puts_a_crate_on_the_map_and_says_so(db_session, user_in_team):
+    game_id = game_of_user(user_in_team)
+
+    drop_id = AdminInterface().place_drop(game_id, 51.5, -0.13, radius=0.02)
+
+    drops = UserInterface(user_in_team).get_circles()["drops"]
+    assert [(d["id"], d["lat"], d["long"], d["radius"]) for d in drops] == [
+        (drop_id, 51.5, -0.13, 0.02)
+    ]
+    assert drops[0]["time_created"] > 0
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert "A supply drop has appeared! It's marked in blue" in messages
+
+
+def test_a_second_drop_does_not_take_the_first_off_the_map(user_in_team):
+    """The reason drops are a table at all (M4.3): the single drop_circle_*
+    triplet could only hold the newest crate, so putting out a second one
+    silently cleared the first while it was still on the ground."""
+    game_id = game_of_user(user_in_team)
+
+    first = AdminInterface().place_drop(game_id, 51.5, -0.13, radius=0.02)
+    second = AdminInterface().place_drop(game_id, 51.6, -0.14, radius=0.02)
+
+    drops = UserInterface(user_in_team).get_circles()["drops"]
+    assert [d["id"] for d in drops] == [first, second]
+
+
+def test_clearing_a_drop_removes_only_that_one_and_announces_it(
+    db_session, user_in_team
+):
+    game_id = game_of_user(user_in_team)
+    first = AdminInterface().place_drop(game_id, 51.5, -0.13, radius=0.02)
+    second = AdminInterface().place_drop(game_id, 51.6, -0.14, radius=0.02)
+
+    AdminInterface().clear_drop(first)
+
+    assert [d.id for d in AdminInterface().get_drops(game_id)] == [second]
+    assert [d["id"] for d in UserInterface(user_in_team).get_circles()["drops"]] == [
+        second
+    ]
+    assert db_session.query(Drop).count() == 1
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert "The supply drop has been claimed!" in messages
+
+
+def test_clearing_a_drop_that_is_already_gone_is_a_404(user_in_team):
+    """Two couriers on the same list, or one who double-taps a reload apart."""
+    game_id = game_of_user(user_in_team)
+    drop_id = AdminInterface().place_drop(game_id, 51.5, -0.13, radius=0.02)
+    AdminInterface().clear_drop(drop_id)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().clear_drop(drop_id)
+    assert excinfo.value.status_code == 404
+
+
+def test_resetting_to_the_start_state_clears_the_crates(db_session, user_in_team):
+    game_id = game_of_user(user_in_team)
+    AdminInterface().place_drop(game_id, 51.5, -0.13, radius=0.02)
+    AdminInterface().set_game_active(game_id, False)
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    assert db_session.query(Drop).count() == 0
 
 
 def test_the_courier_fan_out_is_throttled_but_the_position_is_not(

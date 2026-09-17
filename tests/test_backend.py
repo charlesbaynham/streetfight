@@ -126,6 +126,7 @@ def test_get_circles_in_game_no_circle(api_client, api_user_id, one_team):
     ]:
         assert key in response
         assert response[key] is None
+    assert response["drops"] == []
 
 
 def test_get_circles_in_game_circle_exclusion_set(api_client, api_user_id, one_team):

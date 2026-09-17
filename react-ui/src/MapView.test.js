@@ -128,6 +128,27 @@ test("a drop circle gets a crate at its centre", () => {
   expect(crate()).not.toBeNull();
 });
 
+test("every crate the courier has out gets its own circle and marker", () => {
+  // The admin's single map-placed drop and two of the courier's (M4.3): three
+  // crates, because a second courier drop must not take the first off the map.
+  renderMap({
+    circles: {
+      ...DROP,
+      drops: [
+        { id: "a", lat: 51.51, long: -0.11, radius: 0.02 },
+        { id: "b", lat: 51.52, long: -0.12, radius: 0.02 },
+      ],
+    },
+  });
+
+  expect(screen.getAllByTestId("map-drop-crate")).toHaveLength(3);
+});
+
+test("a server too old to send any drops draws none", () => {
+  renderMap({ circles: { drops: undefined } });
+  expect(crate()).toBeNull();
+});
+
 test("the courier is drawn from either shape the server sends", () => {
   // /get_circles nests it...
   renderMap({

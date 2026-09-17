@@ -60,3 +60,37 @@
   color: #c0392b;
   font-weight: bold;
 }
+
+/* The crates still out. A roster row, sized like ReferencePhotos' - the clear
+   button is small beside the big ones above, because it is the one thing here
+   that is pressed by mistake rather than on purpose, but still past the touch
+   minimum. */
+.dropsHeading {
+  margin-top: 1.5em;
+  font-size: 1.1em;
+}
+
+.dropList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.dropRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1em;
+  min-height: 3.2em;
+  padding: 0 0.6em;
+  margin-bottom: 0.4em;
+  border: 1px solid #ccc;
+  border-radius: 0.3em;
+  background: #f4f4f4;
+}
+
+.clearButton {
+  min-height: 2.6em;
+  min-width: 8em;
+  font-weight: 600;
+}

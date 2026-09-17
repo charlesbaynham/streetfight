@@ -1081,6 +1081,10 @@ class UserInterface:
             "drop_circle_lat": game_model.drop_circle_lat,
             "drop_circle_long": game_model.drop_circle_long,
             "drop_circle_radius": game_model.drop_circle_radius,
+            # The courier's crates (M4.3). A list, because several can be out
+            # at once and each is cleared on its own; the triplet above is the
+            # admin's single map-placed drop and is drawn the same way.
+            "drops": [drop.model_dump() for drop in game_model.drops],
             # Nested rather than four more flat keys (M4.2): the circles are
             # a fixed part of the map and the courier is somebody who is
             # either there or not, and "courier": null says that in one read.

@@ -157,6 +157,15 @@ function courierPosition(circles) {
   };
 }
 
+// The courier's crates (M4.3), as the triplets MapCircles draws. They arrive
+// under the same key in both shapes the server sends - nested in /get_circles
+// and on a GameModel - so unlike the circles there is nothing to reconcile,
+// only a server too old to send them at all to defend against.
+function dropTriplets(circles) {
+  if (!circles || !Array.isArray(circles.drops)) return [];
+  return circles.drops.map((drop) => [drop.lat, drop.long, drop.radius]);
+}
+
 export function MapCirclesFromData({ calculators, circles }) {
   return (
     <MapCircles
@@ -164,6 +173,7 @@ export function MapCirclesFromData({ calculators, circles }) {
       exclusionCircle={circleTriplet(circles, "exclusion")}
       nextCircle={circleTriplet(circles, "next")}
       dropCircle={circleTriplet(circles, "drop")}
+      drops={dropTriplets(circles)}
       courier={courierPosition(circles)}
     />
   );
@@ -223,6 +233,7 @@ function MapCircles({
   exclusionCircle = null,
   nextCircle = null,
   dropCircle = null,
+  drops = [],
   courier = null,
 }) {
   const calculateCircleStyles = useCallback(
@@ -283,29 +294,37 @@ function MapCircles({
       );
   }
 
+  // The admin's own map-placed drop, then every crate the courier has put out
+  // (M4.3). Drawn identically: to a player they are the same thing, and which
+  // of the two put a crate somewhere is nobody's business but the admin's.
+  const allDrops = [];
   if (dropCircle) {
     const [lat, long, radiusKM] = dropCircle;
-    if (lat && long && radiusKM) {
-      circles.push(
-        <div
-          className={styles.dropCircle}
-          style={calculateCircleStyles(lat, long, radiusKM)}
-        />,
-      );
-      // A sibling of the ping, never a child of it: .dropCircle carries the
-      // `zoom` keyframe that scales it to 5x and fades it out, which would
-      // take the crate with it. The ping says "look here"; the crate says
-      // what is here, and has to stay legible while the ping does its thing.
-      circles.push(
-        <img
-          src={crateSrc}
-          alt=""
-          className={styles.dropCrate}
-          style={calculateCentreStyles(lat, long)}
-          data-testid="map-drop-crate"
-        />,
-      );
-    }
+    if (lat && long && radiusKM) allDrops.push([lat, long, radiusKM]);
+  }
+  allDrops.push(...drops);
+
+  for (const [lat, long, radiusKM] of allDrops) {
+    if (!lat || !long || !radiusKM) continue;
+    circles.push(
+      <div
+        className={styles.dropCircle}
+        style={calculateCircleStyles(lat, long, radiusKM)}
+      />,
+    );
+    // A sibling of the ping, never a child of it: .dropCircle carries the
+    // `zoom` keyframe that scales it to 5x and fades it out, which would
+    // take the crate with it. The ping says "look here"; the crate says
+    // what is here, and has to stay legible while the ping does its thing.
+    circles.push(
+      <img
+        src={crateSrc}
+        alt=""
+        className={styles.dropCrate}
+        style={calculateCentreStyles(lat, long)}
+        data-testid="map-drop-crate"
+      />,
+    );
   }
 
   return (
