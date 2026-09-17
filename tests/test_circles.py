@@ -60,3 +60,29 @@ def test_a_circle_cue_reaching_zero_closes_the_circle(user_in_team):
 
     assert circles_of(user_in_team)["exclusion_circle_radius"] == 0.42
     assert UserInterface(user_in_team).get_user_model().next_event_at is None
+
+
+def test_nobody_is_walking_a_crate_to_begin_with(user_in_team):
+    assert circles_of(user_in_team)["courier"] is None
+
+
+def test_the_courier_rides_out_with_the_circles(user_in_team):
+    """One payload and one SSE event for both: the courier's dot arrives on
+    the same refetch the circles do (M4.2)."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_courier_location(game_id, 51.5, -0.1, accuracy=8)
+
+    courier = circles_of(user_in_team)["courier"]
+    assert courier["lat"] == 51.5
+    assert courier["long"] == -0.1
+    assert courier["accuracy"] == 8
+    assert courier["timestamp"] is not None
+
+
+def test_a_courier_who_has_stopped_is_nobody(user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_courier_location(game_id, 51.5, -0.1)
+
+    AdminInterface().clear_courier(game_id)
+
+    assert circles_of(user_in_team)["courier"] is None

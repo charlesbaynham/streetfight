@@ -180,3 +180,31 @@
   border-radius: 0;
   box-shadow: none;
 }
+
+/* The supply drop's crate, at the centre of the drop circle. Never inside
+   .dropCircle: that element is scaled to 5x and faded out by the `zoom`
+   keyframe above, and the crate has to stay legible while the ping does it. */
+.dropCrate {
+  position: absolute;
+  width: 1.8em;
+  aspect-ratio: 1;
+  transform: translateX(-50%) translateY(50%);
+  pointer-events: none;
+}
+
+/* The courier's aeroplane. Bigger than a player's dot because it is a thing
+   happening rather than a person standing, and there is only ever one. */
+.mapDotCourier {
+  position: absolute;
+  width: 2.4em;
+  aspect-ratio: 1;
+  transform: translateX(-50%) translateY(50%);
+  pointer-events: none;
+}
+
+/* For an overlay whose position cannot be worked out yet - an unmeasured box
+   projects to NaN. Kept in the DOM, like the circles are, rather than
+   unmounted and remounted a frame later. */
+.hiddenOverlay {
+  display: none;
+}

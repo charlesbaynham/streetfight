@@ -105,3 +105,66 @@ test("an always-expanded map (admin view) shows no close button and ignores taps
     screen.queryByRole("button", { name: prose.mapView.closeMapLabel }),
   ).not.toBeInTheDocument();
 });
+
+// -- the courier and the crate (M4.2) ---------------------------------------
+
+const DROP = {
+  drop_circle_lat: 51.5,
+  drop_circle_long: -0.1,
+  drop_circle_radius: 0.01,
+};
+
+const courier = () => screen.queryByTestId("map-courier-dot");
+const crate = () => screen.queryByTestId("map-drop-crate");
+
+test("no drop and no courier means neither is drawn", () => {
+  renderMap({ circles: {} });
+  expect(crate()).toBeNull();
+  expect(courier()).toBeNull();
+});
+
+test("a drop circle gets a crate at its centre", () => {
+  renderMap({ circles: DROP });
+  expect(crate()).not.toBeNull();
+});
+
+test("the courier is drawn from either shape the server sends", () => {
+  // /get_circles nests it...
+  renderMap({
+    circles: {
+      courier: { lat: 51.5, long: -0.1, timestamp: Date.now() / 1000 },
+    },
+  });
+  expect(courier()).not.toBeNull();
+
+  // ...and a GameModel, which is what the spectator screen passes, is flat.
+  renderMap({
+    circles: {
+      courier_lat: 51.5,
+      courier_long: -0.1,
+      courier_timestamp: Date.now() / 1000,
+    },
+  });
+  expect(screen.getAllByTestId("map-courier-dot")).toHaveLength(2);
+});
+
+test("a courier who stopped broadcasting fades out and then goes", () => {
+  const { unmount } = renderMap({
+    circles: {
+      courier: { lat: 51.5, long: -0.1, timestamp: Date.now() / 1000 - 120 },
+    },
+  });
+
+  // Two minutes of silence from a courier who reports once a second is
+  // somebody who is no longer there, and a plausible aeroplane sitting where
+  // they used to be is worse than none.
+  expect(courier()).toBeNull();
+  unmount();
+
+  renderMap({
+    circles: {
+      courier: { lat: 51.5, long: -0.1, timestamp: Date.now() / 1000 - 30 },
+    },
+  });
+  expect(courier()).not.toBeNull();
+});

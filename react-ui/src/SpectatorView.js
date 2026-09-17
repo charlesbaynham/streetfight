@@ -143,6 +143,7 @@ function useSpectatorData() {
     ticker,
     identity,
     refreshAll,
+    refreshGames,
     refreshShots,
   };
 }
@@ -730,6 +731,7 @@ function SpectatorScreen() {
     identity,
     shotsLoaded,
     refreshAll,
+    refreshGames,
     refreshShots,
   } = useSpectatorData();
   const thumbnails = useThumbnails(shots);
@@ -802,6 +804,12 @@ function SpectatorScreen() {
     >
       <UpdateListener update_type="admin" callback={refreshAll} />
       <UpdateListener update_type="shots" callback={refreshShots} />
+      {/* The circles and the courier ride on the game this screen passes
+          straight to the map (rather than on /get_circles, which resolves the
+          game from a player session this browser does not have), so the
+          circle event has to refetch the game or the courier's aeroplane
+          never moves here. It is already throttled to ~5s server-side. */}
+      <UpdateListener update_type="circle" callback={refreshGames} />
 
       <Headline
         game={game}
