@@ -9,6 +9,7 @@ from fastapi.exceptions import HTTPException
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
 from backend.model import Item
+from backend.model import ItemType
 from backend.model import User
 from backend.model import UserState
 from backend.ticker_message_dispatcher import TickerMessageType
@@ -16,6 +17,11 @@ from backend.user_interface import UserInterface
 
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
+
+# The item types whose cards are printed before their handlers are written
+# (M0.3 freezes the encoding; M6 writes the effects). Scanning one is a 403
+# until then, which is what an unmapped type has always done.
+AWAITING_HANDLERS = {ItemType.RADAR, ItemType.CIRCLE_WARNING}
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
@@ -180,6 +186,65 @@ def test_signing_is_deterministic_and_uses_shared_helper():
         item_a.collected_only_once,
         item_a.collected_as_team,
     )
+
+
+# The exact signature the scheme produced before `batch` and `unlimited`
+# existed, over SAMPLE_ARMOUR_DATA and the SECRET_KEY set at the top of this
+# file. Every drop card, pub poster and WhatsApp link already in circulation
+# was signed by that scheme, so this literal is the print freeze written down:
+# if a change to the payload moves it, codes that are already out stop
+# scanning.
+FROZEN_ARMOUR_SIGNATURE = (
+    "d06957d3a7b16c690b243fe57b3267e8c4434b688eed66be70ea00d9f9e361e2"
+)
+
+
+def test_a_payload_without_the_late_fields_signs_exactly_as_it_always_did():
+    item = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
+
+    assert item.batch is None
+    assert item.unlimited is False
+    assert item.sig == FROZEN_ARMOUR_SIGNATURE
+
+
+def test_an_already_printed_code_still_validates(valid_encoded_signed_lv1_armour):
+    """The same thing from the scanner's end: a card carrying a signature made
+    before the fields existed is still good."""
+    item = ItemModel.from_base64(valid_encoded_signed_lv1_armour)
+    item.sig = FROZEN_ARMOUR_SIGNATURE
+
+    assert item.validate_signature() is None
+
+
+@pytest.mark.parametrize("field, value", [("batch", "sandbox"), ("unlimited", True)])
+def test_setting_a_late_field_changes_the_signature(field, value):
+    """They are left out of the message at their defaults, not ignored: a code
+    that claims a batch it was not minted with must fail."""
+    item = ItemModel(**SAMPLE_ARMOUR_DATA, **{field: value}).sign()
+
+    assert item.sig != FROZEN_ARMOUR_SIGNATURE
+
+    tampered = ItemModel(**SAMPLE_ARMOUR_DATA, **{field: value})
+    tampered.sig = FROZEN_ARMOUR_SIGNATURE
+    assert tampered.validate_signature() == "Signature mismatch"
+
+
+def test_the_two_late_fields_cannot_be_confused_for_each_other():
+    """They are named in the signed message, so a batch literally called
+    "unlimited=True" is not the same payload as an unlimited code."""
+    batched = ItemModel(**SAMPLE_ARMOUR_DATA, batch="unlimited=True").sign()
+    unlimited = ItemModel(**SAMPLE_ARMOUR_DATA, unlimited=True).sign()
+
+    assert batched.sig != unlimited.sig
+
+
+def test_an_empty_batch_is_no_batch_at_all():
+    """A cleared text field on the Printables page must not mint codes into a
+    batch that cannot be named - and must sign as an unbatched code does."""
+    item = ItemModel(**SAMPLE_ARMOUR_DATA, batch="").sign()
+
+    assert item.batch is None
+    assert item.sig == FROZEN_ARMOUR_SIGNATURE
 
 
 def test_old_scrypt_signed_item_parses_but_fails_validation():
@@ -428,6 +493,39 @@ def test_same_users_collect_repeat_item(two_users_in_different_teams):
     assert UserInterface(user_a).get_user_model().num_bullets == 1
 
 
+def test_unlimited_item_can_be_collected_again_by_the_same_user(
+    two_users_in_different_teams,
+):
+    """What a sandbox wall poster is. collected_only_once=False is not enough
+    on its own - that lets the *next* player claim it, not the same one
+    twice."""
+    user_a, _ = two_users_in_different_teams
+
+    poster = ItemModel(**SAMPLE_AMMO_DATA)
+    poster.collected_only_once = False
+    poster.unlimited = True
+    encoded = poster.sign().to_base64()
+
+    for expected in (1, 2, 3):
+        UserInterface(user_a).collect_item(encoded)
+        assert UserInterface(user_a).get_user_model().num_bullets == expected
+
+
+def test_an_unlimited_item_is_recorded_once(db_session, two_users_in_different_teams):
+    """Rescanning must not pile up association rows for the one item."""
+    user_a, _ = two_users_in_different_teams
+
+    poster = ItemModel(**SAMPLE_AMMO_DATA)
+    poster.unlimited = True
+    encoded = poster.sign().to_base64()
+
+    UserInterface(user_a).collect_item(encoded)
+    UserInterface(user_a).collect_item(encoded)
+
+    items = db_session.query(User).filter_by(id=user_a).one().items
+    assert [item.id for item in items] == [SAMPLE_AMMO_DATA["id"]]
+
+
 def test_collect_team_item(two_users_in_different_teams, user_factory):
     user_a1, user_b = two_users_in_different_teams
 
@@ -526,11 +624,36 @@ def test_collect_item_announces_message(valid_encoded_ammo, user_in_team, mocker
     )
 
 
+def test_radar_and_circle_warning_carry_a_duration():
+    """M0.3 freezes what these two cards *say*; M6 writes the handlers. The
+    payload has to be right now, because the cards are printed now."""
+    radar = ItemModel(**{**SAMPLE_AMMO_DATA, "itype": "radar", "data": {}})
+    warning = ItemModel(
+        **{**SAMPLE_AMMO_DATA, "itype": "circle_warning", "data": {"minutes": 20}}
+    )
+
+    assert radar.data == {"minutes": 5}
+    assert warning.data == {"minutes": 20}
+
+
+def test_an_item_with_no_handler_yet_is_refused_rather_than_crashing(user_in_team):
+    """Until M6 lands, scanning one of the new cards is a 403 - the same
+    answer an unmapped type has always given."""
+    radar = ItemModel(**{**SAMPLE_AMMO_DATA, "itype": "radar", "data": {}}).sign()
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(radar.to_base64())
+
+    assert refusal.value.status_code == 403
+
+
 def test_all_items_handled():
     from backend.item_actions import _ACTIONS
     from backend.model import ItemType
 
     for itype in ItemType:
+        if itype in AWAITING_HANDLERS:
+            continue
         assert (itype, False) in _ACTIONS
 
     # Only check collected_as_team for ammo

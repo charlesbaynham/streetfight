@@ -880,7 +880,12 @@ class UserInterface:
 
         already_collected = False
 
-        if item_from_db:
+        # An `unlimited` code skips the duplicate check outright: it is what
+        # the sandbox's wall posters are, and the warm-up room only works if a
+        # player can walk back to the ammunition poster and scan it again.
+        # collected_only_once=False is not enough on its own - that lets the
+        # *next* player claim it, not the same one twice.
+        if item_from_db and not item.unlimited:
             if item.collected_only_once:
                 already_collected = True
             else:
@@ -901,7 +906,10 @@ class UserInterface:
             raise HTTPException(403, str(e))
 
         if item_from_db:
-            user.items.append(item_from_db)
+            # An unlimited code brings its scanner back here over and over;
+            # the association row is already there after the first time.
+            if item_from_db not in user.items:
+                user.items.append(item_from_db)
         else:
             user.items.append(
                 Item(

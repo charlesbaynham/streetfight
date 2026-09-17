@@ -204,10 +204,30 @@ Four things from it that are worth knowing even if you never call the agent:
     that **ammo is the only type that can be collected on behalf of a team**:
     `item_actions._ACTIONS` is keyed on `(itype, collected_as_team)` and has no
     team handler for armour, medpacks or weapons, so asking for one raises
-    `NotImplementedError`.
+    `NotImplementedError` — a `RuntimeError`, so `collect_item` turns it into a
+    403. `RADAR` and `CIRCLE_WARNING` are in that position on purpose (M0.3):
+    their payloads are frozen and their cards are printed, and until M6 writes
+    the handlers a scan is refused. **A printed code is an HMAC over its
+    payload and nothing else**, which is what decouples the print run from the
+    deploy — so a field added to `ItemModel` after codes are in circulation
+    joins the signed message *only when it is not at its default*
+    (`_late_signed_parts`), and `to_base64` leaves it out of the encoding too,
+    because every character is a character the QR has to carry and the pub
+    certificate's code is at the size where one more version means modules too
+    fine to print. Two such fields exist: `batch`, the label a whole print run
+    is withdrawn by (M2.2; "game" for the night's own codes, "sandbox" for the
+    warm-up room's posters), and `unlimited`, which skips the duplicate check
+    outright so the same player can rescan a wall poster —
+    `collected_only_once=False` is not enough on its own, since that lets the
+    *next* player claim it rather than the same one twice.
   - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
     cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
-    `image_templates/`, and every code minted is recorded in `qr_codes.csv`.
+    `image_templates/`, named by what the card awards (`ammo_5.png`) or, for a
+    weapon, by its damage — except radar and circle-warning cards, which have
+    one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
+    number of minutes the picture does not say. Every code minted is recorded
+    in `qr_codes.csv`, whose last column is the batch; the file has no header
+    and is read by column number, so a new field goes on the end.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
     portrait A4 poster per pub, each carrying a single ammo code worth two
     bullets to every member of the first team that scans it
@@ -438,7 +458,10 @@ Four things from it that are worth knowing even if you never call the agent:
     pins team colours on the way past - neither of which the sign-up link,
     wanted days before any team exists, has any use for. The two panels that
     mint codes say above the button how many a press mints, since a second
-    press is a second set rather than a re-download of the first.
+    press is a second set rather than a re-download of the first, and each of
+    them ends with a **Batch** field (`BatchField`), which is last because it
+    is the one nobody changes: "game" is right for everything printed for the
+    night itself.
     `ReferencePhotos.js` (route `/admin/reference`, with the player being
     checked at `/admin/reference/<user id>` and the game in `?game=`) is the
     door kit-check page

@@ -28,6 +28,16 @@ IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 
 ITEM_TYPES = [i.value for i in ItemType]
 
+# The batch every real code belongs to. A batch is a label minted into the
+# payload so a whole print run can be withdrawn at once (the sandbox's posters
+# are "sandbox", and stop working at 16:00); the game's own codes carry
+# "game" so that they are nameable too, and are never withdrawn.
+DEFAULT_BATCH = "game"
+
+# Radar and circle-warning cards have one drawing each: what varies for them
+# is a number of minutes, which is not something the artwork says.
+SINGLE_ARTWORK_TYPES = {ItemType.RADAR.value, ItemType.CIRCLE_WARNING.value}
+
 
 def build_qr_grid(
     qr_data: Iterable,
@@ -159,6 +169,8 @@ def base_image_path(itype: str, num, damage) -> Optional[Path]:
     """
     if itype == "weapon":
         path = Path(IMAGES_DIR, f"{itype}_{damage}.png")
+    elif itype in SINGLE_ARTWORK_TYPES:
+        path = Path(IMAGES_DIR, f"{itype}_1.png")
     else:
         path = Path(IMAGES_DIR, f"{itype}_{num}.png")
 
@@ -169,14 +181,37 @@ def base_image_path(itype: str, num, damage) -> Optional[Path]:
     return path
 
 
-def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, asteam):
+def item_data(num, damage, timeout, minutes: Optional[int] = None) -> dict:
+    """The payload dict every mint site hands to ``make_new_item``.
+
+    One dict serves every item type: each type's pydantic schema takes the
+    keys it knows and ignores the rest, so a caller does not have to know
+    that ammo counts bullets and a weapon carries a pair. ``minutes`` is left
+    out entirely when nobody asked for one, so radar and circle-warning cards
+    fall back to the default on their own schema rather than to a number
+    chosen here.
+    """
+    data = {"num": num, "shot_damage": damage, "shot_timeout": timeout}
+    if minutes is not None:
+        data["minutes"] = minutes
+    return data
+
+
+def log_items(
+    urls: Iterable[str], tag: str, num, damage, timeout, onceonly, asteam, batch=None
+):
     """Append the codes minted to ``qr_codes.csv``, the record of every code
-    that has ever been printed."""
+    that has ever been printed.
+
+    ``batch`` is the last column because the file has no header and is read by
+    eye and by column number: a new field goes on the end so that every row
+    written before it still lines up.
+    """
     with open(QR_LOGFILE, "a") as f:
         for i, encoded_url in enumerate(urls):
             item = ItemModel.from_base64(encoded_url)
             f.write(
-                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam}\n"
+                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam},{batch or ''}\n"
             )
 
 
@@ -243,6 +278,33 @@ def log_items(urls: Iterable[str], tag: str, num, damage, timeout, onceonly, ast
     help=("If true, the item is awarded to everyone in the team"),
 )
 @click.option(
+    "--minutes",
+    default=None,
+    type=int,
+    help=(
+        "For radar and circle-warning cards, how long the effect lasts. "
+        "Left out, the item type's own default is used."
+    ),
+)
+@click.option(
+    "--batch",
+    default=DEFAULT_BATCH,
+    show_default=True,
+    help=(
+        "The label minted into every code, so this print run can be withdrawn "
+        "as a set. Pass an empty string for an unbatched code."
+    ),
+)
+@click.option(
+    "--unlimited",
+    is_flag=True,
+    default=False,
+    help=(
+        "Let the same player scan each code as often as they like - the "
+        "sandbox's wall posters. Real cards never set this."
+    ),
+)
+@click.option(
     "--log",
     default=True,
     help=(
@@ -262,6 +324,9 @@ def generate(
     tag: str,
     onceonly: bool,
     asteam: bool,
+    minutes: Optional[int],
+    batch: str,
+    unlimited: bool,
 ):
     """
     Generates an A4 grid of QR codes that can be scanned to collect an item
@@ -283,20 +348,18 @@ def generate(
     qr_data = [
         AdminInterface().make_new_item(
             type,
-            {
-                "num": num,
-                "shot_damage": damage,
-                "shot_timeout": timeout,
-            },
+            item_data(num, damage, timeout, minutes),
             collected_only_once=onceonly,
             collected_as_team=asteam,
+            batch=batch,
+            unlimited=unlimited,
         )
         for _ in range(x * y)
     ]
     make_qr_grid(iter(qr_data), outfile, x, y, tag=tag, base_image=path_to_base_image)
 
     if log:
-        log_items(qr_data, tag, num, damage, timeout, onceonly, asteam)
+        log_items(qr_data, tag, num, damage, timeout, onceonly, asteam, batch)
 
 
 if __name__ == "__main__":
