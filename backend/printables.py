@@ -124,10 +124,10 @@ def _pdf(pages: Sequence[Image.Image]) -> bytes:
 def _record(log, *args) -> None:
     """Write a batch to ``qr_codes.csv``, if there is anywhere to write it.
 
-    The log lives next to the source tree, which on a deployment is a
-    read-only Nix store path. Losing the record of a print run is a nuisance;
-    losing the PDF because the record could not be written would be worse, so
-    a failure here is a warning and nothing else.
+    ``QR_LOGFILE`` decides where that is (:mod:`backend.qr_log`), and a
+    deployment points it somewhere writable. Losing the record of a print run
+    is a nuisance; losing the PDF because the record could not be written
+    would be worse, so a failure here is a warning and nothing else.
     """
     try:
         log(*args)

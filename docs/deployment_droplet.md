@@ -235,9 +235,9 @@ found broken on the live box, 2026-08-29):
 
 ## State and backups
 
-`/data` (database, shot photos, secrets, logs) is an ordinary directory on
-the droplet's root disk - no block volume - so **the host is not
-disposable**: destroy the droplet and the game state goes with it. Two
+`/data` (database, shot photos, secrets, logs, and `qr_codes.csv`, the record
+of every code printed) is an ordinary directory on the droplet's root disk - no
+block volume - so **the host is not disposable**: destroy the droplet and the game state goes with it. Two
 consequences, both deliberate for a one-box deployment:
 
 - **Back up before the launch, not after**: `rsync -a root@<ip>:/data/ ./backup-data/`

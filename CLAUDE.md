@@ -317,9 +317,12 @@ Four things from it that are worth knowing even if you never call the agent:
     cards' GET, because each call mints *fresh* codes and records them in
     `qr_codes.csv`: a link a browser is free to prefetch would put phantom
     batches in the log and hand the admin a sheet the log does not describe.
-    That log sits beside the source tree, which on a deployment is a read-only
-    Nix store path, so failing to write it is a warning rather than a lost
-    print run.
+    Where that log is written is `QR_LOGFILE` (`backend/qr_log.py`): beside the
+    source tree by default, which is what a checkout wants and a deployment
+    cannot have, since there the source is a read-only Nix store path - so
+    `nix/streetfight.nix` points it at `${stateDir}/qr_codes.csv` instead.
+    Failing to write it is still only a warning, rather than a lost print
+    run.
   - `team_cards.py` — the **team** cards (roadmap R15): one A4 portrait page
     per team, a Ministry of War "notice of conscription" carrying that team's
     door code, which players scan on the night to join a team. Same toolchain
