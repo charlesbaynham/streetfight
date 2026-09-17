@@ -9,12 +9,15 @@ from fastapi.exceptions import HTTPException
 from backend.admin_interface import AdminInterface
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
+from backend.model import STARTING_HIT_POINTS
 from backend.model import Item
 from backend.model import ItemType
 from backend.model import User
 from backend.model import UserState
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
+
+from .shared_fixtures import strip_armour
 
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
@@ -267,6 +270,11 @@ def test_old_scrypt_signed_item_cannot_be_collected(user_in_team):
 
 
 def test_collect_item_valid(valid_encoded_signed_lv1_armour, user_in_team):
+    # Level-1 armour is worth nothing to a player who still has their starting
+    # armour (M1.2), and _handle_armour refuses it - so this test, which is
+    # about collecting an item at all, hands the card to somebody who can use
+    # it. See test_starting_armour_makes_a_level_1_card_useless below.
+    strip_armour(user_in_team)
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
 
@@ -292,6 +300,7 @@ def test_collect_item_invalid_signature(valid_encoded_signed_lv1_armour, user_in
 
 
 def test_collect_item_duplicate_item(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
 
     with pytest.raises(HTTPException, match="Item has already been collected"):
@@ -334,12 +343,14 @@ def test_cannot_collect_same_weapon_twice(user_in_team):
 
 
 def test_collecting_armour_when_alive(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
     UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
     assert UserInterface(user_in_team).get_user_model().hit_points == 2
 
 
 def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_team):
+    strip_armour(user_in_team)
     UserInterface(user_in_team).hit(1)
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
@@ -348,6 +359,7 @@ def test_collecting_armour_when_dead(valid_encoded_signed_lv1_armour, user_in_te
 def test_collecting_armour_doesnt_stack(user_in_team):
     armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
     UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
@@ -363,6 +375,7 @@ def test_collecting_armour_doesnt_stack(user_in_team):
 def test_collecting_better_armour_works_and_worse_armour_fails(user_in_team):
     armour_lv1 = ItemModel(**SAMPLE_ARMOUR_DATA).sign()
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
 
     UserInterface(user_in_team).collect_item(armour_lv1.to_base64())
@@ -393,6 +406,7 @@ def test_collecting_ammo_when_alive(valid_encoded_ammo, user_in_team):
 
 
 def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().hit_points == 1
     with pytest.raises(HTTPException):
         UserInterface(user_in_team).collect_item(valid_encoded_medpack)
@@ -400,6 +414,7 @@ def test_collecting_revive_while_alive(valid_encoded_medpack, user_in_team):
 
 
 def test_collecting_revive_while_knocked_out(valid_encoded_medpack, user_in_team):
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     UserInterface(user_in_team).hit(1)
     assert UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
@@ -412,6 +427,7 @@ def test_collecting_revive_while_knocked_out(valid_encoded_medpack, user_in_team
 def test_collecting_revive_while_dead(db_session, valid_encoded_medpack, user_in_team):
     from backend.user_interface import TIME_KNOCKED_OUT
 
+    strip_armour(user_in_team)
     assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE
     UserInterface(user_in_team).hit(1)
 
@@ -763,3 +779,28 @@ def test_basic_weapon_is_the_pewster():
     assert (
         WEAPON_NAME_LOOKUP[(DEFAULT_SHOT_DAMAGE, DEFAULT_SHOT_TIMEOUT)] == "No weapon"
     )
+
+
+def test_starting_armour_makes_a_level_1_card_useless(
+    valid_encoded_signed_lv1_armour, user_in_team
+):
+    """A consequence of M1.2 worth pinning down, because it decides what is
+    worth printing: a player starts on STARTING_HIT_POINTS, which *is* level 1
+    armour, so a level-1 armour card does nothing for anybody who has not been
+    hit yet. Everything in the drop and sandbox sets is level 2
+    (`printables.SANDBOX_CARDS`), which still works.
+    """
+    assert (
+        UserInterface(user_in_team).get_user_model().hit_points == STARTING_HIT_POINTS
+    )
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(valid_encoded_signed_lv1_armour)
+
+    # ...and level 2 is still worth picking up.
+    armour_lv2 = ItemModel(**SAMPLE_ARMOUR_DATA)
+    armour_lv2.data = ItemDataArmour(num=2).model_dump()
+    armour_lv2.sign()
+
+    UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
+    assert UserInterface(user_in_team).get_user_model().hit_points == 3

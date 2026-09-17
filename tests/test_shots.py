@@ -13,6 +13,8 @@ from backend.model import User
 from backend.ticker_message_dispatcher import TickerMessageType
 from backend.user_interface import UserInterface
 
+from .shared_fixtures import strip_armour
+
 
 def test_submit_shot(user_in_team, test_image_string):
     ui = UserInterface(user_in_team)
@@ -185,6 +187,7 @@ def test_knockout_invalidates_the_targets_shot_fired_after_the_kill(
     import datetime
 
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
 
     shooter_shot = submit_a_shot(
         shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
@@ -249,6 +252,7 @@ def test_the_death_blow_announces_the_knockout_once(
     mocker, two_users_in_different_teams, test_image_string
 ):
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     shot_id = submit_a_shot(shooter, test_image_string)
     mocked = mocker.patch("backend.ticker_message_dispatcher.send_ticker_message")
 
@@ -269,6 +273,7 @@ def test_the_knockout_announces_invalidated_shots_with_a_count(
     import datetime
 
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     kill_shot = submit_a_shot(
         shooter, test_image_string, time_created=datetime.datetime(2026, 1, 1, 12, 0, 0)
     )
@@ -315,6 +320,7 @@ def test_hitting_an_already_dead_player_is_a_plain_hit(
     just changes nothing. Announcing a second knockout would credit the kill to
     whoever happened to be next in the queue."""
     shooter, target = two_users_in_different_teams
+    strip_armour(target)
     death_blow = submit_a_shot(shooter, test_image_string)
     afterwards = submit_a_shot(shooter, test_image_string)
     AdminInterface().hit_user(death_blow, target)

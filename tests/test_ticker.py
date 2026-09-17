@@ -8,6 +8,7 @@ from backend.ticker import Ticker
 from backend.user_interface import UserInterface
 
 from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
 
 
 @pytest.fixture
@@ -118,6 +119,8 @@ def test_ticker_announces_kill(
     test_image_string,
 ):
     UserInterface(api_user_id).join_team(team_factory())
+    # This is about the kill announcement, so one hit has to be fatal.
+    strip_armour(api_user_id)
     UserInterface(api_user_id).award_ammo(1)
     UserInterface(api_user_id).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(api_user_id).submit_shot(test_image_string)
@@ -144,6 +147,8 @@ def test_ticker_announces_kill_privately(
     test_image_string,
 ):
     UserInterface(api_user_id).join_team(team_factory())
+    # This is about the kill announcement, so one hit has to be fatal.
+    strip_armour(api_user_id)
     UserInterface(api_user_id).award_ammo(1)
     UserInterface(api_user_id).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(api_user_id).submit_shot(test_image_string)

@@ -68,7 +68,9 @@ Recorded so nobody builds against the plan's numbers.
 - **Armour is hit points above one.** There is no armour column: level *n*
   armour sets `hit_points` to `n + 1` and refuses if you already have that
   much (`item_actions._handle_armour`). "Starting armour 1" therefore means a
-  starting `hit_points` of 2.
+  starting `hit_points` of 2 — which since M1.2 is what everybody has, so a
+  **level-1 armour card is now a no-op for anybody who has not been hit**.
+  Mint level 2 or better.
 - **A medpack only works on a knocked-out player** and revives to 1 HP
   (`item_actions._handle_medpack`). Knocked out lasts `TIME_KNOCKED_OUT` (10
   min) and then becomes dead, which no item cures. Fine for the sandbox's
@@ -392,13 +394,29 @@ them. And the refusal reaches the player through a new
 through `WebcamView`, because the admin's reference-photo page mounts the same
 camera and has no business showing a fire-cooldown message.
 
-### M1.2 — Starting armour *(status: open; small, after M0.1)*
+### M1.2 — Starting armour *(status: shipped 2026-09-17, PR #PRNUM)*
 
 `STARTING_HIT_POINTS` (2) in `_make_user`, the reset (M2.1), and
 `demo_game`'s arming (which deliberately gives one HP so a hit kills — keep
 that, it is the demo's own decision). Players already signed up on live have
 `hit_points = 1`; the reset at 16:00 sets everyone to 2, so no data fix is
 needed. Check `BulletCount.js`'s armour pips render two.
+
+Shipped in `_make_user` (the only place a `User` row is built) and in the
+existing `reset_game`; `demo_game` sets its one HP explicitly, so it was
+untouched. M2.1's new `reset_to_start_state` should use the same constant.
+
+Two things the spec did not anticipate:
+
+- **The pips render *one*, not two, and that is correct.** Armour is hit
+  points above one, so `STARTING_HIT_POINTS = 2` is armour level 1 and
+  `BulletCount.js`'s existing `hit_points - 1` draws one helmet. The visible
+  change is that a fresh player sees a helmet where they used to see a cross.
+- **A level-1 armour card is now worthless to anybody who has not been hit**
+  (`item_actions._handle_armour` refuses armour no better than what you have).
+  Everything being printed is level 2 (`printables.SANDBOX_CARDS`, and M3.1's
+  drop copy), so no reprint is needed — but do not mint level-1 armour.
+  `tests/test_items.py` pins this.
 
 ---
 

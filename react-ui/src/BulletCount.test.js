@@ -101,6 +101,17 @@ describe("armour display", () => {
     expect(imgs).toHaveLength(1);
     expect(imgs[0].src).toContain(cross);
   });
+
+  test("a player at the new starting hit points wears one piece of armour", () => {
+    // M1.2: everyone now starts on model.STARTING_HIT_POINTS (2), which is
+    // "starting armour 1" - armour is hit points above one, so the HUD has to
+    // show a helmet where it used to show a cross.
+    const { container } = renderBulletCount(makeUser({ hit_points: 2 }));
+    const armourPara = hudLine(container, prose.bulletCount.armourLabel);
+    const imgs = armourPara.querySelectorAll("img");
+    expect(imgs).toHaveLength(1);
+    expect(imgs[0].src).toContain(armourImg);
+  });
 });
 
 describe("weapon image", () => {

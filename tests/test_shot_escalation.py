@@ -25,6 +25,7 @@ from backend.vision_client import VisionError
 from backend.vision_client import get_escalation_client
 
 from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
 
 SCHEME = default_scheme()
 
@@ -185,6 +186,7 @@ async def test_a_knocked_out_candidate_is_listed_and_flagged_as_such(
 ):
     # The dead stay on the list -- they are still in the photograph -- but the
     # model is told, so it is not looking for somebody standing up.
+    strip_armour(candidates[0])
     with UserInterface(candidates[0]) as ui:
         ui.hit(1)
     store_weak_review(shot_from_user_in_team)

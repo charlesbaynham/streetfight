@@ -1,4 +1,5 @@
 from backend.admin_interface import AdminInterface
+from backend.model import STARTING_HIT_POINTS
 from backend.user_interface import UserInterface
 
 
@@ -10,7 +11,11 @@ def test_resets_hp(user_in_team):
     game_id = UserInterface(user_in_team).get_user_model().game_id
     AdminInterface().reset_game(game_id)
 
-    assert UserInterface(user_in_team).get_user_model().hit_points == 1
+    # A reset puts a player back to the state a fresh sign-up is in, which
+    # since M1.2 includes their starting armour.
+    assert (
+        UserInterface(user_in_team).get_user_model().hit_points == STARTING_HIT_POINTS
+    )
 
 
 def test_reset_game_does_not_affect_another(user_factory, game_factory):
@@ -38,7 +43,7 @@ def test_reset_game_does_not_affect_another(user_factory, game_factory):
     AdminInterface().reset_game(game_id=gid1)
 
     # Make sure that game 2 was not reset
-    assert UserInterface(uid1).get_user_model().hit_points == 1
+    assert UserInterface(uid1).get_user_model().hit_points == STARTING_HIT_POINTS
     assert UserInterface(uid2).get_user_model().hit_points == 5
 
 

@@ -29,6 +29,7 @@ from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
 from .model import APPEALS_PER_GAME
 from .model import DEFAULT_SHOT_TIMEOUT
+from .model import STARTING_HIT_POINTS
 from .model import Game
 from .model import GameModel
 from .model import Item
@@ -2012,7 +2013,7 @@ class AdminInterface:
         # For each user, reset their stats
         for user in users:
             user.num_bullets = 0
-            user.hit_points = 1
+            user.hit_points = STARTING_HIT_POINTS
             user.time_of_death = None
             user.appeals_remaining = APPEALS_PER_GAME
             # Otherwise a reset leaves everybody holding the cooldown from

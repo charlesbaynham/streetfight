@@ -346,6 +346,10 @@ class User(Base):
     is_team_leader = Column(Boolean, nullable=False, default=False)
 
     num_bullets = Column(Integer, nullable=False, default=0)
+    # A fresh player gets STARTING_HIT_POINTS, which _make_user passes
+    # explicitly - it is the only place a User row is built. This default is
+    # what a row written any other way would land with, and is left at one so
+    # that a player conjured up outside that path is not silently armoured.
     hit_points = Column(Integer, nullable=False, default=1)
     shot_timeout = Column(Float, nullable=False, default=DEFAULT_SHOT_TIMEOUT)
     shot_damage = Column(Integer, nullable=False, default=1)
