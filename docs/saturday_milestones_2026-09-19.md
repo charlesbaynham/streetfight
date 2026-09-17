@@ -501,7 +501,7 @@ strip and the spectator screen's pill. Nothing sets the columns yet, so the
 the waiting page too, and reads the cue off `User.game` rather than the team's,
 so a signed-up player with no team still sees it.
 
-### M3.2 — Cue the next circle *(status: open)*
+### M3.2 — Cue the next circle *(status: shipped 2026-09-17, PR #269)*
 
 - Admin places the NEXT circle as today (`CircleControl.js`), then **"Close
   the circle in N minutes"** (default 10) → sets `next_event_*`, ticker
@@ -513,6 +513,18 @@ so a signed-up player with no team still sees it.
   or `demo_game`'s task pattern) **and** a startup sweep that re-arms every
   game with a `next_event_at` in the future and fires any already past — a
   restart mid-countdown must not lose the close. Guard against double-firing.
+
+Shipped with the cue setter generic over both kinds (`cue_next_event(game_id,
+kind, seconds, note)`), so M3.3 is the drop's *behaviour at zero* and its bit
+of UI rather than a second setter. The drop branch of `fire_next_event`
+currently only clears the cue. Double-firing is guarded twice: arming cancels
+the game's pending task, and `fire_next_event` re-reads the deadline and
+refuses one it does not recognise — the half that survives a restart. The
+timer tests live in `tests/test_next_event.py` rather than
+`tests/test_asyncio_triggers.py`, since the timer is in `next_event.py` and
+not in the trigger registry. **Decision worth revisiting:**
+`promote_next_circle` changes nothing but the cue when NEXT is empty, rather
+than blanking the exclusion circle.
 
 ### M3.3 — Cue a drop *(status: open)*
 
