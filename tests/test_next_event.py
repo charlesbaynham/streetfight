@@ -172,3 +172,20 @@ def test_the_sweep_fires_a_cue_whose_moment_passed_while_we_were_down(
 
 def test_the_sweep_has_nothing_to_do_with_no_cues(user_in_team):
     assert next_event.sweep() == 0
+
+
+@pytest.mark.asyncio
+async def test_resetting_to_the_start_state_stops_the_clock(user_in_team, mocker):
+    """The 16:00 reset (M2.1) clears the cue columns; the task asleep on that
+    deadline has to go with them."""
+    fired = mocker.patch("backend.next_event.fire")
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+    next_event.arm(game_id, time.time() + 0.05)
+
+    AdminInterface().reset_to_start_state(game_id)
+    await asyncio.sleep(0.2)
+
+    assert fired.call_count == 0
+    assert not next_event._pending

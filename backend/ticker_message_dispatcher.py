@@ -47,6 +47,8 @@ class TickerMessageType(Enum):
     ADMIN_CLEARED_CIRCLE_DROP = auto()
     CUE_CIRCLE = auto()
     CUE_DROP = auto()
+    CUE_DROP_WITH_CONTENTS = auto()
+    COURIER_SET_OFF = auto()
     CUE_CANCELLED = auto()
     CIRCLE_CLOSED = auto()
     MISSED_SHOT = auto()
@@ -172,6 +174,21 @@ TICKER_MESSAGES = {
     TickerMessageType.CUE_DROP: (
         TickerTarget.PUBLIC,
         "A supply drop lands in {num}",
+    ),
+    # Two templates rather than one with an empty tail: the contents are
+    # optional, and "A supply drop lands in 5 minutes - " is worse than no
+    # mention of them at all.
+    TickerMessageType.CUE_DROP_WITH_CONTENTS: (
+        TickerTarget.PUBLIC,
+        "A supply drop lands in {num} - {note}",
+    ),
+    # Said at the moment the countdown reaches zero. The same words as the
+    # strip on the players' phones shows then (prose.nextEvent.dropNow) -
+    # somebody who looks up from the ticker to the top of their screen should
+    # read the same sentence twice, not two accounts of one event.
+    TickerMessageType.COURIER_SET_OFF: (
+        TickerTarget.PUBLIC,
+        "The courier has set off",
     ),
     TickerMessageType.CUE_CANCELLED: (
         TickerTarget.PUBLIC,

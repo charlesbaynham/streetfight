@@ -246,6 +246,14 @@ CUE_TICKER_MESSAGES = {
     next_event.KIND_DROP: tk.TickerMessageType.CUE_DROP,
 }
 
+# What a drop's announcement says instead when the admin typed what is in it.
+# Worth saying twice - it is the whole reason anybody runs for a drop, and the
+# ticker is read by people who are not looking at the strip at the top of
+# their screen.
+CUE_TICKER_MESSAGES_WITH_NOTE = {
+    next_event.KIND_DROP: tk.TickerMessageType.CUE_DROP_WITH_CONTENTS,
+}
+
 
 def _countdown_words(seconds: float) -> str:
     """How long is left, said the way somebody would say it out loud.
@@ -553,9 +561,14 @@ class AdminInterface:
 
         self._session.commit()
 
+        note = game.next_event_note
+        message_type = CUE_TICKER_MESSAGES[kind]
+        if note:
+            message_type = CUE_TICKER_MESSAGES_WITH_NOTE.get(kind, message_type)
+
         tk.send_ticker_message(
-            CUE_TICKER_MESSAGES[kind],
-            {"num": _countdown_words(seconds)},
+            message_type,
+            {"num": _countdown_words(seconds), "note": note},
             game_id=game_id,
             session=self._session,
         )
@@ -633,12 +646,22 @@ class AdminInterface:
             self.promote_next_circle(game_id)
             return True
 
-        # M3.3 gives the drop its courier. Until then the cue is cleared so
-        # that a countdown which has reached zero stops being one, rather than
-        # sitting at 00:00 on thirty phones forever.
+        # A drop's zero is an announcement and nothing else (M3.3): the crate
+        # is not on the map until the courier starts broadcasting from
+        # /admin/courier (M4), so there is no circle to place here. Clearing
+        # the cue is what stops thirty phones sitting at 00:00.
         self._clear_cue(game)
         user_ids = self._game_user_ids(game_id)
+
         self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.COURIER_SET_OFF,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+
         for user_id in user_ids:
             trigger_update_event("user", user_id)
         return True
@@ -2301,6 +2324,11 @@ class AdminInterface:
         game.next_event_kind = None
         game.next_event_at = None
         game.next_event_note = None
+        # ...and the in-process clock behind it. Leaving it running is not
+        # unsafe - fire_next_event re-reads the columns and finds nothing to
+        # do - but a task asleep on a deadline that no longer exists is a
+        # thing to explain later (M3.2).
+        next_event.disarm(game_id)
 
         # Read before the commit expires them
         user_ids = [user.id for user in users]

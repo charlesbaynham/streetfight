@@ -736,13 +736,41 @@ def test_firing_a_cue_that_has_been_cancelled_does_nothing(user_in_team):
 
 
 def test_firing_a_drop_cue_clears_it(user_in_team):
-    """M3.3 gives the drop its courier; until then the countdown at least
-    stops being one."""
     game_id = game_of_user(user_in_team)
     deadline = AdminInterface().cue_next_event(game_id, "drop", seconds=300)
 
     assert AdminInterface().fire_next_event(game_id, expected_at=deadline) is True
     assert cue_of(user_in_team) == (None, None, None)
+
+
+def test_a_drop_reaching_zero_sends_the_courier(db_session, user_in_team):
+    """The drop's whole effect at zero is the announcement (M3.3): the crate
+    is not on the map until the courier broadcasts, so nothing is placed."""
+    game_id = game_of_user(user_in_team)
+    deadline = AdminInterface().cue_next_event(game_id, "drop", seconds=300)
+
+    AdminInterface().fire_next_event(game_id, expected_at=deadline)
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert "The courier has set off" in messages
+    assert UserInterface(user_in_team).get_circles()["drop_circle_lat"] is None
+
+
+def test_the_drop_announcement_says_what_is_in_it(db_session, user_in_team):
+    AdminInterface().cue_next_event(
+        game_of_user(user_in_team), "drop", seconds=300, note="a medpack"
+    )
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert any("a medpack" in message for message in messages)
+
+
+def test_a_drop_with_no_contents_does_not_trail_off(db_session, user_in_team):
+    """An empty note must not leave the ticker saying "...in 5 minutes - "."""
+    AdminInterface().cue_next_event(game_of_user(user_in_team), "drop", seconds=300)
+
+    messages = [entry.message for entry in db_session.query(TickerEntry).all()]
+    assert any(message.endswith("5 minutes") for message in messages)
 
 
 def test_a_signed_up_player_with_no_team_is_told_about_the_cue(

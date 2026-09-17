@@ -526,12 +526,20 @@ not in the trigger registry. **Decision worth revisiting:**
 `promote_next_circle` changes nothing but the cue when NEXT is empty, rather
 than blanking the exclusion circle.
 
-### M3.3 — Cue a drop *(status: open)*
+### M3.3 — Cue a drop *(status: shipped 2026-09-17, PR #PRNUM)*
 
 **"Drop in N minutes"** (default 5) with a contents field → `next_event_*`
 with the note. At zero: ticker "The courier has set off", cue cleared, and
 the courier phase (M4) begins. Nothing on the map until the courier
 broadcasts.
+
+Most of this arrived with M3.2, whose cue setter is generic over both kinds,
+so what shipped here is the drop's behaviour at zero: the ticker line, and
+nothing else placed. The cue announcement also carries the contents when the
+admin typed any (`CUE_DROP_WITH_CONTENTS`), since the ticker is read by people
+who are not looking at the strip. One line lands outside the item:
+`reset_to_start_state` (M2.1) now disarms the pending timer along with the cue
+columns it already cleared.
 
 ---
 
