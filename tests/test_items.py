@@ -8,11 +8,11 @@ import pytest
 from fastapi.exceptions import HTTPException
 
 from backend.admin_interface import AdminInterface
+from backend.admin_interface import CircleTypes
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
 from backend.model import STARTING_HIT_POINTS
 from backend.model import Item
-from backend.model import ItemType
 from backend.model import User
 from backend.model import UserState
 from backend.ticker_message_dispatcher import TickerMessageType
@@ -22,11 +22,6 @@ from .shared_fixtures import strip_armour
 
 # Mocking the environment variable for testing
 os.environ["SECRET_KEY"] = "test_secret_key"
-
-# The item types whose cards are printed before their handlers are written
-# (M0.3 freezes the encoding; M6 writes the effects). Scanning one is a 403
-# until then, which is what an unmapped type has always done.
-AWAITING_HANDLERS = {ItemType.CIRCLE_WARNING}
 
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
@@ -730,19 +725,6 @@ def test_radar_and_circle_warning_carry_a_duration():
     assert warning.data == {"minutes": 20}
 
 
-def test_an_item_with_no_handler_yet_is_refused_rather_than_crashing(user_in_team):
-    """Until the rest of M6 lands, scanning a card whose handler is not
-    written is a 403 - the same answer an unmapped type has always given."""
-    warning = ItemModel(
-        **{**SAMPLE_AMMO_DATA, "itype": "circle_warning", "data": {}}
-    ).sign()
-
-    with pytest.raises(HTTPException) as refusal:
-        UserInterface(user_in_team).collect_item(warning.to_base64())
-
-    assert refusal.value.status_code == 403
-
-
 def _radar_card(minutes=None):
     data = {} if minutes is None else {"minutes": minutes}
     return ItemModel(
@@ -818,6 +800,64 @@ def test_radar_leaves_out_anybody_who_has_never_reported_a_fix(
     assert UserInterface(me).get_radar() == []
 
 
+def _circle_warning_card(minutes=None):
+    data = {} if minutes is None else {"minutes": minutes}
+    return ItemModel(
+        **{
+            **SAMPLE_AMMO_DATA,
+            "id": get_uuid(),
+            "itype": "circle_warning",
+            "data": data,
+        }
+    ).sign()
+
+
+def test_a_circle_warning_card_shows_the_next_circle_early(user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+
+    # Placing it tells nobody: it is not public until the admin cues it
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
+
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    circles = UserInterface(user_in_team).get_circles()
+    assert circles["next_circle_lat"] == 51.5
+    assert circles["next_circle_radius"] == 0.42
+
+
+def test_a_second_circle_warning_is_refused_while_the_first_runs(user_in_team):
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(
+            _circle_warning_card(minutes=10).to_base64()
+        )
+
+    assert refusal.value.status_code == 403
+
+
+def test_an_expired_circle_warning_stops_showing_the_next_circle(
+    user_in_team, db_session
+):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+    UserInterface(user_in_team).collect_item(
+        _circle_warning_card(minutes=10).to_base64()
+    )
+
+    db_session.query(User).filter_by(id=user_in_team).update(
+        {"circle_warning_until": time.time() - 1}
+    )
+    db_session.commit()
+
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
+
+
 def test_an_expired_radar_is_refused_like_no_radar_at_all(user_in_team, db_session):
     UserInterface(user_in_team).collect_item(_radar_card(minutes=5).to_base64())
 
@@ -837,8 +877,6 @@ def test_all_items_handled():
     from backend.model import ItemType
 
     for itype in ItemType:
-        if itype in AWAITING_HANDLERS:
-            continue
         assert (itype, False) in _ACTIONS
 
     # Only check collected_as_team for ammo

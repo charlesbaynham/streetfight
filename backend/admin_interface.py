@@ -238,8 +238,11 @@ CIRCLE_TICKER_MESSAGES = {
         False: tk.TickerMessageType.ADMIN_SET_CIRCLE_EXCLUSION,
         True: None,
     },
+    # NEXT says nothing either way since M6.2: the circle it places is not
+    # public until it is cued, so announcing it would be announcing something
+    # nobody but an early-warning holder can see.
     CircleTypes.NEXT: {
-        False: tk.TickerMessageType.ADMIN_SET_CIRCLE_NEXT,
+        False: None,
         True: None,
     },
     CircleTypes.BOTH: {
@@ -536,6 +539,10 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            # Private again (M6.2), placed or cleared: an admin who moves the
+            # circle mid-countdown must take the old one off every phone
+            # rather than leave a public circle sitting somewhere it is not.
+            game.next_circle_public = False
         elif name == CircleTypes.BOTH:
             game.exclusion_circle_lat = lat
             game.exclusion_circle_long = long
@@ -543,6 +550,9 @@ class AdminInterface:
             game.next_circle_lat = lat
             game.next_circle_long = long
             game.next_circle_radius = radius
+            # BOTH puts the next circle exactly where the exclusion circle
+            # everybody can already see is, so there is nothing left to hide.
+            game.next_circle_public = True
         elif name == CircleTypes.DROP:
             game.drop_circle_lat = lat
             game.drop_circle_long = long
@@ -622,6 +632,12 @@ class AdminInterface:
         game.next_event_at = deadline
         game.next_event_note = note.strip() if note and note.strip() else None
 
+        # Cueing the circle is what makes it public (M6.2) - "the circle
+        # closes in ten minutes" is not an announcement anybody can act on
+        # without being shown which circle.
+        if kind == next_event.KIND_CIRCLE:
+            game.next_circle_public = True
+
         user_ids = self._game_user_ids(game_id)
 
         self._session.commit()
@@ -640,6 +656,11 @@ class AdminInterface:
 
         for user_id in user_ids:
             trigger_update_event("user", user_id)
+
+        # The circle the countdown is about has just become visible to
+        # everybody (M6.2), so every open map has to refetch it
+        if kind == next_event.KIND_CIRCLE:
+            trigger_circle_update(game_id)
 
         next_event.arm(game_id, deadline)
 
@@ -759,6 +780,7 @@ class AdminInterface:
             game.next_circle_lat = None
             game.next_circle_long = None
             game.next_circle_radius = None
+            game.next_circle_public = False
         else:
             logger.warning(
                 "Game %s has no next circle to promote - clearing the cue only",
@@ -2359,9 +2381,10 @@ class AdminInterface:
             # Otherwise everybody starts the real game holding the cooldown
             # from a sandbox shot that no longer exists (M1.1)
             user.last_shot_at = None
-            # A radar lit in the sandbox hour must not still be running when
-            # the real game starts (M6.1)
+            # A radar or a circle warning lit in the sandbox hour must not
+            # still be running when the real game starts (M6.1, M6.2)
             user.radar_until = None
+            user.circle_warning_until = None
 
         # By game rather than by shooter: a shot outlives the team its shooter
         # was in, and this has to empty the queue whoever is left in it
@@ -2386,6 +2409,7 @@ class AdminInterface:
         for prefix in ("exclusion", "next", "drop"):
             for field in ("lat", "long", "radius"):
                 setattr(game, f"{prefix}_circle_{field}", None)
+        game.next_circle_public = False
 
         # And whatever was cued to happen next (M3.1), which was cued against
         # the sandbox clock
@@ -2438,6 +2462,7 @@ class AdminInterface:
             # whatever they fired last (M1.1), which a reset has just deleted.
             user.last_shot_at = None
             user.radar_until = None
+            user.circle_warning_until = None
 
             # The kit-check photos are photographs of identifiable people and
             # have no meaning once the night they were taken for is over.

@@ -708,7 +708,7 @@ Shipped as specified. Three things worth knowing beyond the spec:
 - Both resets clear `radar_until`, so a radar lit in the sandbox hour does
   not survive the 16:00 button.
 
-### M6.2 — Early circle warning *(status: open)*
+### M6.2 — Early circle warning *(status: shipped 17 Sept, PR #TBD)*
 
 Reveals the next circle to the holder before it is announced. That needs a
 circle that exists but is not public: add `Game.next_circle_public: Boolean
@@ -717,6 +717,39 @@ until the admin **cues** it (M3.2), which sets it public; a holder with
 `User.circle_warning_until` in the future sees it before that (filtered in
 `get_circles`). Ticker says only "somebody knows where the next circle is".
 The admin map always shows it.
+
+Shipped as specified, backend only — the circle simply appears on the
+holder's map, so there is no new screen furniture. Five things beyond the
+spec that were needed to make it true:
+
+- **Placing NEXT now says nothing at all.** `ADMIN_SET_CIRCLE_NEXT` is
+  retired and left in `ticker_message_dispatcher.py` with a comment, because
+  announcing a circle nobody can see is worse than silence. `CircleTypes.BOTH`
+  *is* public: it puts the next circle exactly where the exclusion circle
+  everybody can already see is. Re-placing or clearing NEXT makes it private
+  again, so moving it mid-countdown takes the old one off every phone.
+- **Cueing the circle fires a `"circle"` event** as well as setting the flag,
+  or the newly-public circle would not reach an open map until something else
+  happened to move a circle.
+- **The admin map now reads the game's own circles** (`AdminMode.js`,
+  `<MapViewAdmin circles={games[0]} />`) instead of `/get_circles`, which is
+  the player endpoint doing the filtering. It stays current the same way the
+  rest of the page does: a circle change wakes the `"admin"` stream, which
+  refetches `admin_list_games`. The spectator screen already passed a
+  `GameModel`, so it was unaffected.
+- **The warning has to expire on the holder's map too.** Nothing else would
+  fire at that moment, so `start_circle_warning` schedules a `"circle"` event
+  for when it runs out — the first real caller of
+  `asyncio_triggers.schedule_update_event`, which now no-ops without a running
+  event loop (the guard `next_event.arm` already had) rather than failing the
+  write that asked for it.
+- **Both resets clear `circle_warning_until`**, as they do `radar_until`.
+
+Not done, deliberately: the admin has no on-screen indicator of whether the
+next circle is public yet. They can see the circle on their own map, and
+`EventCue` sits directly under the circle controls, so cueing it is the next
+thing in front of them. `GameModel.next_circle_public` is on the wire if that
+turns out to want saying.
 
 ---
 

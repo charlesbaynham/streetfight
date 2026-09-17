@@ -760,7 +760,11 @@ function AdminPanel() {
 
       <h2>Map</h2>
       <Row>
-        <MapViewAdmin />
+        {/* The game's own circles rather than /get_circles, which since M6.2
+        keeps the next circle back from players until it is cued. The admin
+        map always shows it - and this endpoint is admin-authenticated, where
+        /get_circles resolves the game from the caller's player session. */}
+        <MapViewAdmin circles={games[0]} />
       </Row>
     </>
   );

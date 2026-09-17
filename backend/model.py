@@ -159,6 +159,15 @@ class Game(Base):
     courier_timestamp = Column(Float, nullable=True)
     courier_accuracy = Column(Float, nullable=True)
 
+    # Has the next circle been announced to the players (M6.2)? Placing NEXT
+    # no longer tells anybody: the cue (M3.2) is what makes it public, and
+    # until then the only players who see it are the ones holding a live
+    # early-warning card. Placing or clearing NEXT puts this back to False, so
+    # moving the circle mid-countdown takes it off every phone again. The
+    # admin map and the spectator screen read the columns directly and always
+    # see it.
+    next_circle_public = Column(Boolean, nullable=False, default=False)
+
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
     def touch(self):
@@ -403,6 +412,11 @@ class User(Base):
     # it up, and a reset that clears the items leaves nothing behind either.
     radar_until = Column(Float, nullable=True)
 
+    # The early circle-warning card (M6.2), the same shape: the epoch second
+    # at which the holder stops seeing the next circle before it is announced.
+    # Null or past means no warning.
+    circle_warning_until = Column(Float, nullable=True)
+
     # The player's identity slot (backend/identity/): a member of
     # default_scheme().usable_slots() that determines the canonical colour
     # code they're assigned to wear. None means this player has no identity
@@ -620,6 +634,8 @@ class GameModel(pydantic.BaseModel):
     courier_long: Optional[float] = None
     courier_timestamp: Optional[float] = None
     courier_accuracy: Optional[float] = None
+
+    next_circle_public: bool = False
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

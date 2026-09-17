@@ -1063,13 +1063,21 @@ class UserInterface:
         if game_model is None:
             return None
 
+        # The next circle is not everybody's to see (M6.2). Until the admin
+        # cues it, the only players who get it are the ones holding a live
+        # early-warning card; everybody else is sent nulls, which is what the
+        # map already draws nothing for. The admin map and the spectator
+        # screen read a GameModel straight off the server and are unaffected -
+        # this is the player-facing endpoint only.
+        show_next = game_model.next_circle_public or self._circle_warning_is_live()
+
         return {
             "exclusion_circle_lat": game_model.exclusion_circle_lat,
             "exclusion_circle_long": game_model.exclusion_circle_long,
             "exclusion_circle_radius": game_model.exclusion_circle_radius,
-            "next_circle_lat": game_model.next_circle_lat,
-            "next_circle_long": game_model.next_circle_long,
-            "next_circle_radius": game_model.next_circle_radius,
+            "next_circle_lat": game_model.next_circle_lat if show_next else None,
+            "next_circle_long": game_model.next_circle_long if show_next else None,
+            "next_circle_radius": game_model.next_circle_radius if show_next else None,
             "drop_circle_lat": game_model.drop_circle_lat,
             "drop_circle_long": game_model.drop_circle_long,
             "drop_circle_radius": game_model.drop_circle_radius,
@@ -1080,6 +1088,44 @@ class UserInterface:
             # with the position rather than being inferred from the refetch.
             "courier": _courier_payload(game_model),
         }
+
+    @db_scoped
+    def _circle_warning_is_live(self) -> bool:
+        """Is this player holding an early circle warning that has not run
+        out? (M6.2)"""
+        until = self.get_user().circle_warning_until
+        return until is not None and until > time.time()
+
+    @db_scoped
+    def start_circle_warning(self, minutes: float) -> float:
+        """Show this player the next circle before it is announced (M6.2).
+
+        Refuses while one is already running, for the same reason
+        :meth:`start_radar` does - the scan rolls back, so the card survives.
+
+        The circle appears on the holder's map on the next ``"circle"`` event,
+        and has to *disappear* from it when the warning runs out: nothing else
+        would fire then, so a sleep-then-trigger is scheduled for the moment
+        it expires. It is in-process and does not survive a restart, which
+        costs one stale circle on one phone until the next circle event - the
+        price of not building a second durable timer for an experimental card.
+        """
+        user: User = self.get_user()
+        now = time.time()
+
+        if user.circle_warning_until is not None and user.circle_warning_until > now:
+            raise RuntimeError("You already know where the next circle is")
+
+        user.circle_warning_until = now + minutes * 60
+
+        # Beside the state change rather than in the route, like every other
+        # announcement here: the card can be scanned from more than one place.
+        self.announce_after_commit("circle", user.game_id)
+        asyncio_triggers.schedule_update_event(
+            "circle", user.game_id, timeout=minutes * 60
+        )
+
+        return user.circle_warning_until
 
     @db_scoped
     def start_radar(self, minutes: float) -> float:

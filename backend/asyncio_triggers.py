@@ -33,6 +33,12 @@ def schedule_update_event(event_type: str, key: Hashable, timeout: float):
 
     Currently there is no way to cancel these. That's fine - it just means an
     extra update of user state.
+
+    Does nothing when there is no running event loop - a synchronous test
+    harness, or a CLI. The loop is looked up before the coroutine is built
+    rather than catching create_task's RuntimeError, because a coroutine made
+    and then dropped warns; the same shape as next_event.arm, and for the same
+    reason: a missing loop must not fail the write that asked for the update.
     """
 
     logger.info(
@@ -41,6 +47,16 @@ def schedule_update_event(event_type: str, key: Hashable, timeout: float):
         key,
         timeout,
     )
+
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        logger.warning(
+            "Not scheduling an update for type %s, key %s: no running event loop",
+            event_type,
+            key,
+        )
+        return
 
     async def wait_then_trigger():
         await asyncio.sleep(timeout)
@@ -55,7 +71,7 @@ def schedule_update_event(event_type: str, key: Hashable, timeout: float):
     # asyncio only holds a weak reference to a running task, so without keeping
     # our own strong reference here the task can be garbage collected part way
     # through its sleep and the update silently never fires.
-    task = asyncio.create_task(wait_then_trigger())
+    task = loop.create_task(wait_then_trigger())
     _scheduled_tasks.add(task)
     task.add_done_callback(_scheduled_tasks.discard)
 
