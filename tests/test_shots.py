@@ -124,6 +124,46 @@ def test_hit_recorded_in_shot_history(two_users_in_different_teams, test_image_s
     assert shot["target_name"] == UserInterface(target).get_user_model().name
 
 
+def test_knockout_flagged_in_shot_history(
+    two_users_in_different_teams, test_image_string
+):
+    """A hit that takes the target's last hit point is reported as a knockout,
+    so the shooter's phone can play a sound of its own for it (M5)."""
+    shooter, target = two_users_in_different_teams
+    shot_id = submit_a_shot(shooter, test_image_string)
+
+    AdminInterface().hit_user(shot_id, target)
+
+    (shot,) = UserInterface(shooter).get_own_shots()
+    assert shot["result"] == "hit"
+    assert shot["target_knocked_out"] is True
+
+
+def test_hit_on_an_armoured_target_is_not_a_knockout(
+    two_users_in_different_teams, test_image_string
+):
+    """The other half: a hit the target walks away from is an ordinary hit."""
+    shooter, target = two_users_in_different_teams
+    UserInterface(target).award_HP(1)  # armour: two hit points, damage is one
+    shot_id = submit_a_shot(shooter, test_image_string)
+
+    AdminInterface().hit_user(shot_id, target)
+
+    (shot,) = UserInterface(shooter).get_own_shots()
+    assert shot["result"] == "hit"
+    assert shot["target_knocked_out"] is False
+
+
+def test_unchecked_shot_is_never_a_knockout(user_in_team, test_image_string):
+    """Nothing is claimed about a shot still in the queue - the flag only ever
+    rides a verdict."""
+    submit_a_shot(user_in_team, test_image_string)
+
+    (shot,) = UserInterface(user_in_team).get_own_shots()
+    assert shot["checked"] is False
+    assert shot["target_knocked_out"] is False
+
+
 def test_miss_recorded_in_shot_history(user_in_team, test_image_string):
     shot_id = submit_a_shot(user_in_team, test_image_string)
 
@@ -375,6 +415,7 @@ def test_shot_history_only_shares_the_ai_bottom_line(
         "checked",
         "result",
         "target_name",
+        "target_knocked_out",
         "ai_review_state",
         "ai_suggestion",
         "ai_target_name",

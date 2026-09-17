@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import useSound from "use-sound";
 
-import bang from "./bang.mp3";
+import bang from "./bang.wav";
 import styles from "./FireButton.module.css";
 import { useCallback, useState } from "react";
 import Modernizr from "./modernizr";
