@@ -164,7 +164,7 @@ Print-day procedure, once M0 is merged and deployed: mint everything from
 throwaway sqlite file). Print at actual size, never "fit to page". A second
 press mints a second set.
 
-### M0.1 — The new weapon table *(status: shipped 2026-09-17, PR #PRNUM)*
+### M0.1 — The new weapon table *(status: shipped 2026-09-17, PR #257)*
 
 Default cooldown 25 s, fast weapon 5 s. One PR:
 
