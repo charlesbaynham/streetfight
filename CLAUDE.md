@@ -238,7 +238,15 @@ Four things from it that are worth knowing even if you never call the agent:
     one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
     number of minutes the picture does not say. Every code minted is recorded
     in `qr_codes.csv`, whose last column is the batch; the file has no header
-    and is read by column number, so a new field goes on the end.
+    and is read by column number, so a new field goes on the end. Every card
+    also carries the **contact line** (`CONTACT_LINE`, roadmap #7): what it is
+    and a number to ring, so a stranger who finds one taped under a pub bench
+    gets an answer rather than a fright. It is drawn in a strip below the
+    artwork rather than on it, and that strip is taken out of the artwork's
+    height while keeping the whole gutter between the line and the box edge —
+    the bottom row of a sheet is against the edge of the paper, and a printer
+    with a 5 mm unprintable margin would swallow a line any lower. The size is
+    measured to the card (`_contact_font`), since the grid is a parameter.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
     portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
@@ -265,12 +273,13 @@ Four things from it that are worth knowing even if you never call the agent:
     numbers are not free: `num` picks the drawing as well as the amount, which
     is why the ammunition poster is five bullets (there is an `ammo_5.png` and
     no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
-    card has artwork. The reason it exists is the signature: a code is signed with the
-    `SECRET_KEY` that minted it and carries that machine's `WEBSITE_URL`, so a
-    run done from a checkout whose `.env` has drifted is a stack of paper
-    nobody at the party can scan, and the failure only shows up when somebody
-    in a pub points a phone at it. Building them in the server makes both
-    right by construction. Its two endpoints are **POST**, unlike the team
+    card has artwork. The reason the module exists at all is the signature: a
+    code is signed with the `SECRET_KEY` that minted it and carries that
+    machine's `WEBSITE_URL`, so a run done from a checkout whose `.env` has
+    drifted is a stack of paper nobody at the party can scan, and the failure
+    only shows up when somebody in a pub points a phone at it. Building them
+    in the server makes both right by construction. The minting endpoints are
+    **POST**, unlike the team
     cards' GET, because each call mints *fresh* codes and records them in
     `qr_codes.csv`: a link a browser is free to prefetch would put phantom
     batches in the log and hand the admin a sheet the log does not describe.
