@@ -238,7 +238,15 @@ Four things from it that are worth knowing even if you never call the agent:
     one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
     number of minutes the picture does not say. Every code minted is recorded
     in `qr_codes.csv`, whose last column is the batch; the file has no header
-    and is read by column number, so a new field goes on the end.
+    and is read by column number, so a new field goes on the end. Every card
+    also carries the **contact line** (`CONTACT_LINE`, roadmap #7): what it is
+    and a number to ring, so a stranger who finds one taped under a pub bench
+    gets an answer rather than a fright. It is drawn in a strip below the
+    artwork rather than on it, and that strip is taken out of the artwork's
+    height while keeping the whole gutter between the line and the box edge —
+    the bottom row of a sheet is against the edge of the paper, and a printer
+    with a 5 mm unprintable margin would swallow a line any lower. The size is
+    measured to the card (`_contact_font`), since the grid is a parameter.
   - `generate_pub_pages.py` (`npm run pubgen`) — the **pub** certificates: one
     portrait A4 poster per pub, each carrying a single ammo code worth five
     bullets to every member of the first team that scans it
