@@ -600,7 +600,7 @@ notes:
   marks where the crate is rather than an area to search. Nothing in the
   spec fixed a number; change the constant if it reads too tight on the map.
 
-### M4.2 — The courier and the crate on every map *(status: open)*
+### M4.2 — The courier and the crate on every map *(status: shipped 2026-09-17, PR #PRNUM)*
 
 - `/get_circles` grows `courier: {lat, long, timestamp} | null`; the
   `"circle"` SSE event is fired (throttled) when the courier moves, so
@@ -611,6 +611,14 @@ notes:
   its centre alongside the existing blue ping (`MapView.module.css`
   `.dropCircle`). Fade the courier dot with fix age like the admin map does.
 - Same on `MapViewAdmin` and the spectator screen.
+
+Drawn in `MapCircles` rather than in the dot layer, so all three maps get it
+from one place. The spectator screen needed one extra thing the item did not
+name: it passes the `GameModel` straight to the map instead of using
+`/get_circles`, so it now listens for `"circle"` itself, or the aeroplane
+would never move there. The courier image is a placeholder
+(`images/art/courier.svg`) until Gaby's arrives — replacing the file is the
+whole change.
 
 ---
 

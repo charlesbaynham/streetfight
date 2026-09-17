@@ -14,6 +14,8 @@ import prose from "./prose";
 
 import styles from "./MapView.module.css";
 import Dot from "./Dot";
+import courierSrc from "./images/art/courier.svg";
+import crateSrc from "./images/art/crate.svg";
 import { deregisterListener, registerListener } from "./UpdateListener";
 
 const MAP_POLL_TIME = 5 * 1000;
@@ -54,6 +56,27 @@ const BACKGROUND_GEO_SETTINGS = {
 // After 5 minutes, the dots will be almost completely transparent
 const TIME_UNTIL_TRANSPARENT = 5 * 60;
 const MIN_ALPHA = 0.5;
+
+// How faded a fix of this age is drawn. The admin map has always done this to
+// its player dots; the courier is drawn by the same rule so that one stale
+// dot on a map does not mean two different things (M4.2).
+function alphaForAge(seconds) {
+  return Math.max(
+    1 - ((1 - MIN_ALPHA) * seconds) / TIME_UNTIL_TRANSPARENT,
+    MIN_ALPHA,
+  );
+}
+
+// Past this, the dot goes altogether. The courier's fixes arrive about once a
+// second while they are walking, so a minute of silence is somebody who has
+// stopped broadcasting, lost signal or gone indoors - and a plausible-looking
+// aeroplane sitting where somebody used to be is worse than no aeroplane.
+const COURIER_STALE_AFTER_S = 60;
+
+// How often the courier's fade is recomputed. Nothing arrives from the server
+// between fixes, so without a tick of its own the dot would freeze at whatever
+// age it had when the last "circle" event landed.
+const COURIER_FADE_TICK_MS = 5 * 1000;
 
 // `accuracy` is the browser's own radius-in-metres estimate for the fix. It is
 // recorded but not yet used by anything: it is how good each fix was, which
@@ -115,6 +138,24 @@ function circleTriplet(circles, name) {
   ];
 }
 
+// Where the courier is, out of either shape the server sends it in: nested
+// under `courier` from /get_circles, or flat as courier_lat / courier_long /
+// courier_timestamp off a GameModel, which is what the spectator screen
+// passes. Same reason circleTriplet exists - one place that knows the field
+// names, so the two callers cannot drift apart. Null when nobody is walking.
+function courierPosition(circles) {
+  if (!circles) return null;
+  const nested = circles.courier;
+  const lat = nested ? nested.lat : circles.courier_lat;
+  const long = nested ? nested.long : circles.courier_long;
+  if (typeof lat !== "number" || typeof long !== "number") return null;
+  return {
+    lat,
+    long,
+    timestamp: nested ? nested.timestamp : circles.courier_timestamp,
+  };
+}
+
 export function MapCirclesFromData({ calculators, circles }) {
   return (
     <MapCircles
@@ -122,17 +163,66 @@ export function MapCirclesFromData({ calculators, circles }) {
       exclusionCircle={circleTriplet(circles, "exclusion")}
       nextCircle={circleTriplet(circles, "next")}
       dropCircle={circleTriplet(circles, "drop")}
+      courier={courierPosition(circles)}
+    />
+  );
+}
+
+// The courier's aeroplane, faded by how old its fix is and gone once that fix
+// is too old to believe. Its own component so that the tick which keeps the
+// fade moving re-renders the dot and not the whole circle layer.
+function CourierDot({ courier, styleFor }) {
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const handle = setInterval(() => setNow(Date.now()), COURIER_FADE_TICK_MS);
+    return () => clearInterval(handle);
+  }, []);
+
+  // A fix with no timestamp is drawn at full strength rather than hidden: it
+  // is a courier who is definitely somewhere, on a server too old to say when.
+  const age =
+    typeof courier.timestamp === "number" ? 1e-3 * now - courier.timestamp : 0;
+  if (age > COURIER_STALE_AFTER_S) return null;
+
+  // Hidden rather than dropped when the projection has nothing to say yet (a
+  // box that has not been measured gives NaN), matching what the circles do
+  // with the same problem.
+  const placed = styleFor(courier.lat, courier.long);
+  const hidden = placed.display === "none";
+
+  return (
+    <Dot
+      x={placed.left}
+      y={placed.bottom}
+      src={courierSrc}
+      alpha={alphaForAge(age)}
+      className={
+        hidden
+          ? `${styles.mapDotCourier} ${styles.hiddenOverlay}`
+          : styles.mapDotCourier
+      }
+      tooltip="The courier"
+      testId="map-courier-dot"
     />
   );
 }
 
 // This component is responsible for drawing the circles on the map. It just
-// draws - querying the circles' position is out of scope
+// draws - querying the circles' position is out of scope.
+//
+// The courier and the crate are drawn here too, despite being dots rather
+// than circles (M4.2). They arrive on the circles' own payload and refresh on
+// the circles' own SSE event, and this is the layer that already holds the
+// coordinate calculators - so drawing them anywhere else would mean a second
+// copy of all three, and MapViewSelf, MapViewAdmin and the spectator screen
+// get them here for nothing.
 function MapCircles({
   calculators,
   exclusionCircle = null,
   nextCircle = null,
   dropCircle = null,
+  courier = null,
 }) {
   const calculateCircleStyles = useCallback(
     (lat, long, radiusKM) => {
@@ -153,6 +243,17 @@ function MapCircles({
         width: radius_px * 2,
         height: radius_px * 2,
       };
+    },
+    [calculators],
+  );
+
+  // A point on the map rather than a circle round one: the crate sits at the
+  // drop's centre, and the courier wherever they last reported from.
+  const calculateCentreStyles = useCallback(
+    (lat, long) => {
+      const [x_px, y_px] = calculators.coordsToPixels(lat, long);
+      if (isNaN(x_px) || isNaN(y_px)) return { display: "none" };
+      return { left: x_px, bottom: y_px };
     },
     [calculators],
   );
@@ -183,13 +284,27 @@ function MapCircles({
 
   if (dropCircle) {
     const [lat, long, radiusKM] = dropCircle;
-    if (lat && long && radiusKM)
+    if (lat && long && radiusKM) {
       circles.push(
         <div
           className={styles.dropCircle}
           style={calculateCircleStyles(lat, long, radiusKM)}
         />,
       );
+      // A sibling of the ping, never a child of it: .dropCircle carries the
+      // `zoom` keyframe that scales it to 5x and fades it out, which would
+      // take the crate with it. The ping says "look here"; the crate says
+      // what is here, and has to stay legible while the ping does its thing.
+      circles.push(
+        <img
+          src={crateSrc}
+          alt=""
+          className={styles.dropCrate}
+          style={calculateCentreStyles(lat, long)}
+          data-testid="map-drop-crate"
+        />,
+      );
+    }
   }
 
   return (
@@ -197,6 +312,9 @@ function MapCircles({
       {circles.map((circle, index) =>
         React.cloneElement(circle, { key: index }),
       )}
+      {courier ? (
+        <CourierDot courier={courier} styleFor={calculateCentreStyles} />
+      ) : null}
     </div>
   );
 }
@@ -366,11 +484,7 @@ export function VenueMapView({
           position.coords.latitude,
           position.coords.longitude,
         );
-        const dt = 1e-3 * Date.now() - position.timestamp;
-        const alpha = Math.max(
-          1 - ((1 - MIN_ALPHA) * dt) / TIME_UNTIL_TRANSPARENT,
-          MIN_ALPHA,
-        );
+        const alpha = alphaForAge(1e-3 * Date.now() - position.timestamp);
         return (
           <Dot
             key={index}
