@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  PLACEHOLDER. Gaby's own artwork - her face in an aeroplane - replaces this
+  file when it arrives; nothing but the file needs to change, since MapView
+  imports it by name and sizes it to .mapDotCourier.
+
+  Drawn to be read at about 2em on a hand-drawn black-on-white map, so: a
+  heavy dark outline to stand off the line-work, a warm fill that none of the
+  team colours or circles use, and a shape that is unmistakably an aeroplane
+  at a glance rather than a dot with wings. Seen from above, nose up, because
+  it is drawn over a map.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48">
+  <g stroke="#2b1a08" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round">
+    <!-- wings -->
+    <path d="M24 20 L4 30 L4 34 L24 29 L44 34 L44 30 Z" fill="#f08a24" />
+    <!-- tailplane -->
+    <path d="M24 38 L15 43 L15 45 L24 43 L33 45 L33 43 Z" fill="#f08a24" />
+    <!-- fuselage -->
+    <path d="M24 3 C28 8 30 16 30 26 C30 36 28 43 24 46 C20 43 18 36 18 26 C18 16 20 8 24 3 Z"
+          fill="#f6a94a" />
+    <!-- cockpit: where the face goes -->
+    <circle cx="24" cy="17" r="5.5" fill="#fde3c0" />
+  </g>
+</svg>

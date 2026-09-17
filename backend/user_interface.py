@@ -246,6 +246,23 @@ def _outfit_appearance(user: User) -> Tuple[Optional[dict], Optional[dict]]:
     return wardrobe, provided
 
 
+def _courier_payload(game: GameModel) -> Optional[dict]:
+    """Where the courier is, for /get_circles, or None if nobody is walking.
+
+    A fix with no coordinates is nobody: ``clear_courier`` nulls all four
+    columns together, and a half-written row would otherwise draw an
+    aeroplane at the equator.
+    """
+    if game.courier_lat is None or game.courier_long is None:
+        return None
+    return {
+        "lat": game.courier_lat,
+        "long": game.courier_long,
+        "timestamp": game.courier_timestamp,
+        "accuracy": game.courier_accuracy,
+    }
+
+
 def _next_event(user: User) -> Tuple[Optional[str], Optional[float], Optional[str]]:
     """The cue the player's game is counting down to: ``(kind, at, note)``,
     or three Nones when nothing is cued (backend/next_event.py).
@@ -1056,6 +1073,12 @@ class UserInterface:
             "drop_circle_lat": game_model.drop_circle_lat,
             "drop_circle_long": game_model.drop_circle_long,
             "drop_circle_radius": game_model.drop_circle_radius,
+            # Nested rather than four more flat keys (M4.2): the circles are
+            # a fixed part of the map and the courier is somebody who is
+            # either there or not, and "courier": null says that in one read.
+            # The maps fade the dot by the timestamp, so it has to travel
+            # with the position rather than being inferred from the refetch.
+            "courier": _courier_payload(game_model),
         }
 
     @db_scoped

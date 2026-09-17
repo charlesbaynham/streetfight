@@ -439,6 +439,25 @@ Four things from it that are worth knowing even if you never call the agent:
     stale fix, a player who is out - said in words beside the dot. It is a
     snapshot of the moment, so fix ages are measured against the shot's own
     `time_created` (`shotEpochSeconds`), never the wall clock.
+    **`MapView.js`'s `MapCircles` draws the courier and the crate as well as
+    the three circles** (M4.2), despite both being dots: they arrive on the
+    circles' own payload, refresh on the circles' own `"circle"` SSE event and
+    need the coordinate calculators that layer already holds, so drawing them
+    anywhere else would mean a second copy of all three. `courierPosition()`
+    reads the courier out of either shape the server sends — nested under
+    `courier` from `/get_circles`, flat as `courier_lat`/`courier_long` off a
+    `GameModel` — for the same reason `circleTriplet` exists. The crate is a
+    **sibling** of `.dropCircle` and never a child: that class carries the
+    `zoom` keyframe that scales the ping to 5× and fades it, which would take
+    the crate with it. The courier's dot fades by fix age on the admin map's
+    own rule (`alphaForAge`) and disappears past `COURIER_STALE_AFTER_S`,
+    ticking on its own so the fade keeps moving when no fixes are arriving —
+    an aeroplane sitting where somebody used to be is worse than none. The
+    artwork in `images/art/courier.svg` is a **placeholder** for Gaby's own
+    drawing; replacing the file is the whole change. The spectator screen
+    passes the `GameModel` straight to the map rather than using
+    `/get_circles` (it has no player session), so it listens for `"circle"`
+    itself to refetch the game.
     `RadarLayer.js` is the radar card's two halves (M6.1): a `RadarStrip`
     mounted in `UserMode.js` beside `NextEventStrip`, which reads
     `radar_until` off `/user_info` and counts it down, and a layer mounted

@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The supply drop itself, drawn at the centre of the drop circle. It has to
+  survive being small on a busy hand-drawn map, so it is a silhouette with a
+  heavy outline rather than anything with detail in it: a crate shape read at
+  a glance, not a picture of a crate.
+
+  It is a sibling of .dropCircle and never a child - that class carries the
+  `zoom` keyframe that scales the ping to 5x and fades it out, which would
+  take the crate with it.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40" width="40" height="40">
+  <g stroke="#3a2410" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="5" y="9" width="30" height="24" rx="1.5" fill="#c08a4a" />
+    <!-- battens: what makes it a crate and not a parcel -->
+    <path d="M5 15 H35 M5 27 H35" fill="none" stroke-width="2" />
+    <path d="M5 9 L35 33 M35 9 L5 33" fill="none" stroke-width="1.6" opacity="0.55" />
+  </g>
+</svg>
