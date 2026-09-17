@@ -107,6 +107,7 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import GameModel
 from .model import ShotModel
 from .ticker import Ticker
@@ -1317,7 +1318,7 @@ async def admin_item_sheets_pdf(
     num: int,
     sheets: int = 1,
     damage: int = 1,
-    timeout: float = 6,
+    timeout: float = DEFAULT_SHOT_TIMEOUT,
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",

@@ -105,10 +105,10 @@ describe("armour display", () => {
 
 describe("weapon image", () => {
   test.each([
-    [1, 6],
-    [2, 6],
-    [3, 6],
-    [1, 1],
+    [1, 25],
+    [2, 25],
+    [3, 25],
+    [1, 5],
   ])(
     "matches getGunImgFromUser for shot_damage=%i shot_timeout=%i",
     (shot_damage, shot_timeout) => {
@@ -158,7 +158,7 @@ describe("pickup overlays", () => {
   });
 
   test("a change of shot_damage or shot_timeout tells the gun overlay to appear, and no other overlay", () => {
-    const user = makeUser({ shot_damage: 1, shot_timeout: 6 });
+    const user = makeUser({ shot_damage: 1, shot_timeout: 25 });
     const updatedUser = { ...user, shot_damage: 2 };
     const { rerender } = renderBulletCount(user);
     rerenderBulletCount(rerender, updatedUser);

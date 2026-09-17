@@ -29,6 +29,7 @@ from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
 from .model import APPEAL_REASONS
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import Game
 from .model import GameModel
 from .model import Item
@@ -49,8 +50,9 @@ logger = logging.getLogger(__name__)
 # 10 minutes to get to safety
 TIME_KNOCKED_OUT = 10 * 60
 
-# Default weapon settings
-DEFAULT_SHOT_TIMEOUT = 6.0
+# What a fresh sign-up holds: no weapon at all. The fire delay is the model's
+# single DEFAULT_SHOT_TIMEOUT, so there is one number rather than two that can
+# drift apart.
 DEFAULT_SHOT_DAMAGE = 0
 
 make_user_lock = RLock()

@@ -238,7 +238,7 @@ function ItemSheets() {
   const [num, setNum] = useState(5);
   const [sheets, setSheets] = useState(1);
   const [damage, setDamage] = useState(1);
-  const [timeout, setTimeoutSeconds] = useState(6);
+  const [timeout, setTimeoutSeconds] = useState(25);
   const [onceOnly, setOnceOnly] = useState(true);
   const [asTeam, setAsTeam] = useState(false);
 
