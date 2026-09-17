@@ -25,6 +25,15 @@ code withdrawal, countdowns, the courier, sounds, the two experimental items,
 the team leader view. Items below that it absorbs: #12's redraw (M0.6),
 #8's reprint (M0.2, M0.4, M0.5), #7's contact line (M0.5).
 
+**Two days out (17 Sept), all of it has merged bar M0.6's drawing, M6's two
+experimental items and M8's annotated map.** The night itself now has its own
+checklist: **`docs/game_day_runbook_2026-09-19.md`** — the print run with
+counts, the Friday droplet resize, the 16:00 transition button by button, how
+to cue a circle and a drop, the courier page, what happens when a countdown
+fires while the server restarts, and every decision the sessions took that
+Charles might want to overrule. Read that on the day; read the milestones doc
+for how a thing came to be the way it is.
+
 
 **The next game is Saturday 19 September 2026.** That is four weeks out, and it
 changes the ordering completely: the logistics track has a hard, unmovable
@@ -249,7 +258,7 @@ next commit lands.
 | 1     | **#9** Buy armbands and hats                | Bought                       | Longest lead time; #10 and #8 both waited on it. Bought.                                                       |
 | 1b    | **R6** Check the kit hexes on arrival       | Shipped 29 Aug               | Delivered, photographed and measured. The hat and armband palettes in `config.py` are now the real colours, not the simulated ones. |
 | 2     | **#6** Find the pubs                        | Now → 7 Sept                 | Needs other people to say yes. Start the conversations first, collect the data second.                         |
-| 3     | **#12** Redraw the Westminster map          | Partly shipped 28 Aug; **redraw outstanding** | Play area fixed, drawn map active, resort venue retired. #7 unblocked. **Reopened 12 Sept:** the final nineteen-pub list replaced the ten the map was traced from, so eleven pubs have no marker. Needs a redraw against the new list before the 19th. |
+| 3     | **#12** Redraw the Westminster map          | Partly shipped 28 Aug; **redraw outstanding, and now the last thing blocking paper** | Play area fixed, drawn map active, resort venue retired. #7 unblocked. **Reopened 12 Sept:** the final nineteen-pub list replaced the ten the map was traced from, so eleven pubs have no marker. **17 Sept (M0.6, PR #256):** the prompt and the four reference images are ready in `docs/venue_map_westminster/`, with all nineteen pubs passed in by hand rather than searched for. Outstanding: Charles's round-trip through Gemini. The map poster (M0.7) is held from printing until it lands. |
 | 4     | **#10** Colour-picking page                 | Shipped 26 Aug; live to players ~7 Sept | Built ahead of schedule — was the only software on the critical path, and the mitigation for bring-your-own garments (see #9). |
 | 5     | **#7** Find the drop locations              | ~7 Sept                      | Needs #12 to place them; feeds #8.                                                                             |
 | 6     | **#8** Print the run                        | ~12 Sept                     | Everything above becomes paper here.                                                                           |
@@ -545,7 +554,7 @@ pubs is still worth more than a longer list.
 
 ---
 
-### #12 — Redraw the map for Westminster *(traced map shipped; redraw outstanding)*
+### #12 — Redraw the map for Westminster *(traced map shipped; the redraw's prompt and references ready 17 Sept, PR #256; the drawing itself outstanding)*
 
 **Shipped 28 Aug.** `ACTIVE_VENUE` is `VENUES["westminster"]`; the resort test
 venue is retired to a commented-out line beside Kingston, and its `TODO` is
@@ -808,7 +817,19 @@ and the Millbank government blocks are most of the eastern half.
 
 ---
 
-### #8 — Print everything
+### #8 — Print everything *(the run happens Thursday 17 Sept; see the runbook)*
+
+**The run itself is now scheduled and specified.**
+`docs/game_day_runbook_2026-09-19.md` is the checklist: what to mint, from
+which panel, in what quantity, and the two rules that have not changed — mint
+from the **live** deployment so the codes carry its `SECRET_KEY` and
+`WEBSITE_URL`, and print **at actual size**. Since the M0 milestones the run
+is six panels on `/admin/printables` rather than four CLI invocations, and it
+has grown two things this list never had: the **sandbox posters** for the
+warm-up room (batched `sandbox`, withdrawn at 16:00) and a **map poster** for
+the wall, which is held until #12's redraw lands. One item is now a trap
+rather than a choice: **do not mint level-1 armour**, which is worthless to a
+player who has not been hit now that everybody starts with their armour on.
 
 **Four separate print runs**, all landing by ~12 September:
 
