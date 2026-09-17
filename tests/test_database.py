@@ -1,5 +1,6 @@
 import os
 import pathlib
+import re
 import sqlite3
 from uuid import UUID
 from uuid import uuid4 as uuid
@@ -158,6 +159,41 @@ class TestLiveSchemaUpgrade:
             for table in inspector.get_table_names()
         }
 
+    @staticmethod
+    def _same_shape(upgraded, wanted) -> bool:
+        """Whether a column on the upgraded database is the one the models want.
+
+        Exact equality, with one exemption: a **wider** VARCHAR. SQLite records
+        a column's declared type but never enforces a string length, and
+        SQLAlchemy re-derives an ``Enum`` column's length from the longest
+        member name - so adding a member to ``ItemType`` widens the type on a
+        fresh database while the live one keeps the narrower one, and stores
+        the longer string quite happily either way. That is rule 2's "a new
+        ``ItemType`` member needs nothing at all". A *narrowing*, a change of
+        nullability, or any other type change is still a difference: those are
+        the ones that cannot be deployed.
+        """
+        if upgraded == wanted:
+            return True
+
+        (live_type, live_null), (fresh_type, fresh_null) = upgraded, wanted
+        if live_null != fresh_null:
+            return False
+
+        live = re.fullmatch(r"VARCHAR\((\d+)\)", live_type)
+        fresh = re.fullmatch(r"VARCHAR\((\d+)\)", fresh_type)
+
+        return bool(live and fresh and int(fresh.group(1)) > int(live.group(1)))
+
+    def test_only_a_widened_varchar_is_exempt(self):
+        """The exemption is narrow on purpose: it must not hide a narrowing, a
+        change of nullability, or a different type altogether."""
+        assert self._same_shape(("VARCHAR(7)", True), ("VARCHAR(14)", True))
+
+        assert not self._same_shape(("VARCHAR(14)", True), ("VARCHAR(7)", True))
+        assert not self._same_shape(("VARCHAR(7)", True), ("VARCHAR(14)", False))
+        assert not self._same_shape(("VARCHAR(7)", True), ("INTEGER", True))
+
     def test_upgraded_live_schema_matches_the_models(self, tmp_path):
         """The upgraded database must end up the same shape as a fresh one.
 
@@ -196,7 +232,9 @@ class TestLiveSchemaUpgrade:
             )
 
             differing = sorted(
-                name for name in wanted if upgraded[name] != wanted[name]
+                name
+                for name in wanted
+                if not self._same_shape(upgraded[name], wanted[name])
             )
             assert not differing, (
                 f"{table}: {differing} have a different type or nullability on"

@@ -459,6 +459,12 @@ class ItemType(str, enum.Enum):
     MEDPACK = "medpack"
     ARMOUR = "armour"
     WEAPON = "weapon"
+    # The two experimental items. An Enum column is a VARCHAR with no check
+    # constraint, so a new member needs no migration; their handlers are not
+    # written yet, and until they are `do_item_actions` raises
+    # NotImplementedError - a RuntimeError, so a scan is refused with a 403.
+    RADAR = "radar"
+    CIRCLE_WARNING = "circle_warning"
 
 
 class TickerEntry(Base):

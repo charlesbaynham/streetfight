@@ -1722,6 +1722,8 @@ class AdminInterface:
         item_data: dict,
         collected_only_once=True,
         collected_as_team=False,
+        batch: Optional[str] = None,
+        unlimited: bool = False,
     ) -> str:
         """Makes a new item with the given settings and encodes it into a URL
 
@@ -1741,6 +1743,8 @@ class AdminInterface:
             item_data (dict): The data for the item - a dict that depends on the item type
             collected_only_once (bool, optional): Whether the item can only be collected once. Defaults to True. Otherwise can be collected by other users / teams even after first collection.
             collected_as_team (bool, optional): Whether the item is collected as a team. Defaults to False.
+            batch (str, optional): A label minted into the payload so a set of codes can be withdrawn together. Defaults to None (unbatched, as every code printed before batches existed).
+            unlimited (bool, optional): Whether the same player may scan this code any number of times - the sandbox's wall posters. Defaults to False.
         """
         logger.info("make_new_item item_type=%s, item_data=%s", item_type, item_data)
         try:
@@ -1757,6 +1761,8 @@ class AdminInterface:
             data=item_data,
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
         item.sign()
 

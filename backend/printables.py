@@ -33,6 +33,7 @@ codes for one hiding place.
 import io
 import logging
 from typing import List
+from typing import Optional
 from typing import Sequence
 
 from PIL import Image
@@ -43,8 +44,10 @@ from .generate_pub_pages import DPI
 from .generate_pub_pages import log_items as log_pub_codes
 from .generate_pub_pages import mint_pub_items
 from .generate_pub_pages import render_page
+from .generate_qr_items import DEFAULT_BATCH
 from .generate_qr_items import base_image_path
 from .generate_qr_items import build_qr_grid
+from .generate_qr_items import item_data
 from .generate_qr_items import log_items as log_item_codes
 from .generate_qr_items import random_tag
 from .model import DEFAULT_SHOT_TIMEOUT
@@ -96,6 +99,9 @@ def item_sheets_pdf(
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",
+    batch: Optional[str] = DEFAULT_BATCH,
+    unlimited: bool = False,
+    minutes: Optional[int] = None,
 ) -> bytes:
     """The drop cards: ``sheets`` landscape A4 sheets of eight codes each.
 
@@ -103,6 +109,10 @@ def item_sheets_pdf(
     separately. Card labels are numbered across the whole run rather than
     restarting per sheet, so they line up with the rows written to
     ``qr_codes.csv``.
+
+    ``batch`` labels the whole run so it can be withdrawn at once, and
+    ``unlimited`` is what makes a sandbox poster a poster rather than a card:
+    the same player may scan it as often as they like.
     """
     if sheets < 1:
         raise ValueError("Nothing to print: ask for at least one sheet.")
@@ -115,9 +125,11 @@ def item_sheets_pdf(
     urls: List[str] = [
         admin.make_new_item(
             itype,
-            {"num": num, "shot_damage": damage, "shot_timeout": timeout},
+            item_data(num, damage, timeout, minutes),
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
         for _ in range(sheets * CARDS_PER_SHEET)
     ]
@@ -145,13 +157,17 @@ def item_sheets_pdf(
         timeout,
         collected_only_once,
         collected_as_team,
+        batch,
     )
 
     return _pdf(pages)
 
 
 def pub_pages_pdf(
-    count: int, num_bullets: int = BULLETS_PER_TEAM_MEMBER, tag: str = "pub"
+    count: int,
+    num_bullets: int = BULLETS_PER_TEAM_MEMBER,
+    tag: str = "pub",
+    batch: Optional[str] = DEFAULT_BATCH,
 ) -> bytes:
     """The pub certificates: ``count`` portrait A4 posters, one code each,
     worth ``num_bullets`` to every member of the first team to scan it."""
@@ -162,9 +178,9 @@ def pub_pages_pdf(
 
     tag = slugify_string(tag) if tag else "pub"
 
-    urls = mint_pub_items(count, num_bullets)
+    urls = mint_pub_items(count, num_bullets, batch)
     pages = [render_page(url, f"{tag}{i}") for i, url in enumerate(urls)]
 
-    _record(log_pub_codes, urls, tag, num_bullets)
+    _record(log_pub_codes, urls, tag, num_bullets, batch)
 
     return _pdf(pages)
