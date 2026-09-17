@@ -278,7 +278,7 @@ Lands in: `backend/items.py`, `backend/model.py` (`ItemType`),
 `backend/main.py`, `react-ui/src/AdminPrintables.js`, `NewItems.js`,
 `tests/test_items.py`.
 
-### M0.4 — The sandbox posters *(status: open; after M0.3)*
+### M0.4 — The sandbox posters *(status: shipped 2026-09-17, PR #263)*
 
 What the warm-up room's walls carry, and a way to mint them in one press:
 
@@ -289,6 +289,22 @@ What the warm-up room's walls carry, and a way to mint them in one press:
   existing 8-per-sheet A4 landscape cards so they are big enough to read
   across a room. Several copies of each.
 - Note in the runbook (M9) that these are revoked at 16:00 (M2.2).
+
+Shipped as a **Sandbox posters** panel on the Printables page
+(`printables.SANDBOX_CARDS`, `POST /admin_sandbox_sheets_pdf`): one sheet of
+eight per kind, `copies` of each, every code `unlimited` and `batch="sandbox"`.
+Two deviations from the list above, both because a card's drawing is chosen by
+what it awards and a poster read across a room has to say what it is:
+
+- **Ammunition is 5 bullets, not 20** — there is an `ammo_5.png` and no
+  `ammo_20.png`, and being unlimited, five a scan is no less than twenty.
+- **Eat-a-bullet and Pewster share `weapon_1.png`**, so the Eat-a-bullet
+  poster's drawing reads "Pewster / Damage: 1" (true of both; only the delay
+  differs). Fixing it is artwork Charles would have to draw, plus keying the
+  weapon lookup on the pair rather than the damage.
+
+**For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
+`sandbox` batch at 16:00.
 
 ### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262)*
 
