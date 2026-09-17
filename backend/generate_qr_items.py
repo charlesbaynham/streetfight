@@ -14,6 +14,7 @@ from .admin_interface import AdminInterface
 from .items import ItemModel
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import ItemType
+from .qr_log import append_rows
 from .utils import slugify_string
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,6 @@ IMAGE_GUTTER = 100
 # The face anything printed on a card or a poster is set in.
 PRINT_FONT_PATH = Path(__file__, "../UbuntuMono-R.ttf").resolve()
 
-QR_LOGFILE = Path(__file__, "../../qr_codes.csv").resolve()
 IMAGES_DIR = Path(__file__, "../image_templates").resolve()
 
 ITEM_TYPES = [i.value for i in ItemType]
@@ -245,12 +245,12 @@ def log_items(
     eye and by column number: a new field goes on the end so that every row
     written before it still lines up.
     """
-    with open(QR_LOGFILE, "a") as f:
-        for i, encoded_url in enumerate(urls):
-            item = ItemModel.from_base64(encoded_url)
-            f.write(
-                f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam},{batch or ''}\n"
-            )
+    items = (ItemModel.from_base64(encoded_url) for encoded_url in urls)
+
+    append_rows(
+        f"{item.id},{tag},{i},{item.itype},{num},{damage},{timeout},{onceonly},{asteam},{batch or ''}"
+        for i, item in enumerate(items)
+    )
 
 
 @click.command()

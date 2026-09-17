@@ -210,6 +210,9 @@ in
         # Four slashes total: sqlite:/// plus an absolute path.
         DATABASE_URL = "sqlite:///${cfg.stateDir}/db/data.db";
         POSTPROCESS_OUTPUT_DIR = "${cfg.stateDir}/processed_shots";
+        # Unset, the print log is written beside the backend's own source,
+        # which on a deployment is a read-only store path (backend/qr_log.py).
+        QR_LOGFILE = "${cfg.stateDir}/qr_codes.csv";
         LOG_LEVEL = cfg.logLevel;
         PYTHONUNBUFFERED = "1";
       } // lib.optionalAttrs (cfg.websiteUrl != null) {
