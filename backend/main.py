@@ -92,6 +92,7 @@ setup_logging()
 
 from . import ai_shot_review
 from . import generate_pub_pages
+from . import generate_qr_items
 from . import image_processing
 from . import printables
 from . import reference_photos
@@ -107,6 +108,7 @@ from .admin_auth import require_admin_auth
 # Import these after logging is setup since they might have side effects (e.g. database setup)
 from .admin_interface import AdminInterface
 from .model import AI_REVIEW_STATE_DONE
+from .model import DEFAULT_SHOT_TIMEOUT
 from .model import GameModel
 from .next_event import NextEventKind
 from .model import ShotModel
@@ -1046,6 +1048,8 @@ async def admin_make_new_item(
     item_data: Dict,
     collected_only_once=True,
     collected_as_team=False,
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
 ):
     logger.info("admin_make_new_item")
     try:
@@ -1054,6 +1058,8 @@ async def admin_make_new_item(
             item_data,
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
+            batch=batch,
+            unlimited=unlimited,
         )
     except pydantic.ValidationError as e:
         raise HTTPException(400, f"Invalid submission - {e}")
@@ -1096,6 +1102,12 @@ async def admin_merge_user(user_id: UUID, into_user_id: UUID):
 async def admin_set_user_name(user_id: UUID, name: str):
     logger.info("admin_set_user_name")
     AdminInterface().set_user_name(user_id=user_id, name=name)
+
+
+@admin_method(path="/admin_set_team_leader", method="POST")
+async def admin_set_team_leader(user_id: UUID, is_team_leader: bool):
+    logger.info("admin_set_team_leader - %s", locals())
+    AdminInterface().set_team_leader(user_id=user_id, is_team_leader=is_team_leader)
 
 
 @admin_method(path="/admin_set_circle", method="POST")
@@ -1340,10 +1352,13 @@ async def admin_item_sheets_pdf(
     num: int,
     sheets: int = 1,
     damage: int = 1,
-    timeout: float = 6,
+    timeout: float = DEFAULT_SHOT_TIMEOUT,
     collected_only_once: bool = True,
     collected_as_team: bool = False,
     tag: str = "",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
+    unlimited: bool = False,
+    minutes: Optional[int] = None,
 ):
     """The drop cards: sheets of eight item codes, to be cut up and hidden."""
     logger.info("admin_item_sheets_pdf - %s", locals())
@@ -1358,6 +1373,9 @@ async def admin_item_sheets_pdf(
             collected_only_once=collected_only_once,
             collected_as_team=collected_as_team,
             tag=tag,
+            batch=batch,
+            unlimited=unlimited,
+            minutes=minutes,
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -1370,17 +1388,63 @@ async def admin_pub_pages_pdf(
     count: int,
     num_bullets: int = generate_pub_pages.BULLETS_PER_TEAM_MEMBER,
     tag: str = "pub",
+    batch: Optional[str] = generate_qr_items.DEFAULT_BATCH,
 ):
     """The pub certificates: one A4 poster per pub, each a team-wide ammo
     code the first team to scan it collects for everybody."""
     logger.info("admin_pub_pages_pdf - %s", locals())
 
     try:
-        pdf = printables.pub_pages_pdf(count, num_bullets=num_bullets, tag=tag)
+        pdf = printables.pub_pages_pdf(
+            count, num_bullets=num_bullets, tag=tag, batch=batch
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     return _pdf_response(pdf, "pub_pages.pdf")
+
+
+@admin_method(path="/admin_sandbox_sheets_pdf", method="POST")
+async def admin_sandbox_sheets_pdf(copies: int = 1):
+    """The sandbox posters: one sheet of eight for every kind of card the
+    warm-up room carries, every code unlimited so the same player can scan it
+    again and again, and every one in the "sandbox" batch so the whole room is
+    withdrawn in a single press at 16:00."""
+    logger.info("admin_sandbox_sheets_pdf - %s", locals())
+
+    try:
+        pdf = printables.sandbox_sheets_pdf(copies)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+    return _pdf_response(pdf, "sandbox_sheets.pdf")
+
+
+# Withdrawing a batch (M2.2). The only recall a printed code has: a card
+# cannot be un-printed, and rotating SECRET_KEY would take the team cards with
+# it. POST for the two that change something, GET for the list.
+
+
+@admin_method(path="/admin_withdraw_batch", method="POST")
+async def admin_withdraw_batch(batch: str) -> List[dict]:
+    """Stop every code minted into ``batch`` from being collectable - what
+    turns the sandbox's posters off at 16:00. Returns the batches now
+    withdrawn, so the page never has to ask twice."""
+    logger.info("admin_withdraw_batch %s", batch)
+    return AdminInterface().withdraw_batch(batch)
+
+
+@admin_method(path="/admin_restore_batch", method="POST")
+async def admin_restore_batch(batch: str) -> List[dict]:
+    """Let a withdrawn batch be collected again."""
+    logger.info("admin_restore_batch %s", batch)
+    return AdminInterface().restore_batch(batch)
+
+
+@admin_method(path="/admin_revoked_batches", method="GET")
+async def admin_revoked_batches() -> List[dict]:
+    """Every batch currently withdrawn, most recent first."""
+    return AdminInterface().get_revoked_batches()
 
 
 def _pdf_response(pdf: bytes, filename: str) -> Response:

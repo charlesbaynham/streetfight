@@ -14,6 +14,9 @@ from backend.model import TickerEntry
 from backend.model import User
 from backend.user_interface import UserInterface
 
+from .shared_fixtures import NO_FIRE_DELAY
+from .shared_fixtures import strip_armour
+
 
 # Mock "schedule_update_event" since we don't have an asyncio loop
 @pytest.fixture(autouse=True)
@@ -64,12 +67,17 @@ def old_shot_prep(
     UserInterface(user_a).join_team(team_a)
     UserInterface(user_b).join_team(team_b)
 
+    # Everything below turns on one shot killing user B - the invalidation
+    # cascade, the refund, the queue emptying - so neither player wears the
+    # starting armour M1.2 gave them.
+    strip_armour(user_a, user_b)
+
     AdminInterface().award_user_ammo(user_a, 1000)
     AdminInterface().award_user_ammo(user_b, 1000)
 
     # Give both users the basic weapon
-    UserInterface(user_a).set_weapon_data(1, 6)
-    UserInterface(user_b).set_weapon_data(1, 6)
+    UserInterface(user_a).set_weapon_data(1, NO_FIRE_DELAY)
+    UserInterface(user_b).set_weapon_data(1, NO_FIRE_DELAY)
 
     # User A shoots user B (the admin hasn't checked it yet)
     shot_a = submit_shot_and_get_id(db_session, user_a, test_image_string)
@@ -256,7 +264,7 @@ def test_shots_info_includes_checked_only_when_asked(
     admin_api_client, db_session, user_in_team, test_image_string
 ):
     AdminInterface().award_user_ammo(user_in_team, 10)
-    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).set_weapon_data(1, NO_FIRE_DELAY)
     UserInterface(user_in_team).submit_shot(test_image_string)
     shot_id = db_session.query(Shot.id).one()[0]
 
@@ -290,7 +298,7 @@ def test_a_contested_checked_shot_can_be_re_adjudicated(
 ):
     shooter, target = two_users_in_different_teams
     UserInterface(shooter).award_ammo(1)
-    UserInterface(shooter).set_weapon_data(1, 6)
+    UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(shooter).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_id, target)
 
@@ -308,7 +316,7 @@ def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
     db_session, user_in_team, test_image_string
 ):
     UserInterface(user_in_team).award_ammo(1)
-    UserInterface(user_in_team).set_weapon_data(1, 6)
+    UserInterface(user_in_team).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(user_in_team).submit_shot(test_image_string)
     AdminInterface().mark_shot_missed(shot_id)
 
@@ -325,8 +333,11 @@ def test_a_plain_checked_shot_still_cannot_be_re_adjudicated(
 def contested_hit(two_users_in_different_teams, test_image_string):
     """A shot ruled a hit and then appealed by its target."""
     shooter, target = two_users_in_different_teams
+    # The hit knocks the target out, which is what makes the appeal worth
+    # lodging, so one hit has to be fatal.
+    strip_armour(target)
     UserInterface(shooter).award_ammo(1)
-    UserInterface(shooter).set_weapon_data(1, 6)
+    UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
     shot_id = UserInterface(shooter).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_id, target)
     UserInterface(target).appeal_shot(shot_id, "missed")
@@ -394,7 +405,7 @@ def contested_no_hit(two_users_in_different_teams, test_image_string):
     def _make(ruling):
         shooter, target = two_users_in_different_teams
         UserInterface(shooter).award_ammo(1)
-        UserInterface(shooter).set_weapon_data(1, 6)
+        UserInterface(shooter).set_weapon_data(1, NO_FIRE_DELAY)
         shot_id = UserInterface(shooter).submit_shot(test_image_string)
         if ruling == "miss":
             AdminInterface().mark_shot_missed(shot_id)

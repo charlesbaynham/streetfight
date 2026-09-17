@@ -10,12 +10,18 @@ from .model import UserState
 if TYPE_CHECKING:
     from .user_interface import UserInterface
 
+# A weapon is the pair (shot_damage, shot_timeout). Everything but
+# Eat-a-bullet fires at the standard delay, model.DEFAULT_SHOT_TIMEOUT, and
+# (1, 25) is model.BASIC_WEAPON -- the pairs are written out as literals
+# because react-ui/src/weapons.test.js reads them straight out of this file
+# to check the frontend's mirror (react-ui/src/weapons.js, and the gun art
+# map in react-ui/src/utils.js) has not drifted. Change one, change all four.
 WEAPON_NAME_LOOKUP = {
-    (1, 1): "Eat-a-bullet",
-    (0, 6): "No weapon",
-    (1, 6): "Pewster",
-    (2, 6): "Tracka-Tracka",
-    (3, 6): "OMG",
+    (1, 5): "Eat-a-bullet",
+    (0, 25): "No weapon",
+    (1, 25): "Pewster",
+    (2, 25): "Tracka-Tracka",
+    (3, 25): "OMG",
 }
 
 

@@ -12,6 +12,8 @@ from backend.model import User
 from backend.model import UserAlias
 from backend.user_interface import UserInterface
 
+from .shared_fixtures import NO_FIRE_DELAY
+
 
 # Mock "schedule_update_event" since we don't have an asyncio loop, same as
 # tests/test_admin_mode.py
@@ -55,13 +57,13 @@ def test_admin_merge_user(
     ).sign()
     UserInterface(stray_id).collect_item(item.to_base64())
     UserInterface(stray_id).award_ammo(2)
-    UserInterface(stray_id).set_weapon_data(1, 6)
+    UserInterface(stray_id).set_weapon_data(1, NO_FIRE_DELAY)
     stray_shot = UserInterface(stray_id).submit_shot(test_image_string)
 
     # A shot fired by the survivor targeted the stray (e.g. shot before the
     # merge happened)
     UserInterface(survivor_id).award_ammo(1)
-    UserInterface(survivor_id).set_weapon_data(1, 6)
+    UserInterface(survivor_id).set_weapon_data(1, NO_FIRE_DELAY)
     shot_at_stray = UserInterface(survivor_id).submit_shot(test_image_string)
     AdminInterface().hit_user(shot_at_stray, stray_id)
 

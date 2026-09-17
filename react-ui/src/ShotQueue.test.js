@@ -485,7 +485,7 @@ describe("ShotQueuePanel", () => {
   test("names the weapon that fired the shot, when its damage/timeout match one", async () => {
     shotsById["shot-1"] = makeShotDetail("shot-1", {
       shot_damage: 2,
-      shot_timeout: 6,
+      shot_timeout: 25,
     });
     await renderQueue();
 

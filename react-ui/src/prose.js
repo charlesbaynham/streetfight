@@ -29,6 +29,12 @@ const prose = {
   // @section fireButton
   fireButton: {
     fireButtonAlt: "Fire button",
+    // Said when the server turns a shot down (M1.1). The reason comes from
+    // the backend, so it is not in here; this is the frame around it, and the
+    // fallback for a refusal that arrived with nothing to say.
+    shotRefused: (reason) => `Shot not taken: ${reason}`,
+    shotRefusedUnknown: "Shot not taken. Try again.",
+    dismissRefusal: "Dismiss",
   },
   // @section fullscreenButton
   fullscreenButton: {
@@ -358,6 +364,27 @@ const prose = {
   swatch: {
     unknownTitle: "not in palette",
     unknownSymbol: "?",
+  },
+  // @section teamLeader
+  // The leader's checklist. Charles has not supplied his own wording yet, so
+  // this is the milestones doc's first draft (M7). Each item is something the
+  // leader can look at and answer yes or no to for every member of their team
+  // - "knows the rules" is not on the list, because nobody can check it.
+  teamLeader: {
+    buttonText: "Team leader",
+    heading: "You are a team leader",
+    intro:
+      "Before the game starts, go round your team and check each of these. " +
+      "Nobody else is going to.",
+    checklist: [
+      "Everyone has the app open, with the camera and location allowed.",
+      "Everyone has scanned the team card, and the app says the right team.",
+      "Hats and armbands are on, and match the colours the app shows.",
+      "Everyone has had their photo taken at the desk.",
+      "Everyone knows they have to wait between shots, and that a pub code is worth ammo to the whole team.",
+    ],
+    footer:
+      "Anything you cannot fix, bring to the desk before the game starts.",
   },
   // @section userMode
   userMode: {

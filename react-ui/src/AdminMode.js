@@ -476,6 +476,18 @@ function PlayerRow({ user, teams, freeSlotsByGame, allUsers }) {
         disabled={!mergeTargetId}
       >
         Merge
+      </button>{" "}
+      {/* Nominating a leader (M7) only decides who is shown the checklist of
+          what "properly equipped" means - it grants nothing. */}
+      <button
+        onClick={() =>
+          adminPost("admin_set_team_leader", {
+            user_id: user.id,
+            is_team_leader: !user.is_team_leader,
+          })
+        }
+      >
+        {user.is_team_leader ? "Team leader \u2713" : "Make team leader"}
       </button>
     </li>
   );

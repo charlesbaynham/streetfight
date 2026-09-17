@@ -272,7 +272,7 @@ describe("/admin/spectator (SpectatorView)", () => {
                   hit_points: 2,
                   num_bullets: 4,
                   shot_damage: 1,
-                  shot_timeout: 6,
+                  shot_timeout: 25,
                 },
               ],
             },

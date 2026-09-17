@@ -58,7 +58,7 @@ test("picking a named weapon posts its damage/timeout pair as the item data", as
 
   const call = getLastAPICall("admin_make_new_item");
   expect(call.query.item_type).toBe("weapon");
-  expect(call.body).toEqual({ shot_damage: 2, shot_timeout: 6 });
+  expect(call.body).toEqual({ shot_damage: 2, shot_timeout: 25 });
 });
 
 test("a non-weapon item type still uses plain number fields", async () => {
