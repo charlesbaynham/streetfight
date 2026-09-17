@@ -474,7 +474,7 @@ The admin map always shows it.
 
 ---
 
-## M7 — Team leader view *(Thursday/Friday; small, independent)*
+## M7 — Team leader view *(status: shipped 17 Sept, PR #TBD)*
 
 - `User.is_team_leader: Boolean default False` (additive). A toggle on the
   admin roster row (`AdminMode.js` `PlayerRow`).
@@ -486,6 +486,16 @@ The admin map always shows it.
   and armband on and matching the app; reference photo taken; knows the
   cooldown and the pub rule.
 - `UserModel.is_team_leader`.
+
+Shipped as specified, with the first-draft checklist above (Charles's own
+wording had not arrived; it is one array in `prose.teamLeader.checklist`).
+The panel is `react-ui/src/TeamLeaderPanel.js`, which also exports the
+`TeamLeaderButton` mounted beside the scoreboard in `BulletCount.js` and, for
+a player who is out, in `UserMode.js`. Both render nothing for a player who
+is not a leader. The admin toggle posts `/admin_set_team_leader`, which fans
+out a `"user"` event to the player and a `"ticker"` one to their game so the
+roster refreshes — the same pair `set_user_name` uses, since there is no
+`"admin"` event of its own.
 
 ---
 

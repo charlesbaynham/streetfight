@@ -1468,6 +1468,24 @@ class AdminInterface:
                 session=ui.get_session(),
             )
 
+    @db_scoped
+    def set_team_leader(self, user_id: UUID, is_team_leader: bool):
+        """Nominate (or stand down) one player as their team's leader.
+
+        A label, not a permission: it only decides whether the player is shown
+        the leader's checklist of what "properly equipped" means.
+        """
+        user = self._get_user_orm(user_id)
+        user.is_team_leader = is_team_leader
+        self._session.commit()
+
+        # The player's own screen, so the panel appears without a reload; and
+        # the game's ticker event, which is what wakes the admin roster (see
+        # generate_any_game_updates - there is no "admin" event of its own).
+        trigger_update_event("user", user_id)
+        if user.game_id is not None:
+            trigger_update_event("ticker", user.game_id)
+
     def set_user_name(self, user_id, name: str):
         with UserInterface(user_id) as ui:
             ui.set_name(name)

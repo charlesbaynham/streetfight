@@ -393,6 +393,13 @@ Four things from it that are worth knowing even if you never call the agent:
     sample of a tie rather than a ranking, which is why `closest_count` rides
     alongside them and the page says how many share that distance. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
+    `TeamLeaderPanel.js` is the checklist shown to the one player per team an
+    admin nominates on the roster (`User.is_team_leader`, M7): open on the
+    waiting page, where a leader has the time to read it and their team is
+    still in front of them, and behind a button beside the scoreboard
+    (`BulletCount.js`, and `UserMode.js` for a player who is out) once the
+    game is running. The flag is a label and a checklist, never a permission
+    - a leader can do nothing in the app another player cannot.
     `SpectatorView.js` (route `/admin/spectator`) is the big-screen dashboard
     for people who are not playing - a laptop wired to a TV, left alone all
     evening (roadmap R11). Read-only, and it has **three faces**: the map face
