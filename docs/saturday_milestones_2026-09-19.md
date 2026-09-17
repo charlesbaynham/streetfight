@@ -290,7 +290,7 @@ What the warm-up room's walls carry, and a way to mint them in one press:
   across a room. Several copies of each.
 - Note in the runbook (M9) that these are revoked at 16:00 (M2.2).
 
-### M0.5 — The drop-card contact line *(status: open; small)*
+### M0.5 — The drop-card contact line *(status: shipped 2026-09-17, PR #262)*
 
 Roadmap #7's mitigation, never built: every drop card and envelope carries
 "This is part of a game — ring <number>" so a stranger who finds one gets an
@@ -298,6 +298,14 @@ answer rather than a fright. Drawn text on the card in `generate_qr_items.py`
 (the artwork is a PNG with a QR pocket, same shape as the pub page); the
 number is a module constant Charles fills in. Verify the sheets still pass
 `tests/test_generate_qr_items.py`.
+
+Shipped: the line is `CONTACT_LINE` in `generate_qr_items.py`, drawn by
+`build_qr_grid` so the CLI and the Printables page both get it. It goes in a
+strip below the artwork, not on it - the artwork gives up 70 px of height -
+and keeps the full gutter between itself and the box edge, because the
+bottom row of a sheet is against the edge of the paper. The envelopes need
+nothing of their own: what is in them is these same cards.
+`tests/test_generate_qr_items.py` did not exist and does now.
 
 ### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
 
