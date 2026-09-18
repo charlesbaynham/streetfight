@@ -14,7 +14,7 @@ import kingston from "./images/map.png";
 // 1.3 km centred on House Absolute. Placeholder for a hand-drawn map, but the
 // streets are accurate. Traced from map data (c) OpenStreetMap contributors,
 // ODbL.
-import westminster from "./images/map_westminster.jpg";
+import westminster from "./images/map_westminster.png";
 
 const MAP_IMAGES = {
   kingston,
