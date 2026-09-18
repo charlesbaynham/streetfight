@@ -132,26 +132,16 @@ def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
         assert item.batch == printables.SANDBOX_BATCH
 
 
-# The sandbox cards that print as a bare QR code because nobody has drawn
-# them a card yet. Eat-a-bullet is (1, 5): it shares Pewster's damage, and
-# every weapon drawing there is is a standard-delay one, so it has no card of
-# its own. Named here rather than tolerated silently - draw it one and the
-# test below fails, which is the reminder to take it off this list.
-UNDRAWN_SANDBOX_CARDS = {"eat-a-bullet"}
-
-
 def test_every_sandbox_poster_has_a_drawing():
     """A poster is read across a room, so a bare QR code will not do - and
     the drawing a card gets is decided by what it awards. This is the test
     that says why the ammunition poster is 5 bullets and not 20: there is no
-    ammo_20.png."""
+    ammo_20.png. Eat-a-bullet was the one card this used to excuse, until it
+    got a weapon_1_5.png of its own."""
     for card in printables.SANDBOX_CARDS:
-        drawn = base_image_path(card.itype, card.num, card.damage, card.timeout)
-
-        if card.label in UNDRAWN_SANDBOX_CARDS:
-            assert drawn is None, card
-        else:
-            assert drawn is not None, card
+        assert (
+            base_image_path(card.itype, card.num, card.damage, card.timeout) is not None
+        ), card
 
 
 def test_no_two_weapons_are_printed_as_the_same_card():
