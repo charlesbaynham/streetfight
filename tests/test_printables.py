@@ -131,13 +131,42 @@ def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
         assert item.batch == printables.SANDBOX_BATCH
 
 
+# The sandbox cards that print as a bare QR code because nobody has drawn
+# them a card yet. Eat-a-bullet is (1, 5): it shares Pewster's damage, and
+# every weapon drawing there is is a standard-delay one, so it has no card of
+# its own. Named here rather than tolerated silently - draw it one and the
+# test below fails, which is the reminder to take it off this list.
+UNDRAWN_SANDBOX_CARDS = {"eat-a-bullet"}
+
+
 def test_every_sandbox_poster_has_a_drawing():
     """A poster is read across a room, so a bare QR code will not do - and
     the drawing a card gets is decided by what it awards. This is the test
     that says why the ammunition poster is 5 bullets and not 20: there is no
     ammo_20.png."""
     for card in printables.SANDBOX_CARDS:
-        assert base_image_path(card.itype, card.num, card.damage) is not None, card
+        drawn = base_image_path(card.itype, card.num, card.damage, card.timeout)
+
+        if card.label in UNDRAWN_SANDBOX_CARDS:
+            assert drawn is None, card
+        else:
+            assert drawn is not None, card
+
+
+def test_no_two_weapons_are_printed_as_the_same_card():
+    """A weapon is the pair (damage, delay), and its drawing has the weapon's
+    name written on it in ink. Keyed on damage alone, Eat-a-bullet (1, 5) was
+    printed on the Pewster card (1, 25) - so a poster in the warm-up room said
+    Pewster and handed out Eat-a-bullet."""
+    drawings = {}
+
+    for (damage, timeout), name in WEAPON_NAME_LOOKUP.items():
+        drawn = base_image_path("weapon", 1, damage, timeout)
+        if drawn is None:
+            continue
+
+        assert drawn not in drawings, f"{name} is printed as {drawings[drawn]}"
+        drawings[drawn] = name
 
 
 def test_the_sandbox_hands_out_the_weapons_it_names():

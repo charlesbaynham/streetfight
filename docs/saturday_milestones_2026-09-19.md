@@ -120,8 +120,22 @@ leader concept). Still true as written: `Game` has no venue.
 
 ---
 
-## Two things that are not code, and must not be forgotten
+## Three things that are not code, and must not be forgotten
 
+- **Put the circle and drop coordinates in the live env file, before the
+  game.** *Critical: without it the circle plan has nothing to arm, and the
+  early-warning cards are worth nothing.* The numbers off Charles and Gaby's
+  marked-up map are deliberately not in this repository, which is public:
+  they go in `/data/secrets/streetfight.env` on the droplet as
+  `LANDMARK_CIRCLE0=51.4958,-0.1309` and so on, one line each, and the
+  service is restarted (the file is read at startup). **All four of
+  `CIRCLE0`…`CIRCLE3` are needed** — they are what `circles.CIRCLE_PLAN`
+  arms in turn, which is what stops an admin having to remember to place
+  NEXT (M8). The `DROP_*` ones go in the same way and are optional: they only
+  fill the landmark dropdown. Check it took: the admin page's **Circles**
+  panel should say `Plan: CIRCLE0 (0.7 km)` with coordinates, not "no
+  coordinates — place it by hand". Do it **before Saturday afternoon**, and
+  ideally on staging first.
 - **Resize the droplet before Saturday.** Live runs on a very small
   DigitalOcean droplet, sized for sign-ups, not for thirty phones posting a
   fix every five seconds, the vision pipeline draining a queue, and the

@@ -111,6 +111,34 @@ anyway. Back up `/data` first (below).
 
 ## Friday 18 September
 
+### Put the circle coordinates on the box *(critical — do this first)*
+
+The four circle centres are not in the repository; they are read from the live
+env file at startup. Without them the circle plan has nothing to arm, every
+circle has to be placed by hand, and the early-warning cards are worth
+nothing.
+
+On the droplet, in `/data/secrets/streetfight.env`, one line each:
+
+```
+LANDMARK_CIRCLE0=51.4958,-0.1309
+LANDMARK_CIRCLE1=...
+LANDMARK_CIRCLE2=...
+LANDMARK_CIRCLE3=...
+```
+
+All four. `LANDMARK_DROP_<NAME>=` lines go in the same way if you want the
+drop spots in the landmark dropdown; those are optional. Then restart the
+service — the file is read at startup, not per request.
+
+**Check it took**: on **Admin home**, the **Circles** panel should read
+`Plan: CIRCLE0 (0.7 km), on the map and private until you cue it` after a
+**Reset to start state**, and not "no coordinates — place it by hand".
+
+Radii live in code (`circles.CIRCLE_PLAN`: 0.70, 0.42, 0.18, 0.05 km), so if
+the marked-up map disagrees with those, that tuple is the one thing to change
+and it needs a deploy.
+
 ### Resize the droplet
 
 Live runs on a very small DigitalOcean droplet, sized for sign-ups: not for
