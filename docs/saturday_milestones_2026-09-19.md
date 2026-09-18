@@ -318,9 +318,13 @@ what it awards and a poster read across a room has to say what it is:
   Pewster, so its poster read "Pewster / Damage: 1"; keying the artwork on the
   (damage, delay) pair fixed the wrong name but left it printing as a bare QR
   code. It has `weapon_1_5.png` now, composited from what the pack already
-  held — the card frame every other card shares, recoloured red; the gun the
+  held — the card frame every other card shares, recoloured teal; the gun the
   player's HUD draws for (1, 5), which carries the name in its own lettering;
-  and Pewster's "Damage: 1", which is true of this weapon too.
+  and Pewster's "Damage: 1", which is true of this weapon too. Plus the one
+  thing that is genuinely new: a **RAPID FIRE** flash in the bottom-right
+  corner, since the 5 s cooldown is the whole difference between this weapon
+  and Pewster and nothing else on the card says it. The frame is teal rather
+  than the red the gun's own crest suggests, because the flash is hot pink.
 
 **For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
 `sandbox` batch at 16:00.

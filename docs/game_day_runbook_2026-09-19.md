@@ -75,8 +75,9 @@ in the box to be hidden round the town, not on a wall.
 One thing about the drawings, so it is not a surprise on the wall: the
 ammunition poster is **5 bullets, not 20** (there is no 20-bullet drawing, and
 being unlimited, five a scan is no less than twenty). Eat-a-bullet has its own
-card now (`weapon_1_5.png`, a red frame), so all six posters name what they
-hand out.
+card now (`weapon_1_5.png`, a teal frame with a pink **RAPID FIRE** flash in
+the corner — it is the one weapon whose 5 s cooldown is worth shouting about),
+so all six posters name what they hand out.
 
 ### The map poster
 
@@ -452,8 +453,10 @@ one place. Each names the PR that made it.
   card's picture is chosen by what it awards and a poster read across a room
   has to say what it is. Eat-a-bullet used to be the other half of this — it
   printed as a bare QR code, having no drawing of its own — and now has
-  `weapon_1_5.png`: the shared card frame in a red none of the others use, the
-  gun the player's HUD already draws for it, and Pewster's "Damage: 1".
+  `weapon_1_5.png`: the shared card frame in a teal none of the others use,
+  the gun the player's HUD already draws for it, Pewster's "Damage: 1", and a
+  **RAPID FIRE** flash in the bottom-right corner, which is the only thing on
+  any card that says a weapon's cooldown out loud.
 - **Radar and circle-warning cards use placeholder artwork** (#259) — an
   existing hand-drawn frame with the item's name written in place of the
   illustration. The number of minutes is deliberately not on the card, since

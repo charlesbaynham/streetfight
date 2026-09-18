@@ -220,13 +220,15 @@ def base_image_path(
     standard-delay weapons keep their plain ``weapon_<damage>.png`` names,
     since those are the cards that were drawn first; a weapon at any other
     delay wants ``weapon_<damage>_<delay>.png``, and prints as a bare QR code
-    until somebody draws it one. ``weapon_1_5.png`` is Eat-a-bullet's, put
-    together out of the parts the pack already had rather than drawn fresh:
-    the frame every other card shares in a colour none of them uses, the gun
-    the player's own HUD draws for (1, 5)
+    until somebody draws it one. ``weapon_1_5.png`` is Eat-a-bullet's, mostly
+    put together out of the parts the pack already had rather than drawn
+    fresh: the frame every other card shares in a teal none of them uses, the
+    gun the player's own HUD draws for (1, 5)
     (``react-ui/src/images/art/gun_11.png``, which carries the name in its own
     lettering), and Pewster's "Damage: 1" - which says the truth about this
-    weapon too.
+    weapon too. The one new thing on it is the RAPID FIRE flash in the corner,
+    which is there because the 5 s cooldown is the whole difference between
+    this weapon and Pewster and no card has ever said a cooldown out loud.
     """
     if itype == "weapon":
         suffix = "" if timeout == DEFAULT_SHOT_TIMEOUT else f"_{_trim(timeout)}"
