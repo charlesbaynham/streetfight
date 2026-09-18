@@ -394,6 +394,16 @@ fall behind the list again. `venues.py` moved to the new image and crop
 asserted House Absolute was dead centre, which the re-crop deliberately ended.
 **The map poster is unblocked.**
 
+**Doodles, 18 Sept.** The rendered map was accurate and dull: none of the
+little drawings that make the Kingston map. Those are the one thing an image
+model *can* do — a doodle carries no geometry to get wrong — so
+`doodle_venue_map.py` asks Gemini Flash for one small pen sketch per pub
+(subjects in `docs/venue_map_westminster/doodles.json`: an oak for the Royal
+Oak, a boar for the Blue Boar, a sedan chair for the Two Chairmen, a pelican
+on the park, an eight on the river), converts black-on-white to transparent
+sepia ink, and the renderer places each beside its pub in the emptiest paper,
+never over a name. The model never sees the map.
+
 ### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; unblocked 17 Sept when M0.6's map landed)*
 
 A PDF of the map to pin up in The Speaker: the venue image at A3 (and A4)

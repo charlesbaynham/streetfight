@@ -26,7 +26,17 @@ uv run python .claude/skills/draw-venue-map/scripts/render_venue_map.py \
 That is exact by construction, labels all nineteen pubs, and costs nothing to
 re-run — `osm_features.json.gz` here is the cached Overpass answer, so it needs
 no network. **Adding a pub to `backend/venues.py` and re-running is the whole
-change.** What it cannot do is the pun doodles; ink those onto a printed copy.
+change.** The pun doodles beside each pub are the one part an image model
+draws: `doodles.json` here says what each one is, and
+
+```bash
+OPENROUTER_API_KEY=... uv run python .claude/skills/draw-venue-map/scripts/doodle_venue_map.py \
+    --bundle docs/venue_map_westminster
+```
+
+asks Gemini Flash for each as black pen on white, makes it transparent and
+saves it under `doodles/`; the renderer above then places them. Give a new
+pub a line in `doodles.json` too. See "Doodles" in the skill.
 
 The four reference images and `prompt.md` below are kept for the image-model
 route, which survives only as the way to get a genuinely hand-drawn result.

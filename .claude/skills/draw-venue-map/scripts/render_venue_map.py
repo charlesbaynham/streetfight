@@ -13,19 +13,31 @@ creative act. This draws the same geometry with a wobbly pen and a
 handwriting font, which is exact by construction and reproducible: rerun it
 when the pub list changes and the map follows.
 
-## Two layers
+## Three layers
 
-The drawing is built in two layers, which stack to make the whole map:
+The drawing is built in three layers, which stack to make the whole map:
 
-    map            roads, water, parks - and where hand-drawn doodles belong
+    map            roads, water, parks
+    doodles        the little drawings beside the pubs (see below)
     handwriting    every word on the sheet, and the arrows that point at things
 
-They are written out separately as SVG so the handwriting can be replaced
-without touching the map underneath: re-letter the `.hand.svg`, keep the
-`.map.svg` as it is, and the two still line up because both are drawn in one
-coordinate space. Each layer is a `<g>` in the combined file and the only
-thing in its own file, so stacking map then handwriting reproduces the whole
-exactly.
+They are written out separately as SVG so any one can be replaced without
+touching the others: re-letter the `.hand.svg`, keep the `.map.svg` as it is,
+and the two still line up because all three are drawn in one coordinate
+space. Each layer is a `<g>` in the combined file and the only thing in its
+own file, so stacking map, doodles, handwriting reproduces the whole exactly.
+
+## The doodles
+
+The cartwheel beside Wheelwrights Arms is the charm of the Kingston map, and
+it is the one thing here an image model *can* do: a doodle carries no
+geometry to get wrong. `doodle_venue_map.py` asks Gemini for one small pen
+sketch per pub - the subject is written in the bundle's `doodles.json` - on
+plain white, and turns the white into transparency. This file then decides
+where each goes: beside its pub, on the far side from the name, in the
+emptiest patch of paper within reach, never over a label and never over the
+point the arrow is aimed at. The model never sees the map, so it cannot move
+anything on it.
 
 The arrows live with the handwriting rather than the map because they belong
 to the words: where a name goes is decided by what room is left, and the
@@ -44,10 +56,6 @@ poster need, and to SVG for the layers. One set of drawing code and two
 backends, so the raster and the vector cannot disagree about where anything
 is.
 
-What none of this gives you is the doodles. The cartwheel beside Wheelwrights
-Arms is the charm of the Kingston map and no renderer will invent one - but
-the map layer is where they belong, and that is now a file you can draw into.
-
 Usage:
 
     uv run python render_venue_map.py \
@@ -56,11 +64,15 @@ Usage:
         --title WESTMINSTER
 
 writes the raster at `--out` and, beside it, `map_westminster.svg`,
-`map_westminster.map.svg` and `map_westminster.hand.svg`. `--no-svg` skips
-those.
+`map_westminster.map.svg`, `map_westminster.doodles.svg` and
+`map_westminster.hand.svg`. `--no-svg` skips those.
 
 Reads `meta.json` and `osm_features.json.gz` from the bundle, so it needs no
 network and costs nothing to re-run. Both are written by `build_venue_map.py`.
+The doodles come from the bundle too (`doodles.json` and the `doodles/`
+directory `doodle_venue_map.py` fills); a listed doodle that has not been
+drawn yet is named and left off, and a bundle with no `doodles.json` renders
+as it always did.
 """
 
 import argparse
@@ -85,6 +97,9 @@ from build_venue_map import MAJOR  # noqa: E402
 from build_venue_map import WIDTHS  # noqa: E402
 from build_venue_map import Box  # noqa: E402
 from build_venue_map import rings  # noqa: E402
+from doodle_venue_map import DOODLE_PX  # noqa: E402
+from doodle_venue_map import doodle_path  # noqa: E402
+from doodle_venue_map import load_manifest  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONTS = os.path.join(os.path.dirname(HERE), "fonts")
@@ -96,8 +111,9 @@ FACE = os.path.join(FONTS, "PatrickHand-Regular.ttf")
 FAMILY = "VenueHand"
 
 LAYER_MAP = "map"
+LAYER_DOODLE = "doodles"
 LAYER_HAND = "handwriting"
-LAYERS = (LAYER_MAP, LAYER_HAND)
+LAYERS = (LAYER_MAP, LAYER_DOODLE, LAYER_HAND)
 
 OUT_PX = 2000
 SS = 3  # supersample: PIL does not antialias lines, so draw big and shrink
@@ -160,6 +176,14 @@ class Sheet:
         """
         if len(pts) > 2:
             self.ops[layer].append(("poly", list(pts), fill))
+
+    def image(self, layer, box, img, png):
+        """A transparent drawing fitted inside `box`, aspect kept.
+
+        Carries both the decoded image (for the raster) and the PNG bytes it
+        came from (for the SVG, which embeds them as they are).
+        """
+        self.ops[layer].append(("image", tuple(box), img, png))
 
     def text(
         self,
@@ -465,6 +489,7 @@ class Hand:
 
         start = (box[0], ty) if anchor == "lm" else (box[2], ty)
         self._arrow(start, (x, y))
+        return box
 
     def _arrow(self, start, end):
         dx, dy = end[0] - start[0], end[1] - start[1]
@@ -498,6 +523,135 @@ class Hand:
                 ],
                 PEN,
             )
+
+
+# --------------------------------------------------------------------------
+# Doodles
+# --------------------------------------------------------------------------
+
+DOODLE_INK_OK = (
+    0.015  # fraction of a box that may already be inked before it counts as busy
+)
+DOODLE_REACH = 7  # rings of candidate positions to try outward from the pub
+DOODLE_FAR = (
+    0.006  # per ring: a clean patch two roads away loses to a grazed one next door
+)
+
+
+class Doodler:
+    """Puts each drawing beside its pub, in the emptiest paper within reach.
+
+    The names went down first and are not moved: a doodle is decoration and
+    a name is navigation. What is left is searched in rings outward from the
+    pub, each ring tried from the side away from the label first, so the
+    drawing and the name flank the pub rather than crowd one side of it. A
+    candidate is measured against a raster of the map layer - roads, banks,
+    park edges - and the first one that is nearly clean wins; failing that,
+    the least inked. A box never covers the pub itself, because that is the
+    point the arrow is aimed at, and never overlaps anything already placed.
+    """
+
+    def __init__(self, sheet, size, taken):
+        self.sheet, self.size = sheet, size
+        self.placed = taken  # shared with Hand: what it placed, plus ours
+        # Ink only, not colour: a doodle on a park or on the river is fine,
+        # a doodle across a road is not.
+        self.ink = (
+            to_pil(sheet, ss=1, layers=(LAYER_MAP,))
+            .convert("L")
+            .point(lambda v: 255 if v < 128 else 0)
+        )
+
+    def _inked(self, box):
+        crop = self.ink.crop(tuple(int(round(v)) for v in box))
+        return sum(crop.histogram()[128:]) / max(1, crop.width * crop.height)
+
+    def _free(self, box, pad=6):
+        b = (box[0] - pad, box[1] - pad, box[2] + pad, box[3] + pad)
+        return not any(
+            b[0] < o[2] and o[0] < b[2] and b[1] < o[3] and o[1] < b[3]
+            for o in self.placed
+        )
+
+    def put(self, x, y, img, png, px=DOODLE_PX, away_from=None):
+        w, h = img.size
+        scale = px / max(w, h)
+        w, h = w * scale, h * scale
+        margin, step, gap = 14, 26, 22
+
+        # Candidate directions, nearest to "away from the label" first.
+        if away_from is not None:
+            lx, ly = (away_from[0] + away_from[2]) / 2, (
+                away_from[1] + away_from[3]
+            ) / 2
+            prefer = math.atan2(y - ly, x - lx)
+        else:
+            prefer = -math.pi / 2
+        angles = sorted(
+            (prefer + k * math.tau / 12 for k in range(12)),
+            key=lambda a: abs((a - prefer + math.pi) % math.tau - math.pi),
+        )
+
+        best, best_score = None, None
+        for ring in range(DOODLE_REACH):
+            reach = max(w, h) / 2 + gap + ring * step
+            for a in angles:
+                cx, cy = x + reach * math.cos(a), y + reach * math.sin(a)
+                box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+                if not (
+                    margin < box[0]
+                    and box[2] < self.size - margin
+                    and margin < box[1]
+                    and box[3] < self.size - margin
+                ):
+                    continue
+                if box[0] - 8 < x < box[2] + 8 and box[1] - 8 < y < box[3] + 8:
+                    continue
+                if not self._free(box):
+                    continue
+                inked = self._inked(box)
+                score = inked + DOODLE_FAR * ring
+                if best_score is None or score < best_score:
+                    best, best_score = box, score
+                if inked < DOODLE_INK_OK:
+                    break
+            else:
+                continue
+            break
+
+        if best is None:
+            return None
+        self.placed.append(best)
+        self.sheet.image(LAYER_DOODLE, best, img, png)
+        return best
+
+
+def load_doodles(bundle, meta):
+    """The bundle's doodles, with their positions resolved and files loaded.
+
+    Returns `(ready, missing)`: what can be drawn, and the entries whose
+    drawing has not been made yet, so the caller can say so by name.
+    """
+    by_name = {m["name"]: m for m in meta["markers"]}
+    ready, missing = [], []
+    for entry in load_manifest(bundle):
+        path = doodle_path(bundle, entry)
+        if not os.path.exists(path):
+            missing.append(entry)
+            continue
+        if "marker" in entry:
+            marker = by_name.get(entry["marker"])
+            if marker is None:
+                raise SystemExit(
+                    f"doodles.json names {entry['marker']!r}, which is not a marker in meta.json"
+                )
+            lat, lon = marker["lat"], marker["lon"]
+        else:
+            lat, lon = entry["at"]
+        png = open(path, "rb").read()
+        img = Image.open(path).convert("RGBA")
+        ready.append(dict(entry, lat=lat, lon=lon, img=img, png=png))
+    return ready, missing
 
 
 # --------------------------------------------------------------------------
@@ -710,8 +864,11 @@ def draw_title(sheet, text, size):
     return extent
 
 
-def compose(meta, els, size=OUT_PX, title=None):
-    """Build the whole drawing as a display list."""
+def compose(meta, els, size=OUT_PX, title=None, doodles=()):
+    """Build the whole drawing as a display list.
+
+    Returns the sheet and the doodles that found no room, by entry.
+    """
     box = Box(meta["centre"][0], meta["centre"][1], meta["half_span_m"])
     sheet = Sheet(size)
 
@@ -724,12 +881,31 @@ def compose(meta, els, size=OUT_PX, title=None):
         taken.append(draw_title(sheet, title, size))
 
     hand = Hand(sheet, size, taken=taken)
+    labels = {}
     # Landmarks first: they are the things everyone navigates by, so they get
     # the good positions when the pubs crowd them.
     for marker in sorted(meta["markers"], key=lambda m: m["kind"] != "landmark"):
         x, y = box.project(marker["lat"], marker["lon"], size)
-        hand.put(x, y, marker["name"])
-    return sheet
+        labels[marker["name"]] = hand.put(x, y, marker["name"])
+
+    # Doodles last, into whatever paper the names left: decoration gives way
+    # to navigation, never the other way round.
+    crowded = []
+    if doodles:
+        doodler = Doodler(sheet, size, taken=hand.placed)
+        for entry in doodles:
+            x, y = box.project(entry["lat"], entry["lon"], size)
+            placed = doodler.put(
+                x,
+                y,
+                entry["img"],
+                entry["png"],
+                px=entry.get("size", DOODLE_PX),
+                away_from=labels.get(entry.get("marker")),
+            )
+            if placed is None:
+                crowded.append(entry)
+    return sheet, crowded
 
 
 # --------------------------------------------------------------------------
@@ -812,9 +988,28 @@ def to_pil(sheet, ss=SS, layers=LAYERS):
             elif op[0] == "poly":
                 _, pts, fill = op
                 draw.polygon([(x * ss, y * ss) for x, y in pts], fill=_rgb(fill))
+            elif op[0] == "image":
+                _, b, doodle, _png = op
+                fitted = _fit(doodle, b, ss)
+                img.paste(fitted[0], fitted[1], fitted[0])
             else:
                 _pil_text(img, op, ss)
     return img.resize((sheet.size, sheet.size), Image.LANCZOS)
+
+
+def _fit(doodle, box, ss):
+    """Scale a drawing into `box` keeping its aspect; returns it and where it goes."""
+    bw, bh = (box[2] - box[0]) * ss, (box[3] - box[1]) * ss
+    scale = min(bw / doodle.width, bh / doodle.height)
+    w, h = max(1, int(round(doodle.width * scale))), max(
+        1, int(round(doodle.height * scale))
+    )
+    fitted = doodle.resize((w, h), Image.LANCZOS)
+    at = (
+        int(round(box[0] * ss + (bw - w) / 2)),
+        int(round(box[1] * ss + (bh - h) / 2)),
+    )
+    return fitted, at
 
 
 _SVG_ANCHOR = {"lm": "start", "rm": "end", "mm": "middle"}
@@ -851,6 +1046,14 @@ def _svg_ops(ops):
             _, pts, fill = op
             pt = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
             out.append(f'<polygon points="{pt}" fill="{fill}"/>')
+        elif op[0] == "image":
+            _, b, _img, png = op
+            data = base64.b64encode(png).decode()
+            out.append(
+                f'<image x="{b[0]:.1f}" y="{b[1]:.1f}" width="{b[2] - b[0]:.1f}" '
+                f'height="{b[3] - b[1]:.1f}" preserveAspectRatio="xMidYMid meet" '
+                f'href="data:image/png;base64,{data}"/>'
+            )
         else:
             _, x, y, text, px, anchor, fill, stroke, stroke_w, rotate = op
             attrs = (
@@ -902,6 +1105,7 @@ def svg_paths(out_path):
     return [
         (None, f"{stem}.svg"),
         (LAYER_MAP, f"{stem}.map.svg"),
+        (LAYER_DOODLE, f"{stem}.doodles.svg"),
         (LAYER_HAND, f"{stem}.hand.svg"),
     ]
 
@@ -1032,7 +1236,10 @@ def main():
                 "refresh only the raster."
             )
 
-    sheet = compose(meta, els, size=args.size, title=args.title)
+    doodles, undrawn = load_doodles(args.bundle, meta)
+    sheet, crowded = compose(
+        meta, els, size=args.size, title=args.title, doodles=doodles
+    )
     to_pil(sheet, ss=args.supersample).convert("RGB").save(
         args.out, quality=92, optimize=True
     )
@@ -1050,6 +1257,19 @@ def main():
     counts = ", ".join(f"{k} {len(v)}" for k, v in sheet.ops.items())
     print(f"  {args.size} x {args.size}; primitives: {counts}")
     print(f"  {len(meta['markers'])} labelled markers, {len(els)} OSM features")
+    if doodles or undrawn:
+        print(f"  {len(doodles) - len(crowded)} doodles placed")
+    for entry in crowded:
+        print(
+            f"  no room for the {entry['subject']} doodle near {entry.get('marker', entry.get('at'))}"
+        )
+    if undrawn:
+        print(
+            f"  {len(undrawn)} doodles in doodles.json have not been drawn yet - "
+            "run doodle_venue_map.py --bundle for them:"
+        )
+        for entry in undrawn:
+            print(f"    {entry.get('marker') or entry.get('at')}: {entry['subject']}")
     print(
         "  the venue's reference points are this crop's corners:\n"
         f"    ref_1 x=0 y=0        lat={meta['bounds']['north']:.6f} "
