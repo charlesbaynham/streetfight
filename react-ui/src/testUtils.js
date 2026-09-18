@@ -53,7 +53,8 @@ function makeFakeResponse(status, body) {
     ok,
     status,
     statusText: String(status),
-    json: () => Promise.resolve(bodyIsString ? JSON.parse(body) : body ?? null),
+    json: () =>
+      Promise.resolve(bodyIsString ? JSON.parse(body) : (body ?? null)),
     text: () =>
       Promise.resolve(bodyIsString ? body : JSON.stringify(body ?? null)),
     // For endpoints whose real response is a file download (e.g.
