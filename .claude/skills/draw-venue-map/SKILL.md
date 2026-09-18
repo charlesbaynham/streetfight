@@ -109,14 +109,17 @@ layers:
 
 | Layer | What is on it |
 | --- | --- |
-| `map` | roads, water, parks |
-| `doodles` | the generated drawings, as embedded PNGs |
+| `map` | roads, water, parks — and a dot at every pub, in a `pubs` group (`pub-<name>`) |
+| `doodles` | the generated drawings, as embedded PNGs, one `doodle-<name>` group each |
 | `handwriting` | every word on the sheet, and the arrows that point at things |
 
 Each is a `<g>` in the combined file and the only thing in its own file, so
 stacking map, doodles, handwriting reproduces the whole exactly (verified: the
 layers composite back to the combined with no difference beyond glyph
-antialiasing). The words are real `<text>` in an embedded font rather than
+antialiasing). The three groups carry Inkscape's layer attributes, so the
+combined file opens there as three layers, and the pub dots sit on the *map*
+layer on purpose: the handwriting is what gets redrawn, and whoever redraws
+the arrows needs the sheet to still say where each pub is. The words are real `<text>` in an embedded font rather than
 outlines, so they can be edited as text as well as redrawn.
 
 The arrows sit with the handwriting, not the map, because they belong to the

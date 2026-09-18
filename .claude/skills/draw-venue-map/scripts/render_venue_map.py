@@ -17,7 +17,7 @@ when the pub list changes and the map follows.
 
 The drawing is built in three layers, which stack to make the whole map:
 
-    map            roads, water, parks
+    map            roads, water, parks - and a dot at every pub
     doodles        the little drawings beside the pubs (see below)
     handwriting    every word on the sheet, and the arrows that point at things
 
@@ -26,6 +26,12 @@ touching the others: re-letter the `.hand.svg`, keep the `.map.svg` as it is,
 and the two still line up because all three are drawn in one coordinate
 space. Each layer is a `<g>` in the combined file and the only thing in its
 own file, so stacking map, doodles, handwriting reproduces the whole exactly.
+The groups carry Inkscape's layer attributes, so the combined file opens
+there as three layers, and inside them the things somebody would move are
+groups with ids: `pubs` (one `pub-<name>` circle each) on the map layer,
+and one `doodle-<name>` group per drawing. The pub dots are on the *map*
+layer rather than with the arrows because the arrows are what gets redrawn,
+and whoever redraws them needs the sheet to still say where each pub is.
 
 ## The doodles
 
@@ -99,8 +105,10 @@ from build_venue_map import WIDTHS  # noqa: E402
 from build_venue_map import Box  # noqa: E402
 from build_venue_map import rings  # noqa: E402
 from doodle_venue_map import DOODLE_PX  # noqa: E402
+from doodle_venue_map import doodle_name  # noqa: E402
 from doodle_venue_map import doodle_path  # noqa: E402
 from doodle_venue_map import load_manifest  # noqa: E402
+from doodle_venue_map import slug  # noqa: E402
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FONTS = os.path.join(os.path.dirname(HERE), "fonts")
@@ -178,6 +186,9 @@ class Sheet:
         if len(pts) > 2:
             self.ops[layer].append(("poly", list(pts), fill))
 
+    def dot(self, layer, x, y, r, colour=INK):
+        self.ops[layer].append(("dot", float(x), float(y), float(r), colour))
+
     def image(self, layer, box, img, png):
         """A transparent drawing fitted inside `box`, aspect kept.
 
@@ -185,6 +196,18 @@ class Sheet:
         came from (for the SVG, which embeds them as they are).
         """
         self.ops[layer].append(("image", tuple(box), img, png))
+
+    def group(self, layer, name, ops):
+        """Primitives that belong together, named so an editor can grab them.
+
+        Drawn exactly as if they were listed in place; only the SVG shows the
+        grouping, as a `<g id="name">`.
+        """
+        self.ops[layer].append(("group", name, list(ops)))
+
+    def grouped(self, layer, name):
+        """Draw into a group: `with sheet.grouped(layer, "pubs"): sheet.dot(...)`."""
+        return _Grouped(self, layer, name)
 
     def text(
         self,
@@ -213,6 +236,19 @@ class Sheet:
                 float(rotate),
             )
         )
+
+
+class _Grouped:
+    def __init__(self, sheet, layer, name):
+        self.sheet, self.layer, self.name = sheet, layer, name
+
+    def __enter__(self):
+        self.mark = len(self.sheet.ops[self.layer])
+
+    def __exit__(self, *exc):
+        ops, mark = self.sheet.ops[self.layer], self.mark
+        self.sheet.ops[self.layer] = ops[:mark]
+        self.sheet.group(self.layer, self.name, ops[mark:])
 
 
 # --------------------------------------------------------------------------
@@ -574,7 +610,7 @@ class Doodler:
             for o in self.placed
         )
 
-    def pin(self, fx, fy, img, png, px=DOODLE_PX):
+    def pin(self, fx, fy, img, png, px=DOODLE_PX, name="doodle"):
         """Put a drawing exactly where the manifest says, search be damned.
 
         For the ones that are a picture of the place itself - the Palace of
@@ -590,10 +626,11 @@ class Doodler:
         cy = min(max(fy * self.size, margin + h / 2), self.size - margin - h / 2)
         box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
         self.placed.append(box)
-        self.sheet.image(LAYER_DOODLE, box, img, png)
+        with self.sheet.grouped(LAYER_DOODLE, f"doodle-{name}"):
+            self.sheet.image(LAYER_DOODLE, box, img, png)
         return box
 
-    def put(self, x, y, img, png, px=DOODLE_PX, away_from=None):
+    def put(self, x, y, img, png, px=DOODLE_PX, away_from=None, name="doodle"):
         w, h = img.size
         scale = px / max(w, h)
         w, h = w * scale, h * scale
@@ -642,7 +679,8 @@ class Doodler:
         if best is None:
             return None
         self.placed.append(best)
-        self.sheet.image(LAYER_DOODLE, best, img, png)
+        with self.sheet.grouped(LAYER_DOODLE, f"doodle-{name}"):
+            self.sheet.image(LAYER_DOODLE, best, img, png)
         return best
 
 
@@ -768,6 +806,25 @@ def draw_parks(sheet, els, box, size):
     for el in els:
         if el.get("tags", {}).get("leisure") == "park":
             draw_area(sheet, el, box, size, PARK, amp=2.2)
+
+
+PUB_DOT = 3.5  # radius of the mark at each pub, in output pixels
+
+
+def draw_pubs(sheet, meta, box, size):
+    """A dot at every marker, on the map layer, in a `pubs` group.
+
+    The arrows point at these, but the arrows live with the handwriting and
+    the handwriting is the layer that gets redrawn by hand - so the pub's
+    position has to be on the sheet somewhere else, or re-lettering it means
+    guessing where the pubs were. One circle per marker, with an id.
+    """
+    with sheet.grouped(LAYER_MAP, "pubs"):
+        for marker in meta["markers"]:
+            x, y = box.project(marker["lat"], marker["lon"], size)
+            sheet.group(
+                LAYER_MAP, f"pub-{slug(marker['name'])}", [("dot", x, y, PUB_DOT, INK)]
+            )
 
 
 def draw_street_names(sheet, roads, box, size, limit=14):
@@ -903,6 +960,7 @@ def compose(meta, els, size=OUT_PX, title=None, doodles=()):
     draw_parks(sheet, els, box, size)
     draw_water(sheet, els, box, size)
     roads = draw_roads(sheet, els, box, size)
+    draw_pubs(sheet, meta, box, size)
     taken = draw_street_names(sheet, roads, box, size)
     if title:
         taken.append(draw_title(sheet, title, size))
@@ -928,6 +986,7 @@ def compose(meta, els, size=OUT_PX, title=None, doodles=()):
                     entry["img"],
                     entry["png"],
                     px=entry.get("size", DOODLE_PX),
+                    name=doodle_name(entry),
                 )
         for entry in doodles:
             if "pin" in entry:
@@ -940,6 +999,7 @@ def compose(meta, els, size=OUT_PX, title=None, doodles=()):
                 entry["png"],
                 px=entry.get("size", DOODLE_PX),
                 away_from=labels.get(entry.get("marker")),
+                name=doodle_name(entry),
             )
             if placed is None:
                 crowded.append(entry)
@@ -1007,32 +1067,44 @@ def to_pil(sheet, ss=SS, layers=LAYERS):
     """The raster the app and the poster need."""
     side = int(sheet.size * ss)
     img = Image.new("RGB", (side, side), _rgb(PAPER))
-    draw = ImageDraw.Draw(img)
     for layer in layers:
-        for op in sheet.ops[layer]:
-            if op[0] == "line":
-                _, pts, width, colour = op
-                draw.line(
-                    [(x * ss, y * ss) for x, y in pts],
-                    fill=_rgb(colour),
-                    width=max(1, int(round(width * ss))),
-                    joint="curve",
-                )
-            elif op[0] == "rect":
-                _, b, fill = op
-                draw.rectangle(
-                    [b[0] * ss, b[1] * ss, b[2] * ss, b[3] * ss], fill=_rgb(fill)
-                )
-            elif op[0] == "poly":
-                _, pts, fill = op
-                draw.polygon([(x * ss, y * ss) for x, y in pts], fill=_rgb(fill))
-            elif op[0] == "image":
-                _, b, doodle, _png = op
-                fitted = _fit(doodle, b, ss)
-                img.paste(fitted[0], fitted[1], fitted[0])
-            else:
-                _pil_text(img, op, ss)
+        _pil_ops(img, sheet.ops[layer], ss)
     return img.resize((sheet.size, sheet.size), Image.LANCZOS)
+
+
+def _pil_ops(img, ops, ss):
+    draw = ImageDraw.Draw(img)
+    for op in ops:
+        if op[0] == "line":
+            _, pts, width, colour = op
+            draw.line(
+                [(x * ss, y * ss) for x, y in pts],
+                fill=_rgb(colour),
+                width=max(1, int(round(width * ss))),
+                joint="curve",
+            )
+        elif op[0] == "rect":
+            _, b, fill = op
+            draw.rectangle(
+                [b[0] * ss, b[1] * ss, b[2] * ss, b[3] * ss], fill=_rgb(fill)
+            )
+        elif op[0] == "poly":
+            _, pts, fill = op
+            draw.polygon([(x * ss, y * ss) for x, y in pts], fill=_rgb(fill))
+        elif op[0] == "dot":
+            _, x, y, r, colour = op
+            draw.ellipse(
+                [(x - r) * ss, (y - r) * ss, (x + r) * ss, (y + r) * ss],
+                fill=_rgb(colour),
+            )
+        elif op[0] == "image":
+            _, b, doodle, _png = op
+            fitted = _fit(doodle, b, ss)
+            img.paste(fitted[0], fitted[1], fitted[0])
+        elif op[0] == "group":
+            _pil_ops(img, op[2], ss)
+        else:
+            _pil_text(img, op, ss)
 
 
 def _fit(doodle, box, ss):
@@ -1084,6 +1156,16 @@ def _svg_ops(ops):
             _, pts, fill = op
             pt = " ".join(f"{x:.1f},{y:.1f}" for x, y in pts)
             out.append(f'<polygon points="{pt}" fill="{fill}"/>')
+        elif op[0] == "dot":
+            _, x, y, r, colour = op
+            out.append(
+                f'<circle cx="{x:.1f}" cy="{y:.1f}" r="{r:.1f}" fill="{colour}"/>'
+            )
+        elif op[0] == "group":
+            _, name, ops_ = op
+            out.append(f'<g id="{escape(name)}">')
+            out.extend(_svg_ops(ops_))
+            out.append("</g>")
         elif op[0] == "image":
             _, b, _img, png = op
             data = base64.b64encode(png).decode()
@@ -1121,20 +1203,35 @@ def to_svg(sheet, layers=LAYERS):
     and in the right order.
     """
     size = sheet.size
-    body = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
-        f'viewBox="0 0 {size} {size}">',
-        f"<style>{_face_css()}</style>",
-    ]
+    body = [_svg_open(size), f"<style>{_face_css()}</style>"]
     for layer in layers:
         body.append(
-            f'<g id="{layer}" font-family="{FAMILY}" dominant-baseline="central" '
-            'stroke-linecap="round" stroke-linejoin="round">'
+            f'<g id="{layer}" {_inkscape_layer(layer)} font-family="{FAMILY}" '
+            'dominant-baseline="central" stroke-linecap="round" stroke-linejoin="round">'
         )
         body.extend(_svg_ops(sheet.ops[layer]))
         body.append("</g>")
     body.append("</svg>")
     return "\n".join(body)
+
+
+INKSCAPE_NS = "http://www.inkscape.org/namespaces/inkscape"
+
+
+def _svg_open(size):
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" xmlns:inkscape="{INKSCAPE_NS}" '
+        f'width="{size}" height="{size}" viewBox="0 0 {size} {size}">'
+    )
+
+
+def _inkscape_layer(name):
+    """Mark a `<g>` as a layer, so Inkscape's Layers panel lists it as one.
+
+    Other renderers ignore the attributes. Without them a hand-editor opens
+    one flat drawing and has to select the roads out from under the words.
+    """
+    return f'inkscape:groupmode="layer" inkscape:label="{name}"'
 
 
 def svg_paths(out_path):
@@ -1211,13 +1308,7 @@ def combine_layers(out_path, size):
     """
     paths = dict(svg_paths(out_path))
     groups = [layer_group(open(paths[layer]).read(), layer) for layer in LAYERS]
-    body = [
-        f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" '
-        f'viewBox="0 0 {size} {size}">',
-        f"<style>{_face_css()}</style>",
-        *groups,
-        "</svg>",
-    ]
+    body = [_svg_open(size), f"<style>{_face_css()}</style>", *groups, "</svg>"]
     return "\n".join(body)
 
 

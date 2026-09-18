@@ -80,7 +80,9 @@ def test_doodle_lands_beside_the_pub_off_the_road_and_away_from_the_name():
     assert box[2] < 294 or box[0] > 306, "the drawing is across the road"
     assert box[2] <= pub[0], "the drawing should flank the pub opposite its name"
     assert box in taken, "the next doodle must know this one is there"
-    assert sheet.ops[render.LAYER_DOODLE][0][0] == "image"
+    # Each drawing is its own named group, so an editor can grab it whole.
+    kind, name, inner = sheet.ops[render.LAYER_DOODLE][0]
+    assert (kind, name) == ("group", "doodle-doodle") and inner[0][0] == "image"
 
 
 def test_pinned_doodle_goes_where_it_is_told_and_is_routed_round():
@@ -116,6 +118,37 @@ def test_doodle_is_left_off_rather_than_put_over_a_name():
 
     assert doodler.put(300, 300, Image.new("RGBA", (10, 10)), b"png") is None
     assert sheet.ops[render.LAYER_DOODLE] == []
+
+
+def test_pubs_are_dots_on_the_map_layer_and_the_layers_open_in_inkscape():
+    """The arrows get redrawn by hand, so the pubs' positions must live on
+    the layer that does not - one named circle each, in a `pubs` group."""
+    meta = {
+        "centre": [51.5, -0.13],
+        "half_span_m": 500,
+        "markers": [
+            {"name": "Royal Oak", "kind": "pub", "lat": 51.5, "lon": -0.13},
+            {"name": "Big Ben", "kind": "landmark", "lat": 51.501, "lon": -0.128},
+        ],
+    }
+    sheet, _ = render.compose(meta, [], size=400)
+
+    svg = render.to_svg(sheet)
+    for layer in render.LAYERS:
+        assert (
+            f'<g id="{layer}" inkscape:groupmode="layer" inkscape:label="{layer}"'
+            in svg
+        )
+    flat = svg.replace("\n", "")
+    assert '<g id="pubs">' in flat
+    assert '<g id="pub-royal_oak"><circle cx="200.0" cy="200.0"' in flat
+    assert '<g id="pub-big_ben"><circle' in flat
+    assert '<g id="pubs">' in render.to_svg(sheet, layers=(render.LAYER_MAP,))
+    assert "pub-" not in render.to_svg(sheet, layers=(render.LAYER_HAND,))
+
+    # And the raster draws them too: ink at the pub, paper beside it.
+    raster = render.to_pil(sheet, ss=1)
+    assert raster.getpixel((200, 200)) == render._rgb(render.INK)
 
 
 def test_both_emitters_draw_the_image_primitive():
