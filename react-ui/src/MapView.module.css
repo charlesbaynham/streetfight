@@ -7,6 +7,16 @@
   border-radius: 0.5em;
 }
 
+/* A zoomable map owns its gestures outright. Without this the effective
+   touch-action is `:root`'s `pan-x pan-y`, so Chrome on Android treats a
+   drag as a possible page scroll and a pinch as a two-finger one, and can
+   commit to that before the library's first preventDefault lands. Only while
+   the map is expanded: a corner map is a tap target sitting on a page the
+   player still has to be able to scroll past. */
+.mapContainerInteractive {
+  touch-action: none;
+}
+
 .mapContainerPoppedOut {
   position: absolute;
   z-index: 100;
