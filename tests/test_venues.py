@@ -5,6 +5,7 @@ import pytest
 
 from backend.user_interface import UserInterface
 from backend.venues import ACTIVE_VENUE
+from backend.venues import OPERATIONAL_PREFIXES
 from backend.venues import VENUES
 
 MAP_IMAGES_JS = Path(__file__).parent.parent / "react-ui" / "src" / "mapImages.js"
@@ -54,7 +55,27 @@ def test_get_venue(api_client):
     venue = response.json()
     assert venue["name"] == ACTIVE_VENUE.name
     assert venue["map"]["image"] == ACTIVE_VENUE.map.image
-    assert set(venue["landmarks"]) == set(ACTIVE_VENUE.landmarks)
+    assert set(venue["landmarks"]) == {
+        name
+        for name in ACTIVE_VENUE.landmarks
+        if not name.startswith(OPERATIONAL_PREFIXES)
+    }
+
+
+def test_players_are_not_told_where_the_circles_are(api_client, monkeypatch):
+    """A session cookie must not be enough to read the night's circle centres
+    off the API - which is the point of keeping them out of the repository in
+    the first place."""
+    monkeypatch.setattr(
+        ACTIVE_VENUE,
+        "landmarks",
+        {**ACTIVE_VENUE.landmarks, "CIRCLE0": (51.5, -0.1), "DROP_X": (51.5, -0.1)},
+    )
+
+    landmarks = api_client.get("/api/get_venue").json()["landmarks"]
+
+    assert "CIRCLE0" not in landmarks
+    assert "DROP_X" not in landmarks
 
 
 def test_landmark_list_is_the_active_venues(admin_api_client):

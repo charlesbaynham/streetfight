@@ -20,6 +20,9 @@ from . import next_event
 from . import ticker_message_dispatcher as tk
 from .asyncio_triggers import get_trigger_event
 from .asyncio_triggers import trigger_update_event
+from .circles import PlannedCircle
+from .circles import circle_plan
+from .circles import planned_circle
 from .circles import trigger_circle_update
 from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
@@ -666,6 +669,73 @@ class AdminInterface:
         game.next_event_at = None
         game.next_event_note = None
 
+    @staticmethod
+    def _arm_planned_circle(game: Game) -> Optional[PlannedCircle]:
+        """Place the circle the plan says is next, privately.
+
+        The whole point of the plan (`backend/circles.py`): NEXT is placed
+        long before anybody presses a countdown, so the early-warning card
+        always has something to reveal and the admin cannot neuter it by
+        forgetting a step. Silent by design - placing NEXT announces nothing,
+        which is what makes it worth knowing.
+
+        Returns the entry it armed, or None when the plan has run out or has
+        no coordinates for that circle (`LANDMARK_<name>` unset): both leave
+        the circles exactly as they are, for the admin to place by hand.
+        """
+        planned = planned_circle(game.circle_plan_index)
+
+        if planned is None:
+            logger.info("Game %s has reached the end of the circle plan", game.id)
+            return None
+        if not planned.known:
+            logger.warning(
+                "No coordinates for planned circle %s - place it by hand",
+                planned.name,
+            )
+            return None
+
+        game.next_circle_lat = planned.lat
+        game.next_circle_long = planned.long
+        game.next_circle_radius = planned.radius_km
+        game.next_circle_public = False
+
+        logger.info(
+            "Armed planned circle %s (%s km) for game %s",
+            planned.name,
+            planned.radius_km,
+            game.id,
+        )
+        return planned
+
+    @db_scoped
+    def arm_planned_circle(
+        self, game_id: UUID, index: Optional[int] = None
+    ) -> Optional[PlannedCircle]:
+        """Place a plan circle on the admin's say-so: re-arming the one the
+        game is on, or skipping to another one. The pointer follows, so the
+        plan carries on from wherever it is put."""
+        logger.info("AdminInterface - arm_planned_circle %s/%s", game_id, index)
+
+        game: Game = self._get_game_orm(game_id)
+
+        if index is not None:
+            if planned_circle(index) is None:
+                raise HTTPException(404, f"No circle {index} in the plan")
+            game.circle_plan_index = index
+
+        armed = self._arm_planned_circle(game)
+
+        self._session.commit()
+        trigger_circle_update(game_id)
+
+        return armed
+
+    @staticmethod
+    def circle_plan() -> List[PlannedCircle]:
+        """The whole plan, so the admin page can say what is coming."""
+        return circle_plan()
+
     @db_scoped
     def cue_next_event(
         self,
@@ -706,6 +776,12 @@ class AdminInterface:
         # without being shown which circle.
         if kind == next_event.KIND_CIRCLE:
             game.next_circle_public = True
+            # And every early-warning card in the game is spent with it: what
+            # it bought was a head start on this announcement, and the
+            # announcement has just happened (M6.2).
+            self._session.query(User).filter_by(game_id=game_id).update(
+                {"circle_warning_until": None}
+            )
 
         user_ids = self._game_user_ids(game_id)
 
@@ -850,6 +926,13 @@ class AdminInterface:
             game.next_circle_long = None
             game.next_circle_radius = None
             game.next_circle_public = False
+
+            # On to the next one in the plan, placed straight away and
+            # privately: a card scanned a minute from now has something to
+            # show, and the admin's next act is a countdown rather than a
+            # dropdown.
+            game.circle_plan_index += 1
+            self._arm_planned_circle(game)
         else:
             logger.warning(
                 "Game %s has no next circle to promote - clearing the cue only",
@@ -1028,6 +1111,14 @@ class AdminInterface:
         game = self._get_game_orm(game_id)
         game.active = active
 
+        # Starting a game with no next circle placed arms the first one of the
+        # plan (backend/circles.py). Only when there is none: an admin who
+        # placed one by hand, or paused and restarted mid-evening, keeps what
+        # is on their map.
+        armed = None
+        if active and game.next_circle_lat is None:
+            armed = self._arm_planned_circle(game)
+
         # Collect the user IDs for manual bumping after the session is committed
         user_ids = []
         for team in game.teams:
@@ -1045,6 +1136,9 @@ class AdminInterface:
         # Manually bump all the users
         for user_id in user_ids:
             trigger_update_event("user", user_id)
+
+        if armed is not None:
+            trigger_circle_update(game_id)
 
     @db_scoped
     def set_ai_shot_review_enabled(self, game_id: UUID, enabled: bool) -> List[UUID]:
@@ -2489,6 +2583,12 @@ class AdminInterface:
             for field in ("lat", "long", "radius"):
                 setattr(game, f"{prefix}_circle_{field}", None)
         game.next_circle_public = False
+
+        # Back to the top of the circle plan, and the first one placed
+        # privately there and then: the real game starts with a circle already
+        # waiting for whoever finds an early-warning card (M6.2).
+        game.circle_plan_index = 0
+        self._arm_planned_circle(game)
 
         # And whatever was cued to happen next (M3.1), which was cued against
         # the sandbox clock

@@ -109,8 +109,8 @@ TICKER_MESSAGES = {
     # a card the player scans again.
     TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE: (
         TickerTarget.PRIVATE_USER,
-        "You will see the next circle on your map for the next {num} minutes, "
-        "before it is announced",
+        "You can see the next circle on your map, until it is announced "
+        "to everybody else",
     ),
     TickerMessageType.ADMIN_HIT_USER: (
         TickerTarget.PUBLIC,

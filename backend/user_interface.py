@@ -29,6 +29,7 @@ from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
 from .model import APPEAL_REASONS
+from .model import CIRCLE_WARNING_UNTIL_ANNOUNCED
 from .model import DEFAULT_SHOT_TIMEOUT
 from .model import STARTING_HIT_POINTS
 from .model import Game
@@ -1095,41 +1096,64 @@ class UserInterface:
 
     @db_scoped
     def _circle_warning_is_live(self) -> bool:
-        """Is this player holding an early circle warning that has not run
-        out? (M6.2)"""
+        """Is this player holding an early circle warning? (M6.2)
+
+        Still a comparison against the clock, because the column still says
+        when the warning stops - it is simply written as infinity while one is
+        held (`CIRCLE_WARNING_UNTIL_ANNOUNCED`).
+        """
         until = self.get_user().circle_warning_until
         return until is not None and until > time.time()
 
     @db_scoped
-    def start_circle_warning(self, minutes: float) -> float:
+    def start_circle_warning(self) -> None:
         """Show this player the next circle before it is announced (M6.2).
 
-        Refuses while one is already running, for the same reason
-        :meth:`start_radar` does - the scan rolls back, so the card survives.
+        The warning lasts until that circle *is* announced, rather than for a
+        number of minutes: the card buys a head start on everybody else, and a
+        head start ends when everybody else can see the circle too. The
+        printed cards' `minutes` is therefore read by nothing - it is left in
+        the payload because the codes carrying it are already cut up and
+        hidden.
 
-        The circle appears on the holder's map on the next ``"circle"`` event,
-        and has to *disappear* from it when the warning runs out: nothing else
-        would fire then, so a sleep-then-trigger is scheduled for the moment
-        it expires. It is in-process and does not survive a restart, which
-        costs one stale circle on one phone until the next circle event - the
-        price of not building a second durable timer for an experimental card.
+        Three refusals, all of which roll the whole scan back so the card
+        survives to be scanned somewhere it is worth something (the same
+        bargain :meth:`start_radar` makes):
+
+        - one is already running, so a second would buy nothing;
+        - there is no next circle placed at all;
+        - the next circle has already been announced, so there is nothing left
+          to be early about.
+
+        The last two should not happen on the night - the game arms the next
+        planned circle by itself (`backend/circles.py`) - but a card is worth
+        more in a player's pocket than spent on an empty map.
         """
         user: User = self.get_user()
-        now = time.time()
 
-        if user.circle_warning_until is not None and user.circle_warning_until > now:
+        if (
+            user.circle_warning_until is not None
+            and user.circle_warning_until > time.time()
+        ):
             raise RuntimeError("You already know where the next circle is")
 
-        user.circle_warning_until = now + minutes * 60
+        game = user.game
+        if game is None or game.next_circle_lat is None:
+            raise RuntimeError(
+                "There is no next circle yet - hang on to this and try later"
+            )
+        if game.next_circle_public:
+            raise RuntimeError(
+                "The next circle has already been announced - keep this for the next one"
+            )
+
+        user.circle_warning_until = CIRCLE_WARNING_UNTIL_ANNOUNCED
 
         # Beside the state change rather than in the route, like every other
         # announcement here: the card can be scanned from more than one place.
+        # Nothing has to be scheduled to take the circle away again - the cue
+        # that makes it public clears every warning in the game.
         self.announce_after_commit("circle", user.game_id)
-        asyncio_triggers.schedule_update_event(
-            "circle", user.game_id, timeout=minutes * 60
-        )
-
-        return user.circle_warning_until
 
     @db_scoped
     def start_radar(self, minutes: float) -> float:

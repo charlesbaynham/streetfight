@@ -813,6 +813,15 @@ spec that were needed to make it true:
   write that asked for it.
 - **Both resets clear `circle_warning_until`**, as they do `radar_until`.
 
+**Amended 18 Sept: the warning lasts until the circle is announced.** Ten
+minutes was a duration with nothing behind it, and a card that ran out while
+the circle was still private bought the holder nothing. `circle_warning_until`
+now holds `CIRCLE_WARNING_UNTIL_ANNOUNCED` (infinity) and is cleared for every
+player in the game when the cue makes the circle public - which is the moment
+the head start ends anyway. The printed cards' `minutes` is read by nothing.
+A card scanned with no private circle to show (none placed, or one already
+announced) is *refused*, so it rolls back and stays in the player's pocket.
+
 Not done, deliberately: the admin has no on-screen indicator of whether the
 next circle is public yet. They can see the circle on their own map, and
 `EventCue` sits directly under the circle controls, so cueing it is the next
@@ -846,16 +855,24 @@ roster refreshes — the same pair `set_user_name` uses, since there is no
 
 ---
 
-## M8 — The annotated admin map *(needs Charles's annotated map)*
+## M8 — The annotated admin map *(mechanism shipped 18 Sept; needs Charles's numbers)*
 
 Charles and Gaby's marked-up map gives approximate circle centres and rough
-drop areas. Add them to the Westminster venue as landmarks — `CIRCLE1`…`4`
-and `DROP_*`, exactly as Kingston has (`venues.py:135-145`) — so
-`CircleControl.js`'s landmark dropdown offers them and the radius hint at its
-foot reads Westminster's radii rather than Kingston's. The repo is public and
-this publishes them; that trade was accepted in the roadmap's decisions.
-Admin-only in the UI; the drop landmarks are *areas Gaby aims for*, not
-where she will stand.
+drop areas. The repo is public, so rather than committing them the way
+Kingston's are, they arrive from the environment: any
+`LANDMARK_<NAME>="<lat>,<long>"` in `/data/secrets/streetfight.env` is merged
+into the active venue at startup (`venues.landmarks_from_env`), so it shows up
+in `CircleControl.js`'s landmark dropdown like any other place and needs no
+code. The drop landmarks will travel the same way.
+
+Four of those names are special: `CIRCLE0`…`CIRCLE3` are what
+`circles.CIRCLE_PLAN` orders the night by, with the radii (0.70, 0.42, 0.18,
+0.05 km) beside them. The game arms each in turn - at **Reset to start
+state**, at **Start game** when nothing is placed, and the instant a circle
+closes - so an admin who forgets to place NEXT cannot neuter the
+early-warning card, and the act of running a circle is the countdown alone.
+An entry whose landmark is unset is simply left for the admin to place by
+hand. **Still outstanding: the numbers themselves.**
 
 ---
 

@@ -94,17 +94,14 @@ test("a radar card asks for minutes rather than an amount, and is batched like t
   renderPage();
 
   await actAndFlush(() =>
-    userEvent.selectOptions(
-      panel("Drop cards").getByRole("combobox"),
-      "circle_warning",
-    ),
+    userEvent.selectOptions(panel("Drop cards").getByRole("combobox"), "radar"),
   );
   await press("Drop cards", "Mint and download (PDF)");
 
   const call = getLastAPICall("admin_item_sheets_pdf");
-  expect(call.query.itype).toBe("circle_warning");
+  expect(call.query.itype).toBe("radar");
   // The default that comes with the payload schema, not one chosen here.
-  expect(call.query.minutes).toBe("10");
+  expect(call.query.minutes).toBe("5");
   expect(call.query.batch).toBe("game");
 });
 

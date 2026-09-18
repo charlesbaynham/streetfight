@@ -121,7 +121,10 @@ def _handle_circle_warning(user_interface: "UserInterface", item: ItemModel):
     user_model: UserModel = user_interface.get_user_model()
     _check_alive(user_model)
 
-    user_interface.start_circle_warning(item.data["minutes"])
+    # `item.data["minutes"]` is deliberately not passed: the warning now lasts
+    # until the circle is announced (M6.2), and the cards carrying that number
+    # are already printed.
+    user_interface.start_circle_warning()
 
     # Two messages, on purpose. The public one does not name the holder -
     # saying who would hand everybody the one thing the card was bought to
@@ -134,7 +137,7 @@ def _handle_circle_warning(user_interface: "UserInterface", item: ItemModel):
     )
     tk.send_ticker_message(
         tk.TickerMessageType.USER_COLLECTED_CIRCLE_WARNING_PRIVATE,
-        {"num": item.data["minutes"]},
+        {},
         user_id=user_model.id,
         team_id=user_model.team_id,
         game_id=user_model.game_id,

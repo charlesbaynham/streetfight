@@ -4,8 +4,12 @@ import { adminPost } from "./AdminCommon";
 
 // Start (or call off) the countdown every player's phone shows: the circle
 // closing, or a drop landing (backend/next_event.py). The circle itself is
-// placed with CircleControl above - this only sets the clock, so the order on
-// the night is "put the next circle where it goes, then say when it closes".
+// placed by the plan (backend/circles.py) before anybody presses anything
+// here, so on the night this is the only button a circle needs; CircleControl
+// above is for the circle that goes somewhere the plan did not say.
+//
+// Cueing a circle is also what spends every early-warning card in the game:
+// the card buys a head start on this announcement.
 //
 // Defaults are the ones from the plan: ten minutes for a circle, five for a
 // drop. They are the numbers an admin will want nine times out of ten, and the
@@ -95,8 +99,9 @@ export default function EventCue({ game }) {
       </form>
       <p>
         The circle cue promotes whatever is in NEXT to the exclusion circle when
-        it reaches zero, so place NEXT first. It promotes nothing if NEXT is
-        empty.
+        it reaches zero, and then arms the next circle of the plan ready for the
+        one after. It promotes nothing if NEXT is empty &mdash; the panel above
+        says whether it is.
       </p>
       <p>
         A drop cue only announces itself &mdash; at zero the ticker says the

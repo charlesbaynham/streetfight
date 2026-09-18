@@ -53,8 +53,7 @@ function makeFakeResponse(status, body) {
     ok,
     status,
     statusText: String(status),
-    json: () =>
-      Promise.resolve(bodyIsString ? JSON.parse(body) : (body ?? null)),
+    json: () => Promise.resolve(bodyIsString ? JSON.parse(body) : body ?? null),
     text: () =>
       Promise.resolve(bodyIsString ? body : JSON.stringify(body ?? null)),
     // For endpoints whose real response is a file download (e.g.
@@ -353,6 +352,11 @@ export function makeUser(overrides = {}) {
     next_event_kind: null,
     next_event_at: null,
     next_event_note: null,
+    next_circle_lat: null,
+    next_circle_long: null,
+    next_circle_radius: null,
+    next_circle_public: false,
+    circle_plan_index: 0,
     ...overrides,
   };
 }
@@ -400,6 +404,11 @@ export function makeGame(overrides = {}) {
     next_event_kind: null,
     next_event_at: null,
     next_event_note: null,
+    next_circle_lat: null,
+    next_circle_long: null,
+    next_circle_radius: null,
+    next_circle_public: false,
+    circle_plan_index: 0,
     ...overrides,
   };
 }

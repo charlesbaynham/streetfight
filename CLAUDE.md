@@ -236,11 +236,17 @@ Four things from it that are worth knowing even if you never call the agent:
     team handler for armour, medpacks or weapons, so asking for one raises
     `NotImplementedError` — a `RuntimeError`, so `collect_item` turns it into a
     403. Every `ItemType` has a handler now. The two experimental ones
-    (M6) work the same way: `RADAR` sets `User.radar_until` and
-    `CIRCLE_WARNING` sets `User.circle_warning_until`, both to
-    `now + minutes*60`, and both **refuse while one is already running** —
-    which costs the player nothing, because the refusal rolls the whole scan
-    back, so no `Item` row is written and the card is still good for later.
+    (M6) work almost the same way: `RADAR` sets `User.radar_until` to
+    `now + minutes*60`, and `CIRCLE_WARNING` sets `User.circle_warning_until`
+    to `CIRCLE_WARNING_UNTIL_ANNOUNCED` (infinity) — the warning lasts until
+    the circle it is showing is **announced**, not for a number of minutes,
+    since what the card buys is a head start on that announcement and a head
+    start ends when everybody else can see the circle. `minutes` is still in
+    the printed payload and is read by nothing. Both **refuse while one is
+    already running**, and the warning refuses twice more — with no next
+    circle placed, and with one already public — which costs the player
+    nothing, because the refusal rolls the whole scan back, so no `Item` row
+    is written and the card is still good for later.
     The circle warning is the one collection that is announced
     *anonymously* ("Somebody knows where the next circle is..."), since naming
     the holder would hand everybody the advantage the card just bought; the
@@ -356,7 +362,22 @@ Four things from it that are worth knowing even if you never call the agent:
     from `backend*` alone and would otherwise have no map on the droplet at
     all. One file, so nothing can drift; `tests/test_map_poster.py` checks
     every venue has one and that its aspect matches the venue.
-  - `circles.py` — geographic game zones (exclusion / next / drop circles).
+  - `circles.py` — geographic game zones (exclusion / next / drop circles),
+    and the **plan** they are placed from. `CIRCLE_PLAN` names the night's
+    circles in the order they close, with a radius each; the coordinates are
+    not here, because this repository is public — each entry names a landmark
+    supplied by the environment (`LANDMARK_CIRCLE0=...`, see `venues.py`).
+    `Game.circle_plan_index` is how far through it a game is, and
+    `AdminInterface._arm_planned_circle` places the entry it points at,
+    privately, at three moments: `reset_to_start_state` (back to the top),
+    `set_game_active(True)` when nothing is placed, and the instant a circle
+    closes in `promote_next_circle`. That is what stops the one mistake that
+    would neuter the early-warning card — cueing a countdown having forgotten
+    to place NEXT — and it means the admin's act on the night is the countdown
+    alone. Placing a circle by hand overrides but does not move the pointer;
+    `arm_planned_circle` (the admin page's "Place planned circle" / "Skip to
+    the next one") does move it. A plan entry whose landmark is unset is left
+    for the admin to place rather than raised over.
     The `"circle"` event it fires also carries the **courier** (M4.1):
     `Game.courier_lat/long/timestamp/accuracy`, written by
     `AdminInterface.set_courier_location` from `/admin/courier` about once a
@@ -995,6 +1016,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `MAKE_DEBUG_ENTRIES` | Auto-create a sample game/teams on DB reset          |
 | `RESET_DATABASE`     | Wipe the DB on startup                               |
 | `WEBSITE_URL`        | Frontend URL (used for CORS)                         |
+| `LANDMARK_<NAME>`    | `"<lat>,<long>"` — a landmark merged into the active venue at startup, so the coordinates the circles and drops use stay out of this public repo. `CIRCLE0`…`CIRCLE3` are the ones `circles.CIRCLE_PLAN` names |
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |
@@ -1116,6 +1138,13 @@ Three deployment targets share one service definition:
   dropping the map into `react-ui/src/images/` and adding one line to
   `react-ui/src/mapImages.js` — nothing in `MapView.js` should need touching.
   Note the resort venue currently active is a temporary test one.
+  **Landmarks can also come from the environment**: any `LANDMARK_<NAME>`
+  variable (`"<lat>,<long>"`) is merged into the active venue at import
+  (`venues.landmarks_from_env`), which is where the circle and drop
+  coordinates live — this repository is public and where a circle closes is
+  the one thing about a night that has to keep until it happens. A malformed
+  one is logged and skipped, never raised: that read happens at import, on a
+  machine that may be running a game.
 - **The test world costs money to change, and only in one direction.** An
   image in `backend/test_world/data/images/` is content-addressed on its
   prompt, inputs, model and parameters, so editing a scene description

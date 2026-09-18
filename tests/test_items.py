@@ -11,6 +11,7 @@ from backend.admin_interface import AdminInterface
 from backend.admin_interface import CircleTypes
 from backend.items import ItemDataArmour
 from backend.items import ItemModel
+from backend.model import CIRCLE_WARNING_UNTIL_ANNOUNCED
 from backend.model import STARTING_HIT_POINTS
 from backend.model import Item
 from backend.model import User
@@ -812,16 +813,19 @@ def _circle_warning_card(minutes=None):
     ).sign()
 
 
+def _place_next_circle(user_id, lat=51.5, long=-0.1, radius=0.42):
+    game_id = UserInterface(user_id).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, lat, long, radius)
+    return game_id
+
+
 def test_a_circle_warning_card_shows_the_next_circle_early(user_in_team):
-    game_id = UserInterface(user_in_team).get_game_id()
-    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
+    _place_next_circle(user_in_team)
 
     # Placing it tells nobody: it is not public until the admin cues it
     assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
 
-    UserInterface(user_in_team).collect_item(
-        _circle_warning_card(minutes=10).to_base64()
-    )
+    UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
 
     circles = UserInterface(user_in_team).get_circles()
     assert circles["next_circle_lat"] == 51.5
@@ -829,33 +833,62 @@ def test_a_circle_warning_card_shows_the_next_circle_early(user_in_team):
 
 
 def test_a_second_circle_warning_is_refused_while_the_first_runs(user_in_team):
-    UserInterface(user_in_team).collect_item(
-        _circle_warning_card(minutes=10).to_base64()
-    )
+    _place_next_circle(user_in_team)
+    UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
 
     with pytest.raises(HTTPException) as refusal:
-        UserInterface(user_in_team).collect_item(
-            _circle_warning_card(minutes=10).to_base64()
-        )
+        UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
 
     assert refusal.value.status_code == 403
 
 
-def test_an_expired_circle_warning_stops_showing_the_next_circle(
-    user_in_team, db_session
-):
-    game_id = UserInterface(user_in_team).get_game_id()
-    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.5, -0.1, 0.42)
-    UserInterface(user_in_team).collect_item(
-        _circle_warning_card(minutes=10).to_base64()
-    )
+def test_a_circle_warning_is_spent_when_the_circle_is_announced(user_in_team):
+    """The card buys a head start, so it lasts exactly until everybody else
+    can see the circle too - and not into the circle after that (M6.2)."""
+    game_id = _place_next_circle(user_in_team)
+    UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
 
-    db_session.query(User).filter_by(id=user_in_team).update(
-        {"circle_warning_until": time.time() - 1}
-    )
-    db_session.commit()
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
 
+    # Public now, so the holder sees it like everybody else...
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] == 51.5
+
+    # ...but the card is spent: the next private circle is not theirs
+    AdminInterface().promote_next_circle(game_id)
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.6, -0.2, 0.18)
     assert UserInterface(user_in_team).get_circles()["next_circle_lat"] is None
+
+
+def test_a_circle_warning_outlasts_ten_minutes(user_in_team, db_session):
+    """It used to expire on a clock. Nothing but the announcement ends it
+    now, so a card scanned early in a long lull is still good."""
+    _place_next_circle(user_in_team)
+    UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
+
+    assert (
+        db_session.query(User).filter_by(id=user_in_team).one().circle_warning_until
+        == CIRCLE_WARNING_UNTIL_ANNOUNCED
+    )
+    assert UserInterface(user_in_team).get_circles()["next_circle_lat"] == 51.5
+
+
+def test_a_circle_warning_with_no_circle_to_show_is_refused(user_in_team):
+    """Refusing rolls the whole scan back, so the card is still in the
+    player's pocket for a circle that is actually worth knowing."""
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
+
+    assert refusal.value.status_code == 403
+
+
+def test_a_circle_warning_is_refused_once_the_circle_is_public(user_in_team):
+    game_id = _place_next_circle(user_in_team)
+    AdminInterface().cue_next_event(game_id, "circle", seconds=600)
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(_circle_warning_card().to_base64())
+
+    assert refusal.value.status_code == 403
 
 
 def test_an_expired_radar_is_refused_like_no_radar_at_all(user_in_team, db_session):
