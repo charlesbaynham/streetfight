@@ -10,7 +10,8 @@ import pytest
 from backend.admin_interface import AdminInterface
 from backend.user_interface import UserInterface
 
-TESTING_DB_URL = "sqlite:///testing.db"
+from .db_url import set_testing_db_url
+
 TEST_API_URL = "http://localhost:8000/api/hello"
 TEST_FRONTEND_URL = "http://localhost:3000/"
 NPM_ROOT_DIR = Path(__file__, "../../").resolve()
@@ -157,8 +158,7 @@ def engine():
     This fixture should not be used as the database is not cleaned between
     invocations. Use db_session instead.
     """
-    if "IGNORE_TESTING_DB" not in os.environ:
-        os.environ["DATABASE_URL"] = TESTING_DB_URL
+    set_testing_db_url()
 
     import backend.database
 
