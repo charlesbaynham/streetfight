@@ -2,6 +2,8 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { PrintablesPanel } from "./AdminPrintables";
+import prose from "./prose";
+import { WEAPONS } from "./weapons";
 import {
   installFetchMock,
   getLastAPICall,
@@ -195,19 +197,55 @@ test("a failed build says so rather than leaving the button looking pressed", as
   ).toBeInTheDocument();
 });
 
-test("a weapon card asks for damage and rate of fire; ammo does not", async () => {
+// A weapon card carries one of the named weapons, so the admin picks the name
+// and the card gets that weapon's stats - there is no damage/rate to type.
+test("a weapon card posts the stats of the weapon chosen by name", async () => {
   renderPage();
   const drops = panel("Drop cards");
 
-  expect(drops.queryByLabelText("Damage per shot")).not.toBeInTheDocument();
+  expect(drops.queryByLabelText(/^Weapon/)).not.toBeInTheDocument();
 
   await actAndFlush(() =>
     userEvent.selectOptions(drops.getByLabelText("Item"), "weapon"),
   );
+  await actAndFlush(() =>
+    userEvent.selectOptions(
+      panel("Drop cards").getByLabelText(/^Weapon/),
+      prose.weapons.eatABullet,
+    ),
+  );
 
-  expect(
-    panel("Drop cards").getByLabelText("Damage per shot"),
-  ).toBeInTheDocument();
+  await press("Drop cards", "Mint and download (PDF)");
+
+  // Read the stats out of the table rather than repeating them: the test is
+  // that the card carries the chosen weapon's stats, not what they are.
+  const [damage, timeout] = WEAPONS[prose.weapons.eatABullet];
+  const call = getLastAPICall("admin_item_sheets_pdf");
+  expect(call.query).toMatchObject({
+    itype: "weapon",
+    damage: String(damage),
+    timeout: String(timeout),
+  });
+});
+
+// "No weapon" is in the table only to describe a player who has none; a card
+// handing one out would be a card that does nothing.
+test("the weapon choices do not include having no weapon", async () => {
+  renderPage();
+
+  await actAndFlush(() =>
+    userEvent.selectOptions(
+      panel("Drop cards").getByLabelText("Item"),
+      "weapon",
+    ),
+  );
+
+  const choices = within(
+    panel("Drop cards").getByLabelText(/^Weapon/),
+  ).getAllByRole("option");
+  expect(choices.map((o) => o.textContent)).not.toContain(
+    prose.weapons.noWeapon,
+  );
 });
 
 test("only ammo can be collected for a whole team", async () => {

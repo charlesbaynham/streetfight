@@ -260,7 +260,10 @@ Four things from it that are worth knowing even if you never call the agent:
   - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
     cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
     `image_templates/`, named by what the card awards (`ammo_5.png`) or, for a
-    weapon, by its damage — except radar and circle-warning cards, which have
+    weapon, by the (damage, delay) pair it is — `weapon_<damage>.png` at the
+    standard delay, `weapon_<damage>_<delay>.png` otherwise, since a weapon's
+    drawing has its name written on it in ink and Pewster and Eat-a-bullet
+    share a damage — except radar and circle-warning cards, which have
     one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
     number of minutes the picture does not say. Every code minted is recorded
     in `qr_codes.csv`, whose last column is the batch; the file has no header
