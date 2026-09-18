@@ -1533,6 +1533,46 @@ async def admin_revoked_batches() -> List[dict]:
     return AdminInterface().get_revoked_batches()
 
 
+# Switching off one printed code (react-ui/src/AdminCodes.js). Withdrawing a
+# batch is the blunt instrument; this is the scalpel, and it has to be pointed
+# at a card that exists because the server has no register of what was minted.
+
+
+@admin_method(path="/admin_register_code", method="POST")
+async def admin_register_code(encoded_item: _EncodedItem) -> dict:
+    """Put a scanned code onto the list of codes that can be switched off.
+
+    Takes the same ``{"data": <url-or-b64>}`` body a player's ``collect_item``
+    does, because it is fed by the same scanner pointed at the same card.
+    Nothing is collected and nobody's inventory changes.
+    """
+    logger.info("admin_register_code")
+    try:
+        return AdminInterface().register_code(encoded_item.data)
+    except ValueError:
+        raise HTTPException(400, "Malformed data")
+
+
+@admin_method(path="/admin_set_code_enabled", method="POST")
+async def admin_set_code_enabled(code_id: UUID, enabled: bool) -> List[dict]:
+    """Switch one registered code on or off, wherever the paper has got to."""
+    logger.info("admin_set_code_enabled %s -> %s", code_id, enabled)
+    return AdminInterface().set_code_enabled(code_id, enabled)
+
+
+@admin_method(path="/admin_forget_code", method="POST")
+async def admin_forget_code(code_id: UUID) -> List[dict]:
+    """Take a code off the list, putting it back to the collectable default."""
+    logger.info("admin_forget_code %s", code_id)
+    return AdminInterface().forget_code(code_id)
+
+
+@admin_method(path="/admin_known_codes", method="GET")
+async def admin_known_codes() -> List[dict]:
+    """Every code an admin has scanned in, most recently scanned first."""
+    return AdminInterface().get_known_codes()
+
+
 def _pdf_response(pdf: bytes, filename: str) -> Response:
     return Response(
         content=pdf,

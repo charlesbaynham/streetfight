@@ -1,51 +1,17 @@
-import { useCallback, useEffect, useState } from "react";
+// The player's half of the scanner: every QR code the camera sees is offered
+// to collect_item, and a refusal flashes the screen red. The loop itself is
+// useQRScanLoop.js, shared with the admin's code list.
+
+import { useCallback, useState } from "react";
 import useSound from "use-sound";
 
-import QrScanner from "qr-scanner";
-
+import useQRScanLoop from "./useQRScanLoop";
 import { sendAPIRequest } from "./utils";
 
 import error from "./error.mp3";
 import BlankScreen from "./BlankScreen";
 
-const timeout = 1000;
-
-var qrEngine = null;
-var canvas = null;
-
-async function capture(webcamRef, scannedCallback) {
-  // Create persistent service worker and canvas for performance
-  if (qrEngine === null) {
-    QrScanner.createQrEngine().then((e) => {
-      qrEngine = e;
-      canvas = document.createElement("canvas");
-    });
-    return;
-  }
-
-  if (!webcamRef.current) return;
-
-  // Get an image from the webcam ref
-  const imageSrc = webcamRef.current.capture();
-
-  if (imageSrc === null) return;
-
-  // Scan it for QR codes
-  return QrScanner.scanImage(imageSrc, {
-    qrEngine: qrEngine,
-    canvas: canvas,
-    returnDetailedScanResult: true,
-  })
-    .then((result) => {
-      scannedCallback(result.data);
-    })
-    .catch((_) => null);
-}
-
 const QRParser = ({ webcamRef }) => {
-  const [lastScanData, setLastScanData] = useState(null);
-  const [lastScanTime, setLastScanTime] = useState(null);
-
   const [playError] = useSound(error);
 
   const [showBlankScreen, setShowBlankScreen] = useState(false);
@@ -63,21 +29,8 @@ const QRParser = ({ webcamRef }) => {
     [setShowBlankScreen, setColorBlankScreen],
   );
 
-  const scannedCallback = useCallback(
+  const onScan = useCallback(
     (data) => {
-      // Check that we haven't submitted this scan recently
-      if (
-        lastScanData &&
-        lastScanTime &&
-        data === lastScanData &&
-        Date.now() - lastScanTime < 5000
-      )
-        return;
-
-      // Store the time and data of this scan so that we can avoid resubmitting it
-      setLastScanData(data);
-      setLastScanTime(Date.now());
-
       // Submit the QR code to the API
       sendAPIRequest("collect_item", {}, "POST", null, {
         data: data,
@@ -93,50 +46,10 @@ const QRParser = ({ webcamRef }) => {
         }
       });
     },
-    [playError, lastScanData, lastScanTime, flashTheScreen],
+    [playError, flashTheScreen],
   );
 
-  // Trigger a scan when triggerScan changes. After the scan completes, queue another one
-  const [triggerScan, setTriggerScan] = useState(0);
-  useEffect(() => {
-    if (triggerScan === 0) return;
-
-    // Don't capture/scan while the app is backgrounded: the camera is stopped
-    // and scanning would waste CPU/battery. The visibility effect below
-    // restarts the loop when the app becomes visible again.
-    if (document.hidden) return;
-
-    let timerId;
-    capture(webcamRef, scannedCallback).then(() => {
-      timerId = setTimeout(() => {
-        setTriggerScan((n) => n + 1);
-      }, timeout);
-    });
-
-    return () => clearTimeout(timerId);
-  }, [triggerScan, setTriggerScan, scannedCallback, webcamRef]);
-
-  // Resume the scan loop when the app becomes visible again after being paused
-  useEffect(() => {
-    const onVisible = () => {
-      if (!document.hidden) setTriggerScan((n) => (n === 0 ? 0 : n + 1));
-    };
-    document.addEventListener("visibilitychange", onVisible);
-    return () => document.removeEventListener("visibilitychange", onVisible);
-  }, []);
-
-  //  Schedule the first scan once we have a webcamRef
-  useEffect(() => {
-    if (webcamRef === null) return;
-
-    const timerID = setTimeout(() => {
-      setTriggerScan(1);
-    }, timeout);
-
-    return () => {
-      clearTimeout(timerID);
-    };
-  }, [webcamRef]);
+  useQRScanLoop(webcamRef, onScan);
 
   return (
     <BlankScreen
