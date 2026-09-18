@@ -1295,6 +1295,15 @@ Three deployment targets share one service definition:
   has a second half: `merge_user` and `delete_user` carry `User.game_id` as
   well as `team_id`, since a stray may be a signed-up player with no team at
   all — see the `game_id` bullet below.
+- **The map's pinch-to-zoom is a shim over `react-zoom-pan-pinch` 3.x.** That
+  version counts any `touchstart` within 200 ms of the previous one as the
+  second tap of a double tap and ignores it, which is every pinch there is —
+  a phone delivers one touchstart per finger, tens of milliseconds apart. So
+  `MapView.js` clears the library's `lastTouch` from a capture-phase listener
+  as soon as a second finger lands, and `.mapContainerInteractive` declares
+  `touch-action: none` on the expanded map so Chrome does not claim the
+  gesture as a page scroll before the library's first `preventDefault`. Both
+  go when the library is upgraded to 4.x, which fixed it upstream.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or

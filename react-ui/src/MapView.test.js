@@ -212,3 +212,60 @@ test("a courier who stopped broadcasting fades out and then goes", () => {
   });
   expect(courier()).not.toBeNull();
 });
+
+// -- pinch to zoom -----------------------------------------------------------
+
+// A pinch is two touchstarts a few tens of milliseconds apart, not one:
+// Android delivers a separate event per finger. react-zoom-pan-pinch 3.x
+// treats *any* touchstart within 200ms of the last as the second half of a
+// double tap and drops it on the floor - so the second finger never starts a
+// pinch, and the only way to zoom is to hold one finger still for a fifth of
+// a second first.
+function pinch(element, [aStart, bStart], [aEnd, bEnd]) {
+  const touch = ([x, y]) => ({ clientX: x, clientY: y, pageX: x, pageY: y });
+
+  fireEvent.touchStart(element, { touches: [touch(aStart)] });
+  fireEvent.touchStart(element, { touches: [touch(aStart), touch(bStart)] });
+  fireEvent.touchMove(element, { touches: [touch(aEnd), touch(bEnd)] });
+}
+
+function contentTransform() {
+  return clickCatcher().parentElement.style.transform;
+}
+
+test("a pinch zooms the popped-out map without waiting out a double-tap window", () => {
+  renderMap();
+  fireEvent.click(clickCatcher());
+
+  pinch(
+    clickCatcher(),
+    [
+      [100, 100],
+      [140, 100],
+    ],
+    [
+      [60, 100],
+      [180, 100],
+    ],
+  );
+
+  expect(contentTransform()).toMatch(/scale\((?!1\))/);
+});
+
+test("a corner map still ignores pinches", () => {
+  renderMap();
+
+  pinch(
+    clickCatcher(),
+    [
+      [100, 100],
+      [140, 100],
+    ],
+    [
+      [60, 100],
+      [180, 100],
+    ],
+  );
+
+  expect(contentTransform()).not.toMatch(/scale\((?!1\))/);
+});
