@@ -344,7 +344,7 @@ artwork, the code and the run label again, and `tests/test_generate_qr_items.py`
 has gone with it. The failure mode #7 named is unmitigated on paper: a stranger
 who finds a card taped under a bench has nothing to read and nobody to ring.
 
-### M0.6 — Redraw the map against the nineteen pubs *(status: references and prompt ready 17 Sept, PR #256; the drawing itself still needs Charles's Gemini round-trip)*
+### M0.6 — Redraw the map against the nineteen pubs *(status: shipped 17 Sept; rendered rather than generated, after every image model failed)*
 
 Roadmap #12, reopened 12 Sept: eleven of the nineteen pubs have no marker.
 Now print-critical, because the poster (M0.7) is this image. Rerun the
@@ -367,9 +367,34 @@ drawing comes back. The pubs were passed to the builder by hand
 (`build.sh`, the new `--pub` flag) rather than searched for, so the skeleton
 marks Charles's nineteen and not the nineteen nearest. Both known label
 errors come out right on the new skeleton, so the trace gets them for free.
-**Outstanding: run `prompt.md` at Gemini and hand back the image.**
+**Re-cropped 17 Sept at Charles's request.** The crop was pinned to House
+Absolute, which forced 1300 x 1300 m because Big Ben is 537 m north of it.
+Nothing needs it centred, so the crop is now sized to the markers: centre at
+the middle of the nineteen pubs and four landmarks, half-span 575 m, giving
+1150 x 1150 m - a quarter less ground on the same paper, and within 3 m of
+Kingston's 1153 m. House Absolute becomes an ordinary landmark and the centre
+is an unlabelled crosshair (`--centre-label ""`, new in the skill's builder).
+**`backend/venues.py`'s reference points move with the image**: 51.502881,
+-0.139506 and 51.492481, -0.122912, to be applied only when the drawing lands,
+along with a fresh look at `corner_width_km`.
 
-### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; held from printing until M0.6's redrawn map lands)*
+**Shipped 17 Sept — by rendering it, not generating it.** Charles went round
+every Gemini model and every image-output model on OpenRouter; each one got
+either the roads or the scale wrong, because image models resynthesise rather
+than trace and nothing in them preserves metric geometry. The geometry was
+always in the OSM data the bundle already fetched, and a hand-drawn look is a
+rendering style rather than a creative act, so
+`.claude/skills/draw-venue-map/scripts/render_venue_map.py` now draws it:
+wobbly two-edge road corridors, a handwriting font, curved arrows to each
+name, outlined block capitals for the title. All nineteen pubs are labelled
+because it labels whatever is in the venue's `landmarks`, so the map cannot
+fall behind the list again. `venues.py` moved to the new image and crop
+(2000 px, corners 51.502881/-0.139506 and 51.492481/-0.122912,
+`corner_width_km` 0.13), and `tests/test_map_poster.py` was updated: it
+asserted House Absolute was dead centre, which the re-crop deliberately ended.
+**The map poster is unblocked.**
+
+### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; unblocked 17 Sept when M0.6's map landed)*
 
 A PDF of the map to pin up in The Speaker: the venue image at A3 (and A4)
 with a numbered legend of the nineteen pubs and House Absolute, the game's

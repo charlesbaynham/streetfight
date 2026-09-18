@@ -78,18 +78,19 @@ being unlimited, five a scan is no less than twenty), and the **Eat-a-bullet
 poster's drawing reads "Pewster / Damage: 1"** — true of both weapons, since
 only the delay differs. The corner tag and the log say which is which.
 
-### The map poster — held
+### The map poster
 
-Built and ready (`Map poster` panel, A3 portrait by default), but **do not
-print it until M0.6's redrawn map is in**. The current drawing labels the ten
-pubs it was traced from; eleven of the nineteen in play have no marker on it.
-The poster draws its own numbered markers, so it is legible either way — it
-just sends people to streets with no names on them.
+**No longer held** — the redrawn map landed on 17 September, so print it.
+`Map poster` panel, A3 portrait by default; A4 is the same design scaled.
 
-When the redraw lands: drop the new file over
-`react-ui/src/images/map_westminster.jpg`, deploy, and reprint. Nothing else
-changes; the numbering is the venue's own order, which is the order the
-skeleton numbers them in.
+All nineteen pubs are named on the drawing now, each with a numbered badge
+that matches the legend underneath. One thing to know if it ever looks wrong:
+the map is *rendered* from `backend/venues.py`'s landmarks rather than drawn
+by hand, so a pub missing from the poster is a pub missing from that dict, and
+the fix is to add it there and re-run the renderer — not to edit the picture.
+
+**The poster must be reprinted after any change to the pub list**, since the
+map and the legend are both built from it.
 
 ### After the print run
 
@@ -548,9 +549,6 @@ one place. Each names the PR that made it.
 
 ## Still outstanding
 
-- **M0.6 — the redrawn map.** The prompt and reference bundle are ready in
-  `docs/venue_map_westminster/`; it needs Charles's round-trip through Gemini.
-  The map poster is held until it lands.
 - **M8 — the annotated admin map.** Needs Charles and Gaby's marked-up map, to
   be added to the Westminster venue as `CIRCLE1`…`4` and `DROP_*` landmarks so
   the circle dropdown offers them.

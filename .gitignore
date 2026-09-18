@@ -468,3 +468,6 @@ backend/test_world/data/*.truth.npz
 # running commentary, and the marker that says it finished.
 .claude/session-start.log
 .claude/.session-start.done
+
+# OpenStreetMap tiles cached by the draw-venue-map builder
+.tilecache/

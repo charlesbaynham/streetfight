@@ -16,15 +16,13 @@ merely looks plausible.
   GROUND TRUTH for where things are.
 - `03_road_skeleton.png` - the same area stripped back to the major roads, the
   water, the parks and labelled markers. Red = pubs, purple = landmarks, blue =
-  House Absolute. **This is the layout to trace.**
+  the centre crosshair. **This is the layout to trace.**
 
 ## Task
 
 Redraw the area shown in `02_osm_accurate.png` and `03_road_skeleton.png` in
 the hand-drawn style of the two Kingston images. Same square extent, same
-framing, north up. Do not crop, rotate, zoom or re-centre: House Absolute is at
-the exact centre of `03_road_skeleton.png` and must be at the exact centre of
-your output.
+framing, north up. Do not crop, rotate, zoom or re-centre: the thin blue crosshair on `03_road_skeleton.png` marks the exact centre of the frame, and that same point must fall at the exact centre of your output. It is a framing guide, not a place: nothing stands there, so do not draw the crosshair and do not label it.
 
 ## What must be accurate - this matters more than the styling
 
@@ -93,10 +91,10 @@ Cross-check every one against `03_road_skeleton.png`.
 
 ## Also mark
 
+- **House Absolute**
 - **Big Ben**
 - **Westminster Abbey**
 - **Parliament**
-- **House Absolute** - at the dead centre of the map.
 
 ## Output
 
@@ -104,5 +102,5 @@ A single square image, black ink on white, no border or frame, no legend, no
 compass rose, no scale bar.
 
 Before you finish, check your drawing against `03_road_skeleton.png` once
-more: is House Absolute still at the exact centre, is every pub on the right
-street, and does every road you drew exist in the reference?
+more: does the point under the blue crosshair still sit at the exact centre, is every pub on the right street, and does every road
+you drew exist in the reference?
