@@ -203,6 +203,10 @@ In this order. Steps 1–3 are on **Admin home**, in the game's panel.
    gets a red warning first, because withdrawing `game` would turn off every
    card in the town. If you do it by mistake, **Allow again** is in the list
    directly underneath.
+
+   Withdrawing is per *batch*. To kill one card on its own — an infinite
+   poster that walked out of the warm-up room, say — use the **Item codes**
+   page instead: scan that code in, then switch it off.
 4. **Leave and get clear of the area.** About ten minutes.
 5. **WhatsApp**: "the game has begun".
 6. **Start.** The **Start game** button. Player apps come back live.
@@ -470,6 +474,10 @@ one place. Each names the PR that made it.
 - **A withdrawn code is dead for everybody** (#265) — the check sits before
   anything about the player is looked at, so the answer never depends on who
   scanned it.
+- **One code can be switched off on its own**, on the **Item codes** page —
+  but only after it has been scanned in there, because the server has no
+  register of what was minted. So if a single card has to die mid-evening,
+  that page needs the card (or its link) in hand; a batch does not.
 
 ### Countdown, courier and maps
 

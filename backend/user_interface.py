@@ -34,6 +34,7 @@ from .model import STARTING_HIT_POINTS
 from .model import Game
 from .model import GameModel
 from .model import Item
+from .model import KnownCode
 from .model import RevokedBatch
 from .model import Shot
 from .model import Team
@@ -979,6 +980,18 @@ class UserInterface:
             is not None
         )
 
+    def _code_is_switched_off(self, item_id: UUID) -> bool:
+        """Whether this one code has been registered and switched off.
+
+        A code nobody has scanned into the admin's list has no row here and is
+        collectable, which is the only default the cryptography allows: the
+        server cannot enumerate what was printed, so absence has to mean
+        collectable rather than the other way round.
+        """
+        known = self._session.get(KnownCode, item_id)
+
+        return known is not None and not known.enabled
+
     @db_scoped
     def collect_item(self, encoded_item: str) -> None:
         """
@@ -1003,6 +1016,13 @@ class UserInterface:
         # carries no batch and so can never be withdrawn this way.
         if item.batch and self._batch_is_revoked(item.batch):
             raise HTTPException(403, "This code has been withdrawn")
+
+        # Then the same question asked of this one card, for a code an admin
+        # has scanned onto the list and switched off. Same place in the order
+        # and for the same reason: the card is dead for everybody, so the
+        # answer must not depend on who is holding the phone.
+        if self._code_is_switched_off(item.id):
+            raise HTTPException(403, "This code has been switched off")
 
         user: User = self.get_user()
 

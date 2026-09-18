@@ -13,6 +13,7 @@ import ReferencePhotos from "./ReferencePhotos";
 import SpectatorView from "./SpectatorView";
 import AdminPrintables from "./AdminPrintables";
 import AdminCourier from "./AdminCourier";
+import AdminCodes from "./AdminCodes";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -69,6 +70,10 @@ const router = createBrowserRouter([
   {
     path: "admin/courier",
     element: <AdminCourier />,
+  },
+  {
+    path: "admin/codes",
+    element: <AdminCodes />,
   },
   {
     path: "admin/identity",

@@ -539,6 +539,24 @@ red warning for any batch that is not the sandbox, because mistyping `game`
 there would turn off every card in the town. One press rather than two, since
 **Allow again** is in the list directly beneath it.
 
+### M2.3 — Switch off one code *(status: shipped 2026-09-18)*
+
+The infinite sandbox posters work, and a batch is the wrong granularity for
+the one that walks out of the warm-up room in somebody's pocket. New table
+`known_codes(id PK, first_seen, enabled, item_type, data, batch, unlimited,
+collected_as_team)` — a new table, so it creates itself on deploy (rule 2).
+
+The shape follows from the cryptography rather than from taste: a code is an
+HMAC over its payload and nothing else, so the server cannot enumerate what
+was printed, there is no list to pick from, and **absence has to mean
+collectable**. A code therefore has to be *scanned back in* before it can be
+switched off, which is what the new **Item codes** admin page
+(`/admin/codes`) is for — the player's own scan loop (`useQRScanLoop.js`,
+lifted out of `QRParser.js`) pointed at a different sink, plus a paste field
+for a code copied out of `qr_codes.csv`. Registering a code does not collect
+it. `collect_item` asks the same question it asks of batches, in the same
+place and for the same reason.
+
 ---
 
 ## M3 — Countdown and announcements *(by Friday; the biggest player-facing change)*

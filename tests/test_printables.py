@@ -2,6 +2,7 @@
 
 import logging
 import os
+from uuid import uuid4
 
 import pytest
 from PIL import Image
@@ -250,6 +251,46 @@ def test_withdrawing_a_batch_over_the_api_returns_the_new_list(admin_api_client)
 
     restored = admin_api_client.post("/api/admin_restore_batch?batch=sandbox")
     assert restored.json() == []
+
+
+def test_registering_and_switching_off_one_code_over_the_api(admin_api_client):
+    """The single-code register, end to end: the admin page scans a code into
+    it with the same body a player's collect_item takes, then switches it."""
+    item = ItemModel(
+        id=uuid4(),
+        itype="ammo",
+        data={"num": 5},
+        collected_only_once=False,
+        collected_as_team=False,
+        batch="sandbox",
+        unlimited=True,
+    ).sign()
+
+    registered = admin_api_client.post(
+        "/api/admin_register_code", json={"data": item.to_base64()}
+    ).json()
+
+    assert registered["new"] is True
+    assert registered["code"]["description"] == "5 bullets"
+    assert registered["code"]["unlimited"] is True
+
+    code_id = registered["code"]["id"]
+    switched = admin_api_client.post(
+        f"/api/admin_set_code_enabled?code_id={code_id}&enabled=false"
+    )
+    assert [entry["enabled"] for entry in switched.json()] == [False]
+
+    listed = admin_api_client.get("/api/admin_known_codes")
+    assert [entry["id"] for entry in listed.json()] == [code_id]
+
+    forgotten = admin_api_client.post(f"/api/admin_forget_code?code_id={code_id}")
+    assert forgotten.json() == []
+
+
+def test_registering_a_code_needs_an_admin(api_client):
+    response = api_client.post("/api/admin_register_code", json={"data": "nonsense"})
+
+    assert response.status_code == 403
 
 
 def test_withdrawing_needs_an_admin(api_client):
