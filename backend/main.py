@@ -1571,6 +1571,20 @@ async def admin_forget_code(code_id: UUID) -> List[dict]:
     return AdminInterface().forget_code(code_id)
 
 
+@admin_method(path="/admin_identify_code", method="POST")
+async def admin_identify_code(encoded_item: _EncodedItem) -> dict:
+    """Say what a scanned code is, changing nothing.
+
+    The read-only scanner (react-ui/src/AdminScanCode.js). Same
+    ``{"data": <url-or-b64>}`` body as ``collect_item`` and
+    ``admin_register_code``, since it is the same camera pointed at the same
+    card - but unlike both of those it writes nothing: no item is collected
+    and no code is put on the list.
+    """
+    logger.info("admin_identify_code")
+    return AdminInterface().identify_code(encoded_item.data)
+
+
 @admin_method(path="/admin_known_codes", method="GET")
 async def admin_known_codes() -> List[dict]:
     """Every code an admin has scanned in, most recently scanned first."""

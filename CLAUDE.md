@@ -355,7 +355,23 @@ Four things from it that are worth knowing even if you never call the agent:
     admin identifying a card must not spend it. The camera half is
     `useQRScanLoop.js`, lifted out of `QRParser.js` so the player's scanner
     (which collects what it sees) and this one (which only registers it)
-    are one loop with two sinks.
+    are one loop with two sinks — now three, with the read-only scanner below.
+  - The **What's this code?** page (`/admin/scan`,
+    `react-ui/src/AdminScanCode.js` → `AdminInterface.identify_code`) is the
+    third sink on that loop, and the only one that **writes nothing at all**:
+    no item collected, no `KnownCode` row. That is the whole point — the
+    question an admin has mid-game, holding a card found on the floor or a
+    poster nobody can remember withdrawing, is "what is this and would it
+    still work?", and both other scanners answer it by spending the card.
+    It reads **join** codes as well as item codes (`_parse_or_none` offers the
+    string to each reader in turn), because a team card is the one piece of
+    paper on the night whose meaning an admin cannot get at any other way:
+    scanning it with their own phone would move them into that team. The
+    verdict asks the same questions in the same order `collect_item` does —
+    signature, withdrawn batch, switched-off code, already collected — so it
+    names the first thing that would refuse the scan rather than an
+    incidental second one, and a page that said "live" would be wrong if the
+    order drifted.
   - `team_cards.py` — the **team** cards (roadmap R15): one A4 portrait page
     per team, a Ministry of War "notice of conscription" carrying that team's
     door code, which players scan on the night to join a team. Same toolchain

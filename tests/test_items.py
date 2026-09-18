@@ -1064,3 +1064,80 @@ def test_starting_armour_makes_a_level_1_card_useless(
 
     UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 3
+
+
+# Reading a code without spending it (react-ui/src/AdminScanCode.js). The
+# other two scanners in the app both change something - one collects the item,
+# one writes a KnownCode row - so the whole point of these is that nothing
+# moves.
+
+
+def test_identifying_an_item_code_says_what_it_hands_out(
+    db_session, valid_encoded_ammo
+):
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["kind"] == "item"
+    assert identified["headline"] == "1 bullet"
+    assert identified["verdict"]["tone"] == "good"
+
+
+def test_identifying_a_code_collects_nothing(valid_encoded_ammo, user_in_team):
+    """The refusal this page exists to avoid: an admin working out what a card
+    is must not spend it, and must not put it on the switch-off list either."""
+    AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+    assert AdminInterface().get_known_codes() == []
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_spent_code_identifies_as_spent(valid_encoded_ammo, user_in_team):
+    """What the page is pulled out of a pocket for: this card is on the floor
+    because somebody already had it."""
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "already collected" in identified["verdict"]["text"]
+
+
+def test_a_withdrawn_batch_identifies_as_dead(user_in_team):
+    card = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+    AdminInterface().withdraw_batch("sandbox")
+
+    identified = AdminInterface().identify_code(card)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "withdrawn" in identified["verdict"]["text"]
+
+
+def test_a_switched_off_code_identifies_as_dead(db_session, valid_encoded_ammo):
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "switched off" in identified["verdict"]["text"]
+
+
+def test_an_unsigned_code_identifies_as_forged(db_session):
+    """Unlike registering one, identifying it answers rather than refusing:
+    "that is not ours" is exactly what the admin is asking."""
+    identified = AdminInterface().identify_code(
+        ItemModel(**SAMPLE_AMMO_DATA).to_base64()
+    )
+
+    assert identified["kind"] == "item"
+    assert identified["verdict"]["tone"] == "bad"
+
+
+def test_identifying_something_that_is_not_a_code_at_all(db_session):
+    identified = AdminInterface().identify_code("https://example.com/lunch")
+
+    assert identified["kind"] == "unknown"
+    assert identified["verdict"]["tone"] == "bad"

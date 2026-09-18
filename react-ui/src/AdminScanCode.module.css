@@ -1,0 +1,76 @@
+/* The read-only scanner. Everything this page shares with the code list - the
+   panel, the camera, the big button, the paste field, the status tones - is
+   composed from AdminCodes.module.css rather than copied, since the two pages
+   are the same camera pointed at the same card. Only the answer below it is
+   new. */
+
+.panel {
+  composes: panel from "./AdminCodes.module.css";
+}
+
+.blurb {
+  composes: blurb from "./AdminCodes.module.css";
+}
+
+.camera {
+  composes: camera from "./AdminCodes.module.css";
+}
+
+.action {
+  composes: action from "./AdminCodes.module.css";
+}
+
+.field {
+  composes: field from "./AdminCodes.module.css";
+}
+
+.fieldLabel {
+  composes: fieldLabel from "./AdminCodes.module.css";
+}
+
+.input {
+  composes: input from "./AdminCodes.module.css";
+}
+
+.status {
+  composes: status from "./AdminCodes.module.css";
+}
+
+.statusGood {
+  composes: statusGood from "./AdminCodes.module.css";
+}
+
+.statusBad {
+  composes: statusBad from "./AdminCodes.module.css";
+}
+
+/* Amber for the things the server is not sure about, matching
+   ReferencePhotos.module.css: green and red are for answers. */
+.statusWarn {
+  background: #fdf0d5;
+  border-color: #d9a441;
+  font-weight: bold;
+}
+
+/* What the card is, read from arm's length before anything else on the page. */
+.headline {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+/* The small print under the verdict: label above value, rather than two
+   columns, because a phone held in one hand has no room for a second one. */
+.facts {
+  margin: 0.6em 0 0 0;
+}
+
+.factLabel {
+  font-weight: 600;
+  color: #444;
+  font-size: 0.85em;
+}
+
+.factValue {
+  margin: 0 0 0.5em 0;
+  overflow-wrap: anywhere;
+}

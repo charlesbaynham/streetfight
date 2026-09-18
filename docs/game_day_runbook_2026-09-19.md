@@ -208,6 +208,13 @@ In this order. Steps 1–3 are on **Admin home**, in the game's panel.
    Withdrawing is per *batch*. To kill one card on its own — an infinite
    poster that walked out of the warm-up room, say — use the **Item codes**
    page instead: scan that code in, then switch it off.
+
+   To find out what a card *is* without touching anything, the
+   **What's this code?** page (`/admin/scan`) reads any code the game prints —
+   item card, pub certificate, sandbox poster, team card, sign-up link — and
+   says what it hands out and whether it still works. It collects nothing and
+   registers nothing, so it is the safe one to point at a card you are about
+   to hide again.
 4. **Leave and get clear of the area.** About ten minutes.
 5. **WhatsApp**: "the game has begun".
 6. **Start.** The **Start game** button. Player apps come back live.
@@ -484,6 +491,11 @@ one place. Each names the PR that made it.
   but only after it has been scanned in there, because the server has no
   register of what was minted. So if a single card has to die mid-evening,
   that page needs the card (or its link) in hand; a batch does not.
+- **Reading a code is a separate page from switching one off**: the
+  **What's this code?** page writes nothing, so working out what a card is
+  never spends it or puts it on the switch-off list. It answers join codes
+  too, which matters for a team card — scanning one with your own phone would
+  move you into that team.
 
 ### Countdown, courier and maps
 
