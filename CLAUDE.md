@@ -982,15 +982,47 @@ pytest -k "appeal"                            # by name across the suite
 cd react-ui && CI=true npm test -- ShotQueue  # frontend, matching files only
 
 # Whole suite — CI's job, not usually yours
-pytest                   # backend suite (setup.cfg sets testpaths = tests)
+pytest -n auto           # backend suite in parallel (setup.cfg sets testpaths)
+pytest                   # ...serially, if a failure needs unmuddled output
 pytest -m "not selenium" # default scope, skipping browser tests
 pytest --runselenium     # include selenium/browser integration tests
 cd react-ui && CI=true npm test  # all frontend tests (CI=true: no watch mode)
 npm test                 # everything: pytest then react-ui tests
 ```
 
-CI runs the backend tests via `nix develop -c pytest`
-(`.github/workflows/test_backend.yml`).
+CI runs the backend tests via `nix develop .#ci -c pytest -n auto`
+(`.github/workflows/test_backend.yml`), and only once per commit: both test
+workflows trigger on `pull_request` plus pushes to master, because
+`on: [push, pull_request]` fired *both* for every commit on a branch with a
+pull request open and ran the whole suite twice on one SHA. They also cancel a
+run the next push has superseded.
+
+**`-n auto` works because nothing in the suite is shared between workers**, and
+keeping it that way is the price of the parallelism:
+
+- Each worker gets its own SQLite file, named after `PYTEST_XDIST_WORKER`
+  (`tests/db_url.py`). `db_session` rebuilds the schema with `drop_all` between
+  tests, so two workers on one file would drop each other's tables mid-test.
+  `DATABASE_URL` is set at the top of `conftest.py` rather than in a fixture
+  because `backend.database` calls `load()` at *import* time.
+- Each worker gets its own backend log (`tests/quiet_logs.py` →
+  `BACKEND_LOG_FILE`, which defaults to the `./logs/backend.log` the deployment
+  expects). `setup_logging()`'s `doRollover()` renames the numbered backups in
+  sequence, and four processes doing that to one file race.
+- The suite runs with `LOG_LEVEL=WARNING` and `DEBUG_DATABASE` off, overriding
+  `.env.dev`'s developer settings. That is only ~5% of the runtime, but it is
+  what stops a run writing 40MB to `logs/`.  `STREETFIGHT_TEST_DEBUG_LOGS=1`
+  restores them for a test you are debugging.
+
+Anything new that writes to a fixed path outside `tmp_path` needs the same
+treatment. `qr_codes.csv` already has it, via `QR_LOGFILE`.
+
+Where the time actually goes: seven tests in `test_demo_game.py` and
+`test_test_world.py` are over half the suite's serial runtime, because each
+provisions thirty players through the real allocator against a fresh database.
+That is the work those tests are for, so the fix was to spread them over cores
+rather than to trim them — but it does mean the longest single test sets the
+floor, and `-n auto` gets about 2.3× rather than 4×.
 
 ## Lint / format / pre-commit
 
