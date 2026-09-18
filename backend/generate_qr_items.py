@@ -199,14 +199,31 @@ def random_tag(length: int = 6) -> str:
     return "".join(random.choice(characters) for _ in range(length))
 
 
-def base_image_path(itype: str, num, damage) -> Optional[Path]:
+def _trim(number) -> str:
+    """A number as it goes in a filename: 5 rather than 5.0."""
+    return str(int(number)) if float(number).is_integer() else str(number)
+
+
+def base_image_path(
+    itype: str, num, damage, timeout=DEFAULT_SHOT_TIMEOUT
+) -> Optional[Path]:
     """The artwork for this kind of card, if there is any.
 
-    Weapons are drawn by their damage and everything else by how much of it
-    the card awards, so a 2-bullet ammo card looks different from a 10.
+    Weapons are drawn by the pair they are - (damage, delay) - and everything
+    else by how much of it the card awards, so a 2-bullet ammo card looks
+    different from a 10.
+
+    The pair, not the damage alone: a weapon's drawing has the weapon's name
+    written on it in ink, and Eat-a-bullet (1, 5) shares its damage with
+    Pewster (1, 25). Keyed on damage, it was printed on Pewster's card, so a
+    poster in the warm-up room said Pewster and handed out Eat-a-bullet. The
+    standard-delay weapons keep their plain ``weapon_<damage>.png`` names,
+    since those are the cards that have been drawn; anything else wants a file
+    of its own and prints as a bare QR code until somebody draws it one.
     """
     if itype == "weapon":
-        path = Path(IMAGES_DIR, f"{itype}_{damage}.png")
+        suffix = "" if timeout == DEFAULT_SHOT_TIMEOUT else f"_{_trim(timeout)}"
+        path = Path(IMAGES_DIR, f"{itype}_{damage}{suffix}.png")
     elif itype in SINGLE_ARTWORK_TYPES:
         path = Path(IMAGES_DIR, f"{itype}_1.png")
     else:
@@ -375,7 +392,7 @@ def generate(
 
     tag = slugify_string(tag)
 
-    path_to_base_image = base_image_path(type, num, damage)
+    path_to_base_image = base_image_path(type, num, damage, timeout)
 
     if not outfile:
         filename = f"qrcodes_{tag}_{type}_{num}.png"
