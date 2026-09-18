@@ -12,8 +12,8 @@ from .quiet_logs import quieten_logs  # noqa: E402
 
 set_testing_db_url()
 
-# .env.dev's DEBUG_DATABASE/LOG_LEVEL are a developer's settings, and cost the
-# suite more than everything else in it put together. See tests/quiet_logs.py.
+# .env.dev's DEBUG_DATABASE/LOG_LEVEL are a developer's settings, and under
+# pytest they buy nothing at a measured ~5% of the run. See tests/quiet_logs.py.
 quieten_logs()
 
 # Shared fixtures:

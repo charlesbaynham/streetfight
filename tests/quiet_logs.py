@@ -16,9 +16,12 @@ for a developer watching a live server: ``LOG_LEVEL=DEBUG`` and
   over 40 MB there.
 
 Neither is worth anything to a passing test, and pytest's own log capture still
-shows a failing one everything it emitted. ``python-dotenv`` does not override
-variables that are already set, so setting them here -- before anything imports
-``backend`` -- wins over ``.env``.
+shows a failing one everything it emitted. Turning both off measured at about
+5% of the suite's runtime -- worth having, but the 40 MB is the more useful
+half: it is what made ``logs/`` unusable and what made four xdist workers
+rotating one file a problem. ``python-dotenv`` does not override variables that
+are already set, so setting them here -- before anything imports ``backend`` --
+wins over ``.env``.
 
 Set ``STREETFIGHT_TEST_DEBUG_LOGS=1`` to put the old behaviour back when
 debugging a test that needs to see its queries.
