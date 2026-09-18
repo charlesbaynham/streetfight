@@ -18,10 +18,10 @@
   {"marker": "Westminster Arms", "subject": "a portcullis"},
   {"marker": "Two Chairmen", "subject": "two men carrying a passenger in a sedan chair"},
   {"marker": "St Stephen's Tavern", "subject": "a frothing pint of beer in a dimpled glass"},
-  {"marker": "House Absolute", "subject": "a tall terraced London townhouse with a flag flying from the roof"},
+  {"marker": "House Absolute", "subject": "an imposing fairy-tale castle with several tall pointed towers, battlements and banners flying", "size": 130},
   {"marker": "Big Ben", "subject": "the Elizabeth Tower, the London clock tower known as Big Ben", "size": 150},
   {"marker": "Westminster Abbey", "subject": "a gothic abbey with two square west towers", "size": 140},
-  {"marker": "Parliament", "subject": "a long gothic palace facade with a tower at one end"},
+  {"marker": "Parliament", "subject": "a long gothic palace facade with a tower at one end", "size": 370, "pin": [0.9, 0.435]},
   {"at": [51.49404, -0.12407], "subject": "a rowing eight with a cox, seen from the side", "size": 190},
   {"at": [51.50184, -0.13453], "subject": "a pelican standing on one leg", "size": 110}
 ]

@@ -36,8 +36,9 @@ sketch per pub - the subject is written in the bundle's `doodles.json` - on
 plain white, and turns the white into transparency. This file then decides
 where each goes: beside its pub, on the far side from the name, in the
 emptiest patch of paper within reach, never over a label and never over the
-point the arrow is aimed at. The model never sees the map, so it cannot move
-anything on it.
+point the arrow is aimed at - unless the manifest pins it, which is for a
+drawing that *is* the place (the Palace along its own riverbank). The model
+never sees the map, so it cannot move anything on it.
 
 The arrows live with the handwriting rather than the map because they belong
 to the words: where a name goes is decided by what room is left, and the
@@ -573,6 +574,25 @@ class Doodler:
             for o in self.placed
         )
 
+    def pin(self, fx, fy, img, png, px=DOODLE_PX):
+        """Put a drawing exactly where the manifest says, search be damned.
+
+        For the ones that are a picture of the place itself - the Palace of
+        Westminster along its own riverbank - where "beside the label, off
+        the roads" is the wrong rule. It still goes on the taken list, so the
+        searched doodles route round it; it is only clamped to the sheet.
+        """
+        w, h = img.size
+        scale = px / max(w, h)
+        w, h = w * scale, h * scale
+        margin = 14
+        cx = min(max(fx * self.size, margin + w / 2), self.size - margin - w / 2)
+        cy = min(max(fy * self.size, margin + h / 2), self.size - margin - h / 2)
+        box = (cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2)
+        self.placed.append(box)
+        self.sheet.image(LAYER_DOODLE, box, img, png)
+        return box
+
     def put(self, x, y, img, png, px=DOODLE_PX, away_from=None):
         w, h = img.size
         scale = px / max(w, h)
@@ -648,6 +668,13 @@ def load_doodles(bundle, meta):
             lat, lon = marker["lat"], marker["lon"]
         else:
             lat, lon = entry["at"]
+        if "pin" in entry and not (
+            len(entry["pin"]) == 2 and all(0 <= v <= 1 for v in entry["pin"])
+        ):
+            raise SystemExit(
+                f"doodles.json: 'pin' is the doodle's centre as fractions of the "
+                f"sheet, [x, y] in 0..1, not {entry['pin']!r}"
+            )
         png = open(path, "rb").read()
         img = Image.open(path).convert("RGBA")
         ready.append(dict(entry, lat=lat, lon=lon, img=img, png=png))
@@ -893,7 +920,18 @@ def compose(meta, els, size=OUT_PX, title=None, doodles=()):
     crowded = []
     if doodles:
         doodler = Doodler(sheet, size, taken=hand.placed)
+        # Pinned ones first, so the searched ones know to route round them.
         for entry in doodles:
+            if "pin" in entry:
+                doodler.pin(
+                    *entry["pin"],
+                    entry["img"],
+                    entry["png"],
+                    px=entry.get("size", DOODLE_PX),
+                )
+        for entry in doodles:
+            if "pin" in entry:
+                continue
             x, y = box.project(entry["lat"], entry["lon"], size)
             placed = doodler.put(
                 x,

@@ -83,6 +83,32 @@ def test_doodle_lands_beside_the_pub_off_the_road_and_away_from_the_name():
     assert sheet.ops[render.LAYER_DOODLE][0][0] == "image"
 
 
+def test_pinned_doodle_goes_where_it_is_told_and_is_routed_round():
+    sheet = _sheet_with_a_road()
+    taken = [(0, 0, 100, 100)]
+    doodler = render.Doodler(sheet, 600, taken=taken)
+    drawing = Image.new("RGBA", (200, 100), (0, 0, 0, 255))
+
+    box = doodler.pin(0.5, 0.5, drawing, b"png", px=200)
+
+    assert box == (200.0, 250.0, 400.0, 350.0), "centred where asked, over the road"
+    assert box in taken
+
+    # The next searched doodle keeps off it.
+    later = doodler.put(
+        300, 300, Image.new("RGBA", (50, 50), (0, 0, 0, 255)), b"png", px=60
+    )
+    assert later is not None and not _overlaps(later, box)
+
+
+def test_pinned_doodle_is_kept_on_the_sheet():
+    doodler = render.Doodler(_sheet_with_a_road(), 600, taken=[])
+    box = doodler.pin(
+        1.0, 1.0, Image.new("RGBA", (100, 100), (0, 0, 0, 255)), b"png", px=100
+    )
+    assert box[2] <= 600 - 14 and box[3] <= 600 - 14
+
+
 def test_doodle_is_left_off_rather_than_put_over_a_name():
     sheet = _sheet_with_a_road()
     everywhere = [(0, 0, 600, 600)]

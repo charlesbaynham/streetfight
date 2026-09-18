@@ -42,7 +42,11 @@ Then re-run `render_venue_map.py`, which picks the drawings up from the bundle.
 
 `marker` names a marker in `meta.json` and the doodle goes beside it; `at`
 puts one anywhere by coordinate - the river, the park. `size` is its longest
-side on the 2000 px sheet (default `DOODLE_PX`).
+side on the 2000 px sheet (default `DOODLE_PX`). `pin: [x, y]`, as fractions
+of the sheet, overrides the renderer's placement search outright and centres
+the drawing there - for a drawing that is a picture of the place itself and
+wants to sit on it, big, roads or no roads. Neither `size` nor `pin` is part
+of the drawing's address, so changing them costs nothing.
 """
 
 import argparse

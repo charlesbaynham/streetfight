@@ -63,7 +63,11 @@ The raw answers are cached under `doodles/raw/` (not committed) so
 `render_venue_map.py`: it puts each drawing beside its pub, on the far side
 from the name, in the emptiest patch of paper within reach — never over a
 label, a road, or the point the arrow is aimed at — and says which doodles
-are still undrawn or found no room. **The model never sees the map**, so it
+are still undrawn or found no room. `"pin": [x, y]` (fractions of the
+sheet) overrides that search for one entry and centres it there: for a
+drawing that *is* the place, like the Palace of Westminster along its own
+riverbank, drawn at `"size": 330`. Neither `size` nor `pin` changes the
+drawing's address, so tuning them costs nothing. **The model never sees the map**, so it
 cannot move anything on it; that is the whole difference from the route
 below.
 
