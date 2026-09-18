@@ -8,13 +8,13 @@ description: Make a hand-drawn-style map for a new streetfight venue - fix the p
 The Kingston map is hand-drawn and that is the house style. The output here is
 a georeferenced image plus a `Venue` for `backend/venues.py`.
 
-**Render it. Do not ask an image model.** `render_venue_map.py` draws the
-OpenStreetMap geometry with a wobbly pen and a handwriting font, which is
-exact by construction and free to re-run. The image-model route is kept below
-because it is the only way to get the *doodles*, but it is no longer the
-default and it should not be the first thing tried — see "Why not an image
-model" at the foot of this file, which is a record of it failing repeatedly
-rather than an opinion.
+**Render it. Do not ask an image model for the map.** `render_venue_map.py`
+draws the OpenStreetMap geometry with a wobbly pen and a handwriting font,
+which is exact by construction and free to re-run. The image model is asked
+only for the *doodles* — one little pen sketch per pub, on plain white, which
+the renderer then places (see "Doodles" below). The whole-map image-model
+route is kept at the foot of this file as a record of it failing repeatedly
+rather than an opinion — see "Why not an image model".
 
 ## The short version
 
@@ -33,7 +33,43 @@ nothing; `--refetch` forces a new query when the area itself has changed.
 
 The renderer labels **every marker in `meta.json`**, which is every landmark
 in the venue. Adding a pub and re-running is the whole change — there is no
-step where a human or a model has to redraw anything.
+step where a human or a model has to redraw anything. (Give the new pub a
+line in `doodles.json` and run `doodle_venue_map.py` too, or it is the one
+pub on the map without a drawing.)
+
+## Doodles
+
+The cartwheel beside Wheelwrights Arms is the charm of the Kingston map, and
+it is the one thing an image model *can* do here: a doodle carries no
+geometry to get wrong. `docs/venue_map_<name>/doodles.json` lists a subject
+per pub — `{"marker": "Royal Oak", "subject": "an oak tree"}`, or `"at":
+[lat, lon]` for a boat on the river — and:
+
+```bash
+uv run python .claude/skills/draw-venue-map/scripts/doodle_venue_map.py \
+    --bundle docs/venue_map_<name> --dry-run     # what it would ask for
+OPENROUTER_API_KEY=... uv run python .claude/skills/draw-venue-map/scripts/doodle_venue_map.py \
+    --bundle docs/venue_map_<name>               # ~$0.04 a drawing at Gemini Flash
+```
+
+asks `google/gemini-3.1-flash-image` (OpenRouter's Image API) for **black
+felt-tip on pure white**, then makes the transparency itself — luminance
+becomes alpha, the paper drops out, the ink is recoloured to the map's sepia
+— and writes `doodles/<pub>.<hash>.png` into the bundle. It is
+content-addressed on the model and the whole prompt, so re-running when
+nothing changed spends nothing, and editing one subject redraws one drawing.
+The raw answers are cached under `doodles/raw/` (not committed) so
+`--reprocess` can re-tune the ink conversion for free. Then re-run
+`render_venue_map.py`: it puts each drawing beside its pub, on the far side
+from the name, in the emptiest patch of paper within reach — never over a
+label, a road, or the point the arrow is aimed at — and says which doodles
+are still undrawn or found no room. `"pin": [x, y]` (fractions of the
+sheet) overrides that search for one entry and centres it there: for a
+drawing that *is* the place, like the Palace of Westminster along its own
+riverbank, drawn at `"size": 330`. Neither `size` nor `pin` changes the
+drawing's address, so tuning them costs nothing. **The model never sees the map**, so it
+cannot move anything on it; that is the whole difference from the route
+below.
 
 ## Colour
 
@@ -65,20 +101,25 @@ bitmap from a seed in midstream, which is what you cannot do to a vector; the
 skeleton still does it that way and is fine, because nobody fills a reference
 image.
 
-## Two layers, and replacing the handwriting
+## Three layers, and replacing one
 
-Beside the raster it writes three SVGs — `<name>.svg`, `<name>.map.svg` and
-`<name>.hand.svg`. The drawing is built in two layers:
+Beside the raster it writes four SVGs — `<name>.svg`, `<name>.map.svg`,
+`<name>.doodles.svg` and `<name>.hand.svg`. The drawing is built in three
+layers:
 
 | Layer | What is on it |
 | --- | --- |
-| `map` | roads, water, parks — and where hand-drawn doodles belong |
+| `map` | roads, water, parks — and a dot at every pub, in a `pubs` group (`pub-<name>`) |
+| `doodles` | the generated drawings, as embedded PNGs, one `doodle-<name>` group each |
 | `handwriting` | every word on the sheet, and the arrows that point at things |
 
 Each is a `<g>` in the combined file and the only thing in its own file, so
-stacking map then handwriting reproduces the whole exactly (verified: the
+stacking map, doodles, handwriting reproduces the whole exactly (verified: the
 layers composite back to the combined with no difference beyond glyph
-antialiasing). The words are real `<text>` in an embedded font rather than
+antialiasing). The three groups carry Inkscape's layer attributes, so the
+combined file opens there as three layers, and the pub dots sit on the *map*
+layer on purpose: the handwriting is what gets redrawn, and whoever redraws
+the arrows needs the sheet to still say where each pub is. The words are real `<text>` in an embedded font rather than
 outlines, so they can be edited as text as well as redrawn.
 
 The arrows sit with the handwriting, not the map, because they belong to the
@@ -98,13 +139,9 @@ what keeps it honest about which pub it means.
 **The renderer will not overwrite lettering.** Every file it writes is signed
 with a hash of its own contents; a file that does not match its signature is
 somebody's work, and re-rendering refuses and names it. `--force` throws the
-edit away deliberately, `--no-svg` refreshes only the raster. The doodles are
-the reason this guard matters: the map layer is the one you would draw a
-cartwheel onto, and it is regenerated whenever the pub list changes.
-
-What the renderer cannot do is invent those doodles. The cartwheel beside
-Wheelwrights Arms is the charm of the Kingston map — but the map layer is now
-a file you can draw into, rather than a flat JPEG.
+edit away deliberately, `--no-svg` refreshes only the raster. The same goes
+for the doodles layer: somebody who redraws the pelican by hand in
+`<name>.doodles.svg` keeps it.
 
 ## The workflow for the references (and the image-model route)
 
