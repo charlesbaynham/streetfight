@@ -57,6 +57,7 @@ import urllib.error
 import urllib.request
 
 from PIL import Image
+from PIL import ImageFilter
 
 MODEL = "google/gemini-3.1-flash-image"
 OPENROUTER_IMAGE_URL = "https://openrouter.ai/api/v1/images"
@@ -80,11 +81,17 @@ STYLE = (
 DOODLE_PX = 110  # longest side on the 2000 px sheet, about a block's width
 STORE_PX = 400  # the processed file's longest side: 3x what the raster needs
 
-# Luminance in, alpha out: anything lighter than PAPER_L is paper and drops
-# out completely, anything darker than INK_L is solid ink, and the antialiased
-# edge between them is a straight ramp.
+# Luminance in, alpha out: anything lighter than the paper drops out
+# completely, anything darker than INK_L is solid ink, and the antialiased
+# edge between them is a straight ramp. The paper is *measured* - the median
+# luminance, since the sheet is always most of the picture - and capped at
+# PAPER_L: the model sometimes hands back a photograph of paper in shadow
+# (Sanctuary House came at 200 where the rest sat above 240), and a fixed
+# threshold kept the whole grey sheet as a haze behind the drawing.
 PAPER_L = 225
+PAPER_MARGIN = 14  # how far below the measured paper the ramp starts
 INK_L = 110
+SPECK_PX = 7  # ink narrower than this is a speck, not a stroke, when trimming
 
 # The map's ink, so a doodle is drawn in the same pen as the roads. Kept here
 # rather than imported from the renderer so this file has no dependency on
@@ -212,6 +219,14 @@ def ink_to_alpha(image, paper_l=PAPER_L, ink_l=INK_L, ink=INK, store_px=STORE_PX
     of the pixels.
     """
     lum = image.convert("L")
+    histogram = lum.histogram()
+    half, seen = sum(histogram) / 2, 0
+    for median, count in enumerate(histogram):
+        seen += count
+        if seen >= half:
+            break
+    paper_l = min(paper_l, median - PAPER_MARGIN)
+    ink_l = min(ink_l, paper_l // 2)
     span = max(1, paper_l - ink_l)
     alpha = lum.point(
         lambda v: (
@@ -223,9 +238,23 @@ def ink_to_alpha(image, paper_l=PAPER_L, ink_l=INK_L, ink=INK, store_px=STORE_PX
     out = Image.new("RGBA", image.size, _rgb(ink) + (0,))
     out.putalpha(alpha)
 
-    bbox = alpha.point(lambda v: 255 if v > 24 else 0).getbbox()
+    # Trim to the drawing, ignoring specks: a stray dot the model left in a
+    # corner would otherwise hold the box open and shrink the doodle to a
+    # third of its size when fitted. Eroding the mask first drops anything
+    # thinner than a pen stroke; the padding puts the stroke edges back.
+    mask = alpha.point(lambda v: 255 if v > 24 else 0).filter(
+        ImageFilter.MinFilter(SPECK_PX)
+    )
+    bbox = mask.getbbox()
     if bbox is None:
         raise DoodleError("the drawing came back blank")
+    pad = SPECK_PX
+    bbox = (
+        max(0, bbox[0] - pad),
+        max(0, bbox[1] - pad),
+        min(out.width, bbox[2] + pad),
+        min(out.height, bbox[3] + pad),
+    )
     out = out.crop(bbox)
     if max(out.size) > store_px:
         scale = store_px / max(out.size)
