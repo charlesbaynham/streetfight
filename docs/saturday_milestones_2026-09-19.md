@@ -314,10 +314,13 @@ what it awards and a poster read across a room has to say what it is:
 
 - **Ammunition is 5 bullets, not 20** — there is an `ammo_5.png` and no
   `ammo_20.png`, and being unlimited, five a scan is no less than twenty.
-- **Eat-a-bullet and Pewster share `weapon_1.png`**, so the Eat-a-bullet
-  poster's drawing reads "Pewster / Damage: 1" (true of both; only the delay
-  differs). Fixing it is artwork Charles would have to draw, plus keying the
-  weapon lookup on the pair rather than the damage.
+- **Eat-a-bullet had no drawing of its own.** It shared `weapon_1.png` with
+  Pewster, so its poster read "Pewster / Damage: 1"; keying the artwork on the
+  (damage, delay) pair fixed the wrong name but left it printing as a bare QR
+  code. It has `weapon_1_5.png` now, composited from what the pack already
+  held — the card frame every other card shares, recoloured red; the gun the
+  player's HUD draws for (1, 5), which carries the name in its own lettering;
+  and Pewster's "Damage: 1", which is true of this weapon too.
 
 **For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
 `sandbox` batch at 16:00.
