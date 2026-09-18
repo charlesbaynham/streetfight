@@ -1,6 +1,21 @@
 name: Test backend
 
-on: [push, pull_request]
+# `on: [push, pull_request]` ran the whole suite twice for every commit on a
+# pull request branch - once for the push, once for the PR - for identical
+# results on an identical SHA. Push is now limited to the branches that have
+# no pull request of their own; everything else is covered by `pull_request`.
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+
+# A second push supersedes the first: nobody is waiting on the results of a
+# commit that has already been replaced. Master is exempt (its group is keyed
+# on the SHA), so every merged commit keeps its own result.
+concurrency:
+  group: test-backend-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -20,7 +35,9 @@ jobs:
     # map/PDF generation scripts — not by the tests.
     - name: Install dependencies
       run: nix develop .#ci -c npm install
+    # -n auto fans the suite out over the runner's cores. Every worker gets its
+    # own SQLite file (tests/db_url.py), which is what makes that safe.
     - name: Test with pytest
       run: |
         cp .env.dev .env
-        nix develop .#ci -c pytest
+        nix develop .#ci -c pytest -n auto
