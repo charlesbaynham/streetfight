@@ -1101,6 +1101,20 @@ triage.
   toggle-and-reset behaviour is now wired only for the unexpanded corner
   state; a popped-out map closes via a new explicit close button instead,
   which sits outside the zoomable area so it stays put regardless of zoom.
+  **Second root cause, found 2026-09-18** (reported from Android: "you have
+  to touch it, wait, then touch it again; an immediate pinch does nothing").
+  `react-zoom-pan-pinch` 3.x treats *any* `touchstart` within 200 ms of the
+  last one as the second tap of a double tap and drops it — and a pinch is
+  two touchstarts a few tens of milliseconds apart, because a phone delivers
+  one event per finger. So the second finger never started the pinch, and
+  the only gesture that zoomed was one with a deliberate pause in it.
+  `MapView.js` now clears the library's last-touch stamp from a capture-phase
+  `touchstart` listener the moment a second finger lands, and the expanded
+  map declares `touch-action: none` so Chrome cannot claim the gesture as a
+  page scroll first. Verified A/B in real Chromium with CDP-dispatched
+  touches: 40 ms between fingers zooms with the fix and does nothing without
+  it. Fixed upstream in 4.x, which only counts a single-touch start as a
+  double tap — drop the shim when that upgrade happens.
 - [x] **11. Shot browser needs to jump, not just step** — *done.*
   `ShotQueue.js`'s queue browser now has six navigation targets —
   First / -10 / Previous / Next / +10 / Last — plus a **Jump to** dropdown

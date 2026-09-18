@@ -50,9 +50,13 @@ def setup_logging():
 
     uvicorn_logger.propagate = True
 
-    # Add a file handler
-    Path("./logs/").mkdir(exist_ok=True)
-    rotating_handler = RotatingFileHandler("./logs/backend.log", backupCount=10)
+    # Add a file handler. BACKEND_LOG_FILE moves it: the test suite gives each
+    # xdist worker its own, since doRollover() renames the numbered backups in
+    # sequence and four processes doing that to one file race each other into a
+    # FileNotFoundError at import time.
+    log_file = Path(os.environ.get("BACKEND_LOG_FILE") or "./logs/backend.log")
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    rotating_handler = RotatingFileHandler(log_file, backupCount=10)
 
     # Configure the format for log messages
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")

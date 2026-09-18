@@ -1,6 +1,16 @@
 name: Test frontend
 
-on: [push, pull_request]
+# See test_backend.yml: `on: [push, pull_request]` ran this twice per commit on
+# a pull request branch, for the same result on the same SHA.
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+
+concurrency:
+  group: test-frontend-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   test:

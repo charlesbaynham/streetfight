@@ -1004,15 +1004,50 @@ pytest -k "appeal"                            # by name across the suite
 cd react-ui && CI=true npm test -- ShotQueue  # frontend, matching files only
 
 # Whole suite — CI's job, not usually yours
-pytest                   # backend suite (setup.cfg sets testpaths = tests)
+pytest -n auto --dist worksteal   # backend suite in parallel (see below)
+pytest                   # ...serially, if a failure needs unmuddled output
 pytest -m "not selenium" # default scope, skipping browser tests
 pytest --runselenium     # include selenium/browser integration tests
 cd react-ui && CI=true npm test  # all frontend tests (CI=true: no watch mode)
 npm test                 # everything: pytest then react-ui tests
 ```
 
-CI runs the backend tests via `nix develop -c pytest`
-(`.github/workflows/test_backend.yml`).
+CI runs the backend tests via `nix develop .#ci -c pytest -n auto --dist
+worksteal` (`.github/workflows/test_backend.yml`), and only once per commit: both test
+workflows trigger on `pull_request` plus pushes to master, because
+`on: [push, pull_request]` fired *both* for every commit on a branch with a
+pull request open and ran the whole suite twice on one SHA. They also cancel a
+run the next push has superseded.
+
+**`-n auto` works because nothing in the suite is shared between workers**, and
+keeping it that way is the price of the parallelism:
+
+- Each worker gets its own SQLite file, named after `PYTEST_XDIST_WORKER`
+  (`tests/db_url.py`). `db_session` rebuilds the schema with `drop_all` between
+  tests, so two workers on one file would drop each other's tables mid-test.
+  `DATABASE_URL` is set at the top of `conftest.py` rather than in a fixture
+  because `backend.database` calls `load()` at *import* time.
+- Each worker gets its own backend log (`tests/quiet_logs.py` →
+  `BACKEND_LOG_FILE`, which defaults to the `./logs/backend.log` the deployment
+  expects). `setup_logging()`'s `doRollover()` renames the numbered backups in
+  sequence, and four processes doing that to one file race.
+- The suite runs with `LOG_LEVEL=WARNING` and `DEBUG_DATABASE` off, overriding
+  `.env.dev`'s developer settings. That is only ~5% of the runtime, but it is
+  what stops a run writing 40MB to `logs/`.  `STREETFIGHT_TEST_DEBUG_LOGS=1`
+  restores them for a test you are debugging.
+
+Anything new that writes to a fixed path outside `tmp_path` needs the same
+treatment. `qr_codes.csv` already has it, via `QR_LOGFILE`.
+
+Where the time actually goes: seven tests in `test_demo_game.py` and
+`test_test_world.py` are over half the suite's serial runtime, because each
+provisions thirty players through the real allocator against a fresh database.
+That is the work those tests are for, so the fix was to spread them over cores
+rather than to trim them. Two consequences: `--dist worksteal` is worth real
+time over xdist's default `--dist load` (169s against 236s), because dispatching
+in collection order strands those tests on one worker at the end of the run;
+and the longest single test — 76s — sets a floor that no amount of scheduling
+gets under, so four cores buy about 3.1×, not 4×.
 
 ## Lint / format / pre-commit
 
@@ -1276,6 +1311,15 @@ Three deployment targets share one service definition:
   has a second half: `merge_user` and `delete_user` carry `User.game_id` as
   well as `team_id`, since a stray may be a signed-up player with no team at
   all — see the `game_id` bullet below.
+- **The map's pinch-to-zoom is a shim over `react-zoom-pan-pinch` 3.x.** That
+  version counts any `touchstart` within 200 ms of the previous one as the
+  second tap of a double tap and ignores it, which is every pinch there is —
+  a phone delivers one touchstart per finger, tens of milliseconds apart. So
+  `MapView.js` clears the library's `lastTouch` from a capture-phase listener
+  as soon as a second finger lands, and `.mapContainerInteractive` declares
+  `touch-action: none` on the expanded map so Chrome does not claim the
+  gesture as a page scroll before the library's first `preventDefault`. Both
+  go when the library is upgraded to 4.x, which fixed it upstream.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or
