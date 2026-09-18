@@ -184,6 +184,7 @@ export function AdminNav() {
       <AdminNavLink to="/admin/spectator">Spectator screen</AdminNavLink>
       <AdminNavLink to="/admin/printables">Printables</AdminNavLink>
       <AdminNavLink to="/admin/courier">Courier</AdminNavLink>
+      <AdminNavLink to="/admin/scan">What's this code?</AdminNavLink>
       <AdminNavLink to="/admin/codes">Item codes</AdminNavLink>
       <AdminNavLink to="/admin/identity">Identity workbench</AdminNavLink>
       <AdminNavLink to="/admin/identity-overrides">

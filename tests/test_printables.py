@@ -306,6 +306,36 @@ def test_registering_and_switching_off_one_code_over_the_api(admin_api_client):
     assert forgotten.json() == []
 
 
+def test_identifying_a_code_over_the_api(admin_api_client):
+    """The read-only scanner's endpoint: a sandbox poster read end to end,
+    leaving the code off the switch-off list."""
+    item = ItemModel(
+        id=uuid4(),
+        itype="ammo",
+        data={"num": 5},
+        collected_only_once=False,
+        collected_as_team=False,
+        batch="sandbox",
+        unlimited=True,
+    ).sign()
+
+    identified = admin_api_client.post(
+        "/api/admin_identify_code", json={"data": item.to_base64()}
+    ).json()
+
+    assert identified["kind"] == "item"
+    assert identified["headline"] == "5 bullets"
+    assert identified["verdict"]["tone"] == "good"
+
+    assert admin_api_client.get("/api/admin_known_codes").json() == []
+
+
+def test_identifying_a_code_needs_an_admin(api_client):
+    response = api_client.post("/api/admin_identify_code", json={"data": "nonsense"})
+
+    assert response.status_code == 403
+
+
 def test_registering_a_code_needs_an_admin(api_client):
     response = api_client.post("/api/admin_register_code", json={"data": "nonsense"})
 

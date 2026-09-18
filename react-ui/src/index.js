@@ -14,6 +14,7 @@ import SpectatorView from "./SpectatorView";
 import AdminPrintables from "./AdminPrintables";
 import AdminCourier from "./AdminCourier";
 import AdminCodes from "./AdminCodes";
+import AdminScanCode from "./AdminScanCode";
 import TestPage from "./TestPage";
 import IdentityDemo from "./IdentityDemo";
 import AdminIdentity from "./AdminIdentity";
@@ -74,6 +75,10 @@ const router = createBrowserRouter([
   {
     path: "admin/codes",
     element: <AdminCodes />,
+  },
+  {
+    path: "admin/scan",
+    element: <AdminScanCode />,
   },
   {
     path: "admin/identity",

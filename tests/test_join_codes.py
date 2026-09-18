@@ -877,3 +877,41 @@ def test_admin_game_join_url_unknown_game_404(admin_api_client):
 def test_admin_game_join_url_requires_admin_auth(api_client, one_game):
     response = api_client.get(f"/api/admin_game_join_url?game_id={one_game}")
     assert response.status_code in (401, 403)
+
+
+# Reading a join code without using it (react-ui/src/AdminScanCode.js). An
+# admin handed a team card off the floor needs to know which team it is for,
+# and the alternative - scanning it with their own phone - moves them into
+# that team.
+
+
+def test_identifying_a_team_card(db_session, one_game, one_team):
+    from backend.admin_interface import AdminInterface
+
+    team_name = db_session.get(Team, one_team).name
+
+    identified = AdminInterface().identify_code(make_team_join_url(one_game, one_team))
+
+    assert identified["kind"] == "join"
+    assert team_name in identified["headline"]
+    assert identified["verdict"]["tone"] == "good"
+
+
+def test_identifying_the_sign_up_link(db_session, one_game):
+    from backend.admin_interface import AdminInterface
+
+    identified = AdminInterface().identify_code(make_game_join_url(one_game))
+
+    assert identified["headline"] == "Sign-up link"
+    assert identified["verdict"]["tone"] == "good"
+
+
+def test_identifying_a_join_code_for_a_game_that_is_gone(db_session):
+    """The failure this page is for: a card from last time, which looks
+    exactly like one from this time."""
+    from backend.admin_interface import AdminInterface
+
+    identified = AdminInterface().identify_code(make_game_join_url(get_uuid()))
+
+    assert identified["kind"] == "join"
+    assert identified["verdict"]["tone"] == "bad"
