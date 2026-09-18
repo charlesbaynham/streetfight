@@ -381,6 +381,33 @@ export function VenueMapView({
   }, [expanded, onExpandedChange]);
 
   const mapContainerRef = useRef(null);
+  const transformRef = useRef(null);
+
+  // Put pinch-to-zoom back on Android. A pinch is two touchstarts a few tens
+  // of milliseconds apart - the phone delivers one event per finger - and
+  // react-zoom-pan-pinch 3.x treats *any* touchstart within 200ms of the last
+  // one as the second tap of a double tap and ignores it. So the second
+  // finger never started the pinch, and the only gesture that zoomed was
+  // touch, hold still for a fifth of a second, touch again. Clearing the
+  // library's last-touch stamp the moment a second finger lands lets its own
+  // handler, which runs after this capture-phase one, see a pinch. Fixed
+  // upstream in 4.x, which only counts a single-touch start as a double tap:
+  // drop this when we move to it.
+  useEffect(() => {
+    const container = mapContainerRef.current;
+    if (!container) return undefined;
+
+    const clearDoubleTapWindow = (event) => {
+      if (event.touches.length > 1 && transformRef.current) {
+        transformRef.current.instance.lastTouch = null;
+      }
+    };
+
+    container.addEventListener("touchstart", clearDoubleTapWindow, true);
+    return () =>
+      container.removeEventListener("touchstart", clearDoubleTapWindow, true);
+  }, []);
+
   const [boxWidthPx, setBoxWidthPx] = useState(0);
   const [boxHeightPx, setBoxHeightPx] = useState(0);
 
@@ -548,6 +575,12 @@ export function VenueMapView({
   const { map_x0, map_y0, dot_x, dot_y, otherDots } = mapData;
 
   const containerClasses = [styles.mapContainer];
+  // While the map is zoomable the browser must not claim the gesture for
+  // itself: `:root`'s `touch-action: pan-x pan-y` (which is what stops the
+  // whole page being pinch-zoomed) otherwise leaves Chrome free to start
+  // scrolling on the first touchmove, and once it has, preventDefault is
+  // ignored for the rest of the gesture.
+  if (expanded) containerClasses.push(styles.mapContainerInteractive);
   if (fillContainer) containerClasses.push(styles.mapContainerFill);
   else if (alwaysExpanded) containerClasses.push(styles.mapContainerExpanded);
   else if (poppedOut) containerClasses.push(styles.mapContainerPoppedOut);
@@ -558,6 +591,7 @@ export function VenueMapView({
     // "pixels" in the map coordinates therefore refer to unscaled pixels.: the
     // map is not aware of scaling, it's done purely in CSS
     <TransformWrapper
+      ref={transformRef}
       disabled={!poppedOut && !expanded} // Disable zoom / pan if the map is in the corner
     >
       {

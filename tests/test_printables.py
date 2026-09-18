@@ -2,6 +2,7 @@
 
 import logging
 import os
+from uuid import uuid4
 
 import pytest
 from PIL import Image
@@ -131,26 +132,16 @@ def test_every_sandbox_code_is_unlimited_and_withdrawable_as_one_batch():
         assert item.batch == printables.SANDBOX_BATCH
 
 
-# The sandbox cards that print as a bare QR code because nobody has drawn
-# them a card yet. Eat-a-bullet is (1, 5): it shares Pewster's damage, and
-# every weapon drawing there is is a standard-delay one, so it has no card of
-# its own. Named here rather than tolerated silently - draw it one and the
-# test below fails, which is the reminder to take it off this list.
-UNDRAWN_SANDBOX_CARDS = {"eat-a-bullet"}
-
-
 def test_every_sandbox_poster_has_a_drawing():
     """A poster is read across a room, so a bare QR code will not do - and
     the drawing a card gets is decided by what it awards. This is the test
     that says why the ammunition poster is 5 bullets and not 20: there is no
-    ammo_20.png."""
+    ammo_20.png. Eat-a-bullet was the one card this used to excuse, until it
+    got a weapon_1_5.png of its own."""
     for card in printables.SANDBOX_CARDS:
-        drawn = base_image_path(card.itype, card.num, card.damage, card.timeout)
-
-        if card.label in UNDRAWN_SANDBOX_CARDS:
-            assert drawn is None, card
-        else:
-            assert drawn is not None, card
+        assert (
+            base_image_path(card.itype, card.num, card.damage, card.timeout) is not None
+        ), card
 
 
 def test_no_two_weapons_are_printed_as_the_same_card():
@@ -279,6 +270,76 @@ def test_withdrawing_a_batch_over_the_api_returns_the_new_list(admin_api_client)
 
     restored = admin_api_client.post("/api/admin_restore_batch?batch=sandbox")
     assert restored.json() == []
+
+
+def test_registering_and_switching_off_one_code_over_the_api(admin_api_client):
+    """The single-code register, end to end: the admin page scans a code into
+    it with the same body a player's collect_item takes, then switches it."""
+    item = ItemModel(
+        id=uuid4(),
+        itype="ammo",
+        data={"num": 5},
+        collected_only_once=False,
+        collected_as_team=False,
+        batch="sandbox",
+        unlimited=True,
+    ).sign()
+
+    registered = admin_api_client.post(
+        "/api/admin_register_code", json={"data": item.to_base64()}
+    ).json()
+
+    assert registered["new"] is True
+    assert registered["code"]["description"] == "5 bullets"
+    assert registered["code"]["unlimited"] is True
+
+    code_id = registered["code"]["id"]
+    switched = admin_api_client.post(
+        f"/api/admin_set_code_enabled?code_id={code_id}&enabled=false"
+    )
+    assert [entry["enabled"] for entry in switched.json()] == [False]
+
+    listed = admin_api_client.get("/api/admin_known_codes")
+    assert [entry["id"] for entry in listed.json()] == [code_id]
+
+    forgotten = admin_api_client.post(f"/api/admin_forget_code?code_id={code_id}")
+    assert forgotten.json() == []
+
+
+def test_identifying_a_code_over_the_api(admin_api_client):
+    """The read-only scanner's endpoint: a sandbox poster read end to end,
+    leaving the code off the switch-off list."""
+    item = ItemModel(
+        id=uuid4(),
+        itype="ammo",
+        data={"num": 5},
+        collected_only_once=False,
+        collected_as_team=False,
+        batch="sandbox",
+        unlimited=True,
+    ).sign()
+
+    identified = admin_api_client.post(
+        "/api/admin_identify_code", json={"data": item.to_base64()}
+    ).json()
+
+    assert identified["kind"] == "item"
+    assert identified["headline"] == "5 bullets"
+    assert identified["verdict"]["tone"] == "good"
+
+    assert admin_api_client.get("/api/admin_known_codes").json() == []
+
+
+def test_identifying_a_code_needs_an_admin(api_client):
+    response = api_client.post("/api/admin_identify_code", json={"data": "nonsense"})
+
+    assert response.status_code == 403
+
+
+def test_registering_a_code_needs_an_admin(api_client):
+    response = api_client.post("/api/admin_register_code", json={"data": "nonsense"})
+
+    assert response.status_code == 403
 
 
 def test_withdrawing_needs_an_admin(api_client):

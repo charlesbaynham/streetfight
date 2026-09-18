@@ -28,7 +28,9 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
 from .image_processing import downscale_jpeg
 from .image_processing import draw_cross_on_image
+from .item_actions import describe_item
 from .items import ItemModel
+from .join_codes import JoinCodeModel
 from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
 from .model import AI_REVIEW_STATE_PENDING
@@ -42,6 +44,7 @@ from .model import Game
 from .model import GameModel
 from .model import Item
 from .model import ItemType
+from .model import KnownCode
 from .model import RevokedBatch
 from .model import Shot
 from .model import ShotModel
@@ -226,6 +229,31 @@ COURIER_ANNOUNCE_INTERVAL_S = 5.0
 # game id -> when its courier position was last announced. In-process and
 # deliberately not durable: losing it costs one extra announcement.
 _courier_announced_at: dict = {}
+
+
+def _parse_or_none(parser, data: str):
+    """Try one of the two code readers, or return None if this is not one.
+
+    Identifying a code means offering the string to each reader in turn, so
+    every way a reader can say "not mine" -- bad base64, JSON that is not a
+    code, a URL carrying the other kind's query parameter -- has to come back
+    as a miss rather than an exception.
+    """
+    try:
+        return parser(data)
+    except (ValueError, KeyError, TypeError):
+        return None
+
+
+def _scan_rule(item: ItemModel) -> str:
+    """How many times a card can be scanned, in the words on the poster."""
+    if item.unlimited:
+        return "Unlimited - the same player can scan it over and over (a poster)"
+    if item.collected_only_once:
+        return "Once ever, by the first player to scan it"
+    if item.collected_as_team:
+        return "Once per team"
+    return "Once per player"
 
 
 class CircleTypes(str, Enum):
@@ -2342,6 +2370,287 @@ class AdminInterface:
             .order_by(RevokedBatch.revoked_at.desc())
             .all()
         ]
+
+    # The single-code register (the other half of withdrawing a batch). The
+    # server has no list of what was minted -- a code is an HMAC over its
+    # payload and nothing else -- so the only way to name one card is to scan
+    # it back in. Everything here is keyed on the item id out of the payload.
+
+    @db_scoped
+    def register_code(self, encoded_item: str) -> dict:
+        """Put a scanned code on the list of codes that can be switched off.
+
+        Idempotent: scanning the same card twice is how an admin checks it is
+        already on the list, so a second scan updates what the payload says
+        and leaves ``enabled`` exactly as they set it.
+        """
+        item = ItemModel.from_base64(encoded_item)
+
+        # Signed first, because an unsigned code is not a code: letting one
+        # onto the list would hand the admin a switch that turns off nothing.
+        signature_error = item.validate_signature()
+        if signature_error:
+            raise HTTPException(403, f"That code is invalid - {signature_error}")
+
+        known = self._session.get(KnownCode, item.id)
+        is_new = known is None
+
+        if is_new:
+            known = KnownCode(id=item.id, enabled=True)
+            self._session.add(known)
+
+        known.item_type = item.itype
+        known.data = item.data_as_json()
+        known.batch = item.batch
+        known.unlimited = item.unlimited
+        known.collected_as_team = item.collected_as_team
+
+        logger.info("register_code %s (new=%s)", item.id, is_new)
+
+        self._session.flush()
+
+        return {
+            "code": self._known_code_payload(known),
+            "new": is_new,
+            "codes": self._known_codes(),
+        }
+
+    @db_scoped
+    def set_code_enabled(self, code_id: UUID, enabled: bool) -> List[dict]:
+        """Switch one registered code on or off. Off is refused at the scan."""
+        known = self._session.get(KnownCode, code_id)
+        if not known:
+            raise HTTPException(404, "That code is not on the list - scan it first.")
+
+        logger.info("set_code_enabled %s -> %s", code_id, enabled)
+        known.enabled = enabled
+
+        return self._known_codes()
+
+    @db_scoped
+    def forget_code(self, code_id: UUID) -> List[dict]:
+        """Take a code off the list, which puts it back to the default.
+
+        The default is collectable, so forgetting a switched-off code turns it
+        back on. This is for a card scanned in by mistake rather than an undo.
+        """
+        known = self._session.get(KnownCode, code_id)
+        if known:
+            logger.info("forget_code %s", code_id)
+            self._session.delete(known)
+
+        return self._known_codes()
+
+    @db_scoped
+    def get_known_codes(self) -> List[dict]:
+        return self._known_codes()
+
+    def _known_codes(self) -> List[dict]:
+        """Every registered code, most recently scanned first."""
+        return [
+            self._known_code_payload(known)
+            for known in self._session.query(KnownCode)
+            .order_by(KnownCode.first_seen.desc())
+            .all()
+        ]
+
+    def _known_code_payload(self, known: KnownCode) -> dict:
+        data = json.loads(known.data) if known.data else {}
+
+        return {
+            "id": str(known.id),
+            "description": describe_item(
+                known.item_type, data, known.collected_as_team
+            ),
+            "item_type": known.item_type.value if known.item_type else None,
+            "batch": known.batch,
+            "unlimited": known.unlimited,
+            "enabled": known.enabled,
+            "first_seen": known.first_seen,
+        }
+
+    # Reading a code without doing anything to it (react-ui/src/AdminScanCode.js).
+    # Every other scanner in the app spends what it sees: the player's collects
+    # the item, the admin's list writes a KnownCode row. This one writes
+    # nothing at all, which is what makes it safe to point at a card found on
+    # the floor mid-game, or at a poster whose print run nobody can now
+    # remember withdrawing.
+
+    @db_scoped
+    def identify_code(self, data: str) -> dict:
+        """What a scanned string is, and what it would do if a player scanned it.
+
+        Read-only: no item is collected, nothing is registered, no row is
+        written. Every QR the game prints is answered - item cards, the pub
+        and sandbox posters, the sign-up link, a team card and a legacy slot
+        code - and anything else is said to be somebody else's QR code rather
+        than reported as an error.
+        """
+        data = (data or "").strip()
+
+        if not data:
+            raise HTTPException(400, "Nothing was scanned")
+
+        item = _parse_or_none(ItemModel.from_base64, data)
+        if item is not None:
+            return self._identify_item_code(item)
+
+        join_code = _parse_or_none(JoinCodeModel.from_base64, data)
+        if join_code is not None:
+            return self._identify_join_code(join_code)
+
+        return {
+            "kind": "unknown",
+            "headline": "Not one of this game's codes",
+            "verdict": {
+                "tone": "bad",
+                "text": "Nothing in the game reads this - somebody else's QR code",
+            },
+            "facts": [{"label": "What was scanned", "value": data[:200]}],
+        }
+
+    def _identify_item_code(self, item: ItemModel) -> dict:
+        """An item card, a pub certificate or a sandbox poster.
+
+        The checks are asked in the order ``UserInterface.collect_item`` asks
+        them, so the verdict names the first thing that would refuse the scan
+        rather than an incidental second one.
+        """
+        # The headline is what the card hands out, so nothing below repeats it:
+        # a phone screen has room for the answer or for the small print, and
+        # an admin reading this is standing in the street.
+        facts = [
+            {
+                "label": "Batch",
+                "value": item.batch or "unbatched (printed before batches existed)",
+            },
+            {"label": "Scanning", "value": _scan_rule(item)},
+            {"label": "Code", "value": str(item.id)},
+        ]
+
+        payload = {
+            "kind": "item",
+            "headline": describe_item(item.itype, item.data, item.collected_as_team),
+            "facts": facts,
+        }
+
+        signature_error = item.validate_signature()
+        if signature_error:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": f"Not a code this server minted - {signature_error}",
+            }
+            return payload
+
+        if (
+            item.batch
+            and self._session.query(RevokedBatch).filter_by(batch=item.batch).first()
+        ):
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": f'Dead: the "{item.batch}" batch has been withdrawn',
+            }
+            return payload
+
+        known = self._session.get(KnownCode, item.id)
+        if known is not None and not known.enabled:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": "Dead: this code was switched off on the Item codes page",
+            }
+            return payload
+
+        collectors = self._item_collectors(item)
+        if collectors and item.collected_only_once and not item.unlimited:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": f"Spent: already collected by {collectors[0]}",
+            }
+            return payload
+
+        if collectors:
+            payload["facts"].append(
+                {"label": "Collected so far by", "value": ", ".join(collectors)}
+            )
+
+        payload["verdict"] = {
+            "tone": "good",
+            "text": "Live - a player can collect this",
+        }
+        return payload
+
+    def _item_collectors(self, item: ItemModel) -> List[str]:
+        """Who has scanned this card already, newest last. Empty if nobody has."""
+        collected = self._session.get(Item, item.id)
+        if collected is None:
+            return []
+
+        return [
+            f"{user.name or 'somebody'}"
+            + (f" ({user.team.name})" if user.team and user.team.name else "")
+            for user in collected.users
+        ]
+
+    def _identify_join_code(self, code: JoinCodeModel) -> dict:
+        """A sign-up link, a team card, or one of the legacy per-slot codes."""
+        team = self._session.get(Team, code.team_id) if code.team_id else None
+
+        if code.team_id is None:
+            headline = "Sign-up link"
+            facts = [
+                {
+                    "label": "Does",
+                    "value": "Puts the scanner in the game with no team, to pick an outfit",
+                }
+            ]
+        elif code.slot is None:
+            headline = f"Team card - {team.name if team else 'unknown team'}"
+            facts = [
+                {
+                    "label": "Does",
+                    "value": "Puts the scanner in that team, keeping the outfit they picked",
+                }
+            ]
+        else:
+            headline = f"Slot {code.slot} - {team.name if team else 'unknown team'}"
+            facts = [
+                {
+                    "label": "Does",
+                    "value": "The old per-slot code: joins that team wearing that outfit",
+                }
+            ]
+
+        facts.append({"label": "Game", "value": str(code.game_id)})
+
+        payload = {"kind": "join", "headline": headline, "facts": facts}
+
+        signature_error = code.validate_signature()
+        if signature_error:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": f"Not a code this server minted - {signature_error}",
+            }
+            return payload
+
+        if self._session.get(Game, code.game_id) is None:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": "Dead: that game is not on this server any more",
+            }
+            return payload
+
+        if code.team_id is not None and team is None:
+            payload["verdict"] = {
+                "tone": "bad",
+                "text": "Dead: that team has been deleted",
+            }
+            return payload
+
+        payload["verdict"] = {
+            "tone": "good",
+            "text": "Live - scanning it joins the game",
+        }
+        return payload
 
     @db_scoped
     def get_locations(self, game_id: UUID = None):

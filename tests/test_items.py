@@ -616,6 +616,136 @@ def test_a_batch_has_to_be_named_to_be_withdrawn():
     assert refusal.value.status_code == 400
 
 
+# Switching off one printed code. The batch above is the blunt instrument --
+# the whole warm-up room at once -- and these are the scalpel: a card scanned
+# back in by an admin, then turned off on its own.
+
+
+def test_a_code_nobody_has_scanned_is_collectable(valid_encoded_ammo, user_in_team):
+    """The default has to be "on": a code is an HMAC over its payload, so the
+    server cannot enumerate what was printed and absence cannot mean no."""
+    assert AdminInterface().get_known_codes() == []
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_registering_a_code_says_what_it_is(valid_encoded_ammo):
+    """The list is read on a phone by somebody holding a box of cards, so it
+    has to say what a code hands out rather than just its id."""
+    result = AdminInterface().register_code(valid_encoded_ammo)
+
+    assert result["new"] is True
+    assert result["code"]["description"] == "1 bullet"
+    assert result["code"]["enabled"] is True
+    assert [code["id"] for code in result["codes"]] == [str(SAMPLE_AMMO_DATA["id"])]
+
+
+def test_registering_a_code_does_not_switch_it_off(valid_encoded_ammo, user_in_team):
+    """Scanning a card onto the list is how you find it, not how you kill it -
+    an admin checking what a card is must not disable it by looking."""
+    AdminInterface().register_code(valid_encoded_ammo)
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_switched_off_code_cannot_be_collected(valid_encoded_ammo, user_in_team):
+    """The point of the whole feature: an infinite poster taken off the wall
+    of the warm-up room without withdrawing the rest of the room."""
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    with pytest.raises(HTTPException) as refusal:
+        UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    assert refusal.value.status_code == 403
+    assert "switched off" in refusal.value.detail
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+
+
+def test_a_switched_off_code_can_be_switched_back_on(valid_encoded_ammo, user_in_team):
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+    codes = AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], True)
+
+    assert [code["enabled"] for code in codes] == [True]
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_switching_off_one_code_leaves_its_batch_alone(user_in_team):
+    """A sandbox poster taken down mid-hour while the rest of the room runs."""
+    switched_off = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+    sibling = (
+        ItemModel(**{**SAMPLE_AMMO_DATA, "id": get_uuid()}, batch="sandbox")
+        .sign()
+        .to_base64()
+    )
+
+    AdminInterface().register_code(switched_off)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    UserInterface(user_in_team).collect_item(sibling)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+    with pytest.raises(HTTPException):
+        UserInterface(user_in_team).collect_item(switched_off)
+
+
+def test_rescanning_a_code_keeps_the_decision_that_was_made_about_it(
+    valid_encoded_ammo,
+):
+    """Scanning a card again is how an admin checks it is already handled, so
+    the second scan must not undo the first one's switch."""
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    result = AdminInterface().register_code(valid_encoded_ammo)
+
+    assert result["new"] is False
+    assert result["code"]["enabled"] is False
+    assert len(result["codes"]) == 1
+
+
+def test_an_unsigned_code_cannot_be_registered(user_in_team):
+    """A switch that turns off nothing is worse than no switch: an unsigned
+    code is refused at collection anyway, so it has no business on the list."""
+    forged = ItemModel(**SAMPLE_AMMO_DATA).to_base64()
+
+    with pytest.raises(HTTPException) as refusal:
+        AdminInterface().register_code(forged)
+
+    assert refusal.value.status_code == 403
+    assert AdminInterface().get_known_codes() == []
+
+
+def test_forgetting_a_code_puts_it_back_to_collectable(
+    valid_encoded_ammo, user_in_team
+):
+    """Taking a row off the list means "back to the default", and the default
+    is on - which is the way out of a card scanned in by mistake."""
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    assert AdminInterface().forget_code(SAMPLE_AMMO_DATA["id"]) == []
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_code_nobody_has_scanned_cannot_be_switched_off():
+    """There is nothing to switch: the server has never seen the payload, so
+    it has no idea what an id names."""
+    with pytest.raises(HTTPException) as refusal:
+        AdminInterface().set_code_enabled(get_uuid(), False)
+
+    assert refusal.value.status_code == 404
+
+
 def test_collect_team_item(two_users_in_different_teams, user_factory):
     user_a1, user_b = two_users_in_different_teams
 
@@ -967,3 +1097,80 @@ def test_starting_armour_makes_a_level_1_card_useless(
 
     UserInterface(user_in_team).collect_item(armour_lv2.to_base64())
     assert UserInterface(user_in_team).get_user_model().hit_points == 3
+
+
+# Reading a code without spending it (react-ui/src/AdminScanCode.js). The
+# other two scanners in the app both change something - one collects the item,
+# one writes a KnownCode row - so the whole point of these is that nothing
+# moves.
+
+
+def test_identifying_an_item_code_says_what_it_hands_out(
+    db_session, valid_encoded_ammo
+):
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["kind"] == "item"
+    assert identified["headline"] == "1 bullet"
+    assert identified["verdict"]["tone"] == "good"
+
+
+def test_identifying_a_code_collects_nothing(valid_encoded_ammo, user_in_team):
+    """The refusal this page exists to avoid: an admin working out what a card
+    is must not spend it, and must not put it on the switch-off list either."""
+    AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 0
+    assert AdminInterface().get_known_codes() == []
+
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+    assert UserInterface(user_in_team).get_user_model().num_bullets == 1
+
+
+def test_a_spent_code_identifies_as_spent(valid_encoded_ammo, user_in_team):
+    """What the page is pulled out of a pocket for: this card is on the floor
+    because somebody already had it."""
+    UserInterface(user_in_team).collect_item(valid_encoded_ammo)
+
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "already collected" in identified["verdict"]["text"]
+
+
+def test_a_withdrawn_batch_identifies_as_dead(user_in_team):
+    card = ItemModel(**SAMPLE_AMMO_DATA, batch="sandbox").sign().to_base64()
+    AdminInterface().withdraw_batch("sandbox")
+
+    identified = AdminInterface().identify_code(card)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "withdrawn" in identified["verdict"]["text"]
+
+
+def test_a_switched_off_code_identifies_as_dead(db_session, valid_encoded_ammo):
+    AdminInterface().register_code(valid_encoded_ammo)
+    AdminInterface().set_code_enabled(SAMPLE_AMMO_DATA["id"], False)
+
+    identified = AdminInterface().identify_code(valid_encoded_ammo)
+
+    assert identified["verdict"]["tone"] == "bad"
+    assert "switched off" in identified["verdict"]["text"]
+
+
+def test_an_unsigned_code_identifies_as_forged(db_session):
+    """Unlike registering one, identifying it answers rather than refusing:
+    "that is not ours" is exactly what the admin is asking."""
+    identified = AdminInterface().identify_code(
+        ItemModel(**SAMPLE_AMMO_DATA).to_base64()
+    )
+
+    assert identified["kind"] == "item"
+    assert identified["verdict"]["tone"] == "bad"
+
+
+def test_identifying_something_that_is_not_a_code_at_all(db_session):
+    identified = AdminInterface().identify_code("https://example.com/lunch")
+
+    assert identified["kind"] == "unknown"
+    assert identified["verdict"]["tone"] == "bad"

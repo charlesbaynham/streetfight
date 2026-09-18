@@ -21,6 +21,7 @@ import React, { useEffect, useState } from "react";
 import { AdminPage, adminDownload } from "./AdminCommon";
 import { JoinCard } from "./JoinQRCodes";
 import { sendAPIRequest } from "./utils";
+import { WEAPONS, WEAPON_LOOT_NAMES } from "./weapons";
 
 import styles from "./AdminPrintables.module.css";
 
@@ -328,12 +329,16 @@ function ItemSheets() {
   const [itype, setItype] = useState("ammo");
   const [num, setNum] = useState(5);
   const [sheets, setSheets] = useState(1);
-  const [damage, setDamage] = useState(1);
-  const [timeout, setTimeoutSeconds] = useState(25);
+  const [weapon, setWeapon] = useState(WEAPON_LOOT_NAMES[0]);
   const [onceOnly, setOnceOnly] = useState(true);
   const [asTeam, setAsTeam] = useState(false);
   const [minutes, setMinutes] = useState(TIMED_TYPES.radar);
   const [batch, setBatch] = useState(DEFAULT_BATCH);
+
+  // A weapon card is one of the named weapons, chosen the same way as on the
+  // per-player select and the one-off item page; the stats are what the card
+  // encodes, not something to type.
+  const [damage, timeout] = WEAPONS[weapon];
 
   const teamable = TEAM_COLLECTABLE_TYPES.includes(itype);
   const timed = itype in TIMED_TYPES;
@@ -406,27 +411,22 @@ function ItemSheets() {
         </Field>
       ) : null}
       {itype === "weapon" ? (
-        <>
-          <Field label="Damage per shot">
-            <input
-              className={styles.input}
-              type="number"
-              min="1"
-              value={damage}
-              onChange={(e) => setDamage(Number(e.target.value))}
-            />
-          </Field>
-          <Field label="Seconds between shots">
-            <input
-              className={styles.input}
-              type="number"
-              min="0"
-              step="0.5"
-              value={timeout}
-              onChange={(e) => setTimeoutSeconds(Number(e.target.value))}
-            />
-          </Field>
-        </>
+        <Field
+          label="Weapon"
+          hint={`${damage} damage per shot, one shot every ${timeout}s.`}
+        >
+          <select
+            className={styles.input}
+            value={weapon}
+            onChange={(e) => setWeapon(e.target.value)}
+          >
+            {WEAPON_LOOT_NAMES.map((name) => (
+              <option key={name} value={name}>
+                {name}
+              </option>
+            ))}
+          </select>
+        </Field>
       ) : null}
       <Field label={`Sheets (${cards} cards)`}>
         <input

@@ -266,7 +266,10 @@ Four things from it that are worth knowing even if you never call the agent:
   - `generate_qr_items.py` (`npm run qrgen`) — the **drop** codes: eight small
     cards on a landscape A4 sheet, to be cut up and hidden. Artwork comes from
     `image_templates/`, named by what the card awards (`ammo_5.png`) or, for a
-    weapon, by its damage — except radar and circle-warning cards, which have
+    weapon, by the (damage, delay) pair it is — `weapon_<damage>.png` at the
+    standard delay, `weapon_<damage>_<delay>.png` otherwise, since a weapon's
+    drawing has its name written on it in ink and Pewster and Eat-a-bullet
+    share a damage — except radar and circle-warning cards, which have
     one drawing each (`SINGLE_ARTWORK_TYPES`) because what varies for them is a
     number of minutes the picture does not say. Every code minted is recorded
     in `qr_codes.csv`, whose last column is the batch; the file has no header
@@ -316,13 +319,14 @@ Four things from it that are worth knowing even if you never call the agent:
     no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
     card has artwork. The page's last panel prints nothing: **Withdraw codes**
     (`RevokedBatch` in `model.py`, `AdminInterface.withdraw_batch` /
-    `restore_batch`) is the only recall a printed code has, since a card
+    `restore_batch`) is the recall a whole print run has, since a card
     cannot be un-printed and rotating `SECRET_KEY` would take the team cards
     with it. `collect_item` checks it immediately after the signature, before
     anything about the player is looked at — the card is dead for everybody.
     The row's presence is the whole state, so un-withdrawing is a delete, and
     a code minted before batches existed carries none and can never be
-    withdrawn this way. The reason the module exists at all is the signature: a
+    withdrawn this way. Recalling *one* card is the **Item codes** page
+    instead (`model.KnownCode`, `react-ui/src/AdminCodes.js`) — see below. The reason the module exists at all is the signature: a
     code is signed with the `SECRET_KEY` that minted it and carries that
     machine's `WEBSITE_URL`, so a run done from a checkout whose `.env` has
     drifted is a stack of paper nobody at the party can scan, and the failure
@@ -338,6 +342,42 @@ Four things from it that are worth knowing even if you never call the agent:
     `nix/streetfight.nix` points it at `${stateDir}/qr_codes.csv` instead.
     Failing to write it is still only a warning, rather than a lost print
     run.
+  - The **Item codes** page (`/admin/codes`, `react-ui/src/AdminCodes.js`) is
+    the other half of that recall, at the granularity of one card
+    (`model.KnownCode`, `AdminInterface.register_code` / `set_code_enabled` /
+    `forget_code`). Withdrawing a batch kills a print run; this kills the one
+    infinite poster that walked out of the warm-up room. It has to be built
+    backwards, because the server holds **no register of what was minted** —
+    a code is an HMAC over its payload and nothing else, which is the whole
+    reason printing decouples from deploying — so there is no list to pick
+    from and no way to make one except by pointing a camera at a card that
+    exists. Hence the shape: **absence means collectable**, a row is a code
+    somebody scanned in, and `enabled` is what they decided about it.
+    Forgetting a row is therefore not an undo but a return to the default,
+    which for a switched-off code means switching it back on. `collect_item`
+    asks this immediately after the batch check and for the same reason — the
+    card is dead for everybody, so the answer cannot depend on who scanned
+    it — and registering a code deliberately does **not** collect it, since an
+    admin identifying a card must not spend it. The camera half is
+    `useQRScanLoop.js`, lifted out of `QRParser.js` so the player's scanner
+    (which collects what it sees) and this one (which only registers it)
+    are one loop with two sinks — now three, with the read-only scanner below.
+  - The **What's this code?** page (`/admin/scan`,
+    `react-ui/src/AdminScanCode.js` → `AdminInterface.identify_code`) is the
+    third sink on that loop, and the only one that **writes nothing at all**:
+    no item collected, no `KnownCode` row. That is the whole point — the
+    question an admin has mid-game, holding a card found on the floor or a
+    poster nobody can remember withdrawing, is "what is this and would it
+    still work?", and both other scanners answer it by spending the card.
+    It reads **join** codes as well as item codes (`_parse_or_none` offers the
+    string to each reader in turn), because a team card is the one piece of
+    paper on the night whose meaning an admin cannot get at any other way:
+    scanning it with their own phone would move them into that team. The
+    verdict asks the same questions in the same order `collect_item` does —
+    signature, withdrawn batch, switched-off code, already collected — so it
+    names the first thing that would refuse the scan rather than an
+    incidental second one, and a page that said "live" would be wrong if the
+    order drifted.
   - `team_cards.py` — the **team** cards (roadmap R15): one A4 portrait page
     per team, a Ministry of War "notice of conscription" carrying that team's
     door code, which players scan on the night to join a team. Same toolchain
@@ -822,10 +862,16 @@ Four things from it that are worth knowing even if you never call the agent:
     not generated by an image model: every model tried resynthesised rather
     than traced and got the roads or the scale wrong. It labels whatever is in
     the venue's `landmarks`, so adding a pub and re-running is the whole
-    change. It writes the drawing as **two SVG layers** as well as the JPEG the
-    app loads — `map` (roads, water, parks, and where doodles belong) and
-    `handwriting` (every word, and the arrows that point at things) — so either
-    can be redrawn by hand without the other. Sepia paper with the water and
+    change. It writes the drawing as **three SVG layers** as well as the JPEG
+    the app loads — `map` (roads, water, parks), `doodles` and `handwriting`
+    (every word, and the arrows that point at things) — so any one can be
+    redrawn by hand without the others. The doodles are the one thing an
+    image model draws (`doodle_venue_map.py`, Gemini Flash via OpenRouter):
+    one small pen sketch per pub from the bundle's `doodles.json`, asked for
+    as black on white and made transparent here, content-addressed so a
+    re-run spends nothing. The renderer places each beside its pub in the
+    emptiest paper, never over a name — the model never sees the map, so it
+    cannot move anything on it. Sepia paper with the water and
     parks coloured in; the palette is four constants at the top of that file,
     and the road corridors are the paper colour rather than white. Every file it writes is signed
     with a hash of itself, and it **refuses to overwrite a layer that has been
@@ -979,15 +1025,50 @@ pytest -k "appeal"                            # by name across the suite
 cd react-ui && CI=true npm test -- ShotQueue  # frontend, matching files only
 
 # Whole suite — CI's job, not usually yours
-pytest                   # backend suite (setup.cfg sets testpaths = tests)
+pytest -n auto --dist worksteal   # backend suite in parallel (see below)
+pytest                   # ...serially, if a failure needs unmuddled output
 pytest -m "not selenium" # default scope, skipping browser tests
 pytest --runselenium     # include selenium/browser integration tests
 cd react-ui && CI=true npm test  # all frontend tests (CI=true: no watch mode)
 npm test                 # everything: pytest then react-ui tests
 ```
 
-CI runs the backend tests via `nix develop -c pytest`
-(`.github/workflows/test_backend.yml`).
+CI runs the backend tests via `nix develop .#ci -c pytest -n auto --dist
+worksteal` (`.github/workflows/test_backend.yml`), and only once per commit: both test
+workflows trigger on `pull_request` plus pushes to master, because
+`on: [push, pull_request]` fired *both* for every commit on a branch with a
+pull request open and ran the whole suite twice on one SHA. They also cancel a
+run the next push has superseded.
+
+**`-n auto` works because nothing in the suite is shared between workers**, and
+keeping it that way is the price of the parallelism:
+
+- Each worker gets its own SQLite file, named after `PYTEST_XDIST_WORKER`
+  (`tests/db_url.py`). `db_session` rebuilds the schema with `drop_all` between
+  tests, so two workers on one file would drop each other's tables mid-test.
+  `DATABASE_URL` is set at the top of `conftest.py` rather than in a fixture
+  because `backend.database` calls `load()` at *import* time.
+- Each worker gets its own backend log (`tests/quiet_logs.py` →
+  `BACKEND_LOG_FILE`, which defaults to the `./logs/backend.log` the deployment
+  expects). `setup_logging()`'s `doRollover()` renames the numbered backups in
+  sequence, and four processes doing that to one file race.
+- The suite runs with `LOG_LEVEL=WARNING` and `DEBUG_DATABASE` off, overriding
+  `.env.dev`'s developer settings. That is only ~5% of the runtime, but it is
+  what stops a run writing 40MB to `logs/`.  `STREETFIGHT_TEST_DEBUG_LOGS=1`
+  restores them for a test you are debugging.
+
+Anything new that writes to a fixed path outside `tmp_path` needs the same
+treatment. `qr_codes.csv` already has it, via `QR_LOGFILE`.
+
+Where the time actually goes: seven tests in `test_demo_game.py` and
+`test_test_world.py` are over half the suite's serial runtime, because each
+provisions thirty players through the real allocator against a fresh database.
+That is the work those tests are for, so the fix was to spread them over cores
+rather than to trim them. Two consequences: `--dist worksteal` is worth real
+time over xdist's default `--dist load` (169s against 236s), because dispatching
+in collection order strands those tests on one worker at the end of the run;
+and the longest single test — 76s — sets a floor that no amount of scheduling
+gets under, so four cores buy about 3.1×, not 4×.
 
 ## Lint / format / pre-commit
 
@@ -1259,6 +1340,15 @@ Three deployment targets share one service definition:
   has a second half: `merge_user` and `delete_user` carry `User.game_id` as
   well as `team_id`, since a stray may be a signed-up player with no team at
   all — see the `game_id` bullet below.
+- **The map's pinch-to-zoom is a shim over `react-zoom-pan-pinch` 3.x.** That
+  version counts any `touchstart` within 200 ms of the previous one as the
+  second tap of a double tap and ignores it, which is every pinch there is —
+  a phone delivers one touchstart per finger, tens of milliseconds apart. So
+  `MapView.js` clears the library's `lastTouch` from a capture-phase listener
+  as soon as a second finger lands, and `.mapContainerInteractive` declares
+  `touch-action: none` on the expanded map so Chrome does not claim the
+  gesture as a page scroll before the library's first `preventDefault`. Both
+  go when the library is upgraded to 4.x, which fixed it upstream.
 - **`Shot.heading` is captured, not consumed.** The compass heading
   `MyWebcam.js` records at the moment of a shot exists because it cannot be
   recovered after a game night. Nothing in `backend/shot_identification.py` or

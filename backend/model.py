@@ -631,6 +631,50 @@ class RevokedBatch(Base):
     revoked_at = Column(DateTime, server_default=func.now())
 
 
+class KnownCode(Base):
+    """A printed code an admin has scanned back in, so that it can be switched off.
+
+    :class:`RevokedBatch` withdraws a whole print run at once, which is the
+    right shape for closing the warm-up room but no help at all when one card
+    has to go: a code is an HMAC over its payload and nothing else, so the
+    server has no register of what was minted and cannot offer a list to pick
+    from. This table *is* that register, built the only way the cryptography
+    allows - by pointing the admin's camera at a card that actually exists.
+
+    So the default is "not here": a code nobody has scanned in is collectable,
+    exactly as it was before this table existed. A row is a code somebody has
+    taken an interest in, and ``enabled`` is what they decided. Forgetting a
+    row therefore means "back to the default", which for a switched-off code
+    is switching it back on - the page says so rather than offering both.
+
+    The payload fields are copied in so the list can say what a code *is*
+    ("5 bullets, sandbox") without the admin having to remember which card
+    they scanned. They are a snapshot of what was scanned, not a second
+    source of truth: nothing reads them back into a collection.
+    """
+
+    __tablename__ = "known_codes"
+
+    id = Column(UUIDType, primary_key=True, nullable=False)
+    "The item id out of the signed payload - what a scan is matched on."
+
+    # An epoch second, like Drop.time_created and unlike Item's DateTime: the
+    # list is read on an admin's phone, which is on British time while the
+    # droplet is on UTC, and a number the browser hands straight to Date()
+    # cannot pick up the wrong timezone on the way. It also has the
+    # resolution to order a handful of cards scanned in one go, which
+    # CURRENT_TIMESTAMP's whole seconds does not.
+    first_seen = Column(Float, nullable=False, default=time.time)
+
+    enabled = Column(Boolean, default=True, nullable=False)
+
+    item_type = Column(Enum(ItemType))
+    data = Column(String)
+    batch = Column(String, nullable=True)
+    unlimited = Column(Boolean, default=False, nullable=False)
+    collected_as_team = Column(Boolean, default=False, nullable=False)
+
+
 class Drop(Base):
     """A crate the courier has put on the ground (M4.3).
 

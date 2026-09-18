@@ -11,6 +11,12 @@ export const WEAPONS = {
   [prose.weapons.eatABullet]: [1, 5],
 };
 
+// A loot drop for "No weapon" makes no sense - that entry exists only for
+// AdminMode's per-player select, to describe a player who currently has none.
+export const WEAPON_LOOT_NAMES = Object.keys(WEAPONS).filter(
+  (name) => name !== prose.weapons.noWeapon,
+);
+
 export function weaponName(user) {
   for (const [name, [damage, timeout]] of Object.entries(WEAPONS)) {
     if (user.shot_damage === damage && user.shot_timeout === timeout)

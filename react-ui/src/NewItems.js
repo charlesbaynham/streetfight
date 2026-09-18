@@ -3,7 +3,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import QRCode from "react-qr-code";
 
 import { sendAPIRequest } from "./utils";
-import { WEAPONS } from "./weapons";
+import { WEAPONS, WEAPON_LOOT_NAMES } from "./weapons";
 
 const ITEM_PARAMS = {
   ammo: ["num"],
@@ -19,13 +19,6 @@ const ITEM_PARAMS = {
 // The batch minted into the code, so a set can be withdrawn together. "game"
 // is what everything printed for the night itself carries.
 const DEFAULT_BATCH = "game";
-
-// A loot drop for "No weapon" makes no sense - that entry exists only for
-// AdminMode's per-player select, to describe a player who currently has
-// none.
-const WEAPON_LOOT_NAMES = Object.keys(WEAPONS).filter(
-  (name) => name !== "No weapon",
-);
 
 // The weapon select is controlled by name, but what's actually held in
 // selectedItemData is the (damage, timeout) pair updateItemQR posts - so

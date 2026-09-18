@@ -50,9 +50,13 @@ def setup_logging():
 
     uvicorn_logger.propagate = True
 
-    # Add a file handler
-    Path("./logs/").mkdir(exist_ok=True)
-    rotating_handler = RotatingFileHandler("./logs/backend.log", backupCount=10)
+    # Add a file handler. BACKEND_LOG_FILE moves it: the test suite gives each
+    # xdist worker its own, since doRollover() renames the numbered backups in
+    # sequence and four processes doing that to one file race each other into a
+    # FileNotFoundError at import time.
+    log_file = Path(os.environ.get("BACKEND_LOG_FILE") or "./logs/backend.log")
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    rotating_handler = RotatingFileHandler(log_file, backupCount=10)
 
     # Configure the format for log messages
     formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -1563,6 +1567,60 @@ async def admin_restore_batch(batch: str) -> List[dict]:
 async def admin_revoked_batches() -> List[dict]:
     """Every batch currently withdrawn, most recent first."""
     return AdminInterface().get_revoked_batches()
+
+
+# Switching off one printed code (react-ui/src/AdminCodes.js). Withdrawing a
+# batch is the blunt instrument; this is the scalpel, and it has to be pointed
+# at a card that exists because the server has no register of what was minted.
+
+
+@admin_method(path="/admin_register_code", method="POST")
+async def admin_register_code(encoded_item: _EncodedItem) -> dict:
+    """Put a scanned code onto the list of codes that can be switched off.
+
+    Takes the same ``{"data": <url-or-b64>}`` body a player's ``collect_item``
+    does, because it is fed by the same scanner pointed at the same card.
+    Nothing is collected and nobody's inventory changes.
+    """
+    logger.info("admin_register_code")
+    try:
+        return AdminInterface().register_code(encoded_item.data)
+    except ValueError:
+        raise HTTPException(400, "Malformed data")
+
+
+@admin_method(path="/admin_set_code_enabled", method="POST")
+async def admin_set_code_enabled(code_id: UUID, enabled: bool) -> List[dict]:
+    """Switch one registered code on or off, wherever the paper has got to."""
+    logger.info("admin_set_code_enabled %s -> %s", code_id, enabled)
+    return AdminInterface().set_code_enabled(code_id, enabled)
+
+
+@admin_method(path="/admin_forget_code", method="POST")
+async def admin_forget_code(code_id: UUID) -> List[dict]:
+    """Take a code off the list, putting it back to the collectable default."""
+    logger.info("admin_forget_code %s", code_id)
+    return AdminInterface().forget_code(code_id)
+
+
+@admin_method(path="/admin_identify_code", method="POST")
+async def admin_identify_code(encoded_item: _EncodedItem) -> dict:
+    """Say what a scanned code is, changing nothing.
+
+    The read-only scanner (react-ui/src/AdminScanCode.js). Same
+    ``{"data": <url-or-b64>}`` body as ``collect_item`` and
+    ``admin_register_code``, since it is the same camera pointed at the same
+    card - but unlike both of those it writes nothing: no item is collected
+    and no code is put on the list.
+    """
+    logger.info("admin_identify_code")
+    return AdminInterface().identify_code(encoded_item.data)
+
+
+@admin_method(path="/admin_known_codes", method="GET")
+async def admin_known_codes() -> List[dict]:
+    """Every code an admin has scanned in, most recently scanned first."""
+    return AdminInterface().get_known_codes()
 
 
 def _pdf_response(pdf: bytes, filename: str) -> Response:

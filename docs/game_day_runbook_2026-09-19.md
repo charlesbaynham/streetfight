@@ -73,11 +73,12 @@ which is how you tell one from a drop card while sorting the print run. They
 carry the same drawings, so anything without that word across the top belongs
 in the box to be hidden round the town, not on a wall.
 
-Two things about the drawings, so they are not a surprise on the wall: the
+One thing about the drawings, so it is not a surprise on the wall: the
 ammunition poster is **5 bullets, not 20** (there is no 20-bullet drawing, and
-being unlimited, five a scan is no less than twenty), and the **Eat-a-bullet
-poster's drawing reads "Pewster / Damage: 1"** — true of both weapons, since
-only the delay differs. The corner tag and the log say which is which.
+being unlimited, five a scan is no less than twenty). Eat-a-bullet has its own
+card now (`weapon_1_5.png`, a teal frame with a pink **RAPID FIRE** flash in
+the corner — it is the one weapon whose 5 s cooldown is worth shouting about),
+so all six posters name what they hand out.
 
 ### The map poster
 
@@ -241,6 +242,17 @@ In this order. Steps 1–3 are on **Admin home**, in the game's panel.
    gets a red warning first, because withdrawing `game` would turn off every
    card in the town. If you do it by mistake, **Allow again** is in the list
    directly underneath.
+
+   Withdrawing is per *batch*. To kill one card on its own — an infinite
+   poster that walked out of the warm-up room, say — use the **Item codes**
+   page instead: scan that code in, then switch it off.
+
+   To find out what a card *is* without touching anything, the
+   **What's this code?** page (`/admin/scan`) reads any code the game prints —
+   item card, pub certificate, sandbox poster, team card, sign-up link — and
+   says what it hands out and whether it still works. It collects nothing and
+   registers nothing, so it is the safe one to point at a card you are about
+   to hide again.
 4. **Leave and get clear of the area.** About ten minutes.
 5. **WhatsApp**: "the game has begun".
 6. **Start.** The **Start game** button. Player apps come back live.
@@ -494,9 +506,14 @@ one place. Each names the PR that made it.
   taken off on 17 September. So a card found by a stranger says nothing about
   what it is — worth knowing if somebody rings the police about a QR code
   taped under a bench.
-- **The sandbox ammunition poster is 5 bullets, not 20, and Eat-a-bullet
-  borrows Pewster's drawing** (#263). Both because a card's picture is chosen
-  by what it awards, and a poster read across a room has to say what it is.
+- **The sandbox ammunition poster is 5 bullets, not 20** (#263), because a
+  card's picture is chosen by what it awards and a poster read across a room
+  has to say what it is. Eat-a-bullet used to be the other half of this — it
+  printed as a bare QR code, having no drawing of its own — and now has
+  `weapon_1_5.png`: the shared card frame in a teal none of the others use,
+  the gun the player's HUD already draws for it, Pewster's "Damage: 1", and a
+  **RAPID FIRE** flash in the bottom-right corner, which is the only thing on
+  any card that says a weapon's cooldown out loud.
 - **Radar and circle-warning cards use placeholder artwork** (#259) — an
   existing hand-drawn frame with the item's name written in place of the
   illustration. The number of minutes is deliberately not on the card, since
@@ -520,6 +537,15 @@ one place. Each names the PR that made it.
 - **A withdrawn code is dead for everybody** (#265) — the check sits before
   anything about the player is looked at, so the answer never depends on who
   scanned it.
+- **One code can be switched off on its own**, on the **Item codes** page —
+  but only after it has been scanned in there, because the server has no
+  register of what was minted. So if a single card has to die mid-evening,
+  that page needs the card (or its link) in hand; a batch does not.
+- **Reading a code is a separate page from switching one off**: the
+  **What's this code?** page writes nothing, so working out what a card is
+  never spends it or puts it on the switch-off list. It answers join codes
+  too, which matters for a team card — scanning one with your own phone would
+  move you into that team.
 
 ### Countdown, courier and maps
 

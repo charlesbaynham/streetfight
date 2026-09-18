@@ -1,10 +1,23 @@
 .mapContainer {
   position: relative;
   overflow: hidden;
-  background-color: white;
+  /* Matches the map image's own sepia paper ground
+     (.claude/skills/draw-venue-map's PAPER, #f2e7d0), so any edge the image
+     doesn't cover reads as more of the same sheet rather than a white gap. */
+  background-color: #f2e7d0;
   box-sizing: content-box;
   box-shadow: 0 0 0.2em 0.2em rgba(0, 0, 0, 0.6);
   border-radius: 0.5em;
+}
+
+/* A zoomable map owns its gestures outright. Without this the effective
+   touch-action is `:root`'s `pan-x pan-y`, so Chrome on Android treats a
+   drag as a possible page scroll and a pinch as a two-finger one, and can
+   commit to that before the library's first preventDefault lands. Only while
+   the map is expanded: a corner map is a tap target sitting on a page the
+   player still has to be able to scroll past. */
+.mapContainerInteractive {
+  touch-action: none;
 }
 
 .mapContainerPoppedOut {
@@ -174,7 +187,7 @@
   max-height: 100%;
   /* The chrome goes too. The only user of this is the spectator screen, whose
      .mapPanel supplies its own mount board - paper ground, radius and a
-     layered shadow - and .mapContainer's white background, radius and drop
+     layered shadow - and .mapContainer's own background, radius and drop
      shadow would sit inside that as a visible second box. */
   background-color: transparent;
   border-radius: 0;

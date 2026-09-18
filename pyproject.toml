@@ -37,6 +37,10 @@ dev = [
   "pytest",
   "pytest-asyncio",
   "pytest-mock",
+  # `pytest -n auto` fans the suite out over the machine's cores. Safe because
+  # every worker gets its own SQLite file and its own backend log: see
+  # tests/db_url.py and tests/quiet_logs.py.
+  "pytest-xdist",
   "requests",
   # Not packaged in nixpkgs, so unavailable under the old flake — the selenium
   # tier in tests/test_selenium.py was commented out for want of it.

@@ -328,10 +328,17 @@ what it awards and a poster read across a room has to say what it is:
 
 - **Ammunition is 5 bullets, not 20** — there is an `ammo_5.png` and no
   `ammo_20.png`, and being unlimited, five a scan is no less than twenty.
-- **Eat-a-bullet and Pewster share `weapon_1.png`**, so the Eat-a-bullet
-  poster's drawing reads "Pewster / Damage: 1" (true of both; only the delay
-  differs). Fixing it is artwork Charles would have to draw, plus keying the
-  weapon lookup on the pair rather than the damage.
+- **Eat-a-bullet had no drawing of its own.** It shared `weapon_1.png` with
+  Pewster, so its poster read "Pewster / Damage: 1"; keying the artwork on the
+  (damage, delay) pair fixed the wrong name but left it printing as a bare QR
+  code. It has `weapon_1_5.png` now, composited from what the pack already
+  held — the card frame every other card shares, recoloured teal; the gun the
+  player's HUD draws for (1, 5), which carries the name in its own lettering;
+  and Pewster's "Damage: 1", which is true of this weapon too. Plus the one
+  thing that is genuinely new: a **RAPID FIRE** flash in the bottom-right
+  corner, since the 5 s cooldown is the whole difference between this weapon
+  and Pewster and nothing else on the card says it. The frame is teal rather
+  than the red the gun's own crest suggests, because the flash is hot pink.
 
 **For M9's runbook:** the sandbox posters are withdrawn by withdrawing the
 `sandbox` batch at 16:00.
@@ -407,6 +414,16 @@ fall behind the list again. `venues.py` moved to the new image and crop
 `corner_width_km` 0.13), and `tests/test_map_poster.py` was updated: it
 asserted House Absolute was dead centre, which the re-crop deliberately ended.
 **The map poster is unblocked.**
+
+**Doodles, 18 Sept.** The rendered map was accurate and dull: none of the
+little drawings that make the Kingston map. Those are the one thing an image
+model *can* do — a doodle carries no geometry to get wrong — so
+`doodle_venue_map.py` asks Gemini Flash for one small pen sketch per pub
+(subjects in `docs/venue_map_westminster/doodles.json`: an oak for the Royal
+Oak, a boar for the Blue Boar, a sedan chair for the Two Chairmen, a pelican
+on the park, an eight on the river), converts black-on-white to transparent
+sepia ink, and the renderer places each beside its pub in the emptiest paper,
+never over a name. The model never sees the map.
 
 ### M0.7 — A printable map poster *(status: shipped 17 Sept, PR #272; unblocked 17 Sept when M0.6's map landed)*
 
@@ -552,6 +569,24 @@ button names the batch it is about to withdraw ("Withdraw \"sandbox\""), with a
 red warning for any batch that is not the sandbox, because mistyping `game`
 there would turn off every card in the town. One press rather than two, since
 **Allow again** is in the list directly beneath it.
+
+### M2.3 — Switch off one code *(status: shipped 2026-09-18)*
+
+The infinite sandbox posters work, and a batch is the wrong granularity for
+the one that walks out of the warm-up room in somebody's pocket. New table
+`known_codes(id PK, first_seen, enabled, item_type, data, batch, unlimited,
+collected_as_team)` — a new table, so it creates itself on deploy (rule 2).
+
+The shape follows from the cryptography rather than from taste: a code is an
+HMAC over its payload and nothing else, so the server cannot enumerate what
+was printed, there is no list to pick from, and **absence has to mean
+collectable**. A code therefore has to be *scanned back in* before it can be
+switched off, which is what the new **Item codes** admin page
+(`/admin/codes`) is for — the player's own scan loop (`useQRScanLoop.js`,
+lifted out of `QRParser.js`) pointed at a different sink, plus a paste field
+for a code copied out of `qr_codes.csv`. Registering a code does not collect
+it. `collect_item` asks the same question it asks of batches, in the same
+place and for the same reason.
 
 ---
 
