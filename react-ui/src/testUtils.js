@@ -353,6 +353,11 @@ export function makeUser(overrides = {}) {
     next_event_kind: null,
     next_event_at: null,
     next_event_note: null,
+    next_circle_lat: null,
+    next_circle_long: null,
+    next_circle_radius: null,
+    next_circle_public: false,
+    circle_plan_index: 0,
     ...overrides,
   };
 }
@@ -400,6 +405,11 @@ export function makeGame(overrides = {}) {
     next_event_kind: null,
     next_event_at: null,
     next_event_note: null,
+    next_circle_lat: null,
+    next_circle_long: null,
+    next_circle_radius: null,
+    next_circle_public: false,
+    circle_plan_index: 0,
     ...overrides,
   };
 }

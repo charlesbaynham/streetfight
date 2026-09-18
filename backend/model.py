@@ -34,6 +34,13 @@ DEFAULT_SHOT_TIMEOUT = 25
 BASIC_WEAPON = (1, DEFAULT_SHOT_TIMEOUT)
 STARTING_HIT_POINTS = 2
 
+# What User.circle_warning_until holds while a player is holding an early
+# circle warning (M6.2). The card lasts until the circle it is showing is
+# announced rather than for a number of minutes, and "no expiry" in a column
+# that answers "when does this stop" is infinity. Never serialised - the
+# column is read on the server and nowhere else.
+CIRCLE_WARNING_UNTIL_ANNOUNCED = float("inf")
+
 # The values Shot.ai_review_state can take. They live here, next to the column,
 # rather than in backend.ai_shot_review so that code which only reads the column
 # does not have to import the review worker.
@@ -176,6 +183,13 @@ class Game(Base):
     # admin map and the spectator screen read the columns directly and always
     # see it.
     next_circle_public = Column(Boolean, nullable=False, default=False)
+
+    # How far through the night's circle plan (backend/circles.py) this game
+    # is: the index of the entry currently armed as NEXT, which the game
+    # advances by itself as each circle closes. Placing a circle by hand does
+    # not move it - an admin who overrides one circle still gets the plan's
+    # next one afterwards.
+    circle_plan_index = Column(Integer, nullable=False, default=0)
 
     ticker_update_tag = Column(Integer(), default=random_counter_value)
 
@@ -421,9 +435,14 @@ class User(Base):
     # it up, and a reset that clears the items leaves nothing behind either.
     radar_until = Column(Float, nullable=True)
 
-    # The early circle-warning card (M6.2), the same shape: the epoch second
-    # at which the holder stops seeing the next circle before it is announced.
-    # Null or past means no warning.
+    # The early circle-warning card (M6.2), the same shape - but it does not
+    # run out on a clock. The card shows the private next circle until that
+    # circle is *announced*, which is the moment its advantage ends anyway, so
+    # a held warning is written as CIRCLE_WARNING_UNTIL_ANNOUNCED (infinity)
+    # rather than a deadline and is cleared when the cue makes the circle
+    # public. Keeping the column a "when does it stop" float means every read
+    # of it is still the same comparison, and the day a timed version is
+    # wanted again it is one write.
     circle_warning_until = Column(Float, nullable=True)
 
     # The player's identity slot (backend/identity/): a member of
@@ -738,6 +757,7 @@ class GameModel(pydantic.BaseModel):
     courier_accuracy: Optional[float] = None
 
     next_circle_public: bool = False
+    circle_plan_index: int = 0
 
     model_config = pydantic.ConfigDict(from_attributes=True, extra="forbid")
 

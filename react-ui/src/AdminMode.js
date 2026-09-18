@@ -316,7 +316,7 @@ function GamePanel({ game }) {
 
         <Col md>
           <h3>Circles</h3>
-          <CircleControl game_id={game.id} />
+          <CircleControl game={game} />
 
           <h3>Countdown</h3>
           <EventCue game={game} />

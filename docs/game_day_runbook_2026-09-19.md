@@ -55,9 +55,10 @@ touching the real cards.
 - **Radar** cards: **Item** = `radar`, then **Minutes it lasts** (defaults to
   5). Print a few — the card is worth as much to everybody else as to the
   holder, since the scan is announced.
-- **Circle warning** cards: **Item** = `circle_warning`, **Minutes it lasts**
-  (defaults to 10). Worth hiding somewhere that takes effort to reach; it is
-  the only card that buys information rather than equipment.
+- **Circle warning** cards: **Item** = `circle_warning`. No number to set: the
+  card shows the next circle until that circle is announced to everybody,
+  however long that takes. Worth hiding somewhere that takes effort to reach;
+  it is the only card that buys information rather than equipment.
 
 ### The sandbox posters
 
@@ -111,6 +112,34 @@ anyway. Back up `/data` first (below).
 
 ## Friday 18 September
 
+### Put the circle coordinates on the box *(critical — do this first)*
+
+The four circle centres are not in the repository; they are read from the live
+env file at startup. Without them the circle plan has nothing to arm, every
+circle has to be placed by hand, and the early-warning cards are worth
+nothing.
+
+On the droplet, in `/data/secrets/streetfight.env`, one line each:
+
+```
+LANDMARK_CIRCLE0=51.4958,-0.1309
+LANDMARK_CIRCLE1=...
+LANDMARK_CIRCLE2=...
+LANDMARK_CIRCLE3=...
+```
+
+All four. `LANDMARK_DROP_<NAME>=` lines go in the same way if you want the
+drop spots in the landmark dropdown; those are optional. Then restart the
+service — the file is read at startup, not per request.
+
+**Check it took**: on **Admin home**, the **Circles** panel should read
+`Plan: CIRCLE0 (0.7 km), on the map and private until you cue it` after a
+**Reset to start state**, and not "no coordinates — place it by hand".
+
+Radii live in code (`circles.CIRCLE_PLAN`: 0.70, 0.42, 0.18, 0.05 km), so if
+the marked-up map disagrees with those, that tuple is the one thing to change
+and it needs a deploy.
+
 ### Resize the droplet
 
 Live runs on a very small DigitalOcean droplet, sized for sign-ups: not for
@@ -140,9 +169,13 @@ at `https://streetfight-staging.i.houseabsolute.co.uk`:
   first — that tap is also what unlocks audio in the browser.
 - **A radar card**: scan one and check the dots and the countdown strip
   appear, and that the ticker announces it.
-- **A circle-warning card**: place a NEXT circle without cueing it, check it
+- **A circle-warning card**: with a NEXT circle placed and not cued, check it
   is invisible on an ordinary player's map, then scan the card and check it
-  appears on the holder's.
+  appears on the holder's — and disappears from a second scan's reach once you
+  cue the countdown.
+- **The circle plan.** Set `LANDMARK_CIRCLE0`…`3` in staging's env file, reset
+  to start state, and check the **Circles** panel says CIRCLE0 is on the map
+  and private. Close it and check CIRCLE1 arms itself.
 
 Staging's database starts empty; press **Fire demo game** on the admin page to
 fill it with the thirty-player sample cast.
@@ -194,6 +227,11 @@ In this order. Steps 1–3 are on **Admin home**, in the game's panel.
    item, all three circles and any cued countdown. Everyone goes to 0 bullets,
    2 hit points (armour on), the basic Pewster and 3 appeals.
 
+   It then **places CIRCLE0 straight back**, privately: the reset puts the
+   game at the top of the circle plan and arms its first circle, so the real
+   game starts with a circle already waiting for whoever finds an
+   early-warning card.
+
    It keeps: reference photos, identities and outfits, teams, team leaders and
    last known locations. Nothing earned at the door is lost.
 3. **Withdraw the sandbox codes.** On **Printables**, the **Withdraw codes**
@@ -227,35 +265,43 @@ Circles roughly every 45 minutes, alternating with drops.
 
 ### Cue a circle
 
-**Two acts, and players see nothing until the second one.** On **Admin home**,
-in the game panel: **Circles** first, then **Countdown**.
+**One act, because the circle is already placed.** The game runs the four
+circles off a plan (`CIRCLE0`…`CIRCLE3`, coordinates from the env file) and
+arms the next one privately the instant the last one closes, so the only
+thing left for you is:
 
-1. **Place the NEXT circle** where it is going — landmark or coordinates, in
-   the **Circles** block. The radius reminders are printed under it. This
-   announces nothing and draws nothing on any player's map. You can place it,
-   look at it on your own map, move it, and think again, and nobody knows.
-2. **Cue it.** In **Countdown**: **Event** = "circle closes", minutes
+1. **Cue it.** In **Countdown**: **Event** = "circle closes", minutes
    (default **10**), **Start countdown**.
+
+The **Circles** panel above says which planned circle is up, its radius, and
+whether it is on the map — read it before you press. If you want the circle
+somewhere else, place NEXT by hand there first (landmark or coordinates, the
+radius reminders are printed under it); the plan carries on afterwards
+regardless. **Place planned circle** re-arms the one the game is on, and
+**Skip to the next one** moves the plan along if a circle has to be dropped.
 
 The cue is what makes the circle public. At that moment the ticker announces
 it, the circle appears on every player's map, and their phones grow a strip at
 the top counting down. At zero the next circle becomes the exclusion circle,
 the old next circle is cleared, and the ticker says the circle has closed.
 
-Three consequences of the circle being private until it is cued (M6.2):
+Four consequences of the circle being private until it is cued (M6.2):
 
-- **Take your time over step 1.** It used to be the announcement; it is now
-  private working-out.
+- **Take your time.** Placing a circle used to be the announcement; it is now
+  private working-out, which is why the plan can place them long in advance.
 - **Moving or clearing NEXT makes it private again**, so changing your mind
   mid-countdown takes the old circle off every phone rather than leaving two
   stories on the map.
 - **`BOTH` is public immediately** — it puts the next circle exactly where the
   exclusion circle everybody can already see is, so there is nothing to hide.
+- **Cueing spends every early-warning card in the game**, which is the point
+  of them: what they bought was the head start you have just ended.
 
-**Place NEXT first.** If NEXT is empty when the clock runs out, nothing is
-promoted — the countdown just clears. That is deliberate: the alternative is
-blanking the play area under thirty players because somebody tidied up
-mid-countdown. The panel says so on screen.
+**If NEXT is empty when the clock runs out, nothing is promoted** — the
+countdown just clears. That is deliberate: the alternative is blanking the
+play area under thirty players because somebody tidied up mid-countdown. It
+should not arise now that the plan places NEXT for you, but the panel says
+whether it is placed, and that line is worth a glance before each cue.
 
 **Cancel countdown** calls the clock off and leaves the circles exactly as
 they are.
@@ -331,23 +377,27 @@ radar lit during the sandbox hour does not survive the 16:00 button.
 
 ### Early circle warning
 
-Shipped (M6.2). A player who scans one sees the next circle on their map for
-ten minutes **before it is cued** — which, since placing NEXT is now private,
-is a real head start rather than a few seconds.
+Shipped (M6.2). A player who scans one sees the next circle on their map
+**until it is cued** — the whole private stretch, not a fixed ten minutes.
 
 - **The public ticker line is anonymous**: "Somebody knows where the next
   circle is...". Naming the holder would tell thirty people whose route to
   watch, which is exactly the advantage the card just bought.
-- **The holder is told privately that it was them**, with how long they have.
-  A card that appears to do nothing is a card somebody scans again.
+- **The holder is told privately that it was them.** A card that appears to do
+  nothing is a card somebody scans again.
 - There is no strip and no countdown for it — the circle appearing on the map
-  is the effect. It disappears again when the warning runs out, even if the
-  circle has still not been cued.
+  is the effect. **Cueing the circle spends every warning in the game**: at
+  that moment everybody can see it anyway, and the next private circle belongs
+  to whoever finds the next card.
+- **A card scanned with nothing to show is refused, not wasted**: no circle
+  placed, or one already announced, and the scan rolls back with the card
+  still good. The plan below is what makes that rare.
 
-So the sequence a warning card pays off against is: you place NEXT (private,
-holders can see it), you cue it some minutes later (public, everybody sees
-it), it closes. Leaving a gap between placing and cueing is what makes the
-card worth anything.
+So the sequence a warning card pays off against is: the plan places NEXT
+(private, holders can see it), you cue it (public, everybody sees it), it
+closes and the plan places the one after. The gap between placing and cueing
+is the card's whole value — and it is now the game that keeps that gap open,
+not your memory.
 
 ### Shots
 
@@ -575,8 +625,10 @@ one place. Each names the PR that made it.
 
 ## Still outstanding
 
-- **M8 — the annotated admin map.** Needs Charles and Gaby's marked-up map, to
-  be added to the Westminster venue as `CIRCLE1`…`4` and `DROP_*` landmarks so
-  the circle dropdown offers them.
+- **M8 — the annotated admin map.** The mechanism is in: any
+  `LANDMARK_<NAME>="<lat>,<long>"` in `/data/secrets/streetfight.env` joins
+  the venue's landmarks, and `CIRCLE0`…`CIRCLE3` are the four the circle plan
+  arms by itself. What is still needed is the numbers off Charles and Gaby's
+  marked-up map, and the `DROP_*` ones alongside them.
 - **Gaby's courier artwork**, whenever it arrives.
 - **Charles's own team-leader checklist**, if the first draft is not right.

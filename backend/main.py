@@ -193,8 +193,11 @@ async def get_user_info(
 @router.get("/get_venue")
 async def get_venue() -> Venue:
     """The place this game is being played: its map, that map's
-    georeferencing, and its landmarks. See backend/venues.py."""
-    return ACTIVE_VENUE
+    georeferencing, and its landmarks. See backend/venues.py.
+
+    Minus the operational ones - where the circles close and the drops land
+    are not a player's to read off the API."""
+    return ACTIVE_VENUE.for_players()
 
 
 @router.get("/get_circles")
@@ -1230,6 +1233,35 @@ async def admin_set_circle_by_location(
     AdminInterface().set_circles(
         game_id=game_id, name=name, lat=lat, long=long, radius=radius_km
     )
+
+
+@admin_method(path="/admin_get_circle_plan", method="GET")
+async def admin_get_circle_plan() -> list[dict]:
+    """The night's circles in the order they close (backend/circles.py), so
+    the admin page can say which one is armed and which ones it has no
+    coordinates for. Coordinates themselves are not sent: the page has the
+    admin map for that, and this is the one thing about the night worth
+    keeping back."""
+    logger.info("admin_get_circle_plan - %s", locals())
+    return [
+        {
+            "index": planned.index,
+            "name": planned.name,
+            "radius_km": planned.radius_km,
+            "known": planned.known,
+        }
+        for planned in AdminInterface.circle_plan()
+    ]
+
+
+@admin_method(path="/admin_arm_planned_circle", method="POST")
+async def admin_arm_planned_circle(game_id: UUID, index: Optional[int] = None):
+    """Place a planned circle by hand - re-arming the one the game is on, or
+    skipping to another. The game does this by itself as each circle closes;
+    this is for the night that does not go to plan."""
+    logger.info("admin_arm_planned_circle - %s", locals())
+    armed = AdminInterface().arm_planned_circle(game_id=game_id, index=index)
+    return {"armed": armed.name if armed else None}
 
 
 @admin_method(path="/admin_get_landmarks", method="GET")

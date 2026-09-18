@@ -37,6 +37,7 @@ from PIL import ImageFont
 from .generate_pub_pages import DPI
 from .generate_pub_pages import _mm
 from .venues import ACTIVE_VENUE
+from .venues import OPERATIONAL_PREFIXES
 from .venues import Venue
 
 FONT_PATH = Path(__file__, "../UbuntuMono-R.ttf").resolve()
@@ -58,10 +59,11 @@ GAME_NAME = "STREET FIGHT"
 GAME_DATE = "SATURDAY 19 SEPTEMBER 2026"
 LEGEND_HEADING = "WHERE EVERYTHING IS"
 
-# A landmark whose name starts with one of these is somewhere the game puts
-# something, not somewhere that is already there. Players read this poster, so
-# it says where the pubs are and nothing about where the circles will be.
-OPERATIONAL_PREFIXES = ("CIRCLE", "DROP_", "COURIER")
+# A landmark whose name starts with one of `venues.OPERATIONAL_PREFIXES` is
+# somewhere the game puts something, not somewhere that is already there.
+# Players read this poster, so it says where the pubs are and nothing about
+# where the circles will be - the same question, and so the same list, as the
+# one the player-facing /get_venue filters on.
 
 # Title-casing a landmark key gives "Marquis Of Granby", which is not how the
 # pub is written on its own sign. Anything here is lowered unless it starts

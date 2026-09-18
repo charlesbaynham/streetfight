@@ -15,10 +15,34 @@ already the registry to resolve it against, and the API endpoint can start
 taking a game id.
 """
 
+import logging
+import os
 from typing import Dict
+from typing import Mapping
+from typing import Optional
 from typing import Tuple
 
 from pydantic import BaseModel
+
+from .dotenv import load_env_vars
+
+logger = logging.getLogger(__name__)
+
+# A landmark supplied by the environment rather than committed here:
+# `LANDMARK_CIRCLE0="51.4958,-0.1309"` adds CIRCLE0 to the active venue. This
+# repository is public and where the circles close is the one thing about the
+# night that has to keep until it happens, so those coordinates live in the
+# deployment's env file (nix/streetfight.env.example) instead. Nothing in the
+# mechanism is about circles - the drop locations travel the same way.
+LANDMARK_ENV_PREFIX = "LANDMARK_"
+
+# A landmark whose name starts with one of these is somewhere the game *puts*
+# something, not somewhere that is already there: where a circle closes, where
+# a crate is going, where the courier is walking. Players are never sent them
+# (`Venue.for_players`) and the map poster does not print them
+# (backend/map_poster.py) - which is the whole point of keeping them out of
+# the repository as well.
+OPERATIONAL_PREFIXES = ("CIRCLE", "DROP_", "COURIER")
 
 
 class MapReferencePoint(BaseModel):
@@ -93,6 +117,24 @@ class Venue(BaseModel):
     # name -> (latitude, longitude). Admins place circles by picking one of
     # these, so the names are player-facing: use what people call the place.
     landmarks: Dict[str, Tuple[float, float]]
+
+    def for_players(self) -> "Venue":
+        """This venue as `/api/get_venue` serves it: the operational
+        landmarks taken out.
+
+        Everything else here is on the printed map anyway, but where the
+        circles and drops are going is not, and a session cookie is all it
+        would take to read them off the API.
+        """
+        return self.model_copy(
+            update={
+                "landmarks": {
+                    name: point
+                    for name, point in self.landmarks.items()
+                    if not name.startswith(OPERATIONAL_PREFIXES)
+                }
+            }
+        )
 
 
 KINGSTON = Venue(
@@ -267,6 +309,36 @@ WESTMINSTER = Venue(
     },
 )
 
+
+def landmarks_from_env(
+    environ: Optional[Mapping[str, str]] = None,
+) -> Dict[str, Tuple[float, float]]:
+    """Every `LANDMARK_<NAME>="<lat>,<long>"` in the environment.
+
+    A malformed one is logged and skipped rather than raised: this is read at
+    import time, and a typo in a secrets file must not be the reason the
+    server will not boot during a game. The admin's circle panel says which
+    planned circles it could not find, which is where a missing one shows up.
+    """
+    environ = os.environ if environ is None else environ
+
+    landmarks: Dict[str, Tuple[float, float]] = {}
+    for key, value in environ.items():
+        if not key.startswith(LANDMARK_ENV_PREFIX):
+            continue
+        name = key[len(LANDMARK_ENV_PREFIX) :].upper()
+        try:
+            lat, long = (float(part) for part in value.split(","))
+        except ValueError:
+            logger.warning(
+                'Ignoring %s: expected a "<lat>,<long>" pair, got %r', key, value
+            )
+            continue
+        landmarks[name] = (lat, long)
+
+    return landmarks
+
+
 VENUES = {
     "kingston": KINGSTON,
     "koyao_resort": KOYAO_RESORT,
@@ -278,3 +350,10 @@ ACTIVE_VENUE = VENUES["westminster"]
 # The resort was a test venue, so that the map could be exercised against a
 # real GPS fix while away; Westminster is where the game is actually headed.
 # ACTIVE_VENUE = VENUES["koyao_resort"]
+
+# The secret half of the active venue's landmarks, merged in at import so that
+# everything downstream - the admin's landmark dropdown, the circle plan
+# (backend/circles.py), the map poster's operational-prefix filter - sees one
+# dict and cannot tell which half a name came from.
+load_env_vars()
+ACTIVE_VENUE.landmarks.update(landmarks_from_env())

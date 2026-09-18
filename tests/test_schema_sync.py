@@ -28,6 +28,7 @@ def make_old_schema_engine(tmp_path):
             sa.text("ALTER TABLE games DROP COLUMN ai_resolve_everything_enabled")
         )
         conn.execute(sa.text("ALTER TABLE games DROP COLUMN next_circle_public"))
+        conn.execute(sa.text("ALTER TABLE games DROP COLUMN circle_plan_index"))
         conn.execute(sa.text("ALTER TABLE shots DROP COLUMN ai_review_state"))
         conn.execute(sa.text("ALTER TABLE shots DROP COLUMN ai_review"))
         conn.execute(
@@ -61,6 +62,7 @@ def test_missing_columns_are_added(tmp_path):
         "ai_escalation_enabled",
         "ai_resolve_everything_enabled",
         "next_circle_public",
+        "circle_plan_index",
     } <= columns
     shot_columns = {col["name"] for col in sa.inspect(engine).get_columns("shots")}
     assert {"ai_review_state", "ai_review"} <= shot_columns
@@ -78,6 +80,8 @@ def test_missing_columns_are_added(tmp_path):
         # An upgraded row lands on M6.2's own rule: the next circle is kept
         # back until it is cued, whatever it meant on the database before
         assert games[0].next_circle_public is False
+        # An upgraded game starts at the top of the circle plan
+        assert games[0].circle_plan_index == 0
 
 
 def test_sync_is_idempotent(tmp_path):

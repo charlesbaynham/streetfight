@@ -39,9 +39,11 @@ const ITEM_TYPES = [
   "circle_warning",
 ];
 
-// The two items measured in minutes rather than in how much of something they
-// award, with the default each one's payload schema carries (backend/items.py).
-const TIMED_TYPES = { radar: 5, circle_warning: 10 };
+// Radar is the one item measured in minutes rather than in how much of
+// something it awards, with the default its payload schema carries
+// (backend/items.py). The circle warning used to be here too; it now lasts
+// until the circle is announced, so there is no number to ask for.
+const TIMED_TYPES = { radar: 5 };
 
 const CARDS_PER_SHEET = 8;
 

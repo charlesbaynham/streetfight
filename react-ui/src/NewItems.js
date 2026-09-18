@@ -11,7 +11,9 @@ const ITEM_PARAMS = {
   medpack: [],
   weapon: ["shot_damage", "shot_timeout"],
   radar: ["minutes"],
-  circle_warning: ["minutes"],
+  // The circle warning takes no parameters: it lasts until the circle it is
+  // showing is announced, whatever the payload says (backend/items.py).
+  circle_warning: [],
 };
 
 // The batch minted into the code, so a set can be withdrawn together. "game"

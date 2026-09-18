@@ -4,13 +4,26 @@ import { adminPost } from "./AdminCommon";
 
 // Place, move or clear the game circles - either at a named landmark or at raw
 // coordinates. The circle-type selector is shared by all three actions.
-export default function CircleControl({ game_id }) {
+//
+// Above all of that is the plan (backend/circles.py), which is what the night
+// actually runs on: the game arms each circle as the one before it closes, so
+// this panel usually only has to say which one is sitting privately on the map
+// waiting to be cued.
+export default function CircleControl({ game }) {
+  const game_id = game.id;
   const [landmarks, setLandmarks] = useState([]);
+  const [plan, setPlan] = useState([]);
   useEffect(() => {
     sendAPIRequest("admin_get_landmarks", {}, "GET", (landmarks) => {
       setLandmarks(landmarks);
     });
-  }, [setLandmarks]);
+    sendAPIRequest("admin_get_circle_plan", {}, "GET", (plan) => {
+      setPlan(plan);
+    });
+  }, [setLandmarks, setPlan]);
+
+  const armed = plan.find((circle) => circle.index === game.circle_plan_index);
+  const placed = game.next_circle_lat !== null;
 
   const circleTypeInput = useRef(null);
   const locationInput = useRef(null);
@@ -21,6 +34,47 @@ export default function CircleControl({ game_id }) {
 
   return (
     <>
+      <p>
+        {armed ? (
+          <>
+            Plan: <b>{armed.name}</b> ({armed.radius_km} km),{" "}
+            {!armed.known ? (
+              <b>no coordinates &mdash; place it by hand</b>
+            ) : placed ? (
+              <>
+                on the map and <b>private</b> until you cue it
+              </>
+            ) : (
+              <b>not placed</b>
+            )}
+          </>
+        ) : (
+          <>
+            Plan: <b>finished</b> &mdash; every planned circle has closed
+          </>
+        )}{" "}
+        {armed ? (
+          <button
+            onClick={() =>
+              adminPost("admin_arm_planned_circle", { game_id: game_id })
+            }
+          >
+            Place planned circle
+          </button>
+        ) : null}{" "}
+        {plan.some((circle) => circle.index === game.circle_plan_index + 1) ? (
+          <button
+            onClick={() =>
+              adminPost("admin_arm_planned_circle", {
+                game_id: game_id,
+                index: game.circle_plan_index + 1,
+              })
+            }
+          >
+            Skip to the next one
+          </button>
+        ) : null}
+      </p>
       <label>
         Circle:{" "}
         <select ref={circleTypeInput}>

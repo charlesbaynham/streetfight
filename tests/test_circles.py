@@ -1,6 +1,11 @@
+import pytest
+
 from backend.admin_interface import AdminInterface
 from backend.admin_interface import CircleTypes
+from backend.circles import CIRCLE_PLAN
 from backend.user_interface import UserInterface
+from backend.venues import ACTIVE_VENUE
+from backend.venues import landmarks_from_env
 
 
 def test_circles_start_empty(user_in_team):
@@ -145,3 +150,144 @@ def test_a_courier_who_has_stopped_is_nobody(user_in_team):
     AdminInterface().clear_courier(game_id)
 
     assert circles_of(user_in_team)["courier"] is None
+
+
+# ---------------------------------------------------------------------------
+# The circle plan (backend/circles.py)
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def planned_circles(monkeypatch):
+    """A venue that knows where the plan's circles are.
+
+    The real ones arrive from the environment (`LANDMARK_CIRCLE0=...`) and are
+    deliberately not committed, so a test that wants them has to supply them.
+    """
+    landmarks = dict(ACTIVE_VENUE.landmarks)
+    landmarks.update(
+        {
+            "CIRCLE0": (51.50, -0.10),
+            "CIRCLE1": (51.51, -0.11),
+            "CIRCLE2": (51.52, -0.12),
+            "CIRCLE3": (51.53, -0.13),
+        }
+    )
+    monkeypatch.setattr(ACTIVE_VENUE, "landmarks", landmarks)
+
+
+def test_the_first_planned_circle_is_placed_by_the_reset(user_in_team, planned_circles):
+    """The one mistake the plan exists to prevent: arriving at the first
+    countdown with NEXT empty, so nobody's early-warning card is worth
+    anything."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert (game.next_circle_lat, game.next_circle_long) == (51.50, -0.10)
+    assert game.next_circle_radius == CIRCLE_PLAN[0][1]
+    # Placed, but nobody has been told
+    assert game.next_circle_public is False
+    assert circles_of(user_in_team)["next_circle_lat"] is None
+
+
+def test_closing_a_circle_arms_the_one_after_it(user_in_team, planned_circles):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+    AdminInterface().reset_to_start_state(game_id)
+
+    AdminInterface().promote_next_circle(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.exclusion_circle_lat == 51.50
+    assert game.next_circle_lat == 51.51
+    assert game.circle_plan_index == 1
+    assert game.next_circle_public is False
+
+
+def test_the_plan_running_out_leaves_the_last_circle_standing(
+    user_in_team, planned_circles
+):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+    AdminInterface().reset_to_start_state(game_id)
+
+    for _ in range(len(CIRCLE_PLAN)):
+        AdminInterface().promote_next_circle(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.exclusion_circle_lat == 51.53
+    assert game.next_circle_lat is None
+
+
+def test_a_circle_the_environment_never_supplied_is_left_to_the_admin(
+    user_in_team, monkeypatch
+):
+    """No `LANDMARK_CIRCLE0` anywhere - which is the state of every checkout,
+    since the real coordinates are not committed. The game must still start."""
+    monkeypatch.setattr(
+        ACTIVE_VENUE,
+        "landmarks",
+        {
+            name: point
+            for name, point in ACTIVE_VENUE.landmarks.items()
+            if not name.startswith("CIRCLE")
+        },
+    )
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    assert AdminInterface().get_game_model(game_id).next_circle_lat is None
+
+
+def test_starting_a_game_arms_the_plan_but_never_overrides_a_placed_circle(
+    user_in_team, planned_circles
+):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.NEXT, 51.9, -0.9, 0.3)
+
+    AdminInterface().set_game_active(game_id, True)
+
+    assert AdminInterface().get_game_model(game_id).next_circle_lat == 51.9
+
+
+def test_skipping_a_circle_carries_the_plan_on_from_there(
+    user_in_team, planned_circles
+):
+    game_id = UserInterface(user_in_team).get_game_id()
+
+    AdminInterface().arm_planned_circle(game_id, index=2)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.next_circle_lat == 51.52
+    assert game.circle_plan_index == 2
+
+    AdminInterface().promote_next_circle(game_id)
+    assert AdminInterface().get_game_model(game_id).next_circle_lat == 51.53
+
+
+def test_landmarks_come_out_of_the_environment_one_variable_at_a_time():
+    """`LANDMARK_<NAME>="<lat>,<long>"`, which is how the circles and later the
+    drops stay out of a public repository."""
+    landmarks = landmarks_from_env(
+        {
+            "LANDMARK_CIRCLE0": "51.4958,-0.1309",
+            "LANDMARK_DROP_BRIDGE": "51.4112, -0.3105",
+            "WEBSITE_URL": "https://example.com",
+        }
+    )
+
+    assert landmarks == {
+        "CIRCLE0": (51.4958, -0.1309),
+        "DROP_BRIDGE": (51.4112, -0.3105),
+    }
+
+
+def test_a_mistyped_landmark_is_skipped_rather_than_stopping_the_server():
+    """Read at import time on a machine running a game: a typo in a secrets
+    file must cost one circle, not the evening."""
+    assert landmarks_from_env({"LANDMARK_CIRCLE0": "51.4958 -0.1309"}) == {}
