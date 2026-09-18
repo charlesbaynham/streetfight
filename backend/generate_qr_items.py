@@ -204,7 +204,9 @@ def _trim(number) -> str:
     return str(int(number)) if float(number).is_integer() else str(number)
 
 
-def base_image_path(itype: str, num, damage, timeout=DEFAULT_SHOT_TIMEOUT) -> Optional[Path]:
+def base_image_path(
+    itype: str, num, damage, timeout=DEFAULT_SHOT_TIMEOUT
+) -> Optional[Path]:
     """The artwork for this kind of card, if there is any.
 
     Weapons are drawn by the pair they are - (damage, delay) - and everything
