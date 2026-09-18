@@ -25,6 +25,7 @@ from .database_scope_provider import DatabaseScopeProvider
 from .image_processing import annotate_image_with_stats
 from .image_processing import downscale_jpeg
 from .image_processing import draw_cross_on_image
+from .item_actions import describe_item
 from .items import ItemModel
 from .model import AI_REVIEW_STATE_DONE
 from .model import AI_REVIEW_STATE_ERROR
@@ -39,6 +40,7 @@ from .model import Game
 from .model import GameModel
 from .model import Item
 from .model import ItemType
+from .model import KnownCode
 from .model import RevokedBatch
 from .model import Shot
 from .model import ShotModel
@@ -2248,6 +2250,104 @@ class AdminInterface:
             .order_by(RevokedBatch.revoked_at.desc())
             .all()
         ]
+
+    # The single-code register (the other half of withdrawing a batch). The
+    # server has no list of what was minted -- a code is an HMAC over its
+    # payload and nothing else -- so the only way to name one card is to scan
+    # it back in. Everything here is keyed on the item id out of the payload.
+
+    @db_scoped
+    def register_code(self, encoded_item: str) -> dict:
+        """Put a scanned code on the list of codes that can be switched off.
+
+        Idempotent: scanning the same card twice is how an admin checks it is
+        already on the list, so a second scan updates what the payload says
+        and leaves ``enabled`` exactly as they set it.
+        """
+        item = ItemModel.from_base64(encoded_item)
+
+        # Signed first, because an unsigned code is not a code: letting one
+        # onto the list would hand the admin a switch that turns off nothing.
+        signature_error = item.validate_signature()
+        if signature_error:
+            raise HTTPException(403, f"That code is invalid - {signature_error}")
+
+        known = self._session.get(KnownCode, item.id)
+        is_new = known is None
+
+        if is_new:
+            known = KnownCode(id=item.id, enabled=True)
+            self._session.add(known)
+
+        known.item_type = item.itype
+        known.data = item.data_as_json()
+        known.batch = item.batch
+        known.unlimited = item.unlimited
+        known.collected_as_team = item.collected_as_team
+
+        logger.info("register_code %s (new=%s)", item.id, is_new)
+
+        self._session.flush()
+
+        return {
+            "code": self._known_code_payload(known),
+            "new": is_new,
+            "codes": self._known_codes(),
+        }
+
+    @db_scoped
+    def set_code_enabled(self, code_id: UUID, enabled: bool) -> List[dict]:
+        """Switch one registered code on or off. Off is refused at the scan."""
+        known = self._session.get(KnownCode, code_id)
+        if not known:
+            raise HTTPException(404, "That code is not on the list - scan it first.")
+
+        logger.info("set_code_enabled %s -> %s", code_id, enabled)
+        known.enabled = enabled
+
+        return self._known_codes()
+
+    @db_scoped
+    def forget_code(self, code_id: UUID) -> List[dict]:
+        """Take a code off the list, which puts it back to the default.
+
+        The default is collectable, so forgetting a switched-off code turns it
+        back on. This is for a card scanned in by mistake rather than an undo.
+        """
+        known = self._session.get(KnownCode, code_id)
+        if known:
+            logger.info("forget_code %s", code_id)
+            self._session.delete(known)
+
+        return self._known_codes()
+
+    @db_scoped
+    def get_known_codes(self) -> List[dict]:
+        return self._known_codes()
+
+    def _known_codes(self) -> List[dict]:
+        """Every registered code, most recently scanned first."""
+        return [
+            self._known_code_payload(known)
+            for known in self._session.query(KnownCode)
+            .order_by(KnownCode.first_seen.desc())
+            .all()
+        ]
+
+    def _known_code_payload(self, known: KnownCode) -> dict:
+        data = json.loads(known.data) if known.data else {}
+
+        return {
+            "id": str(known.id),
+            "description": describe_item(
+                known.item_type, data, known.collected_as_team
+            ),
+            "item_type": known.item_type.value if known.item_type else None,
+            "batch": known.batch,
+            "unlimited": known.unlimited,
+            "enabled": known.enabled,
+            "first_seen": known.first_seen,
+        }
 
     @db_scoped
     def get_locations(self, game_id: UUID = None):

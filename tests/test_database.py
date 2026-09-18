@@ -15,6 +15,7 @@ from backend.model import Drop
 from backend.model import Game
 from backend.model import Item
 from backend.model import ItemType
+from backend.model import KnownCode
 from backend.model import RevokedBatch
 from backend.model import Shot
 from backend.model import Team
@@ -265,6 +266,7 @@ class TestLiveSchemaUpgrade:
             TickerEntry,
             Item,
             RevokedBatch,
+            KnownCode,
             Drop,
         }
         mapped = {mapper.class_ for mapper in Base.registry.mappers}
@@ -273,8 +275,8 @@ class TestLiveSchemaUpgrade:
             f" cover: {sorted(cls.__name__ for cls in mapped ^ written)}"
         )
 
-        game_id, team_id, user_id, stray_id, shot_id, drop_id = (
-            uuid() for _ in range(6)
+        game_id, team_id, user_id, stray_id, shot_id, drop_id, known_code_id = (
+            uuid() for _ in range(7)
         )
 
         with sessionmaker(bind=engine)() as session:
@@ -307,6 +309,14 @@ class TestLiveSchemaUpgrade:
             )
             session.add(RevokedBatch(batch="sandbox"))
             session.add(
+                KnownCode(
+                    id=known_code_id,
+                    item_type=ItemType.AMMO,
+                    data='{"num": 5}',
+                    batch="sandbox",
+                )
+            )
+            session.add(
                 Drop(id=drop_id, game_id=game_id, lat=51.5, long=-0.13, radius=0.02)
             )
             session.commit()
@@ -336,4 +346,8 @@ class TestLiveSchemaUpgrade:
             assert session.get(UserAlias, stray_id).user_id == user_id
             assert session.query(TickerEntry).one().message == "Pat shot somebody"
             assert session.get(RevokedBatch, "sandbox").revoked_at is not None
+            known_code = session.get(KnownCode, known_code_id)
+            assert known_code.enabled is True
+            assert known_code.first_seen > 0
+            assert known_code.unlimited is False
             assert session.get(Drop, drop_id).time_created > 0

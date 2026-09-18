@@ -195,3 +195,35 @@ def do_item_actions(user_interface: "UserInterface", item: ItemModel):
         _ACTIONS[key](user_interface, item)
     except KeyError:
         raise NotImplementedError(f"Item collection for {key} has not been implemented")
+
+
+def describe_item(itype: ItemType, data: dict, collected_as_team: bool = False) -> str:
+    """What a code hands out, in the words an admin would use for it.
+
+    Built from the payload each time it is asked for rather than stored beside
+    a scan, so a weapon renamed in WEAPON_NAME_LOOKUP above renames itself
+    everywhere it is listed.
+    """
+    if itype == ItemType.AMMO:
+        num = data.get("num")
+        described = f"{num} bullet{'' if num == 1 else 's'}"
+        return f"{described}, whole team" if collected_as_team else described
+
+    if itype == ItemType.ARMOUR:
+        return f"Armour level {data.get('num')}"
+
+    if itype == ItemType.MEDPACK:
+        return "Medpack"
+
+    if itype == ItemType.WEAPON:
+        weapon = (data.get("shot_damage"), data.get("shot_timeout"))
+        name = WEAPON_NAME_LOOKUP.get(weapon, "<unnamed>")
+        return f"{name} (damage {weapon[0]}, {weapon[1]}s delay)"
+
+    if itype == ItemType.RADAR:
+        return f"Radar, {data.get('minutes')} minutes"
+
+    if itype == ItemType.CIRCLE_WARNING:
+        return f"Circle warning, {data.get('minutes')} minutes"
+
+    return str(itype.value)
