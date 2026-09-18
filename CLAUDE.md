@@ -1358,6 +1358,20 @@ Three deployment targets share one service definition:
   (`shot_escalation.build_escalation_prompt`) beside the candidate list, whose
   outfits are printed in those same channel names. Reword one and reword the
   others.
+- **And it is the *outermost* layer of it** (`shot_vision.OUTER_LAYER_CLAUSE`,
+  2026-09-18). The game is played on a September evening, so almost everybody
+  who picked a t-shirt colour will have a coat zipped over it by the time
+  anybody photographs them — a model that reads the shirt through an open
+  jacket names a colour nobody can see from thirty metres, and identification
+  then scores the reading against the wrong word. So `tshirt` is whatever is
+  on *top* of the torso: jacket, coat, hoodie, gilet, and only the layer
+  beneath when there is nothing over it. The clause rides in both vision
+  prompts beside `ONE_PIECE_CLAUSE`, and the player is told the same rule at
+  the one moment they commit to it — `/pick`'s confirm screen
+  (`prose.pickOutfit.topLayerNote`), whose channel label is now "Top layer
+  (t-shirt / jumper / jacket)". The two summaries a player re-reads while
+  getting dressed say "top layer" too
+  (`prose.onboardingView.garmentNames`, `prose.howItWorks.yourOutfit`).
 - **No channel is spent on the team** (roadmap R15, 2026-09-15). The hat used
   to be pinned per team so players could read friend from foe at thirty metres;
   that meant teams had to be allocated before anybody could pick an outfit,

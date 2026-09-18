@@ -178,6 +178,10 @@ async def test_the_prompt_lists_every_candidate_with_a_prior_and_an_outfit(
     # colour, which only matches the photograph if the model reads those two
     # as the torso and the legs rather than as two separate garments.
     assert shot_vision.ONE_PIECE_CLAUSE in prompt
+    # A candidate's recorded tshirt colour is the outermost layer they said
+    # they would wear, so the escalation must read the photograph the same way
+    # rather than looking under a coat.
+    assert shot_vision.OUTER_LAYER_CLAUSE in prompt
 
 
 @pytest.mark.asyncio

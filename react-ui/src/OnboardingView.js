@@ -130,7 +130,7 @@ function NameEntry({ user, className, onNameSet = null }) {
 export { NameEntry };
 
 // A swatch (same component the colour picker uses) beside each garment,
-// e.g. [🟩] "white t-shirt" & [🟢] "green trousers". Both halves of an outfit
+// e.g. [🟩] "white top layer" & [🟢] "green trousers". Both halves of an outfit
 // are drawn with it: the garments the player supplies themselves
 // (identity_admin's wardrobe channels) and the hat and armband we hand out at
 // the door, which get a row each - see getActionItems.

@@ -173,7 +173,7 @@ test("once an outfit is picked, the outfit step shows a done checkmark and the g
 
   const button = stepButton("Outfit:");
   expect(button.textContent.replace(/\s+/g, " ").trim()).toBe(
-    "Outfit: white t-shirt & green trousers",
+    `Outfit: white ${prose.onboardingView.garmentNames.tshirt} & green trousers`,
   );
   expect(isDone("Outfit:")).toBe(true);
 });

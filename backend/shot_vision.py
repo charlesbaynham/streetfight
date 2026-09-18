@@ -120,11 +120,12 @@ ARMBANDS_PLACEMENT = (
 # The two garments the player supplies themselves, so the question is about a
 # part of the body rather than a dress code -- somebody in a skirt still has a
 # "trousers" colour. Players are asked in the same terms on /pick
-# (prose.pickOutfit.channelDisplayNames: "T-shirt / top", "Trousers / shorts /
-# skirt"), and identification scores what the model said against what the
-# player said, so the two have to mean the same thing by a channel. The worked
-# example is red because red is in both channels' palettes: an example naming a
-# colour the model is not offered for one of them undoes the point of it.
+# (prose.pickOutfit.channelDisplayNames: "Top layer (t-shirt / jumper /
+# jacket)", "Trousers / shorts / skirt"), and identification scores what the
+# model said against what the player said, so the two have to mean the same
+# thing by a channel. The worked example is red because red is in both
+# channels' palettes: an example naming a colour the model is not offered for
+# one of them undoes the point of it.
 ONE_PIECE_CLAUSE = (
     "The tshirt and trousers questions are about the torso and the legs, not "
     "about two separate garments. A single garment covering both -- a dress, a "
@@ -133,12 +134,32 @@ ONE_PIECE_CLAUSE = (
     "trousers."
 )
 
+# September evenings are cold, so a player who picked a colour will be wearing
+# a jacket over it by the time anybody photographs them. "tshirt" therefore
+# means the outermost layer, never the garment nearest the skin: a model that
+# reads the t-shirt through an open coat names a colour nobody can see from
+# thirty metres, and the player is told the same rule on /pick
+# (prose.pickOutfit.topLayerNote), so both ends answer about the same garment.
+# Named separately so the escalation prompt (backend.shot_escalation) says it
+# too.
+OUTER_LAYER_CLAUSE = (
+    "The tshirt colour is the colour of the OUTERMOST layer on the upper "
+    "body -- the garment on top of all the others. If somebody is wearing a "
+    "jacket, coat, hoodie or gilet over a t-shirt, report the colour of the "
+    "jacket, coat, hoodie or gilet. Report the layer underneath only if there "
+    "is nothing over it. The same applies to the legs: report the outermost "
+    "thing on them."
+)
+
 # Human-readable channel names for the prompt. The keys must stay in step with
 # identity.config.DEFAULT_CHANNEL_NAMES.
 CHANNEL_DESCRIPTIONS = {
     "tshirt": (
-        "whatever they are wearing on their torso -- a t-shirt, top, shirt, "
-        "jumper or the upper half of a dress"
+        "the OUTERMOST layer on their upper body -- whatever is on top of "
+        "everything else on the torso, whether that is a t-shirt, blouse, "
+        "shirt, jumper, jacket, coat or the upper half of a dress. If they "
+        "are wearing a jacket or coat, that is the answer, not the top "
+        "underneath it"
     ),
     "trousers": (
         "whatever they are wearing on their legs -- trousers, jeans, shorts, "
@@ -441,6 +462,8 @@ Ignore everyone except the person the shot hit.
 {chr(10).join(questions)}
 
 {ONE_PIECE_CLAUSE}
+
+{OUTER_LAYER_CLAUSE}
 
 Answering "{UNKNOWN}" is a correct and useful answer. It is much better than a \
 guess: a wrong colour is worse than no colour. Give each answer a confidence \

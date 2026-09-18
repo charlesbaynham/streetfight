@@ -317,6 +317,7 @@ function ConfirmScreen({
         channels={channels}
         size="large"
       />
+      <p className={styles.topLayerNote}>{p.topLayerNote}</p>
       <label
         className={
           styles.confirmRow +

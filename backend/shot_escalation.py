@@ -272,7 +272,8 @@ def build_escalation_prompt(candidates: List[dict], has_more_photos: bool) -> st
             f'"{shot_vision.UNKNOWN}" is one nobody recorded. The '
             f"{shot_vision.ARMBANDS_CHANNEL} are "
             f"{shot_vision.ARMBANDS_PLACEMENT}. "
-            f"{shot_vision.ONE_PIECE_CLAUSE} {REFERENCE_BACKGROUND_CLAUSE}"
+            f"{shot_vision.ONE_PIECE_CLAUSE} "
+            f"{shot_vision.OUTER_LAYER_CLAUSE} {REFERENCE_BACKGROUND_CLAUSE}"
             "\n\n" + "\n".join(_candidate_line(candidate) for candidate in candidates)
         )
     else:

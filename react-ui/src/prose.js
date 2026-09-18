@@ -133,9 +133,11 @@ const prose = {
     yourOutfit: {
       heading: "Which brings us to you",
       // The garments are named as they are handed over, not as the database
-      // spells them.
+      // spells them. "top layer" rather than "t-shirt" because that channel
+      // is the outermost thing on the torso, coat included - see
+      // pickOutfit.channelDisplayNames.
       garmentNames: {
-        tshirt: "t-shirt",
+        tshirt: "top layer",
         trousers: "trousers",
         hat: "hat",
         armbands: "armband",
@@ -203,8 +205,10 @@ const prose = {
     soundCheck: "Turn your sound on, then tap to test it:",
     soundCheckDone: "Heard that? If not, take your phone off silent.",
     // Lowercase, unlike pickOutfit.channelDisplayNames - this reads as part
-    // of a sentence ("white t-shirt"), not a fieldset legend.
-    garmentNames: { tshirt: "t-shirt", armbands: "armband" },
+    // of a sentence ("white top layer"), not a fieldset legend. This is the
+    // line a player re-reads while getting dressed, so it must name the layer
+    // that will actually be showing rather than the t-shirt under their coat.
+    garmentNames: { tshirt: "top layer", armbands: "armband" },
     outfitNotChosen: "Outfit not chosen",
     outfitChosen: (summary) => <>Outfit: {summary}</>,
     // The hat and armband, said the way they are handed over - "at the door"
@@ -231,11 +235,20 @@ const prose = {
   pickOutfit: {
     // Players supply these two garments themselves, so the name must read as
     // a body part rather than a dress code: somebody in shorts or a skirt
-    // needs to know the trousers row is theirs too.
+    // needs to know the trousers row is theirs too. The top one names the
+    // layer, not the garment, because CharlesBot is told to read the
+    // outermost thing on the torso (shot_vision.OUTER_LAYER_CLAUSE) - a
+    // player who picks a colour and then zips a coat over it on a September
+    // night has made themselves unidentifiable.
     channelDisplayNames: {
-      tshirt: "T-shirt / top",
+      tshirt: "Top layer (t-shirt / jumper / jacket)",
       trousers: "Trousers / shorts / skirt",
     },
+    // On the confirm screen, beside "I will wear this on the night": the one
+    // moment the player is committing to what they will actually have on.
+    topLayerNote:
+      "It's the outside layer that counts - if you'll be wearing a coat or " +
+      "jacket over the top, that's the colour we need to see.",
     alreadyJoinedNote: "You already joined a team:",
     signUpHeading: "Sign up",
     teamHeading: (teamName) => `Team ${teamName}`,

@@ -157,7 +157,8 @@ def test_prompt_says_where_the_armbands_are_and_how_big():
 def test_prompt_asks_about_the_body_not_the_garment():
     """A player in a dress picks one colour for both halves of themselves.
 
-    /pick asks for "T-shirt / top" and "Trousers / shorts / skirt", so a white
+    /pick asks for "Top layer (t-shirt / jumper / jacket)" and "Trousers /
+    shorts / skirt", so a white
     dress is declared as a white top and a white bottom. The model has to read
     it the same way, or the two garments it names disagree with the two the
     player claimed and identification scores the outfit against the wrong word.
@@ -170,6 +171,20 @@ def test_prompt_asks_about_the_body_not_the_garment():
     assert "legs" in trousers
     assert "skirt" in trousers
     assert sv.ONE_PIECE_CLAUSE in prompt
+
+
+def test_prompt_asks_for_the_outermost_layer():
+    """The game is played on a September evening, so most players will have a
+    coat on over the colour they picked. A model that reads the t-shirt
+    through an open jacket names a colour that is not what the player is
+    showing the world, and identification scores against the wrong word.
+    """
+    prompt = sv.build_prompt()
+    tshirt = prompt.split("tshirt (")[1].split("Can you clearly")[0]
+
+    assert "OUTERMOST" in tshirt
+    assert "jacket" in tshirt
+    assert sv.OUTER_LAYER_CLAUSE in prompt
 
 
 # -- parsing ----------------------------------------------------------------
