@@ -982,7 +982,7 @@ pytest -k "appeal"                            # by name across the suite
 cd react-ui && CI=true npm test -- ShotQueue  # frontend, matching files only
 
 # Whole suite — CI's job, not usually yours
-pytest -n auto           # backend suite in parallel (setup.cfg sets testpaths)
+pytest -n auto --dist worksteal   # backend suite in parallel (see below)
 pytest                   # ...serially, if a failure needs unmuddled output
 pytest -m "not selenium" # default scope, skipping browser tests
 pytest --runselenium     # include selenium/browser integration tests
@@ -990,8 +990,8 @@ cd react-ui && CI=true npm test  # all frontend tests (CI=true: no watch mode)
 npm test                 # everything: pytest then react-ui tests
 ```
 
-CI runs the backend tests via `nix develop .#ci -c pytest -n auto`
-(`.github/workflows/test_backend.yml`), and only once per commit: both test
+CI runs the backend tests via `nix develop .#ci -c pytest -n auto --dist
+worksteal` (`.github/workflows/test_backend.yml`), and only once per commit: both test
 workflows trigger on `pull_request` plus pushes to master, because
 `on: [push, pull_request]` fired *both* for every commit on a branch with a
 pull request open and ran the whole suite twice on one SHA. They also cancel a
@@ -1021,8 +1021,11 @@ Where the time actually goes: seven tests in `test_demo_game.py` and
 `test_test_world.py` are over half the suite's serial runtime, because each
 provisions thirty players through the real allocator against a fresh database.
 That is the work those tests are for, so the fix was to spread them over cores
-rather than to trim them — but it does mean the longest single test sets the
-floor, and `-n auto` gets about 2.3× rather than 4×.
+rather than to trim them. Two consequences: `--dist worksteal` is worth real
+time over xdist's default `--dist load` (169s against 236s), because dispatching
+in collection order strands those tests on one worker at the end of the run;
+and the longest single test — 76s — sets a floor that no amount of scheduling
+gets under, so four cores buy about 3.1×, not 4×.
 
 ## Lint / format / pre-commit
 

@@ -37,7 +37,12 @@ jobs:
       run: nix develop .#ci -c npm install
     # -n auto fans the suite out over the runner's cores. Every worker gets its
     # own SQLite file (tests/db_url.py), which is what makes that safe.
+    #
+    # worksteal rather than the default load: a handful of tests in
+    # test_demo_game/test_test_world run for 30-75s each, and dispatching in
+    # collection order strands them on one worker at the end of the run. Letting
+    # an idle worker steal queued tests took the suite from 236s to 169s.
     - name: Test with pytest
       run: |
         cp .env.dev .env
-        nix develop .#ci -c pytest -n auto
+        nix develop .#ci -c pytest -n auto --dist worksteal
