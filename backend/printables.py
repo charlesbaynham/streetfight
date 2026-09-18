@@ -209,7 +209,7 @@ def item_sheets_pdf(
         for _ in range(sheets * CARDS_PER_SHEET)
     ]
 
-    artwork = base_image_path(itype, num, damage)
+    artwork = base_image_path(itype, num, damage, timeout)
     codes = iter(urls)
     pages = [
         build_qr_grid(
@@ -289,7 +289,9 @@ def infinite_poster(url: str, card: SandboxCard, label: str = "") -> Image.Image
         art_w,
         art_h,
         load_base_image(
-            base_image_path(card.itype, card.num, card.damage), art_w, art_h
+            base_image_path(card.itype, card.num, card.damage, card.timeout),
+            art_w,
+            art_h,
         ),
     )
 
@@ -325,7 +327,9 @@ def poster_artwork_ink(card: SandboxCard) -> float:
     """
     art_w, art_h = POSTER_CARD_BOX
     art = load_base_image(
-        base_image_path(card.itype, card.num, card.damage), art_w, art_h
+        base_image_path(card.itype, card.num, card.damage, card.timeout),
+        art_w,
+        art_h,
     )
     if art is None:
         return 0.0
