@@ -6,6 +6,7 @@ import { createBrowserRouter, RouterProvider } from "react-router-dom";
 import UserMode from "./UserMode";
 import PickOutfit from "./PickOutfit";
 import HowItWorks from "./HowItWorks";
+import WhatIsThis from "./WhatIsThis";
 import AdminMode from "./AdminMode";
 import ShotQueue from "./ShotQueue";
 import ShotReplay from "./ShotReplay";
@@ -35,6 +36,12 @@ const router = createBrowserRouter([
   {
     path: "how-it-works",
     element: <HowItWorks />,
+  },
+  {
+    // The same explanation UserMode shows a non-player at "/", given a link
+    // of its own so it can be sent to somebody.
+    path: "what-is-this",
+    element: <WhatIsThis />,
   },
   {
     path: "admin",

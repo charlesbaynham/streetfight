@@ -672,6 +672,23 @@ Four things from it that are worth knowing even if you never call the agent:
     sample of a tie rather than a ranking, which is why `closest_count` rides
     alongside them and the page says how many share that distance. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
+    `WhatIsThis.js` (route `/what-is-this`) is the other end of that
+    curiosity: the front page for somebody who is **not** a player, who
+    pointed a phone at a card taped to a lamppost. `UserMode` shows it at
+    `/` instead of `OnboardingView` when `isStranger(user)` - no name, no
+    `game_id`, no team, which is every visitor's very first `User` row
+    (`get_user_id` -> `_make_user`) - and it says what the game is, links to
+    the essay and gives Charles's email. Three things about it are
+    deliberate. It has **no way into a game**, not even a name box: the
+    people it is addressed to were not invited, and a box they can fill in
+    is an invitation whatever it does on the server. It is chosen *above*
+    the SSE connection and the full-screen frame in `UserMode`, so a
+    passer-by reading it holds no stream open. And `useIsStranger` suppresses
+    it for any tab that has been handed a `?j=` code, whatever came of it -
+    a sign-up is briefly indistinguishable from a stranger while
+    `JoinFromQueryParams`' POST is in flight, and a join that *fails* lands
+    back on `/` looking exactly like one, where being told "you are not part
+    of this" instead of the error would be the worst possible answer.
     `TeamLeaderPanel.js` is the checklist shown to the one player per team an
     admin nominates on the roster (`User.is_team_leader`, M7): open on the
     waiting page, where a leader has the time to read it and their team is
