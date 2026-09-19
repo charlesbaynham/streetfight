@@ -1,5 +1,8 @@
 """The printable map poster (backend/map_poster.py)."""
 
+import re
+from pathlib import Path
+
 import pytest
 from PIL import Image
 
@@ -46,6 +49,44 @@ def test_every_venue_can_print_its_map(venue_name):
         assert image.width / image.height == pytest.approx(
             venue.map.width_px / venue.map.height_px, rel=0.01
         )
+
+
+MAP_IMAGES_JS = Path(__file__, "../../react-ui/src/mapImages.js").resolve()
+
+
+def bundled_map_images() -> dict:
+    """What react-ui/src/mapImages.js bundles, keyed as the venues key it:
+    `import westminster from "./images/map_westminster.png"` and a
+    `MAP_IMAGES = { ..., westminster, koyao_resort: koyaoResort }` entry."""
+    source = MAP_IMAGES_JS.read_text()
+    imports = dict(re.findall(r'import (\w+) from "\./images/([^"]+)"', source))
+    table = re.search(r"MAP_IMAGES = \{(.*?)\}", source, re.S).group(1)
+    keyed = {}
+    for entry in filter(None, (e.strip() for e in table.split(","))):
+        key, _, name = entry.partition(":")
+        keyed[key.strip()] = imports[(name or key).strip()]
+    return keyed
+
+
+@pytest.mark.parametrize("venue_name", list(VENUES))
+def test_the_backend_map_is_the_file_the_frontend_bundles(venue_name):
+    """The symlink in backend/map_images/ has to follow the file mapImages.js
+    imports: renaming map_westminster.jpg to .png left the link dangling,
+    and every poster download on the night before the game failed with a
+    500. The glob in map_image_path still matched the dead link, so this
+    checks the target by name rather than trusting exists()."""
+    key = VENUES[venue_name].map.image
+    expected = (MAP_IMAGES_JS.parent / "images" / bundled_map_images()[key]).resolve()
+
+    assert map_poster.map_image_path(key).resolve() == expected
+
+
+def test_a_dangling_symlink_is_reported_as_a_missing_map(tmp_path, monkeypatch):
+    (tmp_path / "westminster.jpg").symlink_to(tmp_path / "gone.jpg")
+    monkeypatch.setattr(map_poster, "MAP_IMAGE_DIR", tmp_path)
+
+    with pytest.raises(FileNotFoundError, match="no map image"):
+        map_poster.map_image_path("westminster")
 
 
 @pytest.mark.parametrize("venue_name", list(VENUES))

@@ -125,11 +125,15 @@ def map_image_path(image_key: str) -> Path:
     """The file behind a venue's `map.image` key, as shipped with the
     package. Raises if it is missing, since a poster without its map is not
     something to hand somebody quietly."""
-    matches = sorted(MAP_IMAGE_DIR.glob(f"{image_key}.*"))
+    # A symlink whose target has been renamed still matches the glob, so
+    # check each resolves: the error should say the map is missing, not
+    # surface as Pillow failing to open a file that appears to be there.
+    matches = sorted(p for p in MAP_IMAGE_DIR.glob(f"{image_key}.*") if p.exists())
     if not matches:
         raise FileNotFoundError(
             f"no map image for venue key {image_key!r} in {MAP_IMAGE_DIR}. "
-            "Add a symlink there to the file react-ui/src/images/ bundles."
+            "Add a symlink there to the file react-ui/src/images/ bundles, "
+            "and re-point it when that file is renamed."
         )
     return matches[0]
 
