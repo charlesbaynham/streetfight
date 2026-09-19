@@ -145,6 +145,11 @@ the service rather than deploying a code change.
 
 ### Resize the droplet
 
+**Done — Saturday 19 September, shortly before the game.** Resized late rather
+than on the Friday, and **with no snapshot and no `/data` backup taken first**;
+it came back clean, but that was a gamble rather than the procedure. `/data`
+is still unbacked-up as of the resize, so the first backup below is owed.
+
 Live runs on a very small DigitalOcean droplet, sized for sign-ups: not for
 thirty phones posting a fix every five seconds, the vision pipeline draining a
 queue, and the spectator screen. In order:
