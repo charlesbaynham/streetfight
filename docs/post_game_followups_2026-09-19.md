@@ -614,6 +614,119 @@ one where the admin is the bottleneck for the rest of the night.
 
 ---
 
+# Ideas for new items
+
+Items 1-10 above are repairs. What follows is new game design, proposed after
+the night rather than reported as broken, so the notes below are about what
+each would cost and what it collides with - not an argument for or against
+building either.
+
+One thing they share: **adding an `ItemType` is cheap**. `model.py` says so
+where the two experimental items were added - "an Enum column is a VARCHAR
+with no check constraint, so a new member needs no migration". Each needs a
+member, a `pydantic` payload in `items.py`, a row in
+`ITEM_TYPE_VALIDATORS`, a handler in `item_actions._ACTIONS`, a drawing in
+`backend/image_templates/` (plus `SINGLE_ARTWORK_TYPES` if one drawing
+covers every variant), and a line in `printables.py` if it should be
+printable from a phone. That is the well-trodden part of both.
+
+## 11. Rocket launcher - one shot, kills everybody on screen
+
+**Idea.** "A rocket launcher where you only get one single shot but it kills
+anybody who's on the screen."
+
+**What already exists.** The killing half is expressible today: a weapon is a
+`(shot_damage, shot_timeout)` pair, so `shot_damage >= STARTING_HIT_POINTS`
+is already a card that kills whoever it hits in one shot. No new machinery at
+all - just a `weapon` card with a big number and a drawing.
+
+**What is new, and it is the expensive half.** *Everybody on screen* runs
+straight into the single most load-bearing assumption in the codebase: a shot
+resolves to exactly **one** player. `Shot.target_user_id` is one nullable
+foreign key (`model.py:232`); `AdminInterface.hit_user(shot_id,
+target_user_id)` takes one id; the auto-action decision is a
+`(action, target_id)` tuple; the vision contract answers with one outcome and
+one identity; `appeal_party` decides who may appeal by comparing against that
+one id; the shot queue rules with a single "Hit *name*" button; and
+`ShotReceivedOverlay` names one shooter to one target. Multi-target is
+therefore a schema change plus a new vision contract plus a rework of
+adjudication, appeals and both UIs - not a new item.
+
+Worth noting it would also make identification *harder* exactly when it
+matters: the current pipeline picks the best-scoring candidate and has an
+escalation rung for when it cannot. Reading every player in a frame has no
+equivalent fallback, and a rocket launcher that kills the wrong three people
+is worse than one that does not exist.
+
+**"Single use" is also new.** Ammo (`User.num_bullets`) is a single pool
+shared by whatever weapon you hold, so "one shot only" has nowhere to live
+today. It needs either a use count on the weapon or a separate one-shot
+inventory.
+
+**Cheaper shapes worth considering first**, if the appeal is the *feeling*
+rather than the multi-kill: a one-shot weapon that kills a single target
+outright (needs only the use count), or an area kill resolved
+geometrically like item 12 below, which never touches the vision pipeline.
+
+## 12. Airstrike - called from a fixed position, cancellable by a bullet
+
+**Idea.** "The airdrop can be called. It's an area kill. You can call it
+anywhere on the map, but in order to launch it you have to be outside for 60
+seconds, stationary, and therefore you're a target. If you get shot during
+that time, the airstrike is cancelled."
+
+**This one is much more tractable than 11**, and for one reason: an area kill
+is **geometric, not visual**. Everybody within radius *r* of a point, taken
+from the locations the server already holds - no photograph, no vision call,
+no identification, no escalation. It sidesteps the entire pipeline that items
+9 and 10 are about. Three of its four mechanics also have precedents already
+in the tree:
+
+- **An area on the map** is a lat/long/radius, which is exactly what a circle
+  already is (`admin_interface.set_circles`, the DROP type), and
+  `MapView.js`'s `MapCircles` already draws one.
+- **Standing still and broadcasting** is the courier page (`AdminCourier.js`):
+  a `watchPosition` streaming fixes while somebody stands in the street,
+  with the state said in words beside it.
+- **Being visible to everybody while you do it** is the courier dot, which
+  already rides on the circles payload and is drawn on every player's map
+  (M4.2). A caller's marker would be the same shape.
+- **Who is inside the blast** is `AdminInterface.get_locations` /
+  `shot_identification.eligible_candidates`, which already produce positions
+  per player with a fix age and an accuracy.
+
+**The two genuinely new pieces.**
+
+*"Outside" has no representation.* Nothing in the game knows indoors from
+outdoors. The available proxy is GPS accuracy, which the client already
+reports and which the identification code already consumes as σ_fix
+(`_effective_sigma_m`) - a fix worse than *N* metres is a decent stand-in for
+"under a roof", and it has the right incentive: it cannot be faked by
+standing still in a pub. Worth checking against real accuracy figures from
+this game's `location_context` data before picking *N*.
+
+*"Stationary for 60 seconds" needs history the schema does not keep.*
+`set_location` overwrites `latitude` / `longitude` / `location_timestamp` in
+place, so there is no track to measure movement against. It needs either a
+start-position snapshot taken when the call begins and compared against each
+later fix, or a short rolling history.
+
+**The sharp collision, and it is with items 9 and 10.** "If you get shot
+during that time, the airstrike is cancelled" assumes the game knows *within
+the 60 seconds* that somebody hit you. It does not: a shot is queued,
+reviewed, possibly escalated, and only then resolved - which on the night was
+around ten seconds at best and unbounded at worst. A bullet fired at the
+caller at *t+10s* may not be adjudicated until long after the strike has
+landed. So this mechanic either needs a resolution latency it does not
+currently have (item 10), or a different rule that does not depend on one -
+cancelling on a *hit ruled later* and reversing the strike, cancelling only
+on shots the admin rules in time, or making the cancel condition something
+the server knows instantly, such as the caller moving. **Design this rule and
+the pipeline's latency together**, or it will be a feature that works in
+testing and not in a showdown.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
