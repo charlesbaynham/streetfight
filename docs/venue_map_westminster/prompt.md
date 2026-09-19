@@ -83,11 +83,10 @@ Cross-check every one against `03_road_skeleton.png`.
 | 12 | The Feathers | 18-20 Broadway |
 | 13 | Adam and Eve | 81 Petty France |
 | 14 | Sanctuary House | 33 Tothill Street |
-| 15 | Blue Boar | 41-47 Tothill Street |
-| 16 | The Old Star | 66 Broadway |
-| 17 | Westminster Arms | 9 Storey's Gate |
-| 18 | Two Chairmen | 39 Dartmouth Street |
-| 19 | St Stephen's Tavern | 10 Bridge Street |
+| 15 | The Old Star | 66 Broadway |
+| 16 | Westminster Arms | 9 Storey's Gate |
+| 17 | Two Chairmen | 39 Dartmouth Street |
+| 18 | St Stephen's Tavern | 10 Bridge Street |
 
 ## Also mark
 

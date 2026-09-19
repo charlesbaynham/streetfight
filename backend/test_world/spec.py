@@ -206,30 +206,30 @@ CENTROID_RESTORE_PER_S = 0.0078
 
 # Which pub each team starts at, chosen to force the inter-team proximity the
 # photographs need. Distances measured from backend/venues.py:
-#   Pimlico/Victoria      SANCTUARY_HOUSE <-> BLUE_BOAR    25 m
-#   Millbank/Horseferry   WHITE_HORSE <-> BARLEY_MOW       58 m
+#   Pimlico/Victoria      SANCTUARY_HOUSE <-> FEATHERS      87 m
+#   Millbank/Horseferry   WHITE_HORSE <-> BARLEY_MOW        58 m
 #   Vauxhall              MUNICH_CRICKET_CLUB       140 m from Grafton Arms
 #   Smith Square          GREENCOAT_BOY             the isolated one
 # The two close pairs interleave completely, deliberately: their members are
 # nearer to the other team's players than the location term can separate.
 #
 # Remapped 12 Sept 2026, when the final pub list dropped the Queen's Arms and
-# the Warwick. The geometry each slot was picked for is preserved - a tight
-# pair, a loose pair, one 140-odd m from a neighbour, one isolated - so a
-# regenerated world exercises the same resolvability questions. One thing did
-# move: the tight pair is 25 m rather than 42, which is as close as the new
-# list gets and if anything harder. It also means the team names no longer
-# describe the district their pub is in (Sanctuary House and the Blue Boar are
-# both on Tothill Street), which is free - they are labels in a synthetic
-# world. Vauxhall's slot is untouched: Munich Cricket Club was dropped and
-# then put back.
+# the Warwick, and again 19 Sept 2026 (game day), when Blue Boar turned out
+# not to be usable after all - it had been the other half of the tight pair,
+# at 25 m from Sanctuary House. Feathers is the closest the list gets without
+# it (87 m, still the tightest pair of the four besides Millbank/Horseferry).
+# The geometry each slot was picked for is preserved - a tight pair, a loose
+# pair, one 140-odd m from a neighbour, one isolated - so a regenerated world
+# exercises the same resolvability questions even though the tight pair keeps
+# getting looser as pubs drop out. Vauxhall's slot is untouched: Munich
+# Cricket Club was dropped and then put back.
 #
-# The committed world.json predates this and still spells the old names in its
-# `start_landmark` fields; nothing resolves those against the venue, so it
-# keeps working until somebody regenerates.
+# The committed world.json predates both remaps and still spells the old
+# names (Blue Boar included) in its `start_landmark` fields; nothing resolves
+# those against the venue, so it keeps working until somebody regenerates.
 TEAM_START_LANDMARKS: Dict[str, str] = {
     "Pimlico": "SANCTUARY_HOUSE",
-    "Victoria": "BLUE_BOAR",
+    "Victoria": "FEATHERS",
     "Millbank": "WHITE_HORSE",
     "Horseferry": "BARLEY_MOW",
     "Vauxhall": "MUNICH_CRICKET_CLUB",
