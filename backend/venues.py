@@ -232,9 +232,12 @@ WESTMINSTER = Venue(
         # the OpenStreetMap geometry with a wobbly pen and a handwriting font.
         # Every image model tried resynthesised instead of tracing and got
         # either the roads or the scale wrong, so the geometry is no longer
-        # asked of one: it is exact by construction, and all nineteen pubs are
+        # asked of one: it is exact by construction, and every pub is
         # labelled because the renderer labels whatever is in `landmarks`
-        # below. Re-run it if that list changes.
+        # below. Re-run it if that list changes - it was drawn against
+        # nineteen pubs and has not been re-run since Blue Boar dropped to
+        # eighteen (19 Sept 2026), so the art still names one pub the game no
+        # longer plays at.
         #
         # The crop is sized to the markers rather than pinned to one of them.
         # It used to be symmetric about House Absolute, which forced 1300 m
@@ -255,7 +258,7 @@ WESTMINSTER = Venue(
         # mini-map; there is nothing left to compensate for.
         corner_width_km=0.13,
     ),
-    # The nineteen pubs Charles has actually chosen to play, plus House
+    # The eighteen pubs Charles has actually chosen to play, plus House
     # Absolute and the three landmarks everybody navigates by. Superseded the
     # ten-pub OpenStreetMap survey shortlist on 12 Sept 2026.
     #
@@ -285,7 +288,6 @@ WESTMINSTER = Venue(
         "FEATHERS": (51.499240, -0.132990),  # 18-20 Broadway
         "ADAM_AND_EVE": (51.499460, -0.135622),  # 81 Petty France
         "SANCTUARY_HOUSE": (51.499520, -0.131822),  # 33 Tothill Street
-        "BLUE_BOAR": (51.499544, -0.132180),  # 41-47 Tothill Street
         "OLD_STAR": (51.499940, -0.133724),  # 66 Broadway
         "WESTMINSTER_ARMS": (51.500555, -0.129813),  # 9 Storey's Gate
         "TWO_CHAIRMEN": (51.500631, -0.131621),  # 39 Dartmouth Street
@@ -306,6 +308,18 @@ WESTMINSTER = Venue(
         # Club, which is back in the list above.
         # "QUEENS_ARMS": (51.492593, -0.139175),
         # "WARWICK": (51.492414, -0.139704),
+        # Blue Boar cannot be used after all (Charles and Gabby found this out
+        # while handing out pub certificates, 19 Sept 2026, game day itself) -
+        # commented out rather than deleted, for the same reason as the two
+        # above: `test_world/spec.py`'s TEAM_START_LANDMARKS used to point
+        # Victoria here and has been remapped off it, but the committed
+        # world.json still spells the old name in its inert `start_landmark`
+        # field. Unlike Queen's Arms and Warwick, this one is already drawn
+        # and labelled on `westminster.jpg` and printed on the map poster -
+        # nothing re-renders that art on its own, so until somebody re-runs
+        # `draw-venue-map` the map still shows a pub that the app no longer
+        # offers for circles or drops.
+        # "BLUE_BOAR": (51.499544, -0.132180),  # 41-47 Tothill Street
     },
 )
 
