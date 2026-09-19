@@ -35,6 +35,13 @@ Charles might want to overrule. Read that on the day; read the milestones doc
 for how a thing came to be the way it is.
 
 
+**After the night (19 Sept), what came out of it is
+`docs/post_game_followups_2026-09-19.md`** — Charles's own reports from running
+the game, each investigated against the code, with a fix direction and a
+severity. A work list, not work done. The largest of them by a distance is
+resolving duplicate players, which he reports as the majority of the admin
+work during setup and which has no interface of its own at all.
+
 **The next game is Saturday 19 September 2026.** That is four weeks out, and it
 changes the ordering completely: the logistics track has a hard, unmovable
 deadline and most of the recognition work does not. Anything that has to be
