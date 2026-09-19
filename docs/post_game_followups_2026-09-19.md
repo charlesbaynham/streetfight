@@ -338,6 +338,79 @@ class.
 
 ---
 
+## 7. Destructive admin buttons should all take two presses
+
+**Report.** "The admin interface contains a lot of quite destructive buttons,
+which you shouldn't accidentally press. We should make all of the destructive
+buttons require two presses to avoid accidental triggering."
+
+**Diagnosis.** The pattern already exists and is already written down as
+deliberate — it has simply never been applied past the three places it was
+written for. `ResetToStartButton.js` is the canonical implementation: a first
+tap arms the button and makes it *say what it is about to do*, a second does
+it, and it disarms itself after `ARMED_MS` (6 s) so a button armed in a
+pocket is safe by the time the phone comes out. Its comment is explicit that
+this must not be collapsed "into one tap or into a `window.confirm`, which is
+dismissed without being read". `AdminCourier.js` copies it by hand for
+**Place drop here** and **Collected**, saying "Two-tap confirm, as on the
+reset button". The shot queue's ruling is two taps by construction.
+
+So there are already **two hand-written copies of the same pattern**, which
+makes this a case of `CLAUDE.md`'s "generalise and reuse rather than mint a
+new, different version" rather than a new idea.
+
+Everything else divides into two tiers, and the second is the surprising one:
+
+*Guarded by `window.confirm` only* — which the reset button's own comment
+calls insufficient: delete team (`AdminMode.js:135`, deletes its players
+too), reset game (245), **delete game** (277, "any join links already sent
+out will stop working"), delete user (443), merge user (472, deletes a row
+with no undo — see item 3), create a second game (661), and clear a player's
+outfit (`AdminIdentity.js:445`).
+
+*Guarded by nothing at all:*
+
+| Button | One tap does |
+| --- | --- |
+| **Fire demo game** (`AdminMode.js:605`) | **drops every table in the database** |
+| **Withdraw codes** (`AdminPrintables.js:570`) | kills a whole print run, for every player at once |
+| Restore batch (`AdminPrintables.js:610`) | un-kills it |
+| Switch a code off / Forget a code (`AdminCodes.js:194,199`) | kills or un-kills one card |
+| **Start countdown** (`EventCue.js`) | makes the circle public and spends every early-warning card in the game — "Cancel countdown" cannot give them back |
+| Step back one (`CircleControl.js`) | moves the play area and announces the mistake to every player |
+| Clear circle (`CircleControl.js`) | takes a circle off every map |
+| Pause / start the game (`AdminMode.js:169`) | stops or starts play for everybody |
+| Delete reference photo (`ReferencePhotos.js:491`) | throws away the door kit check |
+| Hit / set HP / set weapon / give ammo (`AdminMode.js`) | changes a player's state mid-game |
+
+**Fire demo game is the sharp one.** It is a single unguarded tap on the
+admin home page that wipes the database, and its only protection is
+server-side (`demo_game.refuse_if_live`, which `CLAUDE.md` already calls
+load-bearing). That guard does defend a real evening — it refuses if any
+player in a team, or any game, is not the demo's own — but the button itself
+offers the admin no pause at all, and it sits among ordinary buttons.
+
+**Fix direction.** Lift `ResetToStartButton`'s arm/disarm into one shared
+thing — a `useArmedAction` hook or a `<TwoTapButton>` — and apply it to
+everything in both tiers above, replacing the `window.confirm`s rather than
+adding to them. Three properties are the ones worth carrying over, because
+they are what make the friction serve the admin rather than merely obstruct:
+the armed button **says what it is about to do** rather than repeating its
+own label, it **disarms on a timer**, and only **one** button is armed at a
+time (`AdminCourier` already does this per row with `armedClear`). Worth
+deciding as part of it: whether the tier-two list above is the right
+boundary — pausing the game and giving a player ammo are recoverable, and
+friction on a control an admin uses forty times an evening is a cost, not a
+free win (`docs/nudge/`: friction is a tool, and the test is whose interest
+it serves).
+
+**Severity.** Medium-high. Nothing here was reported as actually having gone
+wrong on the night, so this is prevention rather than repair — but the worst
+case (**Fire demo game** on a box whose guard happened to pass) is
+unrecoverable, and several others are public and instant.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
