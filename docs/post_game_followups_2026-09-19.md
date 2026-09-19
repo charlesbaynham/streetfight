@@ -146,6 +146,49 @@ night.
 
 ---
 
+## 4. The nav-bar queue count ignores the contested queue
+
+**Report.** "The shot queue in the menu of the admin page has a number in
+brackets which shows the number of outstanding shots, but it only shows the
+number in the queue — it doesn't show the number in the contested queue,
+which is actually the most important one. So the number should be the sum of
+those two."
+
+**Diagnosis.** Confirmed, and the two counts really are disjoint rather than
+overlapping, so the sum is the right answer and cannot double-count.
+
+`ShotQueueLink` (`react-ui/src/AdminCommon.js:153`) fetches
+`admin_get_shots_info` alone and renders `shot_ids.length`. That endpoint is
+`get_shots_ids(include_checked=False)`, which filters on `Shot.checked ==
+False`. The contested queue is `get_contested_shot_ids()`
+(`backend/admin_interface.py:1334`), which filters on `appeal_state ==
+APPEAL_OPEN` — and an appeal can only be raised against a shot that is
+already `checked` (`user_interface`'s appeal guard, "This shot hasn't been
+adjudicated yet"), which appealing does not clear. So every contested shot
+is invisible to that number, permanently, by construction. The endpoint's
+own docstring says as much: "these are checked shots and so are not in the
+live queue at all".
+
+The page itself is not blind to them — `ShotQueue.js` switches lists on
+`?mode=contested` — so this is the nav count alone, which is exactly the
+thing an admin glances at to decide whether to go and look.
+
+**Fix direction.** Fetch both in `ShotQueueLink` and add the lengths. Two
+details make it smaller than it sounds: raising an appeal already fires
+`trigger_update_event("shots", …)` (`user_interface.py:950`), so the
+`UpdateListener update_type="shots"` that component already mounts wakes on
+a new complaint with no new stream; and there is no ordering or de-duping to
+do, since the sets cannot intersect. Worth deciding separately whether the
+count should *say* it is two things — `(3 + 1)`, or a second badge — given
+Charles's point that the contested one matters more, and that a single
+summed number hides which kind of work is waiting.
+
+**Severity.** Medium-high. Nothing is lost, but the one indicator an admin
+navigates by under-reports the queue that most needs attention, and silently
+— an admin reading `(0)` has been told there is nothing to do.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
