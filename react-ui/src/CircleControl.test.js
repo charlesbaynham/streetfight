@@ -14,6 +14,7 @@ const PLAN = [
   { index: 0, name: "CIRCLE0", radius_km: 0.7, known: true },
   { index: 1, name: "CIRCLE1", radius_km: 0.42, known: true },
   { index: 2, name: "CIRCLE2", radius_km: 0.18, known: false },
+  { index: 3, name: "CIRCLE3", radius_km: null, known: false },
 ];
 
 const renderControl = (overrides = {}, plan = PLAN) => {
@@ -21,6 +22,7 @@ const renderControl = (overrides = {}, plan = PLAN) => {
     admin_get_landmarks: ["BIG_BEN"],
     admin_get_circle_plan: plan,
     admin_arm_planned_circle: {},
+    admin_step_back_circle_plan: {},
     admin_set_circle_by_location: {},
   });
   return actAndFlush(() =>
@@ -41,10 +43,36 @@ test("a planned circle with no coordinates says so rather than looking armed", a
   expect(screen.getByText(/no coordinates/)).toBeInTheDocument();
 });
 
+test("a planned circle with no radius says which half is missing", async () => {
+  await renderControl({ circle_plan_index: 3, next_circle_lat: null });
+
+  expect(screen.getByText(/no radius/)).toBeInTheDocument();
+});
+
 test("a plan that has run out is not a circle waiting to be placed", async () => {
-  await renderControl({ circle_plan_index: 3 });
+  await renderControl({ circle_plan_index: 4 });
 
   expect(screen.getByText("finished")).toBeInTheDocument();
+});
+
+test("stepping back undoes a circle that closed by mistake", async () => {
+  await renderControl({ circle_plan_index: 1 });
+
+  await actAndFlush(() =>
+    userEvent.click(screen.getByRole("button", { name: /Step back one/ })),
+  );
+
+  expect(getLastAPICall("admin_step_back_circle_plan").query).toEqual({
+    game_id: "game-1",
+  });
+});
+
+test("there is nothing to step back to at the first circle", async () => {
+  await renderControl({ circle_plan_index: 0 });
+
+  expect(
+    screen.queryByRole("button", { name: /Step back one/ }),
+  ).not.toBeInTheDocument();
 });
 
 test("skipping arms the entry after the one the game is on", async () => {

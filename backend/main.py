@@ -1198,8 +1198,9 @@ async def admin_cue_next_event(
     note: Optional[str] = None,
 ):
     """Start the countdown the players' phones show. Minutes, not seconds:
-    this is typed on a phone in a hurry, and every real cue is a round number
-    of them."""
+    this is typed on a phone in a hurry, and almost every real cue is a round
+    number of them. Fractions are allowed for the ones that are not, and zero
+    means now."""
     logger.info("admin_cue_next_event - %s", locals())
     return AdminInterface().cue_next_event(
         game_id=game_id, kind=kind.value, seconds=minutes * 60, note=note
@@ -1280,6 +1281,15 @@ async def admin_set_circle(
     AdminInterface().set_circles(
         game_id=game_id, name=name, lat=None, long=None, radius=None
     )
+
+
+@admin_method(path="/admin_step_back_circle_plan", method="POST")
+async def admin_step_back_circle_plan(game_id: UUID):
+    """Undo a circle that closed by mistake: the pointer, NEXT and the
+    exclusion circle all go back one (see AdminInterface)."""
+    logger.info("admin_step_back_circle_plan - %s", locals())
+
+    AdminInterface().step_back_circle_plan(game_id=game_id)
 
 
 @admin_method(path="/admin_reset_game", method="POST")

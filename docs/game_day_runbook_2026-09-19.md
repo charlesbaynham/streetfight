@@ -136,9 +136,12 @@ service — the file is read at startup, not per request.
 `Plan: CIRCLE0 (0.7 km), on the map and private until you cue it` after a
 **Reset to start state**, and not "no coordinates — place it by hand".
 
-Radii live in code (`circles.CIRCLE_PLAN`: 0.70, 0.42, 0.18, 0.05 km), so if
-the marked-up map disagrees with those, that tuple is the one thing to change
-and it needs a deploy.
+The radii live in the same file, one line each:
+`CIRCLE_RADIUS_CIRCLE0=0.70`, then 0.42, 0.18 and 0.05 km. A circle is armed
+automatically only when both its landmark and its radius are there - with the
+radius missing the panel says "no radius — place it by hand" - so if the
+marked-up map disagrees with those numbers, edit the secrets file and restart
+the service rather than deploying a code change.
 
 ### Resize the droplet
 
@@ -271,14 +274,20 @@ arms the next one privately the instant the last one closes, so the only
 thing left for you is:
 
 1. **Cue it.** In **Countdown**: **Event** = "circle closes", minutes
-   (default **10**), **Start countdown**.
+   (default **10**), **Start countdown**. The box takes any non-negative
+   number, so `0.5` is thirty seconds and **`0` means now** - which is how you
+   close a circle immediately while still announcing it and still spending the
+   early-warning cards.
 
 The **Circles** panel above says which planned circle is up, its radius, and
 whether it is on the map — read it before you press. If you want the circle
 somewhere else, place NEXT by hand there first (landmark or coordinates, the
 radius reminders are printed under it); the plan carries on afterwards
-regardless. **Place planned circle** re-arms the one the game is on, and
-**Skip to the next one** moves the plan along if a circle has to be dropped.
+regardless. **Place planned circle** re-arms the one the game is on,
+**Skip to the next one** moves the plan along if a circle has to be dropped,
+and **Step back one** undoes a circle that closed by mistake - the play area
+goes back to the circle before it, the one that closed is armed as NEXT again,
+and the ticker tells the players it was a mistake.
 
 The cue is what makes the circle public. At that moment the ticker announces
 it, the circle appears on every player's map, and their phones grow a strip at

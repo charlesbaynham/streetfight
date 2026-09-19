@@ -707,9 +707,10 @@ class AdminInterface:
         forgetting a step. Silent by design - placing NEXT announces nothing,
         which is what makes it worth knowing.
 
-        Returns the entry it armed, or None when the plan has run out or has
-        no coordinates for that circle (`LANDMARK_<name>` unset): both leave
-        the circles exactly as they are, for the admin to place by hand.
+        Returns the entry it armed, or None when the plan has run out or the
+        environment has not supplied that circle (`LANDMARK_<name>` or
+        `CIRCLE_RADIUS_<name>` unset): both leave the circles exactly as they
+        are, for the admin to place by hand.
         """
         planned = planned_circle(game.circle_plan_index)
 
@@ -718,7 +719,7 @@ class AdminInterface:
             return None
         if not planned.known:
             logger.warning(
-                "No coordinates for planned circle %s - place it by hand",
+                "Planned circle %s is not fully configured - place it by hand",
                 planned.name,
             )
             return None
@@ -759,6 +760,54 @@ class AdminInterface:
 
         return armed
 
+    @db_scoped
+    def step_back_circle_plan(self, game_id: UUID) -> Optional[PlannedCircle]:
+        """Undo a circle that closed by mistake: the play area goes back to
+        how it looked a minute ago.
+
+        A countdown that fires early, or a **Close the circle now** pressed by
+        a thumb, cannot be taken back by moving the pointer alone - that
+        re-places NEXT correctly but leaves the exclusion circle where the
+        promotion put it, so the players are still held inside a circle that
+        was never meant to close and nobody has told them otherwise. So this
+        steps both back together: the pointer to the entry before it, NEXT
+        re-placed privately from that entry, and the exclusion circle restored
+        from the entry *before that* - cleared outright when there isn't one,
+        which is the first circle of the night not yet having closed.
+
+        It overwrites an exclusion circle placed by hand, because the plan is
+        what it is stepping back to, and it announces itself: somebody is
+        running for a boundary that has just moved away from them.
+        """
+        logger.info("AdminInterface - step_back_circle_plan %s", game_id)
+
+        game: Game = self._get_game_orm(game_id)
+
+        if game.circle_plan_index <= 0:
+            raise HTTPException(400, "The circle plan is already at its first circle")
+
+        game.circle_plan_index -= 1
+        self._arm_planned_circle(game)
+
+        previous = planned_circle(game.circle_plan_index - 1)
+        restored = previous if previous is not None and previous.known else None
+
+        game.exclusion_circle_lat = restored.lat if restored else None
+        game.exclusion_circle_long = restored.long if restored else None
+        game.exclusion_circle_radius = restored.radius_km if restored else None
+
+        self._session.commit()
+
+        tk.send_ticker_message(
+            tk.TickerMessageType.CIRCLE_REOPENED,
+            {},
+            game_id=game_id,
+            session=self._session,
+        )
+        trigger_circle_update(game_id)
+
+        return restored
+
     @staticmethod
     def circle_plan() -> List[PlannedCircle]:
         """The whole plan, so the admin page can say what is coming."""
@@ -778,6 +827,12 @@ class AdminInterface:
         cued before, cue and timer together - there is only ever one thing
         coming next.
 
+        Zero is allowed, and means now: the timer clamps its delay at zero
+        (`next_event.arm`), so a circle cued at zero is announced and closed
+        in the same breath. That is the admin's "do it now", and it goes
+        through the cue rather than round it so that the announcement, the
+        spent early-warning cards and the plan stepping on all still happen.
+
         The timer is armed here rather than in the route for the usual reason
         (``CLAUDE.md``: announce beside the state change): the route is not the
         only caller, and a cue written with no clock behind it is a countdown
@@ -789,8 +844,8 @@ class AdminInterface:
             kind = next_event.NextEventKind(kind).value
         except ValueError:
             raise HTTPException(400, f"Unknown event kind {kind}")
-        if seconds <= 0:
-            raise HTTPException(400, "A countdown has to be to some time in the future")
+        if seconds < 0:
+            raise HTTPException(400, "A countdown cannot run backwards")
 
         game: Game = self._get_game_orm(game_id)
         deadline = time.time() + seconds
@@ -2974,11 +3029,31 @@ class AdminInterface:
         for drop in self._session.query(Drop).filter_by(game_id=game_id).all():
             self._session.delete(drop)
 
+        # The play area starts again as well: all three circles, straight onto
+        # the columns rather than through set_circles, which would announce
+        # each change to a ticker this is about to delete anyway
+        for prefix in ("exclusion", "next", "drop"):
+            for field in ("lat", "long", "radius"):
+                setattr(game, f"{prefix}_circle_{field}", None)
+        game.next_circle_public = False
+
+        # ...and back to the top of the circle plan, with its first entry
+        # placed privately there and then, exactly as reset_to_start_state
+        # does it: a game that starts again starts with a circle already
+        # waiting for whoever finds an early-warning card.
+        game.circle_plan_index = 0
+        self._arm_planned_circle(game)
+
         # Wipe the ticker
         for ticker_entry in (
             self._session.query(TickerEntry).filter_by(game_id=game_id).all()
         ):
             self._session.delete(ticker_entry)
+
+        # Otherwise every open map keeps drawing the circles and the crates
+        # this has just deleted until something else happens to fire the event
+        self._session.commit()
+        trigger_circle_update(game_id)
 
     async def generate_any_game_updates(self, timeout=None):
         """

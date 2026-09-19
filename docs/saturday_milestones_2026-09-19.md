@@ -132,9 +132,12 @@ leader concept). Still true as written: `Game` has no venue.
   `CIRCLE0`…`CIRCLE3` are needed** — they are what `circles.CIRCLE_PLAN`
   arms in turn, which is what stops an admin having to remember to place
   NEXT (M8). The `DROP_*` ones go in the same way and are optional: they only
-  fill the landmark dropdown. Check it took: the admin page's **Circles**
+  fill the landmark dropdown. **Each circle's radius goes in the same file**,
+  as `CIRCLE_RADIUS_CIRCLE0=0.70` and so on (0.42, 0.18, 0.05 km) - how big
+  the last circle is gives away as much as where it is, so neither half is in
+  the repository. Check it took: the admin page's **Circles**
   panel should say `Plan: CIRCLE0 (0.7 km)` with coordinates, not "no
-  coordinates — place it by hand". Do it **before Saturday afternoon**, and
+  coordinates — place it by hand" or "no radius — place it by hand". Do it **before Saturday afternoon**, and
   ideally on staging first.
 - **Resize the droplet before Saturday.** Live runs on a very small
   DigitalOcean droplet, sized for sign-ups, not for thirty phones posting a
@@ -915,12 +918,12 @@ in `CircleControl.js`'s landmark dropdown like any other place and needs no
 code. The drop landmarks will travel the same way.
 
 Four of those names are special: `CIRCLE0`…`CIRCLE3` are what
-`circles.CIRCLE_PLAN` orders the night by, with the radii (0.70, 0.42, 0.18,
-0.05 km) beside them. The game arms each in turn - at **Reset to start
+`circles.CIRCLE_PLAN` orders the night by. Their radii travel the same way,
+as `CIRCLE_RADIUS_CIRCLE0=0.70` and so on (0.42, 0.18, 0.05 km). The game arms each in turn - at **Reset to start
 state**, at **Start game** when nothing is placed, and the instant a circle
 closes - so an admin who forgets to place NEXT cannot neuter the
 early-warning card, and the act of running a circle is the countdown alone.
-An entry whose landmark is unset is simply left for the admin to place by
+An entry missing either half is simply left for the admin to place by
 hand. **Still outstanding: the numbers themselves.**
 
 ---
