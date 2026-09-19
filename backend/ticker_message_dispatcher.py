@@ -54,6 +54,7 @@ class TickerMessageType(Enum):
     COURIER_SET_OFF = auto()
     CUE_CANCELLED = auto()
     CIRCLE_CLOSED = auto()
+    CIRCLE_REOPENED = auto()
     MISSED_SHOT = auto()
     BYSTANDER_SHOT = auto()
     REFUNDED_SHOT = auto()
@@ -224,6 +225,13 @@ TICKER_MESSAGES = {
     TickerMessageType.CIRCLE_CLOSED: (
         TickerTarget.PUBLIC,
         "The circle has closed - if you're outside, get moving!",
+    ),
+    # A circle that closed by mistake, put back (the admin's "Step back one").
+    # Said out loud rather than quietly redrawn: somebody is running for a
+    # boundary that has just moved away from them.
+    TickerMessageType.CIRCLE_REOPENED: (
+        TickerTarget.PUBLIC,
+        "That circle closed by mistake - the play area is back to how it was",
     ),
     TickerMessageType.MISSED_SHOT: (
         TickerTarget.PRIVATE_USER,

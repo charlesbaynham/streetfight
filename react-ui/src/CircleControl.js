@@ -77,6 +77,15 @@ export default function CircleControl({ game }) {
           >
             Skip to the next one
           </button>
+        ) : null}{" "}
+        {game.circle_plan_index > 0 ? (
+          <button
+            onClick={() =>
+              adminPost("admin_step_back_circle_plan", { game_id: game_id })
+            }
+          >
+            Step back one
+          </button>
         ) : null}
       </p>
       <label>

@@ -1,4 +1,5 @@
 import pytest
+from fastapi import HTTPException
 
 from backend.admin_interface import AdminInterface
 from backend.admin_interface import CircleTypes
@@ -332,3 +333,68 @@ def test_a_mistyped_landmark_is_skipped_rather_than_stopping_the_server():
     """Read at import time on a machine running a game: a typo in a secrets
     file must cost one circle, not the evening."""
     assert landmarks_from_env({"LANDMARK_CIRCLE0": "51.4958 -0.1309"}) == {}
+
+
+def test_stepping_back_puts_the_play_area_back(user_in_team, planned_circles):
+    """A circle that closed by mistake: the pointer, NEXT and the exclusion
+    circle all go back one, so nobody is left held inside a circle that was
+    never meant to close."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=1)
+    AdminInterface().promote_next_circle(game_id)
+
+    # CIRCLE1 has closed, and CIRCLE2 is armed behind it
+    game = AdminInterface().get_game_model(game_id)
+    assert (game.exclusion_circle_lat, game.circle_plan_index) == (51.51, 2)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.circle_plan_index == 1
+    assert game.next_circle_lat == 51.51
+    assert game.next_circle_public is False
+    # ...and the circle people are held inside is the one before it again
+    assert game.exclusion_circle_lat == 51.50
+    assert game.exclusion_circle_radius == PLANNED_RADII_KM[0]
+
+
+def test_stepping_back_to_the_first_circle_reopens_the_whole_venue(
+    user_in_team, planned_circles
+):
+    """There is no circle before the first one, so there is nothing to hold
+    people inside: the exclusion circle goes rather than staying put."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=0)
+    AdminInterface().promote_next_circle(game_id)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.circle_plan_index == 0
+    assert game.next_circle_lat == 51.50
+    assert game.exclusion_circle_lat is None
+
+
+def test_stepping_back_from_the_start_of_the_plan_refuses(
+    user_in_team, planned_circles
+):
+    """Nothing to undo, so the button says so rather than silently arming the
+    circle that is already armed."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=0)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().step_back_circle_plan(game_id)
+
+    assert excinfo.value.status_code == 400
+
+
+def test_stepping_back_tells_the_players(user_in_team, planned_circles):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=1)
+    AdminInterface().promote_next_circle(game_id)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    messages = UserInterface(user_in_team).get_messages(num=9999)
+    assert any("closed by mistake" in message[1] for message in messages)

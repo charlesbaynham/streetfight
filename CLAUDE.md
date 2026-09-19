@@ -419,7 +419,13 @@ Four things from it that are worth knowing even if you never call the agent:
     to place NEXT — and it means the admin's act on the night is the countdown
     alone. Placing a circle by hand overrides but does not move the pointer;
     `arm_planned_circle` (the admin page's "Place planned circle" / "Skip to
-    the next one") does move it. A plan entry missing either half is left
+    the next one") does move it. `step_back_circle_plan` ("Step back one") is
+    the undo for a circle that closed by mistake, and moves *two* things
+    because moving the pointer alone would leave the players held inside a
+    circle that should not have closed: the pointer and NEXT go back one, and
+    the exclusion circle is restored from the entry before that (cleared when
+    there isn't one). It announces itself, unlike everything else the plan
+    does. A plan entry missing either half is left
     for the admin to place rather than raised over.
     The `"circle"` event it fires also carries the **courier** (M4.1):
     `Game.courier_lat/long/timestamp/accuracy`, written by
