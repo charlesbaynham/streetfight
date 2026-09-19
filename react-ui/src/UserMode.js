@@ -31,7 +31,7 @@ import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton, ShotHistoryController } from "./ShotHistory";
 import { TeamLeaderButton } from "./TeamLeaderPanel";
 import ShotReceivedOverlay from "./ShotReceivedOverlay";
-import ShotRefusedNotice from "./ShotRefusedNotice";
+import RefusedNotice from "./RefusedNotice";
 import useWakeLock from "./useWakeLock";
 import useAudioUnlock from "./useAudioUnlock";
 import useKnockedOutSound from "./useKnockedOutSound";
@@ -154,7 +154,7 @@ function GetView({ user }) {
 
       <ShotHistoryController />
       <ShotReceivedOverlay user={user} />
-      <ShotRefusedNotice />
+      <RefusedNotice />
 
       {isAlive ? (
         <CrosshairImage />

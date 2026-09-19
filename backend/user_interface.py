@@ -28,6 +28,7 @@ from .identity.overrides import effective_word
 from .image_processing import save_image
 from .item_actions import do_item_actions
 from .items import ItemModel
+from .join_codes import JoinCodeModel
 from .model import APPEAL_REASONS
 from .model import CIRCLE_WARNING_UNTIL_ANNOUNCED
 from .model import DEFAULT_SHOT_TIMEOUT
@@ -48,6 +49,7 @@ from .shot_escalation import VERDICT_PLAYER
 from .shot_identification import rank_candidates
 from .shot_vision import HIT_BYSTANDER
 from .ticker import Ticker
+from .utils import parse_code_or_none
 
 logger = logging.getLogger(__name__)
 
@@ -1003,7 +1005,25 @@ class UserInterface:
             Optionally can be a URL with the item as a query parameter "d".
         """
 
-        item = ItemModel.from_base64(encoded_item)
+        try:
+            item = ItemModel.from_base64(encoded_item)
+        except (ValueError, TypeError):
+            # Not an item code. Before letting this fall through to the
+            # route's 400 - which the player's scanner ignores, so the screen
+            # does nothing whatsoever - ask whether it is one of the game's
+            # *other* codes. Pointing the in-game camera at a team card is an
+            # easy mistake at the door, and a scanner that reacts to it in no
+            # way at all is indistinguishable from one that has stopped
+            # working. Anything the game does not print stays silent: the
+            # scanner reads half a code, and somebody else's QR, often enough
+            # that saying so would be noise.
+            if parse_code_or_none(JoinCodeModel.from_base64, encoded_item):
+                raise HTTPException(
+                    403,
+                    "That is a joining code, not an item. "
+                    "Scan it with your phone's own camera instead.",
+                )
+            raise
 
         item_validation_error = item.validate_signature()
         if item_validation_error:

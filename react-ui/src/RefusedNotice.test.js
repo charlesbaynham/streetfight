@@ -1,28 +1,30 @@
 import { act, render, screen } from "@testing-library/react";
 
-import ShotRefusedNotice, { VISIBLE_FOR_MS } from "./ShotRefusedNotice";
+import RefusedNotice, { VISIBLE_FOR_MS } from "./RefusedNotice";
 import prose from "./prose";
-import { clearShotRefusal, reportShotRefusal } from "./shotRefusalStore";
+import { clearRefusal, reportRefusal } from "./refusalStore";
 
 beforeEach(() => {
   jest.useFakeTimers();
-  clearShotRefusal();
+  clearRefusal();
 });
 
 afterEach(() => {
   jest.useRealTimers();
 });
 
-test("says nothing until a shot is refused", () => {
-  render(<ShotRefusedNotice />);
+test("says nothing until something is refused", () => {
+  render(<RefusedNotice />);
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
 
 test("shows the server's reason, then takes itself away", () => {
-  render(<ShotRefusedNotice />);
+  render(<RefusedNotice />);
 
   act(() => {
-    reportShotRefusal("Still reloading - 12.3 s of cooldown left");
+    reportRefusal(
+      prose.fireButton.shotRefused("Still reloading - 12.3 s of cooldown left"),
+    );
   });
   expect(
     screen.getByText(
@@ -36,11 +38,11 @@ test("shows the server's reason, then takes itself away", () => {
   expect(screen.queryByRole("button")).not.toBeInTheDocument();
 });
 
-test("a refusal with no reason still says the shot did not happen", () => {
-  render(<ShotRefusedNotice />);
+test("renders whatever sentence the caller published", () => {
+  render(<RefusedNotice />);
 
   act(() => {
-    reportShotRefusal(null);
+    reportRefusal(prose.fireButton.shotRefusedUnknown);
   });
 
   expect(
@@ -53,16 +55,20 @@ test("a second identical refusal restarts the countdown", () => {
   // second tap is a thing the player did that has to be answered - keying on
   // the message rather than the refusal would let it expire on the first
   // tap's schedule.
-  render(<ShotRefusedNotice />);
+  render(<RefusedNotice />);
 
   act(() => {
-    reportShotRefusal("Still reloading - 20.0 s of cooldown left");
+    reportRefusal(
+      prose.fireButton.shotRefused("Still reloading - 20.0 s of cooldown left"),
+    );
   });
   act(() => {
     jest.advanceTimersByTime(VISIBLE_FOR_MS - 100);
   });
   act(() => {
-    reportShotRefusal("Still reloading - 20.0 s of cooldown left");
+    reportRefusal(
+      prose.fireButton.shotRefused("Still reloading - 20.0 s of cooldown left"),
+    );
   });
 
   act(() => {
@@ -77,10 +83,12 @@ test("a second identical refusal restarts the countdown", () => {
 });
 
 test("tapping it dismisses it early", () => {
-  render(<ShotRefusedNotice />);
+  render(<RefusedNotice />);
 
   act(() => {
-    reportShotRefusal("Still reloading - 20.0 s of cooldown left");
+    reportRefusal(
+      prose.fireButton.shotRefused("Still reloading - 20.0 s of cooldown left"),
+    );
   });
   act(() => {
     screen.getByRole("button").click();

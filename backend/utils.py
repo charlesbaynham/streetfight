@@ -51,3 +51,17 @@ def add_params_to_url(url: str, params: Dict) -> str:
 
 def slugify_string(input: str):
     return input.lower().replace(" ", "-")
+
+
+def parse_code_or_none(parser, data: str):
+    """Try one of the code readers, or return None if this is not one.
+
+    Identifying a scanned string means offering it to each reader in turn, so
+    every way a reader can say "not mine" -- bad base64, JSON that is not a
+    code, a URL carrying the other kind's query parameter -- has to come back
+    as a miss rather than an exception.
+    """
+    try:
+        return parser(data)
+    except (ValueError, KeyError, TypeError):
+        return None
