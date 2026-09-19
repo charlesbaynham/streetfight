@@ -411,6 +411,49 @@ unrecoverable, and several others are public and instant.
 
 ---
 
+## 8. The spectator screen's knockout countdown says the opposite of what it means
+
+**Report.** "The spectator view currently says that people will be back in XXX
+minutes when someone is knocked out, but actually it should say that they will
+be dead in XXX minutes."
+
+**Diagnosis.** Confirmed, and it is not merely loose wording — the sentence
+asserts the opposite of what the clock is counting. `SpectatorView.js:573–575`
+renders
+
+```js
+knockedOut && player.time_of_death
+  ? `back in ${countdown(secondsUntil(player.time_of_death, now))}`
+  : player.state
+```
+
+`time_of_death` is written as `now + TIME_KNOCKED_OUT` at the moment a player
+drops to zero hit points (`user_interface.hit`), and `User.calculate_state`
+reads it as the deadline **after which they are `DEAD`**. So the number is
+time until they are permanently out, and reaching zero is the bad outcome,
+not the recovery. What actually brings them back is a teammate finding them a
+medpack *before* it expires — which is the one thing the row does not say.
+
+The player's own screen already has this right: `KnockedOutView` shows
+`prose.guideImages.medkitWarning`, "Get a medkit quick! You will die in:",
+over the same deadline. So the two surfaces currently disagree about the
+meaning of one number, and the big screen in the room is the one that is
+wrong.
+
+**Fix direction.** `dead in 7:23`, matching the player's own wording. One
+string at `SpectatorView.js:574` — the spectator screen keeps its strings
+inline rather than in `prose.js`, so there is nothing to thread. Worth a
+thought while in there: the row is the one place a spectator could be told
+that a medpack would save them, and the countdown is the moment that is worth
+knowing. That is a copy decision, not a required change.
+
+**Severity.** Low to fix, but it misinforms every person watching — the
+screen is read from three metres by people who cannot ask anybody what it
+means, and it tells them a knocked-out player is coming back when they are
+running out of time.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
