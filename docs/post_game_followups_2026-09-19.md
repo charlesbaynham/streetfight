@@ -454,6 +454,84 @@ running out of time.
 
 ---
 
+## 9. A failing escalation blocks the queue even with "resolve everything" on
+
+**Report.** "In the final showdown, the shots accumulated faster than the
+pipeline could process them. We need to make sure it doesn't block, even if
+the escalated call fails repeatedly. It should just 'refund' and continue if
+I've got the 'always resolve shots' button ticked."
+
+**Diagnosis.** Confirmed, and the hole is exact: with
+`ai_resolve_everything_enabled` on, the one case it most needs to cover — the
+escalation model failing — is precisely the case it declines to cover.
+
+`_decide_escalated` (`backend/shot_auto_actions.py:426`) reads:
+
+```python
+state = head.ai_escalation_state
+if state is None:
+    return (_ESCALATE, None)
+if state != AI_REVIEW_STATE_DONE or not head.ai_escalation:
+    return None
+```
+
+An **errored** escalation falls into that second branch and returns `None`,
+which sends `process_queue_head` straight back out — and `resolve_everything`
+never gets a look in, because `_forced_fallback` is only reachable from the
+`_ESCALATE` branch, where *nothing was started at all*. An escalation that
+started and failed takes a different road. The docstring says this is
+deliberate: "Errored -> the admin's … neither of those is ever forced, one
+being a verdict still coming and the other a verdict that never came." The
+state is also sticky — only a re-run of the weak review clears it
+(`AdminInterface.store_shot_ai_review`) — so a model failing repeatedly parks
+the head until a human intervenes.
+
+**Why that stalls everything, not just one shot.** Reading is parallel:
+reviews run at `AI_SHOT_REVIEW_CONCURRENCY`, and escalations start as soon as
+a shot needs one (`escalate_early`) at `AI_SHOT_ESCALATION_CONCURRENCY`
+(default 6). **Resolving is strictly serial and head-only** — by design, and
+`process_queue_head` says so: "An ambiguous head blocks everything behind it:
+that is the required ordering, not a missed opportunity." So one unresolvable
+head stalls the whole queue however many shots behind it are read, scored and
+ready. In a final showdown that is the difference between a queue that drains
+and one that only grows.
+
+**The remedy Charles asks for already exists as a verb.**
+`AdminInterface.refund_shot` marks the shot checked with result `refunded`,
+**gives the bullet back**, and announces it in the ticker. It fits the
+existing design's own justification better than the current behaviour does:
+"resolve everything" refuses to force a verdict with nothing to resolve from
+because "with nobody to notify, nobody can appeal" — but a refund has nothing
+*to* appeal. Nobody was hit, the shooter is not out of pocket, and the player
+is told. (Note the consequence: `appeal_refusal` treats `refunded` as "there's
+no verdict on this shot to appeal", so a refund is terminal. That is the
+right bargain here, but it is a bargain.)
+
+**Fix direction.** Under `ai_resolve_everything_enabled`, an errored
+escalation should fall through to a resolution rather than returning `None`
+— `_forced_fallback` first if the weak reading has anything to say, and a
+**refund** when it does not, so the queue always advances. Two things worth
+deciding at the same time rather than assuming:
+
+- **Whether a deadline belongs here too.** The reported failure was
+  throughput, not only this one stuck state: a head whose escalation is
+  genuinely *pending* still blocks, and under load with
+  `OPENROUTER_TIMEOUT_SECONDS` per call and reasoning effort `high` on the
+  escalation path, "pending" can be a long time. A head that has waited more
+  than N seconds could resolve on the weak reading, or refund, instead of
+  waiting. That is a bigger change than the errored case and needs Charles's
+  agreement about what the players see.
+- **Whether strict ordering has to hold during a showdown at all.** It exists
+  so that a knockout is not applied out of sequence. Whether that is worth a
+  stalled queue when thirty shots are landing a minute is a game-design call,
+  not a code one.
+
+**Severity.** High. It is the failure that most degrades the game while it is
+being played, it happened on the night, and the toggle Charles ticked to
+prevent exactly this does not cover it.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
