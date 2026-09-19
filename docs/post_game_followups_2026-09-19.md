@@ -532,6 +532,88 @@ prevent exactly this does not cover it.
 
 ---
 
+## 10. Shot resolution is too slow to keep up with a showdown
+
+**Report.** "We also need to make the shot resolution quicker in general. 10s
+is fine in the early game, but not when shots are arriving every second."
+
+**Diagnosis.** The sibling of item 9: that one is a head that never moves,
+this one is a head that moves too slowly. The arithmetic is the whole
+problem. Sustained throughput is **concurrency ÷ latency**, and the live path
+is configured at:
+
+| Knob | Value | Where |
+| --- | --- | --- |
+| `AI_SHOT_REVIEW_CONCURRENCY` | **2** | `ai_shot_review.DEFAULT_CONCURRENCY` |
+| `AI_SHOT_ESCALATION_CONCURRENCY` | 6 | `shot_escalation.DEFAULT_CONCURRENCY` |
+| `OPENROUTER_TIMEOUT_SECONDS` | 60 s per request | `vision_client.DEFAULT_TIMEOUT_SECONDS` |
+| `REVIEW_ATTEMPTS` | 3 | `ai_shot_review` |
+
+Two review slots at 10 s a review is **0.2 shots per second**. At one shot a
+second the queue grows by 0.8 every second — which is what was seen. To keep
+up at 1/s the pipeline needs `concurrency ÷ latency ≥ 1`: ten slots at 10 s,
+or two slots at 2 s, or anything in between.
+
+Three things make one review cost what it costs:
+
+*The live path is multi-turn.* `ZOOM_SCREENED` — the mode the live pipeline
+runs — sends a screening call and then loops: up to `MAX_ZOOMS` (2) zoom
+follow-ups, then a final full-reading turn. So a review is **two to four
+sequential round trips**, not one, and they are sequential by construction
+because each turn is a reply to the last. `ZOOM_SINGLE` is one turn and
+exists already (used by the workbench).
+
+*Reviews are the narrowest pipe in the system, and arguably backwards.* Every
+shot needs a cheap review; only some need an escalation. Yet escalations run
+six at a time and reviews two. The escalation knob's own comment says it is
+"a separate knob, since each call costs more than a review" — which is an
+argument about money, not about throughput, and the throughput consequence
+was never the point of that number.
+
+*A failure is expensive.* Three attempts at up to 60 s each is a worst case
+of three minutes for one shot. The semaphore is taken **per attempt** rather
+than around the loop — deliberately, so a retry queues behind other shots
+instead of holding a slot for all three — which is the right design and worth
+keeping.
+
+And downstream of all that, resolution is still serial and head-only (item
+9), so the *queue* drains no faster than the head's own chain, however
+parallel the reading is.
+
+**Fix direction.** Not decided, and they are independent, so they can be
+taken in any order:
+
+- **Raise `AI_SHOT_REVIEW_CONCURRENCY`.** The cheapest lever by a distance —
+  an environment variable, no code, no schema. These are network-bound calls,
+  so the ceiling is the provider's rate limit and the bill, not the droplet.
+  Worth measuring what the provider actually allows before picking a number.
+- **Cut the turns.** Running `ZOOM_SINGLE`, or screening only when the target
+  is genuinely small, removes one to three round trips from the critical
+  path. That is a *recognition-quality* trade, so it wants the replay
+  workbench (`/admin/replay`) against real shots from this game rather than a
+  guess — and the whole contract (prompt, `zoom_mode`, schema) has to move
+  together, per `CLAUDE.md`.
+- **Adapt to the queue.** A pipeline that ran `ZOOM_SCREENED` with a long
+  timeout when the queue was empty and `ZOOM_SINGLE` with a short one when
+  forty shots were waiting would match what Charles actually asked for — 10 s
+  is fine early and not in a showdown. More machinery than the other two, and
+  worth doing only if the cheap levers fall short.
+- **Shorten the timeout.** 60 s is far past useful for a shot somebody is
+  waiting on; failing at 15 s and retrying would spend the same worst case
+  more usefully.
+
+**First, though: measure.** Nothing currently records how long a review takes,
+so "10 s" is an impression from the night rather than a number, and every
+choice above is a guess without it. Timing the review and the escalation into
+the log (or onto the stored payload) is small, and makes the next game's
+report a distribution instead of a feeling.
+
+**Severity.** High, and it compounds item 9: at 30 players in a final
+showdown this is the difference between a game that adjudicates itself and
+one where the admin is the bottleneck for the rest of the night.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
