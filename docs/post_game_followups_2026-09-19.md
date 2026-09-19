@@ -189,6 +189,93 @@ navigates by under-reports the queue that most needs attention, and silently
 
 ---
 
+## 5. The circle workflow is confusing to drive
+
+**Report.** "The circle workflow from the admin side needs some serious work.
+I keep fucking it up. It's a little bit confusing how I should be doing it, so
+we'll make it much smoother later."
+
+**Diagnosis.** The machinery is sound — the plan arms the next circle by
+itself, which is what removed the one mistake that would neuter the
+early-warning card. What has not been designed is the *panel*. Six specific
+things, each checkable in the code:
+
+*One job, two panels, no shared state.* Closing a circle is "place it" and
+"say when", and those are two separate headings in `GamePanel` — **Circles**
+(`react-ui/src/CircleControl.js`) and **Countdown**
+(`react-ui/src/EventCue.js`, `AdminMode.js:317–322`). Neither one alone tells
+you whether the next press will do what you want, and the sentence that ties
+them together is a paragraph of explanatory prose at the foot of `EventCue`.
+
+*Five pieces of state, three of them shown.* What actually decides the
+outcome is `circle_plan_index` (the plan pointer), whether NEXT is placed
+(`next_circle_lat`), whether NEXT is **public** (`next_circle_public`),
+whether the exclusion circle is placed, and whether a cue is running.
+`CircleControl` shows the first two, `EventCue` the last. The exclusion
+circle's state is said nowhere in words — only as a shape on the map.
+
+*The panel tells a lie once a circle is cued.* `CircleControl` computes
+`placed = game.next_circle_lat !== null` and then renders "on the map and
+**private** until you cue it" unconditionally — it never reads
+`next_circle_public`. That field is on `GameModel` (`backend/model.py:759`)
+and reaches the client, but **no production frontend file reads it**: the
+only references outside the backend are in `testUtils.js`. So after cueing,
+the panel still says the circle is private when every player can see it; and
+placing `BOTH` makes it public immediately (`admin_interface.py:641`) while
+the panel says private from the first moment.
+
+*Placing by hand silently desyncs the pointer.* `set_circles` writes the
+coordinates and never touches `circle_plan_index`, so "Set at landmark" with
+NEXT — the natural move when a plan entry has no coordinates, which is
+exactly when the panel tells you to "place it by hand" — leaves the pointer
+still aimed at the entry you just placed. Only `arm_planned_circle` moves it.
+Nothing on screen says which of those two you just did.
+
+*The vocabulary is the enum's, not the admin's.* The circle selector offers
+`EXCLUSION` / `NEXT` / `BOTH` / `DROP` in capitals — `CircleTypes` member
+names. `BOTH` in particular says nothing about what it does (place the next
+circle on top of the exclusion circle, and make it public because there is
+then nothing left to hide).
+
+*The three pointer buttons are unlabelled as to consequence.* "Place planned
+circle", "Skip to the next one" and "Step back one" sit in one line. The
+third moves **two** things — the pointer *and* the exclusion circle, restored
+from the entry before — and announces itself in the ticker, unlike everything
+else the plan does. None of that is on the page.
+
+**Also worth deciding: cueing a circle is irreversible in one tap.** A single
+form submit sets `next_circle_public = True` and wipes `circle_warning_until`
+for every player in the game (`admin_interface.py:846–854`) — every
+early-warning card spent at once, which "Cancel countdown" cannot give back.
+Compare the deliberate two-tap friction on the courier's **Place drop here**
+and **Collected**, and the shot queue's two-tap ruling: this is a bigger,
+less reversible act than either and has less friction than both.
+
+**Smaller, while in there.** The radius reminders are a hardcoded sentence at
+the foot of `CircleControl` ("circle 1: 0.70, circle 2: 0.42, …") rather than
+read from the plan, so they can drift from the `CIRCLE_RADIUS_*` the server
+is actually holding; and both "set" forms make the admin type a radius by
+hand every time, including when the plan already knows it.
+
+**Fix direction.** Not decided — but the shape the complaint points at is one
+panel that says, in words, what the game is about to do next and what the one
+button in front of you will change, with the plan, the map state and the
+countdown read as a single sequence rather than three independent forms.
+Worth handing to the **`nudge-ux` agent** (`.claude/agents/nudge-ux.md`)
+rather than redesigning from scratch: this is a flow that loses its user
+mid-task, which is what that consultant and `docs/nudge/` are for. Two things
+should be fixed regardless of what it says, because they are wrong rather
+than merely awkward: reading `next_circle_public` so the panel stops claiming
+a public circle is private, and saying on screen whether the pointer moved.
+Whatever comes out of it, `docs/game_day_runbook_2026-09-19.md` describes
+these buttons step by step and has to change with them.
+
+**Severity.** High. Charles reports repeatedly getting it wrong on the night,
+and the acts involved are public and hard to undo: a circle closing on the
+players, and every early-warning card in the game.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
