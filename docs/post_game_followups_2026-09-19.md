@@ -276,6 +276,68 @@ players, and every early-warning card in the game.
 
 ---
 
+## 6. A private next circle and an announced one are drawn identically
+
+**Report.** "Part of the confusion here comes from the fact that the admin
+interface can't show the difference between a circle that is private and a
+circle that is announced but not yet in force. We need a new colour for ones
+which are going to be next but which haven't yet been shown publicly."
+
+**Diagnosis.** Confirmed, and the reason is one line. `MapCirclesFromData`
+(`react-ui/src/MapView.js:169`) turns the server's fields into three triplets
+through `circleTriplet`, which reads **lat, long and radius only**.
+`next_circle_public` is dropped at that boundary and never reaches the
+drawing code, so `.nextCircle` — one class, red dotted, pulsing
+(`MapView.module.css:78`) — is all four states' single appearance. This is
+the map-side half of item 5's text-side problem, where `CircleControl` says
+"private until you cue it" without reading the same field.
+
+The admin has four states to tell apart and two paints to do it with:
+
+| State | Now drawn as |
+| --- | --- |
+| Exclusion circle, in force | dark red shadow fill (`.exclusionCircle`) |
+| NEXT, placed, **private** | red dotted pulse (`.nextCircle`) |
+| NEXT, placed, **cued and public** | red dotted pulse — *identical* |
+| DROP | blue (`.dropCircle`) |
+
+Two consequences beyond the admin's own confusion, both worth a decision
+rather than a default:
+
+*The early-warning card holder has the same blind spot.* A player holding a
+live card sees NEXT before it is announced (`get_circles`'s `show_next =
+next_circle_public or self._circle_warning_is_live()`), and the card's whole
+value is that nobody else can. Their map cannot say "only you can see this",
+because `/get_circles` does not send `next_circle_public` at all — it only
+nulls the coordinates for everybody else. Telling that player which state
+they are looking at needs the flag added to that payload too.
+
+*The spectator screen draws private circles on a television.*
+`SpectatorView` renders `MapViewAdmin` with a `GameModel`
+(`SpectatorView.js:833`), which carries NEXT whatever its publicity. So a
+circle the game is deliberately keeping private is on a screen left running
+in a room, in the same red as an announced one — which hands the
+early-warning card's advantage to anyone who walks past it. Whether the
+spectator screen *should* show it is a fair question; that it currently does
+so indistinguishably is not a choice anybody made.
+
+**Fix direction.** Carry `next_circle_public` through to the drawing code — a
+fourth element on the triplet or a separate prop alongside it — and give
+private-NEXT its own class. Which colour means which is Charles's call; the
+constraint worth respecting is the admin house style's rule that **colour
+means certainty** (`CLAUDE.md`), so the natural reading is amber for the
+provisional state (placed, not yet announced, still freely movable) and the
+existing red for the announced one that players are already running from.
+Also send the flag on `/get_circles` so the card holder's map can mark what
+only they can see. `SpectatorView` is exempt from the house style's shapes
+but keeps its colour rule, so the same class serves it.
+
+**Severity.** Medium on its own; it compounds item 5, and it is the cheapest
+of that cluster to fix — one field threaded through one function, plus a CSS
+class.
+
+---
+
 ## Ground rules for anything on this list
 
 - The live database is real again the moment new join links go out
