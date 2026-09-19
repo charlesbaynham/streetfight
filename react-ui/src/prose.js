@@ -401,8 +401,7 @@ const prose = {
       "Everyone has had their photo taken at the desk.",
       "Everyone knows they have to wait between shots, and that a pub code is worth ammo to the whole team.",
     ],
-    footer:
-      "Anything you cannot fix, bring to the desk before the game starts.",
+    footer: "Anything you cannot fix, ask the admin before the game starts.",
   },
   // @section userMode
   userMode: {
