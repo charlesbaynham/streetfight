@@ -23,9 +23,10 @@
 # re-crops is unusable however good it looks. Do not change --centre or
 # --half-span without changing them together.
 #
-# The pubs are passed in rather than searched for: they are the nineteen
-# Charles chose (backend/venues.py), with OpenStreetMap's coordinates, and a
-# nearest-N search would return a different set. Names are how people say them
+# The pubs are passed in rather than searched for: they are the ones Charles
+# chose (backend/venues.py, eighteen since Blue Boar dropped out on 19 Sept
+# 2026), with OpenStreetMap's coordinates, and a nearest-N search would return
+# a different set. Names are how people say them
 # - which is what should be written on a hand-drawn map - so the `Venue`
 # snippet the script prints at the end is NOT to be pasted over venues.py: the
 # landmark keys there are already right and other code names them.
@@ -56,7 +57,6 @@ uv run python .claude/skills/draw-venue-map/scripts/build_venue_map.py \
     --pub "The Feathers:51.499240,-0.132990:18-20 Broadway" \
     --pub "Adam and Eve:51.499460,-0.135622:81 Petty France" \
     --pub "Sanctuary House:51.499520,-0.131822:33 Tothill Street" \
-    --pub "Blue Boar:51.499544,-0.132180:41-47 Tothill Street" \
     --pub "The Old Star:51.499940,-0.133724:66 Broadway" \
     --pub "Westminster Arms:51.500555,-0.129813:9 Storey's Gate" \
     --pub "Two Chairmen:51.500631,-0.131621:39 Dartmouth Street" \
