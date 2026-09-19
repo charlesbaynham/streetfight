@@ -191,7 +191,9 @@ Four things from it that are worth knowing even if you never call the agent:
     admin operations: shot validation, HP/ammo, weapons, circles, resets).
     There are **two** resets and they are not interchangeable. `reset_game` is
     the dev one: it walks the game's *teams*, and it deletes the reference
-    photos. `reset_to_start_state` (M2.1) is the one pressed on the night,
+    photos. Both clear the play area the same way - every circle, every crate
+    on the ground, and the circle plan back at its first entry, placed
+    privately. `reset_to_start_state` (M2.1) is the one pressed on the night,
     between the sandbox hour and the game proper: it walks every player by
     `game_id` so a sign-up who has not reached the door yet is included
     (roadmap R15), it clears the shots, items, ticker, circles and any cued
@@ -404,9 +406,10 @@ Four things from it that are worth knowing even if you never call the agent:
     every venue has one and that its aspect matches the venue.
   - `circles.py` — geographic game zones (exclusion / next / drop circles),
     and the **plan** they are placed from. `CIRCLE_PLAN` names the night's
-    circles in the order they close, with a radius each; the coordinates are
-    not here, because this repository is public — each entry names a landmark
-    supplied by the environment (`LANDMARK_CIRCLE0=...`, see `venues.py`).
+    circles in the order they close; neither the coordinates nor the radii are
+    here, because this repository is public — each entry is supplied by the
+    environment, as a landmark (`LANDMARK_CIRCLE0=...`, see `venues.py`) and a
+    radius beside it (`CIRCLE_RADIUS_CIRCLE0=0.70`).
     `Game.circle_plan_index` is how far through it a game is, and
     `AdminInterface._arm_planned_circle` places the entry it points at,
     privately, at three moments: `reset_to_start_state` (back to the top),
@@ -416,7 +419,13 @@ Four things from it that are worth knowing even if you never call the agent:
     to place NEXT — and it means the admin's act on the night is the countdown
     alone. Placing a circle by hand overrides but does not move the pointer;
     `arm_planned_circle` (the admin page's "Place planned circle" / "Skip to
-    the next one") does move it. A plan entry whose landmark is unset is left
+    the next one") does move it. `step_back_circle_plan` ("Step back one") is
+    the undo for a circle that closed by mistake, and moves *two* things
+    because moving the pointer alone would leave the players held inside a
+    circle that should not have closed: the pointer and NEXT go back one, and
+    the exclusion circle is restored from the entry before that (cleared when
+    there isn't one). It announces itself, unlike everything else the plan
+    does. A plan entry missing either half is left
     for the admin to place rather than raised over.
     The `"circle"` event it fires also carries the **courier** (M4.1):
     `Game.courier_lat/long/timestamp/accuracy`, written by
@@ -1115,6 +1124,7 @@ Defaults live in `.env.dev` (copied to `.env` by `npm run bootstrap`). Key ones:
 | `RESET_DATABASE`     | Wipe the DB on startup                               |
 | `WEBSITE_URL`        | Frontend URL (used for CORS)                         |
 | `LANDMARK_<NAME>`    | `"<lat>,<long>"` — a landmark merged into the active venue at startup, so the coordinates the circles and drops use stay out of this public repo. `CIRCLE0`…`CIRCLE3` are the ones `circles.CIRCLE_PLAN` names |
+| `CIRCLE_RADIUS_<NAME>` | The radius in km of that planned circle, e.g. `CIRCLE_RADIUS_CIRCLE0=0.70`; unset means the admin places it by hand |
 | `API_URL`            | Backend API base URL                                 |
 | `OPENROUTER_API_KEY` | OpenRouter key for AI shot review (unset = disabled) |
 | `OPENROUTER_MODEL`   | Vision model id (placeholder default, see below)     |

@@ -34,12 +34,16 @@ export default function EventCue({ game }) {
   // The box is keyed on the kind, so switching between circle and drop
   // re-mounts it with that kind's default rather than leaving the other's
   // number in place.
+  //
+  // Any non-negative number goes in it: a fraction for a countdown shorter
+  // than a minute, and 0 for "now" - which still announces the circle and
+  // still spends the early-warning cards, unlike closing it by hand.
   const minutesBox = (
     <input
       key={kind}
       type="number"
-      step="1"
-      min="1"
+      step="any"
+      min="0"
       defaultValue={DEFAULT_MINUTES[kind]}
       ref={minutesInput}
       required

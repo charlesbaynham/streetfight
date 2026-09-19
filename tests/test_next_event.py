@@ -2,6 +2,7 @@ import asyncio
 import time
 
 import pytest
+from fastapi import HTTPException
 
 from backend import next_event
 from backend.admin_interface import AdminInterface
@@ -189,3 +190,25 @@ async def test_resetting_to_the_start_state_stops_the_clock(user_in_team, mocker
 
     assert fired.call_count == 0
     assert not next_event._pending
+
+
+def test_a_cue_of_zero_is_now_rather_than_a_refusal(user_in_team):
+    """ "Do it now" goes through the cue rather than round it, so that the
+    announcement and the spent early-warning cards still happen."""
+    game_id = UserInterface(user_in_team).get_game_id()
+
+    deadline = AdminInterface().cue_next_event(
+        game_id, next_event.KIND_CIRCLE, seconds=0
+    )
+
+    assert deadline == pytest.approx(time.time(), abs=5)
+    assert AdminInterface().get_game_model(game_id).next_event_at == deadline
+
+
+def test_a_countdown_cannot_run_backwards(user_in_team):
+    game_id = UserInterface(user_in_team).get_game_id()
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().cue_next_event(game_id, next_event.KIND_CIRCLE, seconds=-60)
+
+    assert excinfo.value.status_code == 400

@@ -37,9 +37,15 @@ export default function CircleControl({ game }) {
       <p>
         {armed ? (
           <>
-            Plan: <b>{armed.name}</b> ({armed.radius_km} km),{" "}
+            Plan: <b>{armed.name}</b>
+            {armed.radius_km !== null ? (
+              <> ({armed.radius_km} km)</>
+            ) : null},{" "}
             {!armed.known ? (
-              <b>no coordinates &mdash; place it by hand</b>
+              <b>
+                {armed.radius_km === null ? "no radius" : "no coordinates"}{" "}
+                &mdash; place it by hand
+              </b>
             ) : placed ? (
               <>
                 on the map and <b>private</b> until you cue it
@@ -72,6 +78,15 @@ export default function CircleControl({ game }) {
             }
           >
             Skip to the next one
+          </button>
+        ) : null}{" "}
+        {game.circle_plan_index > 0 ? (
+          <button
+            onClick={() =>
+              adminPost("admin_step_back_circle_plan", { game_id: game_id })
+            }
+          >
+            Step back one
           </button>
         ) : null}
       </p>

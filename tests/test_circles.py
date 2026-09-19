@@ -1,4 +1,5 @@
 import pytest
+from fastapi import HTTPException
 
 from backend.admin_interface import AdminInterface
 from backend.admin_interface import CircleTypes
@@ -157,12 +158,16 @@ def test_a_courier_who_has_stopped_is_nobody(user_in_team):
 # ---------------------------------------------------------------------------
 
 
+PLANNED_RADII_KM = (0.70, 0.42, 0.18, 0.05)
+
+
 @pytest.fixture
 def planned_circles(monkeypatch):
-    """A venue that knows where the plan's circles are.
+    """A venue that knows where the plan's circles are, and how big.
 
-    The real ones arrive from the environment (`LANDMARK_CIRCLE0=...`) and are
-    deliberately not committed, so a test that wants them has to supply them.
+    Both halves arrive from the environment (`LANDMARK_CIRCLE0=...`,
+    `CIRCLE_RADIUS_CIRCLE0=...`) and are deliberately not committed, so a test
+    that wants them has to supply them.
     """
     landmarks = dict(ACTIVE_VENUE.landmarks)
     landmarks.update(
@@ -174,6 +179,8 @@ def planned_circles(monkeypatch):
         }
     )
     monkeypatch.setattr(ACTIVE_VENUE, "landmarks", landmarks)
+    for name, radius_km in zip(CIRCLE_PLAN, PLANNED_RADII_KM):
+        monkeypatch.setenv("CIRCLE_RADIUS_" + name, str(radius_km))
 
 
 def test_the_first_planned_circle_is_placed_by_the_reset(user_in_team, planned_circles):
@@ -187,10 +194,31 @@ def test_the_first_planned_circle_is_placed_by_the_reset(user_in_team, planned_c
 
     game = AdminInterface().get_game_model(game_id)
     assert (game.next_circle_lat, game.next_circle_long) == (51.50, -0.10)
-    assert game.next_circle_radius == CIRCLE_PLAN[0][1]
+    assert game.next_circle_radius == PLANNED_RADII_KM[0]
     # Placed, but nobody has been told
     assert game.next_circle_public is False
     assert circles_of(user_in_team)["next_circle_lat"] is None
+
+
+def test_the_dev_reset_clears_the_play_area_too(user_in_team, planned_circles):
+    """`reset_game` is a game starting again, so the play area starts again:
+    every circle goes, every crate on the ground goes with it, and the plan is
+    back at its first entry with that circle privately placed."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.EXCLUSION, 51.9, -0.9, 0.3)
+    AdminInterface().set_circles(game_id, CircleTypes.DROP, 51.8, -0.8, 0.02)
+    AdminInterface().place_drop(game_id, 51.7, -0.7, 0.02)
+
+    AdminInterface().reset_game(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.exclusion_circle_lat is None
+    assert game.drop_circle_lat is None
+    assert AdminInterface().get_drops(game_id) == []
+    # Back to the top of the plan, placed but not yet announced
+    assert game.circle_plan_index == 0
+    assert (game.next_circle_lat, game.next_circle_long) == (51.50, -0.10)
+    assert game.next_circle_public is False
 
 
 def test_closing_a_circle_arms_the_one_after_it(user_in_team, planned_circles):
@@ -236,6 +264,20 @@ def test_a_circle_the_environment_never_supplied_is_left_to_the_admin(
             if not name.startswith("CIRCLE")
         },
     )
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    assert AdminInterface().get_game_model(game_id).next_circle_lat is None
+
+
+def test_a_circle_with_no_radius_is_left_to_the_admin_too(
+    user_in_team, planned_circles, monkeypatch
+):
+    """Half a plan entry is not an entry: a circle whose coordinates are known
+    but whose `CIRCLE_RADIUS_<name>` is unset has no size to be placed at."""
+    monkeypatch.delenv("CIRCLE_RADIUS_" + CIRCLE_PLAN[0])
     game_id = UserInterface(user_in_team).get_game_id()
     AdminInterface().set_game_active(game_id, False)
 
@@ -291,3 +333,68 @@ def test_a_mistyped_landmark_is_skipped_rather_than_stopping_the_server():
     """Read at import time on a machine running a game: a typo in a secrets
     file must cost one circle, not the evening."""
     assert landmarks_from_env({"LANDMARK_CIRCLE0": "51.4958 -0.1309"}) == {}
+
+
+def test_stepping_back_puts_the_play_area_back(user_in_team, planned_circles):
+    """A circle that closed by mistake: the pointer, NEXT and the exclusion
+    circle all go back one, so nobody is left held inside a circle that was
+    never meant to close."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=1)
+    AdminInterface().promote_next_circle(game_id)
+
+    # CIRCLE1 has closed, and CIRCLE2 is armed behind it
+    game = AdminInterface().get_game_model(game_id)
+    assert (game.exclusion_circle_lat, game.circle_plan_index) == (51.51, 2)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.circle_plan_index == 1
+    assert game.next_circle_lat == 51.51
+    assert game.next_circle_public is False
+    # ...and the circle people are held inside is the one before it again
+    assert game.exclusion_circle_lat == 51.50
+    assert game.exclusion_circle_radius == PLANNED_RADII_KM[0]
+
+
+def test_stepping_back_to_the_first_circle_reopens_the_whole_venue(
+    user_in_team, planned_circles
+):
+    """There is no circle before the first one, so there is nothing to hold
+    people inside: the exclusion circle goes rather than staying put."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=0)
+    AdminInterface().promote_next_circle(game_id)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.circle_plan_index == 0
+    assert game.next_circle_lat == 51.50
+    assert game.exclusion_circle_lat is None
+
+
+def test_stepping_back_from_the_start_of_the_plan_refuses(
+    user_in_team, planned_circles
+):
+    """Nothing to undo, so the button says so rather than silently arming the
+    circle that is already armed."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=0)
+
+    with pytest.raises(HTTPException) as excinfo:
+        AdminInterface().step_back_circle_plan(game_id)
+
+    assert excinfo.value.status_code == 400
+
+
+def test_stepping_back_tells_the_players(user_in_team, planned_circles):
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().arm_planned_circle(game_id, index=1)
+    AdminInterface().promote_next_circle(game_id)
+
+    AdminInterface().step_back_circle_plan(game_id)
+
+    messages = UserInterface(user_in_team).get_messages(num=9999)
+    assert any("closed by mistake" in message[1] for message in messages)
