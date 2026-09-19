@@ -1,0 +1,31 @@
+/* Above the fire button, clear of the thumb that just pressed it. Red because
+   this is an answer - the thing did not happen - not a maybe.
+
+   The z-index is load-bearing: a refused scan also flashes the screen red
+   (BlankScreen, z-index 100), and that flash is opaque and full-screen for
+   about four seconds, so a notice underneath it was a message nobody could
+   read. Above the flash, below ShotReceivedOverlay's 200, which is the one
+   thing on this screen allowed to hide everything else.
+
+   The background is near-black rather than the flash's own red, so the words
+   stay legible while the red is at full strength behind them. */
+.notice {
+  position: fixed;
+  bottom: 22vh;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 150;
+
+  max-width: 85vw;
+  padding: 0.8em 1.2em;
+  border: 2px solid #ffffff;
+  border-radius: 0.6em;
+
+  background-color: rgba(60, 0, 0, 0.96);
+  color: #ffffff;
+  font-size: 1.3em;
+  text-align: center;
+
+  /* Big enough to dismiss without aiming, per the admin pages' 44px floor */
+  min-height: 3em;
+}

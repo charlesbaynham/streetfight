@@ -1,6 +1,8 @@
 import { render, screen, waitFor, act } from "@testing-library/react";
 
 import QRParser from "./QRParser";
+import prose from "./prose";
+import { clearRefusal, getRefusal } from "./refusalStore";
 import QrScannerMock, { setNextScanResult } from "./testMocks/qrScanner";
 import { getPlaySpy } from "./testMocks/useSound";
 import { installFetchMock, getAPICalls, getLastAPICall } from "./testUtils";
@@ -36,6 +38,7 @@ function setDocumentHidden(hidden) {
 afterEach(() => {
   jest.useRealTimers();
   setDocumentHidden(false);
+  clearRefusal();
 });
 
 // capture() (in QRParser.js) lazily builds its QR-decoding engine on the very
@@ -127,6 +130,73 @@ test("a 403 response flashes the screen red and plays the error sound", async ()
   );
   expect(screen.getByTestId("blank-screen").dataset.color).toBe("red");
   expect(getPlaySpy()).toHaveBeenCalled();
+});
+
+test("a 403 publishes the server's reason, so the player is told why", async () => {
+  installFetchMock({
+    collect_item: {
+      status: 403,
+      body: { detail: "Medpacks can only be used on knocked-out players" },
+    },
+  });
+  setNextScanResult({ data: "medpack-poster" });
+  jest.useFakeTimers();
+  render(<QRParser webcamRef={makeWebcamRef()} />);
+
+  await waitFor(() => expect(getRefusal()).not.toBeNull(), WAIT);
+  expect(getRefusal().message).toBe(
+    prose.qrScanner.scanRefused(
+      "Medpacks can only be used on knocked-out players",
+    ),
+  );
+});
+
+test("a 403 with nothing to say still publishes a refusal", async () => {
+  installFetchMock({ collect_item: { status: 403, body: {} } });
+  setNextScanResult({ data: "silent-refusal" });
+  jest.useFakeTimers();
+  render(<QRParser webcamRef={makeWebcamRef()} />);
+
+  await waitFor(() => expect(getRefusal()).not.toBeNull(), WAIT);
+  expect(getRefusal().message).toBe(prose.qrScanner.scanRefusedUnknown);
+});
+
+test("the same refusal repeating re-says the reason without re-flashing", async () => {
+  // The scan loop re-submits the same code every few seconds, so a player
+  // holding the phone at a dead poster gets the same refusal over and over.
+  // Strobing the screen red on each one would cover the message they are
+  // trying to read, so only the first flashes - but every one of them has to
+  // reach the notice, since the player may only now be looking.
+  installFetchMock({
+    collect_item: {
+      status: 403,
+      body: { detail: "This code has been withdrawn" },
+    },
+  });
+  setNextScanResult({ data: "withdrawn-poster" });
+  jest.useFakeTimers();
+  render(<QRParser webcamRef={makeWebcamRef()} />);
+
+  await waitFor(() => expect(getRefusal()).not.toBeNull(), WAIT);
+  const firstId = getRefusal().id;
+  expect(getPlaySpy()).toHaveBeenCalledTimes(1);
+
+  await waitFor(() => expect(getRefusal().id).not.toBe(firstId), WAIT);
+  expect(getRefusal().message).toBe(
+    prose.qrScanner.scanRefused("This code has been withdrawn"),
+  );
+  expect(getPlaySpy()).toHaveBeenCalledTimes(1);
+});
+
+test("a scan that never reaches the server says so", async () => {
+  installFetchMock({});
+  global.fetch = jest.fn(() => Promise.reject(new Error("offline")));
+  setNextScanResult({ data: "no-signal-item" });
+  jest.useFakeTimers();
+  render(<QRParser webcamRef={makeWebcamRef()} />);
+
+  await waitFor(() => expect(getRefusal()).not.toBeNull(), WAIT);
+  expect(getRefusal().message).toBe(prose.qrScanner.scanOffline);
 });
 
 test("a 404 response is ignored - no flash, no sound (the scanner misfires)", async () => {

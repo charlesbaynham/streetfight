@@ -1,7 +1,8 @@
 import { createRef } from "react";
 import { render, waitFor } from "@testing-library/react";
 import { MyWebcam } from "./MyWebcam";
-import { clearShotRefusal, getShotRefusal } from "./shotRefusalStore";
+import prose from "./prose";
+import { clearRefusal, getRefusal } from "./refusalStore";
 
 jest.mock("./utils", () => ({ watchCompassHeading: () => () => {} }));
 
@@ -52,7 +53,7 @@ describe("a refused shot", () => {
   }
 
   beforeEach(() => {
-    clearShotRefusal();
+    clearRefusal();
   });
 
   test("publishes the server's reason", async () => {
@@ -67,10 +68,10 @@ describe("a refused shot", () => {
     );
 
     renderWithAFrame();
-    await waitFor(() => expect(getShotRefusal()).not.toBeNull());
+    await waitFor(() => expect(getRefusal()).not.toBeNull());
 
-    expect(getShotRefusal().message).toBe(
-      "Still reloading - 12.3 s of cooldown left",
+    expect(getRefusal().message).toBe(
+      prose.fireButton.shotRefused("Still reloading - 12.3 s of cooldown left"),
     );
   });
 
@@ -83,9 +84,9 @@ describe("a refused shot", () => {
     );
 
     renderWithAFrame();
-    await waitFor(() => expect(getShotRefusal()).not.toBeNull());
+    await waitFor(() => expect(getRefusal()).not.toBeNull());
 
-    expect(getShotRefusal().message).toBeNull();
+    expect(getRefusal().message).toBe(prose.fireButton.shotRefusedUnknown);
   });
 
   test("a shot that lands publishes nothing", async () => {
@@ -95,6 +96,6 @@ describe("a refused shot", () => {
     renderWithAFrame();
     await waitFor(() => expect(global.fetch).toHaveBeenCalled());
 
-    expect(getShotRefusal()).toBeNull();
+    expect(getRefusal()).toBeNull();
   });
 });
