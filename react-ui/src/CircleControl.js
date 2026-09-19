@@ -38,7 +38,9 @@ export default function CircleControl({ game }) {
         {armed ? (
           <>
             Plan: <b>{armed.name}</b>
-            {armed.radius_km !== null ? <> ({armed.radius_km} km)</> : null},{" "}
+            {armed.radius_km !== null ? (
+              <> ({armed.radius_km} km)</>
+            ) : null},{" "}
             {!armed.known ? (
               <b>
                 {armed.radius_km === null ? "no radius" : "no coordinates"}{" "}
