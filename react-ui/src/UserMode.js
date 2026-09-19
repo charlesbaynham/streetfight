@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 
+import { useSearchParams } from "react-router-dom";
+
 import { FullScreen, useFullScreenHandle } from "react-full-screen";
 
 import { CrosshairImage, DeadImage, KnockedOutView } from "./GuideImages";
@@ -10,6 +12,7 @@ import WebcamView from "./WebcamView";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
 import TickerView from "./TickerView";
 import JoinFromQueryParams from "./JoinFromQueryParams";
+import WhatIsThis from "./WhatIsThis";
 
 import styles from "./UserMode.module.css";
 import OnboardingView from "./OnboardingView";
@@ -34,6 +37,41 @@ import useAudioUnlock from "./useAudioUnlock";
 import useKnockedOutSound from "./useKnockedOutSound";
 
 const isGameRunning = (user) => Boolean(user && user.active);
+
+// Somebody who has never joined anything: no name, no game and no team. Every
+// visitor gets a User row the first time they load the site (get_user_id ->
+// _make_user), so a stranger who pointed their camera at a card taped to a
+// lamppost is indistinguishable from a player except by this - they have
+// nothing. They get the explanation (WhatIsThis.js) rather than the join
+// steps, which for them lead nowhere anyway.
+//
+// A real player only ever looks like this before their very first join, and
+// they arrive holding a join code - see useIsStranger below.
+const isStranger = (user) =>
+  Boolean(user) && !user.name && !user.game_id && !user.team_id;
+
+// Whether to show a visitor the explanation instead of the join steps.
+//
+// The check is not just isStranger(), because a player signing up is briefly
+// indistinguishable from a stranger: they land on "/?j=<code>" and stay a
+// nobody until JoinFromQueryParams' POST comes back. Worse, a join that
+// *fails* - a code for a game that has since been reset, say - navigates back
+// to "/" with the query stripped and a popup saying why, and that player must
+// read the explanation rather than be told they are not part of this. So a
+// tab that has been handed a join code never shows the landing page again,
+// whatever came of it.
+function useIsStranger(user) {
+  const [searchParams] = useSearchParams();
+  const joinCode = searchParams.get("j");
+
+  const [sawJoinCode, setSawJoinCode] = useState(joinCode !== null);
+
+  useEffect(() => {
+    if (joinCode !== null) setSawJoinCode(true);
+  }, [joinCode]);
+
+  return isStranger(user) && joinCode === null && !sawJoinCode;
+}
 
 function GetView({ user }) {
   useWakeLock();
@@ -158,6 +196,15 @@ export default function UserMode() {
   const reportFullscreenChange = useCallback((state, _) => {
     setIsFullscreen(state);
   }, []);
+
+  const showLandingPage = useIsStranger(user);
+
+  // Above the SSE connection and the full-screen frame rather than inside
+  // GetView, so a passer-by reading this costs the server nothing: no stream
+  // to keep open (and to clean up - see the SSE note in CLAUDE.md), and none
+  // of the chrome that is addressed to a player, like the "better in
+  // full-screen" scrawl.
+  if (showLandingPage) return <WhatIsThis />;
 
   const view = (
     <GetView

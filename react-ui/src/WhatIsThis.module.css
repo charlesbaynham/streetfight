@@ -1,0 +1,69 @@
+/* Same dark, mobile-first frame as HowItWorks.module.css, which is the page
+   this one hands off to - a reader who follows the link should not feel they
+   have arrived somewhere else. Read rather than tapped, so the measure is the
+   essay's narrow one and not the picker's. */
+
+.outerContainer {
+  background-color: black;
+  color: white;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.innerContainer {
+  max-width: 130mm;
+  margin: 0 auto;
+  padding: 8mm 5mm 14mm;
+  box-sizing: border-box;
+  line-height: 1.5;
+}
+
+.innerContainer h1 {
+  margin: 0 0 6mm;
+}
+
+.innerContainer a {
+  color: white;
+}
+
+.logo {
+  margin: 0 0 6mm;
+  text-align: center;
+}
+
+.logo img {
+  max-width: 60vw;
+  max-height: 25vh;
+}
+
+.paragraph {
+  margin: 0 0 4mm;
+}
+
+/* The one thing on the page to tap, so it gets a line to itself and a target
+   the size of a button rather than the size of its text. */
+.mathsLink {
+  margin: 8mm 0 0;
+}
+
+.mathsLink a {
+  display: block;
+  padding: 4mm 5mm;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 3mm;
+  text-align: center;
+  text-decoration: none;
+}
+
+.mathsLink a:hover,
+.mathsLink a:focus-visible {
+  border-color: white;
+  background-color: rgba(255, 255, 255, 0.08);
+}
+
+.contact {
+  margin: 10mm 0 0;
+  padding-top: 4mm;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  opacity: 0.75;
+}

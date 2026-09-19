@@ -415,6 +415,34 @@ const prose = {
     omg: "OMG",
     eatABullet: "Eat-a-bullet",
   },
+  // @section whatIsThis
+  // The landing page somebody who is not in the game gets at "/"
+  // (WhatIsThis.js): they scanned a card off a lamppost, or were sent the
+  // bare URL. Deliberately a dead end - it explains and it offers the essay,
+  // and it has no way into a game, because the people it is written for were
+  // not invited.
+  whatIsThis: {
+    logoAlt: "Streetfight",
+    heading: "What is this?",
+    intro: [
+      "You have probably found a QR code stuck to something, or picked up a card with one on it. It belongs to a game called Streetfight, which a group of friends are playing around this town.",
+      'It works roughly like this. Everyone is put into a team and handed a hat and an armband. You "shoot" somebody by photographing them: a computer reads the colours of the clothes in the picture, works out which player it is looking at, and takes a hit point off them. Codes like the one you have found are hidden around the place, and are worth ammunition, armour or a medical kit to whoever scans them first.',
+      "It is a private game between friends - a party, really - so there is nothing here to sign up to, and the code you have found will not do anything without an invitation.",
+      "If it was hidden rather than handed to you or stuck on a wall, please do put it back where it was. Somebody is out looking for it.",
+    ],
+    // The essay (HowItWorks.js). Players reach it from the outfit picker and
+    // the waiting page instead, through CuriosityFooter.
+    mathsLinkText: "How the clothes and the camera work",
+    // A mailto link sits inside the sentence, so this is one of the few
+    // places a JSX function is the right shape - see the conventions above.
+    contact: (emailLink) => (
+      <>
+        Contact Charles Baynham on {emailLink} if you&rsquo;re interested and
+        want to know more.
+      </>
+    ),
+    contactEmail: "charles.baynham@gmail.com",
+  },
 };
 
 export default prose;
