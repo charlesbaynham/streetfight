@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+import os
 from typing import List
 from typing import NamedTuple
 from typing import Optional
@@ -14,10 +15,13 @@ from .venues import ACTIVE_VENUE
 logger = logging.getLogger(__name__)
 
 
-# The night's circles, in the order they close, with the radius each is placed
-# at. Charles and Gaby chose them on a marked-up map; the *names* are here and
-# the coordinates are not, because this repository is public - each one is a
-# landmark supplied by the environment (see `venues.landmarks_from_env`).
+# The night's circles, in the order they close. Charles and Gaby chose them on
+# a marked-up map; only the *names* are here, because this repository is
+# public - both halves of an entry are supplied by the environment, the
+# coordinates as a landmark (`LANDMARK_CIRCLE0=...`, see
+# `venues.landmarks_from_env`) and the radius beside it
+# (`CIRCLE_RADIUS_CIRCLE0=0.70`). How big the last circle is gives away as
+# much about the night as where it is.
 #
 # This list is what stops the one mistake that would neuter the early-warning
 # card: cueing a countdown having forgotten to place NEXT. The game holds a
@@ -25,12 +29,29 @@ logger = logging.getLogger(__name__)
 # itself - at a reset to the start state, when the game starts, and the moment
 # a circle closes - so there is always a private circle for a card to reveal
 # and the admin only ever presses the countdown.
-CIRCLE_PLAN: Tuple[Tuple[str, float], ...] = (
-    ("CIRCLE0", 0.70),
-    ("CIRCLE1", 0.42),
-    ("CIRCLE2", 0.18),
-    ("CIRCLE3", 0.05),
-)
+CIRCLE_PLAN: Tuple[str, ...] = ("CIRCLE0", "CIRCLE1", "CIRCLE2", "CIRCLE3")
+
+# The radius of a planned circle, in km: `CIRCLE_RADIUS_CIRCLE0="0.70"`.
+CIRCLE_RADIUS_ENV_PREFIX = "CIRCLE_RADIUS_"
+
+
+def radius_from_env(name: str) -> Optional[float]:
+    """The radius the environment gives circle `name`, in km, or None.
+
+    Malformed is the same as missing, and logged rather than raised, for the
+    reason `venues.landmarks_from_env` gives: a typo in a secrets file must
+    not be why the server will not boot mid-game. An entry without a radius is
+    one the admin places by hand, exactly as one without coordinates is.
+    """
+    key = CIRCLE_RADIUS_ENV_PREFIX + name
+    value = os.environ.get(key)
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except ValueError:
+        logger.warning("Ignoring %s: expected a radius in km, got %r", key, value)
+        return None
 
 
 class PlannedCircle(NamedTuple):
@@ -38,16 +59,20 @@ class PlannedCircle(NamedTuple):
 
     index: int
     name: str
-    radius_km: float
+    radius_km: Optional[float] = None
     lat: Optional[float] = None
     long: Optional[float] = None
 
     @property
     def known(self) -> bool:
-        """Has this circle's landmark actually been supplied? A plan entry
-        whose `LANDMARK_<name>` is unset is a circle the admin has to place by
-        hand, not a reason to refuse to run."""
-        return self.lat is not None and self.long is not None
+        """Has the environment actually supplied this circle - both where it
+        closes and how big it is? An entry missing either half is a circle the
+        admin has to place by hand, not a reason to refuse to run."""
+        return (
+            self.lat is not None
+            and self.long is not None
+            and self.radius_km is not None
+        )
 
 
 def planned_circle(index: int) -> Optional[PlannedCircle]:
@@ -55,7 +80,8 @@ def planned_circle(index: int) -> Optional[PlannedCircle]:
     if index < 0 or index >= len(CIRCLE_PLAN):
         return None
 
-    name, radius_km = CIRCLE_PLAN[index]
+    name = CIRCLE_PLAN[index]
+    radius_km = radius_from_env(name)
     lat_long = ACTIVE_VENUE.landmarks.get(name)
 
     if lat_long is None:
@@ -72,7 +98,7 @@ def planned_circle(index: int) -> Optional[PlannedCircle]:
 
 def circle_plan() -> List[PlannedCircle]:
     """The whole plan, for the admin page to say what is coming and which
-    entries it has no coordinates for."""
+    entries the environment has not supplied."""
     return [planned_circle(index) for index in range(len(CIRCLE_PLAN))]
 
 

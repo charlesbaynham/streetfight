@@ -136,9 +136,12 @@ service — the file is read at startup, not per request.
 `Plan: CIRCLE0 (0.7 km), on the map and private until you cue it` after a
 **Reset to start state**, and not "no coordinates — place it by hand".
 
-Radii live in code (`circles.CIRCLE_PLAN`: 0.70, 0.42, 0.18, 0.05 km), so if
-the marked-up map disagrees with those, that tuple is the one thing to change
-and it needs a deploy.
+The radii live in the same file, one line each:
+`CIRCLE_RADIUS_CIRCLE0=0.70`, then 0.42, 0.18 and 0.05 km. A circle is armed
+automatically only when both its landmark and its radius are there - with the
+radius missing the panel says "no radius — place it by hand" - so if the
+marked-up map disagrees with those numbers, edit the secrets file and restart
+the service rather than deploying a code change.
 
 ### Resize the droplet
 

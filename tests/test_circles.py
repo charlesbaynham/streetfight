@@ -157,12 +157,16 @@ def test_a_courier_who_has_stopped_is_nobody(user_in_team):
 # ---------------------------------------------------------------------------
 
 
+PLANNED_RADII_KM = (0.70, 0.42, 0.18, 0.05)
+
+
 @pytest.fixture
 def planned_circles(monkeypatch):
-    """A venue that knows where the plan's circles are.
+    """A venue that knows where the plan's circles are, and how big.
 
-    The real ones arrive from the environment (`LANDMARK_CIRCLE0=...`) and are
-    deliberately not committed, so a test that wants them has to supply them.
+    Both halves arrive from the environment (`LANDMARK_CIRCLE0=...`,
+    `CIRCLE_RADIUS_CIRCLE0=...`) and are deliberately not committed, so a test
+    that wants them has to supply them.
     """
     landmarks = dict(ACTIVE_VENUE.landmarks)
     landmarks.update(
@@ -174,6 +178,8 @@ def planned_circles(monkeypatch):
         }
     )
     monkeypatch.setattr(ACTIVE_VENUE, "landmarks", landmarks)
+    for name, radius_km in zip(CIRCLE_PLAN, PLANNED_RADII_KM):
+        monkeypatch.setenv("CIRCLE_RADIUS_" + name, str(radius_km))
 
 
 def test_the_first_planned_circle_is_placed_by_the_reset(user_in_team, planned_circles):
@@ -187,10 +193,31 @@ def test_the_first_planned_circle_is_placed_by_the_reset(user_in_team, planned_c
 
     game = AdminInterface().get_game_model(game_id)
     assert (game.next_circle_lat, game.next_circle_long) == (51.50, -0.10)
-    assert game.next_circle_radius == CIRCLE_PLAN[0][1]
+    assert game.next_circle_radius == PLANNED_RADII_KM[0]
     # Placed, but nobody has been told
     assert game.next_circle_public is False
     assert circles_of(user_in_team)["next_circle_lat"] is None
+
+
+def test_the_dev_reset_clears_the_play_area_too(user_in_team, planned_circles):
+    """`reset_game` is a game starting again, so the play area starts again:
+    every circle goes, every crate on the ground goes with it, and the plan is
+    back at its first entry with that circle privately placed."""
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_circles(game_id, CircleTypes.EXCLUSION, 51.9, -0.9, 0.3)
+    AdminInterface().set_circles(game_id, CircleTypes.DROP, 51.8, -0.8, 0.02)
+    AdminInterface().place_drop(game_id, 51.7, -0.7, 0.02)
+
+    AdminInterface().reset_game(game_id)
+
+    game = AdminInterface().get_game_model(game_id)
+    assert game.exclusion_circle_lat is None
+    assert game.drop_circle_lat is None
+    assert AdminInterface().get_drops(game_id) == []
+    # Back to the top of the plan, placed but not yet announced
+    assert game.circle_plan_index == 0
+    assert (game.next_circle_lat, game.next_circle_long) == (51.50, -0.10)
+    assert game.next_circle_public is False
 
 
 def test_closing_a_circle_arms_the_one_after_it(user_in_team, planned_circles):
@@ -236,6 +263,20 @@ def test_a_circle_the_environment_never_supplied_is_left_to_the_admin(
             if not name.startswith("CIRCLE")
         },
     )
+    game_id = UserInterface(user_in_team).get_game_id()
+    AdminInterface().set_game_active(game_id, False)
+
+    AdminInterface().reset_to_start_state(game_id)
+
+    assert AdminInterface().get_game_model(game_id).next_circle_lat is None
+
+
+def test_a_circle_with_no_radius_is_left_to_the_admin_too(
+    user_in_team, planned_circles, monkeypatch
+):
+    """Half a plan entry is not an entry: a circle whose coordinates are known
+    but whose `CIRCLE_RADIUS_<name>` is unset has no size to be placed at."""
+    monkeypatch.delenv("CIRCLE_RADIUS_" + CIRCLE_PLAN[0])
     game_id = UserInterface(user_in_team).get_game_id()
     AdminInterface().set_game_active(game_id, False)
 

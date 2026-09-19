@@ -37,9 +37,13 @@ export default function CircleControl({ game }) {
       <p>
         {armed ? (
           <>
-            Plan: <b>{armed.name}</b> ({armed.radius_km} km),{" "}
+            Plan: <b>{armed.name}</b>
+            {armed.radius_km !== null ? <> ({armed.radius_km} km)</> : null},{" "}
             {!armed.known ? (
-              <b>no coordinates &mdash; place it by hand</b>
+              <b>
+                {armed.radius_km === null ? "no radius" : "no coordinates"}{" "}
+                &mdash; place it by hand
+              </b>
             ) : placed ? (
               <>
                 on the map and <b>private</b> until you cue it

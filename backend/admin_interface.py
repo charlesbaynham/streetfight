@@ -707,9 +707,10 @@ class AdminInterface:
         forgetting a step. Silent by design - placing NEXT announces nothing,
         which is what makes it worth knowing.
 
-        Returns the entry it armed, or None when the plan has run out or has
-        no coordinates for that circle (`LANDMARK_<name>` unset): both leave
-        the circles exactly as they are, for the admin to place by hand.
+        Returns the entry it armed, or None when the plan has run out or the
+        environment has not supplied that circle (`LANDMARK_<name>` or
+        `CIRCLE_RADIUS_<name>` unset): both leave the circles exactly as they
+        are, for the admin to place by hand.
         """
         planned = planned_circle(game.circle_plan_index)
 
@@ -718,7 +719,7 @@ class AdminInterface:
             return None
         if not planned.known:
             logger.warning(
-                "No coordinates for planned circle %s - place it by hand",
+                "Planned circle %s is not fully configured - place it by hand",
                 planned.name,
             )
             return None
@@ -2974,11 +2975,31 @@ class AdminInterface:
         for drop in self._session.query(Drop).filter_by(game_id=game_id).all():
             self._session.delete(drop)
 
+        # The play area starts again as well: all three circles, straight onto
+        # the columns rather than through set_circles, which would announce
+        # each change to a ticker this is about to delete anyway
+        for prefix in ("exclusion", "next", "drop"):
+            for field in ("lat", "long", "radius"):
+                setattr(game, f"{prefix}_circle_{field}", None)
+        game.next_circle_public = False
+
+        # ...and back to the top of the circle plan, with its first entry
+        # placed privately there and then, exactly as reset_to_start_state
+        # does it: a game that starts again starts with a circle already
+        # waiting for whoever finds an early-warning card.
+        game.circle_plan_index = 0
+        self._arm_planned_circle(game)
+
         # Wipe the ticker
         for ticker_entry in (
             self._session.query(TickerEntry).filter_by(game_id=game_id).all()
         ):
             self._session.delete(ticker_entry)
+
+        # Otherwise every open map keeps drawing the circles and the crates
+        # this has just deleted until something else happens to fire the event
+        self._session.commit()
+        trigger_circle_update(game_id)
 
     async def generate_any_game_updates(self, timeout=None):
         """

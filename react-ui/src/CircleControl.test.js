@@ -14,6 +14,7 @@ const PLAN = [
   { index: 0, name: "CIRCLE0", radius_km: 0.7, known: true },
   { index: 1, name: "CIRCLE1", radius_km: 0.42, known: true },
   { index: 2, name: "CIRCLE2", radius_km: 0.18, known: false },
+  { index: 3, name: "CIRCLE3", radius_km: null, known: false },
 ];
 
 const renderControl = (overrides = {}, plan = PLAN) => {
@@ -41,8 +42,14 @@ test("a planned circle with no coordinates says so rather than looking armed", a
   expect(screen.getByText(/no coordinates/)).toBeInTheDocument();
 });
 
+test("a planned circle with no radius says which half is missing", async () => {
+  await renderControl({ circle_plan_index: 3, next_circle_lat: null });
+
+  expect(screen.getByText(/no radius/)).toBeInTheDocument();
+});
+
 test("a plan that has run out is not a circle waiting to be placed", async () => {
-  await renderControl({ circle_plan_index: 3 });
+  await renderControl({ circle_plan_index: 4 });
 
   expect(screen.getByText("finished")).toBeInTheDocument();
 });
