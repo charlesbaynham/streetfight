@@ -18,9 +18,11 @@
 // is the reason to have both.
 
 import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { sendAPIRequest } from "./utils";
 import { AdminPage } from "./AdminCommon";
 import { getShotFromCache } from "./ShotCache";
+import { usePatchSearchParams } from "./urlState";
 import {
   ChannelTags,
   ShotEscalation,
@@ -34,6 +36,14 @@ import styles from "./ShotReplay.module.css";
 // The outcome tags are the ShotQueue's own, so a review reads the same here as
 // in the queue.
 import tagStyles from "./ShotQueue.module.css";
+
+// A live game leaves hundreds of shots in the database, and this page used to
+// mount a ShotCard - full vision images fetched and all - for every one of
+// them at once. That is what choked: a page of cards is a page of concurrent
+// fetches, not a page of history. The page number lives in the query string
+// (../urlState.js), like every other "what are you looking at it through" on
+// an admin page, so a reload comes back to where the admin was.
+const PAGE_SIZE = 20;
 
 // The conversation shapes the backend offers (shot_vision.ZOOM_MODES), and
 // what each does to the exchange.
@@ -281,6 +291,37 @@ function ShotCard({ shot_id, selected, onToggle, result, escalation }) {
   );
 }
 
+// The page's only navigation: which PAGE_SIZE-wide slice of the (newest
+// first) shot list is actually mounted. Renders nothing for a list that
+// already fits on one page, so the common case - a fresh dev database, or a
+// game with a handful of shots - looks exactly as it did before pagination.
+function Pager({ page, totalPages, onChange }) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className={styles.pager}>
+      <button onClick={() => onChange(1)} disabled={page === 1}>
+        « First
+      </button>
+      <button onClick={() => onChange(page - 1)} disabled={page === 1}>
+        ‹ Previous
+      </button>
+      <span>
+        Page {page} of {totalPages}
+      </span>
+      <button onClick={() => onChange(page + 1)} disabled={page === totalPages}>
+        Next ›
+      </button>
+      <button
+        onClick={() => onChange(totalPages)}
+        disabled={page === totalPages}
+      >
+        Last »
+      </button>
+    </div>
+  );
+}
+
 function ShotReplayPanel() {
   const [shotIds, setShotIds] = useState([]);
   const [selected, setSelected] = useState(new Set());
@@ -297,6 +338,19 @@ function ShotReplayPanel() {
   const [escalations, setEscalations] = useState({});
   const [running, setRunning] = useState(false);
   const [escalating, setEscalating] = useState(false);
+  const [searchParams] = useSearchParams();
+  const patchSearchParams = usePatchSearchParams();
+  const totalPages = Math.max(1, Math.ceil(shotIds.length / PAGE_SIZE));
+  const requestedPage = parseInt(searchParams.get("page"), 10);
+  const page =
+    Number.isFinite(requestedPage) && requestedPage >= 1
+      ? Math.min(requestedPage, totalPages)
+      : 1;
+  const pageShotIds = shotIds.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const goToPage = useCallback(
+    (next) => patchSearchParams({ page: next <= 1 ? null : next }),
+    [patchSearchParams],
+  );
   // What the backend last handed back, so an *untouched* box can follow a
   // change of conversation shape while an edited one is never clobbered.
   const seeded = useRef({ prompt: null, schema: null });
@@ -552,8 +606,9 @@ function ShotReplayPanel() {
       </Row>
       <Row>
         <Col>
+          <Pager page={page} totalPages={totalPages} onChange={goToPage} />
           <div className={styles.grid}>
-            {shotIds.map((shot_id) => (
+            {pageShotIds.map((shot_id) => (
               <ShotCard
                 key={shot_id}
                 shot_id={shot_id}
@@ -564,6 +619,7 @@ function ShotReplayPanel() {
               />
             ))}
           </div>
+          <Pager page={page} totalPages={totalPages} onChange={goToPage} />
         </Col>
       </Row>
     </>
