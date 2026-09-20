@@ -1,8 +1,27 @@
 # Deploying to a DigitalOcean droplet (NixOS)
 
+> ## ⛔ HISTORICAL, since 20 Sep 2026. There is no droplet.
+>
+> The droplet that served the 19 September game (`streetfight-cloud`,
+> `209.97.182.42`) was destroyed once its data was archived, and the account
+> now holds none. **`streetfight.houseabsolute.co.uk` is served by CT 124
+> (the Street Fight archive) on the home lab** —
+> [`deployment_archive.md`](deployment_archive.md) is the current runbook, and
+> the `live` branch now moves that container rather than a droplet.
+>
+> This page is kept because the install-once procedure is not written down
+> anywhere else and the flake still carries the machinery
+> (`nixosConfigurations.streetfight-cloud`, `nix/cloud-host.nix`,
+> `nix/disko-cloud.nix`, `nix/auto-deploy.nix`, `nix/install-cloud.sh`), which
+> CI still build-tests. If a cloud host is ever wanted again — a game in
+> another town, a night that must not depend on the house's broadband — this
+> is how it was done. ⚠️ `nix/cloud-net.json` holds the *old* droplet's static
+> addresses; `install-cloud.sh` re-captures them, and installing without doing
+> so boots a dark machine.
+
 The runbook for running the game from a public cloud VM - written for the dry
 run of 30 Aug 2026, but nothing in it is specific to that day. The droplet
-replaces the home-lab LXC deployment (see the cutover section at the bottom);
+replaced the home-lab LXC deployment (see the cutover section at the bottom);
 that LXC has since come back as **staging**, which is a different runbook -
 [`deployment_staging.md`](deployment_staging.md).
 

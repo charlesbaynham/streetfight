@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 #
-# Deploy streetfight to live (the droplet) or staging (the home-lab LXC).
+# Deploy streetfight to live (the public archive) or staging (the box for
+# trying a branch on a phone). Both are cattle containers on the home lab.
 #
 # Both deploys are the same act, and neither workflow has any route into the
-# box it deploys: all they do is force a branch ref to the revision you chose.
-# The target polls that ref and switches to it - `nix/auto-deploy.nix` on the
-# droplet, cattle-deploy on the hypervisor at home. So this script is a wrapper
-# around two `gh workflow run` calls, and its whole value is remembering which
+# box it deploys: all they do is force a branch ref to the revision you chose,
+# and cattle-deploy on the hypervisor at home replaces the container from the
+# template release that build publishes. So this script is a wrapper around
+# two `gh workflow run` calls, and its whole value is remembering which
 # workflow takes which argument, resolving the ref to a revision so you can see
 # what you actually asked for, and knowing that live is worth confirming and
 # staging is not.
@@ -19,6 +20,11 @@
 #   scripts/deploy.sh live v1.2.3              # asks before it does it
 #   scripts/deploy.sh live master --yes        # ...unless you say not to
 #
+# `live` was the cloud droplet that served the game until it was destroyed on
+# 2026-09-19. It now means CT 124 (the Street Fight archive), which keeps
+# streetfight.houseabsolute.co.uk answering: the printed QR codes carry that
+# host, and the maths essay lives there.
+#
 # Staging takes any ref: a branch, a tag, a SHA, or a pull request as `pr/222`,
 # `#222` or bare `222` (the workflow fetches refs/pull/N/head itself, so a fork's
 # PR works too; quote a leading `#`, or the shell eats it as a comment). Trying a
@@ -26,7 +32,7 @@
 # a tag or a SHA - not a PR number, deliberately.
 #
 # Full runbooks, which this does not replace:
-#   docs/deployment_droplet.md   docs/deployment_staging.md
+#   docs/deployment_archive.md   docs/deployment_staging.md
 
 set -euo pipefail
 
@@ -99,7 +105,7 @@ if ! command -v gh >/dev/null 2>&1; then
     cat >&2 <<EOF
 gh is not installed, so this script cannot trigger the workflow.
 
-Run it from the Actions tab instead - "$( [ "$TARGET" = live ] && echo 'Deploy to droplet' || echo 'Deploy to staging' )"
+Run it from the Actions tab instead - "$( [ "$TARGET" = live ] && echo 'Deploy to archive' || echo 'Deploy to staging' )"
 -> Run workflow -> ref=$REF. An agent with the GitHub MCP tools can use
 actions_run_trigger on $WORKFLOW with the same input.
 EOF
@@ -119,11 +125,11 @@ fi
 echo "target      $TARGET  ($HOSTNAME)"
 echo "ref         $REF  -> $REV"
 echo "moves       refs/heads/$BRANCH"
-[ "$SKIP_BUILD_CHECK" = true ] && echo "build check SKIPPED (the box will build it itself, slowly)"
+[ "$SKIP_BUILD_CHECK" = true ] && echo "build check SKIPPED (deploying without waiting for the template)"
 
 if [ "$TARGET" = live ] && [ "$ASSUME_YES" -ne 1 ]; then
     echo
-    echo "This is the live game. Players' join links point at it."
+    echo "This is the public archive. The printed QR codes point at it."
     printf 'Type the word live to deploy: '
     read -r reply
     [ "$reply" = live ] || {
@@ -146,9 +152,9 @@ RUN_ID="$(gh run list --workflow "$WORKFLOW" --limit 1 --json databaseId --jq '.
 [ -n "$RUN_ID" ] && gh run watch "$RUN_ID" --exit-status || true
 
 if [ "$TARGET" = live ]; then
-    # deploy.yml polls /api/get_version itself, so by here the droplet has it.
+    # deploy.yml polls /api/get_version itself, so by here the container has it.
     echo
-    echo "deployed revision now reported by the droplet:"
+    echo "deployed revision now reported by the archive:"
     curl -sf "https://$HOSTNAME/api/get_version" || echo "  (could not reach $HOSTNAME)"
 else
     cat <<EOF
