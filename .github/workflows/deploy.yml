@@ -1,11 +1,15 @@
-name: Deploy to droplet
+name: Deploy to archive
 
-# The droplet deploys itself by polling a git ref (nix/auto-deploy.nix); it
-# holds no credentials for anything on the internet and nothing on the
-# internet holds credentials for it. So a manual deploy gate is just a manual
-# gate on *that ref moving*: this workflow has no route to the host, it only
-# advances `refs/heads/live` to the revision you chose. The droplet notices
-# within a couple of minutes and switches to it.
+# The public archive of the 19 September 2026 game, at
+# streetfight.houseabsolute.co.uk — CT 124 (the Street Fight archive) on the
+# home lab. This branch used to move a DigitalOcean droplet, which was
+# destroyed once the game was over; the name and the branch both kept their
+# meaning, and only the machine behind them changed.
+#
+# So this is deploy-staging.yml one branch along: `live` rather than
+# `staging`, and the hypervisor's cattle-deploy.timer picks up the template
+# release the build publishes. This workflow has no route to the host; it
+# advances `refs/heads/live` and dispatches the build.
 #
 # `workflow_dispatch` is GitHub's manual job: a "Run workflow" button in the
 # Actions tab, or `gh workflow run deploy.yml -f ref=<branch-or-sha>`. Merging
@@ -19,7 +23,7 @@ on:
         required: true
         default: master
       skip_build_check:
-        description: Deploy even if the cloud closure is not in Cachix (the droplet will build it itself, slowly)
+        description: Deploy without waiting for the template build to go green
         type: boolean
         default: false
 
@@ -28,7 +32,7 @@ env:
   HOSTNAME: streetfight.houseabsolute.co.uk
 
 concurrency:
-  group: deploy-droplet
+  group: deploy-archive
   cancel-in-progress: false
 
 jobs:
@@ -37,6 +41,7 @@ jobs:
     permissions:
       contents: write
       checks: read
+      actions: write
     steps:
     - uses: actions/checkout@v4
       with:
@@ -51,15 +56,16 @@ jobs:
         echo "SHA=$SHA" >> "$GITHUB_ENV"
         echo "Deploying $REF -> $SHA"
 
-    # The droplet is one vCPU: a revision whose system closure was never
-    # pushed to Cachix is one it has to build itself, which on a game night is
-    # the difference between two minutes and half an hour. build_images.yml's
-    # build_cloud_system job is what puts it there.
-    # The check run may not exist yet, or may still be queued/in-progress, if
-    # this deploy was dispatched hot on the heels of the push that triggered
-    # it. Rather than fail on that race, poll for up to ten minutes for it to
-    # land — a genuine failure (not just "not there yet") still fails fast.
-    - name: Check the cloud closure was built
+    # A cattle container is replaced wholesale by template filename, so the
+    # artifact has to exist before the branch is worth moving: an unbuildable
+    # revision on `live` leaves the hypervisor with nothing to fetch and the
+    # archive quietly running what it had.
+    #
+    # The check run may not exist yet, or may still be queued, if this deploy
+    # was dispatched hot on the heels of the push that triggered it. Rather
+    # than fail on that race, poll for up to ten minutes — a genuine failure
+    # (not just "not there yet") still fails fast.
+    - name: Check the archive template was built
       if: ${{ !inputs.skip_build_check }}
       env:
         GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -67,23 +73,22 @@ jobs:
         DEADLINE=$((SECONDS + 600))
         while true; do
           CONCLUSION=$(gh api "repos/$GITHUB_REPOSITORY/commits/$SHA/check-runs" \
-            --jq '.check_runs[] | select(.name == "build_cloud_system") | .conclusion' \
+            --jq '.check_runs[] | select(.name == "build_lxc_template_archive / build") | .conclusion' \
             | head -n1)
           if [ "$CONCLUSION" = "success" ]; then
-            echo "build_cloud_system for $SHA succeeded."
+            echo "build_lxc_template_archive for $SHA succeeded."
             break
           fi
           if [ -n "$CONCLUSION" ] && [ "$CONCLUSION" != "null" ]; then
-            echo "::error::build_cloud_system for $SHA is '$CONCLUSION', not success." \
-              "Re-run with skip_build_check to let the droplet build it itself."
+            echo "::error::build_lxc_template_archive for $SHA is '$CONCLUSION', not success."
             exit 1
           fi
           if [ "$SECONDS" -ge "$DEADLINE" ]; then
-            echo "::error::build_cloud_system for $SHA still '${CONCLUSION:-missing}' after 10 minutes." \
-              "Wait for it, or re-run with skip_build_check to let the droplet build it itself."
+            echo "::error::build_lxc_template_archive for $SHA still '${CONCLUSION:-missing}' after 10 minutes." \
+              "Wait for it, or re-run with skip_build_check."
             exit 1
           fi
-          echo "build_cloud_system for $SHA is '${CONCLUSION:-missing}', waiting..."
+          echo "build_lxc_template_archive for $SHA is '${CONCLUSION:-missing}', waiting..."
           sleep 20
         done
 
@@ -92,13 +97,48 @@ jobs:
     - name: Move the deploy ref
       run: |
         git push --force origin "$SHA:refs/heads/$DEPLOY_BRANCH"
-        echo "### Deploying [\`${SHA:0:8}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/$SHA)" >> "$GITHUB_STEP_SUMMARY"
+        echo "### Archive → [\`${SHA:0:8}\`](${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/commit/$SHA)" >> "$GITHUB_STEP_SUMMARY"
 
-    # The droplet polls every ~2 minutes and then has to switch; give it a
-    # generous window before calling it a failure.
-    - name: Wait for the droplet to report the new revision
+    # ⚠️ Load-bearing, for the reason spelled out in deploy-staging.yml: the
+    # hypervisor picks the newest release *by publication time*, and
+    # build-template.yml names its release `template-<date>-<sha7>` — so a
+    # revision already built today gets its asset re-uploaded to a release
+    # whose timestamp never moves, and nothing at home notices.
+    #
+    # ⚠️ Both templates share that tag, so if the same revision has already
+    # been put on staging today this deletes staging's asset too. Harmless —
+    # staging resolves the previous release and carries on — but it explains
+    # an unexpected staging redeploy.
+    - name: Drop a same-day release for this revision
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        for _ in $(seq 1 60); do
+        TAG="template-$(date -u +%Y%m%d)-${SHA:0:7}"
+        if gh release view "$TAG" >/dev/null 2>&1; then
+          echo "Release $TAG already exists for this revision: deleting it, so the" \
+            "build below publishes one the deployer sees as new."
+          gh release delete "$TAG" --yes
+        else
+          echo "No existing release $TAG; the build below will publish it."
+        fi
+
+    # `git push` above authenticates as the default GITHUB_TOKEN (via
+    # actions/checkout's persisted credentials), and GitHub does not fire
+    # `push`-triggered workflows for GITHUB_TOKEN pushes — anti-recursion
+    # protection — so build_images.yml, which publishes the template release
+    # cattle-deploy.timer polls for, never runs off the back of it. Dispatch
+    # it explicitly: a workflow_dispatch by GITHUB_TOKEN is exempt.
+    - name: Trigger the archive build
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh workflow run build_images.yml --ref "$DEPLOY_BRANCH"
+
+    # Unlike staging, this one is on the public internet, so a GitHub runner
+    # can see it. The template still has to build, publish, be fetched and
+    # replace the container, so the window is generous.
+    - name: Wait for the archive to report the new revision
+      run: |
+        for _ in $(seq 1 90); do
           REPORTED=$(curl -fsS --max-time 20 "https://$HOSTNAME/api/get_version" \
             | sed -n 's/.*"version" *: *"\([^"]*\)".*/\1/p') || REPORTED=""
           if [ -n "$REPORTED" ] && [ "${SHA#"$REPORTED"}" != "$SHA" ]; then
@@ -110,6 +150,7 @@ jobs:
           sleep 20
         done
         echo "::error::$HOSTNAME never reported $SHA." \
-          "The ref has moved, so the droplet will still pick it up:" \
-          "check 'journalctl -u streetfight-autodeploy' on the box."
+          "The ref has moved and the build was dispatched, so it may still land:" \
+          "check the *Build images* run on \`live\`, then" \
+          "'journalctl -u cattle-deploy -f' on homeserver."
         exit 1
