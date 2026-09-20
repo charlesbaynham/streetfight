@@ -1391,7 +1391,14 @@ explicitly. The name must equal the registry key in `homelab-infra`'s
   **stored** cheap-pass review to build that ranking from, exactly as the
   queue's "Run escalated review" button does. Its result and the review's are
   held in separate state and shown together: comparing the rungs is the whole
-  reason to have both on one card.
+  reason to have both on one card. The page lists every shot ever fired, so
+  it **paginates the list it renders** (`ShotReplay.js`'s `PAGE_SIZE`, 20) —
+  a `ShotCard` fetches its own vision images and shot detail on mount, so
+  mounting one per row of a live game's history is what used to choke the
+  page rather than showing it. `page` lives in the query string like every
+  other admin-page "what am I looking at it through" (`urlState.js`); the
+  bulk-select buttons still act on the whole list, only the rendering is
+  windowed.
 - **A session id is not a user id — `get_user_id` resolves it.** A player's
   identity is the UUID in their signed cookie, and that UUID *is* `users.id`,
   so a second phone or a cleared cookie jar makes a second, empty player
