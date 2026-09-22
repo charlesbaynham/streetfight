@@ -1174,3 +1174,47 @@ def test_identifying_something_that_is_not_a_code_at_all(db_session):
 
     assert identified["kind"] == "unknown"
     assert identified["verdict"]["tone"] == "bad"
+
+
+# A QR code that is not an item code used to leave the player's screen doing
+# nothing whatsoever - which is indistinguishable from a camera that has
+# stopped working, and was the whole complaint about the scanner: it said
+# something was wrong, or nothing at all, but never why.
+
+
+def test_scanning_a_team_card_says_what_it_is(user_in_team, one_game, team_factory):
+    """The in-game scanner is for loot; a team card is scanned with the phone's
+    own camera. Pointing one at the other is an easy mistake at the door and
+    has to be answered in words."""
+    from backend.join_codes import make_team_join_url
+
+    url = make_team_join_url(one_game, team_factory())
+
+    with pytest.raises(HTTPException) as exc:
+        UserInterface(user_in_team).collect_item(url)
+
+    assert exc.value.status_code == 403
+    assert "joining code" in exc.value.detail
+
+
+def test_scanning_the_signup_link_says_what_it_is(user_in_team, one_game):
+    from backend.join_codes import make_game_join_url
+
+    with pytest.raises(HTTPException) as exc:
+        UserInterface(user_in_team).collect_item(make_game_join_url(one_game))
+
+    assert exc.value.status_code == 403
+    assert "joining code" in exc.value.detail
+
+
+def test_scanning_somebody_elses_url_is_a_value_error_not_a_crash(user_in_team):
+    """A URL carrying no item code used to raise KeyError, which no caller
+    handled: a pub's wifi QR was a 500 rather than the 400 the route turns a
+    malformed code into."""
+    with pytest.raises(ValueError):
+        UserInterface(user_in_team).collect_item("https://example.com/?x=1")
+
+
+def test_scanning_gibberish_is_still_a_value_error(user_in_team):
+    with pytest.raises(ValueError):
+        UserInterface(user_in_team).collect_item("not-a-code-at-all")

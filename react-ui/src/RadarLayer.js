@@ -23,7 +23,7 @@ const RADAR_MIN_ALPHA = 0.25;
 // pinch-zoomable transform, and the strip at the top of the HUD. The strip is
 // the half that knows, because UserMode has the player's own /user_info - so
 // it publishes here and the layer inside the map reads it. Same shape as
-// shotRefusalStore.js, and for the same reason: a prop threaded through
+// refusalStore.js, and for the same reason: a prop threaded through
 // MapView would put a player's radar on the admin's map and the spectator
 // screen too, neither of which has any business polling for it.
 let radarState = { radarUntil: null, teamName: null };

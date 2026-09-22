@@ -61,6 +61,7 @@ from .user_interface import APPEAL_REJECTED
 from .user_interface import APPEAL_UPHELD
 from .user_interface import UserInterface
 from .utils import add_params_to_url
+from .utils import parse_code_or_none
 
 logger = logging.getLogger(__name__)
 
@@ -229,20 +230,6 @@ COURIER_ANNOUNCE_INTERVAL_S = 5.0
 # game id -> when its courier position was last announced. In-process and
 # deliberately not durable: losing it costs one extra announcement.
 _courier_announced_at: dict = {}
-
-
-def _parse_or_none(parser, data: str):
-    """Try one of the two code readers, or return None if this is not one.
-
-    Identifying a code means offering the string to each reader in turn, so
-    every way a reader can say "not mine" -- bad base64, JSON that is not a
-    code, a URL carrying the other kind's query parameter -- has to come back
-    as a miss rather than an exception.
-    """
-    try:
-        return parser(data)
-    except (ValueError, KeyError, TypeError):
-        return None
 
 
 def _scan_rule(item: ItemModel) -> str:
@@ -2546,11 +2533,11 @@ class AdminInterface:
         if not data:
             raise HTTPException(400, "Nothing was scanned")
 
-        item = _parse_or_none(ItemModel.from_base64, data)
+        item = parse_code_or_none(ItemModel.from_base64, data)
         if item is not None:
             return self._identify_item_code(item)
 
-        join_code = _parse_or_none(JoinCodeModel.from_base64, data)
+        join_code = parse_code_or_none(JoinCodeModel.from_base64, data)
         if join_code is not None:
             return self._identify_join_code(join_code)
 

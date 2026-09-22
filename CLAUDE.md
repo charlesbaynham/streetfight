@@ -613,7 +613,7 @@ Four things from it that are worth knowing even if you never call the agent:
     five seconds and draws a dot and a "3 min ago" label per contact, fading
     with the age of the fix. The strip is what tells the layer there is a
     radar at all, through a module-level store in that file — the same shape
-    as `shotRefusalStore.js`, and for the same reason: the admin map and the
+    as `refusalStore.js`, and for the same reason: the admin map and the
     spectator screen mount the same `MapView`, and have no business polling a
     player's radar. The ages travel as `seconds_ago` rather than timestamps,
     so the phone's clock never has to agree with the server's; the phone
@@ -1487,10 +1487,35 @@ explicitly. The name must equal the registry key in `homelab-infra`'s
   phone counts down to (`FireButton.js`), so a reload comes back still
   cooling; it is clamped there to the player's own cooldown, since the
   server's clock and the phone's need not agree. `MyWebcam.js` now checks
-  `response.ok` and publishes the refusal through `shotRefusalStore.js` to
-  `ShotRefusedNotice.js` — a store rather than a prop threaded through
+  `response.ok` and publishes the refusal through `refusalStore.js` to
+  `RefusedNotice.js` — a store rather than a prop threaded through
   `WebcamView`, because the admin's reference-photo page mounts the same
   camera and must not show a player's cooldown message.
+- **Every refusal says why, and one notice says it.** `refusalStore.js` /
+  `RefusedNotice.js` carry the server's reason for anything it turned down,
+  and three things publish to them: `MyWebcam.js` (a shot), `QRParser.js` (a
+  code read by the in-game scanner) and `CollectItemsFromQueryParams.js` (a
+  code opened as a URL by the player's own phone camera). The callers build
+  the finished sentence from `prose.js` — the frame differs by what was
+  refused — and the notice renders it and chooses nothing. Two things about
+  the scanner half are load-bearing. `collect_item` answers a 403 with a
+  plain-English `detail` for every one of its dozen refusals, and that
+  `detail` used to be dropped on the floor: what the player got was a
+  full-screen flash of red, which says something is wrong and nothing about
+  what. The flash stays — at arm's length in the dark it is what gets their
+  attention — so `RefusedNotice.module.css` sits at `z-index: 150`, **above**
+  `BlankScreen`'s 100, or the message would be underneath an opaque red
+  overlay for the four seconds it is on screen; and `QRParser` flashes only
+  the *first* of a repeated identical refusal (`FLASH_SUPPRESSION_MS`), since
+  the scan loop re-submits every few seconds and strobing the screen over the
+  sentence the player is reading is the original complaint again.
+  A code that is not an item code is the other half: `ItemModel.from_base64`
+  raises `ValueError` rather than `KeyError` for a URL carrying no `d` (a
+  KeyError escaped every caller and made somebody else's QR a 500), and
+  `collect_item` offers such a string to `JoinCodeModel` before giving up, so
+  a team card scanned with the in-game camera is told what it is instead of
+  doing nothing whatsoever. Anything the game does not print stays silent:
+  the scanner reads half a code often enough that saying so would be noise.
 - **The vision model never sees the code.** It is asked only what colour each
   garment is and how sure it is; all the error correction happens
   deterministically in Python. Identification (`backend/shot_identification.py`)

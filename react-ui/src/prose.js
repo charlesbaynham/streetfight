@@ -31,10 +31,10 @@ const prose = {
     fireButtonAlt: "Fire button",
     // Said when the server turns a shot down (M1.1). The reason comes from
     // the backend, so it is not in here; this is the frame around it, and the
-    // fallback for a refusal that arrived with nothing to say.
+    // fallback for a refusal that arrived with nothing to say. Both are put
+    // on screen by RefusedNotice, which the scanner below shares.
     shotRefused: (reason) => `Shot not taken: ${reason}`,
     shotRefusedUnknown: "Shot not taken. Try again.",
-    dismissRefusal: "Dismiss",
   },
   // @section fullscreenButton
   fullscreenButton: {
@@ -297,6 +297,21 @@ const prose = {
   popup: {
     scrollHintLabel: "Scroll down for more",
   },
+  // @section qrScanner
+  qrScanner: {
+    // Said when the game turns a scanned code down. The reason comes from the
+    // backend - "This code has been withdrawn", "Medpacks can only be used on
+    // knocked-out players", "You have already got this weapon" - so it is not
+    // in here; this is the frame around it. Before this the only answer was a
+    // flash of red, which told the player that something was wrong and
+    // nothing at all about what.
+    scanRefused: (reason) => `Not collected: ${reason}`,
+    scanRefusedUnknown: "That code was not collected. Try again.",
+    // The phone never reached the server. Worth saying: from where the player
+    // is standing a card that cannot be submitted looks exactly like a card
+    // that does not work.
+    scanOffline: "Could not reach the game. Check your signal and try again.",
+  },
   // @section radar
   radar: {
     // The band at the top of the screen while a radar card is running. The
@@ -308,6 +323,10 @@ const prose = {
     lastSeen: (minutes) => `${minutes} min ago`,
     justNow: "just now",
     out: "out",
+  },
+  // @section refusedNotice
+  refusedNotice: {
+    dismiss: "Dismiss",
   },
   // @section scoreboard
   scoreboard: {

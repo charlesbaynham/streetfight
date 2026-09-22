@@ -96,7 +96,15 @@ class ItemModel(pydantic.BaseModel):
         if re.match(r"http", encoded_string):
             parsed_url = urlparse(encoded_string)
             query_params = parse_qs(parsed_url.query)
-            encoded_string = query_params["d"][0]
+            try:
+                encoded_string = query_params["d"][0]
+            except KeyError:
+                # A ValueError, as JoinCodeModel.from_base64 already raises
+                # here: a KeyError escaped every caller's "not one of mine"
+                # handling, so scanning any other http QR code - a team card,
+                # a pub's wifi - was a 500 and a player's screen doing
+                # nothing at all.
+                raise ValueError(f"URL carries no item code: {encoded_string}")
 
         try:
             # Decode the base64 string

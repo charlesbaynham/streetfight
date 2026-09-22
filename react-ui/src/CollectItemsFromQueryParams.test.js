@@ -1,9 +1,14 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, act, waitFor } from "@testing-library/react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 
 import CollectItemFromQueryParam from "./CollectItemsFromQueryParams";
+import prose from "./prose";
+import { clearRefusal, getRefusal, reportRefusal } from "./refusalStore";
 import { installFetchMock, getAPICalls } from "./testUtils";
+
+beforeEach(clearRefusal);
+afterEach(clearRefusal);
 
 // Renders the current router location so navigation triggered by the
 // component under test (navigate("/") after a successful collection) is
@@ -78,4 +83,32 @@ test("unmounting before the debounce elapses cancels the request", () => {
 
   expect(getAPICalls("collect_item")).toHaveLength(0);
   jest.useRealTimers();
+});
+
+// A card opened with the phone's own camera used to end the same way whatever
+// the game said about it: a line in a console nobody can see, and a navigate
+// home. From the street a withdrawn card and a collected one were identical.
+
+test("a refused card says why, instead of going quietly home", async () => {
+  installFetchMock({
+    collect_item: {
+      status: 403,
+      body: { detail: "This code has been withdrawn" },
+    },
+  });
+  renderWithRouter("/somewhere?d=withdrawn-card", true);
+
+  await waitFor(() => expect(getRefusal()).not.toBeNull());
+  expect(getRefusal().message).toBe(
+    prose.qrScanner.scanRefused("This code has been withdrawn"),
+  );
+  await screen.findByText("/");
+});
+
+test("a card that is collected clears a refusal still on screen", async () => {
+  installFetchMock({ collect_item: { ok: true } });
+  reportRefusal("something older");
+  renderWithRouter("/somewhere?d=good-card", true);
+
+  await waitFor(() => expect(getRefusal()).toBeNull());
 });

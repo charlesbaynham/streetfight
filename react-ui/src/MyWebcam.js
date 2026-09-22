@@ -9,7 +9,8 @@ import {
 } from "react";
 import useScreenOrientation from "./useScreenOrientation";
 import { refreshShots } from "./shotHistoryStore";
-import { clearShotRefusal, reportShotRefusal } from "./shotRefusalStore";
+import prose from "./prose";
+import { clearRefusal, reportRefusal } from "./refusalStore";
 import { watchCompassHeading } from "./utils";
 
 const constraints = {
@@ -99,16 +100,20 @@ export const MyWebcam = forwardRef(
           // server declined - no ammo, dead, or inside the fire cooldown
           // (M1.1) - looked exactly like one that worked, and the app
           // appeared to eat shots (docs/r9_walkthrough/A4.md). Now it says
-          // so; see ShotRefusedNotice.
+          // so; see RefusedNotice.
           if (!response.ok) {
             const detail = await response
               .json()
               .then((body) => body.detail)
               .catch(() => null);
-            reportShotRefusal(detail);
+            reportRefusal(
+              detail
+                ? prose.fireButton.shotRefused(detail)
+                : prose.fireButton.shotRefusedUnknown,
+            );
             return;
           }
-          clearShotRefusal();
+          clearRefusal();
           // The new shot should appear in the shot history straight away
           refreshShots();
         })
@@ -116,7 +121,7 @@ export const MyWebcam = forwardRef(
           // The photograph never reached the server at all. Same thing from
           // where the player is standing: the shot did not happen.
           console.log(`Shot upload failed: ${error}`);
-          reportShotRefusal(null);
+          reportRefusal(prose.fireButton.shotRefusedUnknown);
         });
     }, [capture]);
 
