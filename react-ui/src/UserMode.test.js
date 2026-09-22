@@ -40,12 +40,26 @@ jest.mock("./MapView", () => ({
   MapViewSelf: () => <div data-testid="map-view-self" />,
 }));
 
-function renderUserMode() {
+function renderUserMode(url = "/") {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[url]}>
       <UserMode />
     </MemoryRouter>,
   );
+}
+
+// Somebody who has never joined anything - every visitor gets a User row on
+// their first load, so this is what a passer-by who scanned a card off a
+// lamppost actually looks like.
+function strangerUser(overrides = {}) {
+  return makeUser({
+    name: null,
+    game_id: null,
+    team_id: null,
+    team_name: null,
+    active: false,
+    ...overrides,
+  });
 }
 
 // GetView's permissionsGranted state starts false and only flips once its own
@@ -335,4 +349,67 @@ test("permissions are rechecked every 5s, and granting them moves the player off
   // Other permission-recheck rounds may still be settling (in-flight from
   // before permissions were granted); flush them before the test ends.
   await flushPendingEffects();
+});
+
+test("a visitor who has never joined anything gets the landing page, with no way in", async () => {
+  grantAllPermissions();
+  installFetchMock({ user_info: strangerUser(), user_shots: [] });
+  await actAndFlush(renderUserMode);
+
+  await waitFor(() =>
+    expect(screen.getByText(prose.whatIsThis.heading)).toBeInTheDocument(),
+  );
+  await flushPendingEffects();
+
+  // The load-bearing half: nothing on this page starts a join.
+  expect(
+    screen.queryByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).not.toBeInTheDocument();
+  // And a passer-by is left holding no SSE stream. One is opened while
+  // user_info is still in flight, since nothing yet says who this is; what
+  // matters is that the landing page replacing the player view closes it
+  // again rather than leaving the backend streaming keepalives at somebody
+  // who is only reading (see the SSE note in CLAUDE.md).
+  const CLOSED = 2;
+  expect(
+    getEventSources().filter((es) => es.readyState !== CLOSED),
+  ).toHaveLength(0);
+});
+
+test("a player signed up to a game but not yet named gets onboarding, not the landing page", async () => {
+  grantAllPermissions();
+  installFetchMock({
+    user_info: strangerUser({ game_id: "game-1" }),
+    user_shots: [],
+  });
+  await actAndFlush(renderUserMode);
+
+  await waitFor(() =>
+    expect(
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+    ).toBeInTheDocument(),
+  );
+  await flushPendingEffects();
+  expect(screen.queryByText(prose.whatIsThis.heading)).not.toBeInTheDocument();
+});
+
+test("somebody arriving with a join code is never shown the landing page, even if the join fails", async () => {
+  grantAllPermissions();
+  // join_game refuses, so JoinFromQueryParams strips the query and navigates
+  // back to "/" - leaving a user who still looks exactly like a stranger.
+  jest.spyOn(console, "dir").mockImplementation(() => {});
+  installFetchMock({
+    user_info: strangerUser(),
+    user_shots: [],
+    join_game: { status: 403, body: { detail: "No such game" } },
+  });
+  await actAndFlush(() => renderUserMode("/?j=somecode"));
+
+  await waitFor(() => expect(getAPICalls("join_game")).toHaveLength(1));
+  await flushPendingEffects();
+
+  expect(screen.queryByText(prose.whatIsThis.heading)).not.toBeInTheDocument();
+  expect(
+    screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+  ).toBeInTheDocument();
 });

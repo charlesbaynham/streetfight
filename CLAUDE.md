@@ -62,7 +62,42 @@ What that changes, in practice:
   deployment section below. Merging to master is safe at any hour; nothing
   reaches the players until someone runs the deploy workflow.
 
-**Suspended for one change (2026-09-15).** Charles is wiping the live database
+## The game is over — the database is now a public archive (2026-09-20)
+
+The game was played on 19 September 2026 and is finished. The droplet that
+served it was destroyed once its data was archived, and
+`streetfight.houseabsolute.co.uk` is now **CT 124 (the Street Fight
+archive)**, a cattle container on the home lab running the same app against
+the **real database**, restored from the Nextcloud archive. See
+[`docs/deployment_archive.md`](docs/deployment_archive.md).
+
+Everything in the section above is **back in force, permanently**. The dated
+exception below expired the moment the game started; and the state is now
+worth more, not less, because it is the only copy anyone will ever look at
+again. So:
+
+- **Never wipe it.** `resetdb`, `RESET_DATABASE` and **Fire demo game** are
+  dev-only, as before, and `demo_game.refuse_if_live` is still the guard.
+- **Schema changes are still applied by `add_missing_columns()` on deploy**, so
+  additive ones are free. A rename, a drop, a type change or an undefaulted
+  `NOT NULL` column would damage the archive; `TestLiveSchemaUpgrade` is still
+  the gate, and the snapshot in `tests/live_schema/` now describes a database
+  nobody will rebuild.
+- **The identity scheme is frozen**, permanently rather than provisionally:
+  re-hexing a palette or renumbering a symbol would re-clothe players in
+  photographs that have already been taken.
+- ⚠️ **`SECRET_KEY` cannot be rotated.** It signs the ten-year session cookies
+  players still hold, and those cookies are the only way a returning player
+  reaches their own shot history. Rotating it also kills every printed code.
+
+What a member of the public sees is the stranger path and nothing else —
+`WhatIsThis` at `/` and the essay at `/how-it-works` — which falls out of
+`useIsStranger` rather than from any new mode. There is deliberately **no
+public view of the finished game**: 350 photographs of real people stay
+behind `ADMIN_PASSWORD`. Putting a roster, gallery or spectator screen in
+front of an unauthenticated visitor is a decision to take knowingly.
+
+**Was: suspended for one change (2026-09-15).** Charles is wiping the live database
 before the 19th in order to land R15 ("sign up first, team on the night"), so
 the state-preservation caveats above do not bind that one rework: `User.game_id`
 arrives with no hand-written `ALTER TABLE`, the identity slots and team colours
@@ -401,7 +436,7 @@ Four things from it that are worth knowing even if you never call the agent:
     image comes from: `backend/map_images/<venue key>.<ext>` are symlinks to
     the one real file in `react-ui/src/images/` that webpack bundles, declared
     as package data in `pyproject.toml`, because the deployed wheel is built
-    from `backend*` alone and would otherwise have no map on the droplet at
+    from `backend*` alone and would otherwise have no map on a deployment at
     all. One file, so nothing can drift; `tests/test_map_poster.py` checks
     every venue has one and that its aspect matches the venue.
   - `circles.py` — geographic game zones (exclusion / next / drop circles),
@@ -681,6 +716,23 @@ Four things from it that are worth knowing even if you never call the agent:
     sample of a tie rather than a ranking, which is why `closest_count` rides
     alongside them and the page says how many share that distance. It opens
     in a new tab because the picker's wardrobe ticks are unsaved React state.
+    `WhatIsThis.js` (route `/what-is-this`) is the other end of that
+    curiosity: the front page for somebody who is **not** a player, who
+    pointed a phone at a card taped to a lamppost. `UserMode` shows it at
+    `/` instead of `OnboardingView` when `isStranger(user)` - no name, no
+    `game_id`, no team, which is every visitor's very first `User` row
+    (`get_user_id` -> `_make_user`) - and it says what the game is, links to
+    the essay and gives Charles's email. Three things about it are
+    deliberate. It has **no way into a game**, not even a name box: the
+    people it is addressed to were not invited, and a box they can fill in
+    is an invitation whatever it does on the server. It is chosen *above*
+    the SSE connection and the full-screen frame in `UserMode`, so a
+    passer-by reading it holds no stream open. And `useIsStranger` suppresses
+    it for any tab that has been handed a `?j=` code, whatever came of it -
+    a sign-up is briefly indistinguishable from a stranger while
+    `JoinFromQueryParams`' POST is in flight, and a join that *fails* lands
+    back on `/` looking exactly like one, where being told "you are not part
+    of this" instead of the error would be the worst possible answer.
     `TeamLeaderPanel.js` is the checklist shown to the one player per team an
     admin nominates on the roster (`User.is_team_leader`, M7): open on the
     waiting page, where a leader has the time to read it and their team is
@@ -968,7 +1020,7 @@ There are **no database migrations** (no Alembic). The schema is created from th
 ORM models in `backend/model.py` via `create_all()`, and on an existing
 database `database.add_missing_columns()` adds any new columns at startup.
 After changing a model, reset the dev DB with `npm run resetdb` — **in dev
-only**: the live droplet's database holds a running game, so keep model
+only**: the archive container's database is the real 19 September game, so keep model
 changes additive there (new tables, nullable or scalar-defaulted columns);
 anything else needs Charles's agreement to lose the state. See "The game is
 live", above.
@@ -1126,33 +1178,39 @@ either target, verify it, and roll it back — and `scripts/deploy.sh
 `live` and `staging` are both moved by hand, and live is never deployed on an
 agent's own initiative. What follows is the architecture.
 
-Three deployment targets share one service definition:
+Three deployment targets share one service definition, and **two of the three
+are the same thing twice**: the flake calls `cattle.lib.mkTemplate` from one
+helper (`mkStreetfightTemplate`) for both containers, which differ only in the
+name baked into the release asset. ⚠️ `mkTemplate` calls every template
+`proxmoxLxcTemplate`, so each is renamed to its service in the flake's outputs
+(`.#streetfight-archive`, `.#streetfight-staging`) and CI passes `attr:`
+explicitly. The name must equal the registry key in `homelab-infra`'s
+`services.yaml`: it is also the asset prefix the deployer selects on.
 
-- **The cloud droplet (the live deployment)** is a NixOS host:
-  `nixosConfigurations.streetfight-cloud` in the flake, wiring the
-  deployment-agnostic `nix/streetfight.nix` module to `nix/disko-cloud.nix`
-  (disk layout) and `nix/cloud-host.nix` (machine config). Installed once,
-  destructively, with `nix run .#install-cloud -- --target root@<ip>
-  --secrets <file>`, which captures the droplet's networking into
-  `nix/cloud-net.json` before anything destructive happens (DigitalOcean
-  offers no DHCP, so a config carrying another droplet's address installs a
-  machine that boots dark); updated with
-  `nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
-  — though the routine path is the **Deploy to droplet** workflow
-  (`.github/workflows/deploy.yml`), a `workflow_dispatch` button that moves
-  the `live` branch to a chosen revision; a timer on the droplet
-  (`nix/auto-deploy.nix`, roadmap R10) polls that branch and switches to it
-  within a few minutes. **Merging to master deploys nothing** — that gate
-  exists because there is now a game running on the box. Caddy terminates TLS
-  itself there (`services.streetfight.hostname`); secrets live in
-  `/data/secrets/streetfight.env` (`nix/streetfight.env.example` documents
-  the format). See `docs/deployment_droplet.md` for the full runbook,
-  including the cutover that stands down the old home-network LXC
-  deployment.
-- **The Proxmox LXC** (`.#proxmoxLxcTemplate`, via `nix-proxmox-cattle`) is
-  **staging**, on the home lab: the container that used to run the game, kept
-  after the cutover as somewhere to try things. Same shape as the droplet's
-  gate, one branch along — the **Deploy to staging** workflow
+- **The archive container (the live deployment)**, CT 124 on `homeserver`,
+  serving `https://streetfight.houseabsolute.co.uk` — the permanent public
+  archive of the 19 September game. It exists because the 255 printed QR
+  codes carry that host and will be found for years, and because the essay
+  at `/how-it-works` is what people want afterwards. The **Deploy to
+  archive** workflow (`.github/workflows/deploy.yml`) moves the `live`
+  branch, CI publishes `streetfight-archive-lxc-proxmox-*.tar.xz` as a
+  release asset only from that branch, and the hypervisor at home polls for
+  it. TLS is terminated upstream by traefik (wallfacer), so it answers plain
+  HTTP on :80 and the name is covered by the house's public wildcard —
+  ⛔ **no DNS record of its own**, which would shadow the route. Its database
+  is the **real** one, restored onto the state volume by hand and re-seedable
+  from Nextcloud; nothing in this repo creates it. Full runbook:
+  `docs/deployment_archive.md`.
+  - ⚠️ It **used to be a DigitalOcean droplet**
+    (`nixosConfigurations.streetfight-cloud`, `nix/cloud-host.nix`,
+    `nix/disko-cloud.nix`, `nix/auto-deploy.nix`, `nix/install-cloud.sh`),
+    destroyed 2026-09-19. That machinery is still in the flake and still
+    build-tested by CI, but deploys nothing; `docs/deployment_droplet.md` is
+    kept as history in case a cloud host is ever wanted again.
+- **The staging container** (`.#streetfight-staging`, via
+  `nix-proxmox-cattle`), on the home lab: the container that used to run the
+  game, kept after the cutover as somewhere to try things. Same shape as the
+  archive's gate, one branch along — the **Deploy to staging** workflow
   (`.github/workflows/deploy-staging.yml`) moves the `staging` branch, CI
   publishes the template as a release asset only from that branch, and the
   hypervisor at home polls for it. It moves that branch to **whatever revision
@@ -1220,7 +1278,7 @@ Three deployment targets share one service definition:
   Anything watching several events at once must cancel the losers too — see
   `AdminInterface.generate_any_game_updates`.
 - No Alembic: edit `backend/model.py`, then `npm run resetdb` in dev — and
-  never on the live droplet, which is now carrying a real game.
+  never on the archive container, which carries the real 19 September game.
 - **Venues** (`backend/venues.py`) are the single place where a location is
   defined: map image key, the two reference points that georeference it, the
   corner mini-map width, and the landmarks. One is active at a time
@@ -1333,7 +1391,14 @@ Three deployment targets share one service definition:
   **stored** cheap-pass review to build that ranking from, exactly as the
   queue's "Run escalated review" button does. Its result and the review's are
   held in separate state and shown together: comparing the rungs is the whole
-  reason to have both on one card.
+  reason to have both on one card. The page lists every shot ever fired, so
+  it **paginates the list it renders** (`ShotReplay.js`'s `PAGE_SIZE`, 20) —
+  a `ShotCard` fetches its own vision images and shot detail on mount, so
+  mounting one per row of a live game's history is what used to choke the
+  page rather than showing it. `page` lives in the query string like every
+  other admin-page "what am I looking at it through" (`urlState.js`); the
+  bulk-select buttons still act on the whole list, only the rendering is
+  windowed.
 - **A session id is not a user id — `get_user_id` resolves it.** A player's
   identity is the UUID in their signed cookie, and that UUID *is* `users.id`,
   so a second phone or a cleared cookie jar makes a second, empty player

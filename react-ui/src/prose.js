@@ -434,6 +434,40 @@ const prose = {
     omg: "OMG",
     eatABullet: "Eat-a-bullet",
   },
+  // @section whatIsThis
+  // The landing page somebody who is not in the game gets at "/"
+  // (WhatIsThis.js): they scanned a card off a lamppost, or were sent the
+  // bare URL. Deliberately a dead end - it explains and it offers the essay,
+  // and it has no way into a game, because the people it is written for were
+  // not invited.
+  //
+  // ⚠️ Written in the PAST tense since 2026-09-20. The game was played on 19
+  // September 2026 and is over, but its 255 printed cards are still out in
+  // Westminster and will be found for years - so this page is now the
+  // permanent answer to one, and telling a finder to put a card back where
+  // they found it would be sending them on an errand for nobody.
+  whatIsThis: {
+    logoAlt: "Streetfight",
+    heading: "What is this?",
+    intro: [
+      "You have probably found a QR code stuck to something, or picked up a card with one on it. It belongs to a game called Streetfight, which a group of friends played around Westminster on Saturday 19 September 2026.",
+      'It worked roughly like this. Everyone was put into a team and handed a hat and an armband. You "shot" somebody by photographing them: a computer read the colours of the clothes in the picture, worked out which player it was looking at, and took a hit point off them. Cards like the one you have found were hidden around the place, and were worth ammunition, armour or a medical kit to whoever scanned them first.',
+      "The game is finished, so the code will not do anything now - and there was never anything here to sign up to, it being a private game between friends. Keep the card or bin it, as you like. You do not need to put it back.",
+      "The part worth staying for is the clothes. Working out who is in a photograph, reliably, from four garments and a cheap camera, turns out to be an error-correcting code problem, and the essay below is about how that was done.",
+    ],
+    // The essay (HowItWorks.js). Players reach it from the outfit picker and
+    // the waiting page instead, through CuriosityFooter.
+    mathsLinkText: "How the clothes and the camera work",
+    // A mailto link sits inside the sentence, so this is one of the few
+    // places a JSX function is the right shape - see the conventions above.
+    contact: (emailLink) => (
+      <>
+        Contact Charles Baynham on {emailLink} if you&rsquo;re interested and
+        want to know more.
+      </>
+    ),
+    contactEmail: "charles.baynham@gmail.com",
+  },
 };
 
 export default prose;

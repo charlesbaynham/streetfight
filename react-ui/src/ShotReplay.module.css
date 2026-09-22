@@ -28,6 +28,13 @@
   gap: 1em;
 }
 
+.pager {
+  display: flex;
+  gap: 0.5em;
+  align-items: center;
+  margin: 0.5em 0;
+}
+
 .card {
   display: flex;
   gap: 1em;

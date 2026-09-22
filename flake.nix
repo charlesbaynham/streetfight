@@ -265,20 +265,19 @@
         };
       }
     );
-      # `.#proxmoxLxcTemplate` is the rootfs tarball Proxmox takes as a CT
-      # template. Everything generic about being a cattle container — the LXC
-      # fixups, the artifact naming, the "/data must be a mountpoint" guard —
-      # comes from nix-proxmox-cattle; only the app wiring is here.
+      # A cattle container's rootfs tarball, the thing Proxmox takes as a CT
+      # template. Everything generic about being one — the LXC fixups, the
+      # artifact naming, the "/data must be a mountpoint" guard — comes from
+      # nix-proxmox-cattle; only the app wiring is here.
       #
-      # This is the **staging** deployment, on the home lab, not the live game:
-      # `name` is what the release asset is called, and homelab-infra's
-      # cattle deployer matches assets on `<services.yaml key>-lxc-proxmox-`.
-      # Its template is published only from the `staging` branch
-      # (.github/workflows/build_images.yml), as `live` is the droplet's.
-      # See docs/deployment_staging.md.
-      lxcTemplate = cattle.lib.mkTemplate {
-        inherit nixpkgs;
-        name = "streetfight-staging";
+      # Both containers run the identical service, so they differ in `name`
+      # alone: what the release asset is called, which is how homelab-infra's
+      # deployer tells them apart (it matches assets on
+      # `<services.yaml key>-lxc-proxmox-`). Neither sets `sampleGame` — one
+      # is seeded by hand, the other by the admin's "Fire demo game" button —
+      # so this takes no arguments beyond the name.
+      mkStreetfightTemplate = name: cattle.lib.mkTemplate {
+        inherit nixpkgs name;
         system = lxcSystem;
         stateDir = "/data";
         modules = [
@@ -288,25 +287,43 @@
               enable = true;
               backend = perSystem.packages.${lxcSystem}.backendEnv;
               frontend = perSystem.packages.${lxcSystem}.frontendBuild;
-              # Deliberately *not* `sampleGame`. Staging boots with an empty
-              # database and the thirty players are made on demand, by the
-              # admin page's "Fire demo game" button, so a demo is something
-              # somebody chose to start rather than something the box did to
-              # itself on every restart. See docs/deployment_staging.md.
             };
           }
         ];
       };
 
-      # `.#nixosConfigurations.streetfight-cloud` is the public cloud VM (a
+      templates = {
+        # Home-lab staging, for trying a branch out on a phone. Published only
+        # from the `staging` branch; boots with an empty database, the thirty
+        # players being made on demand by the admin page's "Fire demo game"
+        # button rather than on every restart. See docs/deployment_staging.md.
+        streetfight-staging = mkStreetfightTemplate "streetfight-staging";
+
+        # The public archive of the 19 September 2026 game, at
+        # streetfight.houseabsolute.co.uk — the printed QR codes carry that
+        # host, so the name has to keep answering. Published from `live`,
+        # which used to move the cloud droplet that served the game itself.
+        # Its database is the real one, restored onto the state volume by
+        # hand; nothing in this repo creates it. See docs/deployment_archive.md.
+        streetfight-archive = mkStreetfightTemplate "streetfight-archive";
+      };
+
+      # ⛔ DORMANT since 2026-09-19: the droplet was destroyed once the game
+      # was archived, and streetfight.houseabsolute.co.uk is served by the
+      # `streetfight-archive` container above. Kept, and still built by CI, so
+      # a cloud host stays one `install-cloud` away if a game ever needs one
+      # that does not depend on the house's broadband.
+      #
+      # `.#nixosConfigurations.streetfight-cloud` is a public cloud VM (a
       # DigitalOcean droplet): same deployment-agnostic service module, but
       # installed as a whole NixOS host by nixos-anywhere, with Caddy
       # terminating TLS itself (`hostname`) since there is no border router in
-      # front of it. Thereafter it redeploys itself on a timer from the `live`
-      # branch (./nix/auto-deploy.nix) - which only moves when somebody runs
-      # the deploy workflow, so merging to master deploys nothing;
-      # `nixos-rebuild --target-host` remains the manual override. See
-      # docs/deployment_droplet.md.
+      # front of it. See docs/deployment_droplet.md.
+      #
+      # ⚠️ `services.streetfight-autodeploy` still polls `live`, which now
+      # deploys the archive container. Installing a droplet without changing
+      # that would give one branch two consumers and the same hostname two
+      # claimants — pick it a branch of its own first.
       cloudHost = {
         nixosConfigurations.streetfight-cloud = nixpkgs.lib.nixosSystem {
           system = "x86_64-linux";
@@ -330,7 +347,18 @@
       };
     in
     lib.foldl lib.recursiveUpdate perSystem [
-      lxcTemplate
+      # ⚠️ One package attribute per service, named for it. mkTemplate calls
+      # every template `proxmoxLxcTemplate`, which cannot tell two of them
+      # apart, so CI passes `attr: <service>` instead of relying on that
+      # default. The name must equal the registry key in homelab-infra's
+      # services.yaml: it is also the template filename prefix the deployer
+      # selects assets by.
+      {
+        nixosConfigurations = lib.foldl' lib.recursiveUpdate { }
+          (map (t: t.nixosConfigurations) (lib.attrValues templates));
+        packages.${lxcSystem} =
+          lib.mapAttrs (_: t: t.packages.${lxcSystem}.proxmoxLxcTemplate) templates;
+      }
       cloudHost
       { nixosModules.streetfight = streetfightModule; }
     ];

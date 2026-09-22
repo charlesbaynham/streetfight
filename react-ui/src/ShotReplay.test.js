@@ -679,6 +679,77 @@ describe("escalation replay", () => {
   });
 });
 
+describe("pagination", () => {
+  // A live game leaves hundreds of shots in the database; mounting a
+  // ShotCard - vision images fetched and all - for every one of them at
+  // once is what used to choke the page. 25 is one page (20) plus a
+  // remainder, enough to exercise Next/Previous without a slow test.
+  function manyShots(count) {
+    const shotsById = {};
+    for (let i = 0; i < count; i++) {
+      const id = `shot-${i}`;
+      shotsById[id] = makeShotDetail({ id });
+    }
+    return shotsById;
+  }
+
+  test("only renders and fetches the first page of shots", async () => {
+    installWorkshopMock(manyShots(25));
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    expect(
+      await screen.findAllByAltText("Full frame as vision sees it"),
+    ).toHaveLength(20);
+    expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(20);
+    expect(screen.getAllByText("Page 1 of 2").length).toBeGreaterThan(0);
+  });
+
+  test("Next reveals the remaining shots without refetching the first page", async () => {
+    installWorkshopMock(manyShots(25));
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+    await screen.findAllByAltText("Full frame as vision sees it");
+
+    await actAndFlush(() =>
+      fireEvent.click(screen.getAllByRole("button", { name: "Next ›" })[0]),
+    );
+
+    expect(screen.getAllByText("Page 2 of 2").length).toBeGreaterThan(0);
+    expect(
+      await screen.findAllByAltText("Full frame as vision sees it"),
+    ).toHaveLength(5);
+    // The 20 already fetched are not re-requested just for turning the page.
+    expect(getAPICalls("admin_get_shot_vision_images")).toHaveLength(25);
+  });
+
+  test("a short list shows no pager at all", async () => {
+    installWorkshopMock({ "shot-1": makeShotDetail() });
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <ShotReplay />
+        </MemoryRouter>,
+      ),
+    );
+
+    expect(screen.queryByText(/Page \d+ of \d+/)).not.toBeInTheDocument();
+  });
+});
+
 describe("vision-formatted images", () => {
   test("shows only the full frame before any replay has run", async () => {
     installWorkshopMock({ "shot-1": makeShotDetail() });

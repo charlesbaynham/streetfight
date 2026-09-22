@@ -3,9 +3,9 @@
 The runbook for the **staging** deployment: a Proxmox LXC container on the home
 lab, at <https://streetfight-staging.i.houseabsolute.co.uk>.
 
-It exists because the droplet does not have room for mistakes. That box carries a
-real game whose join links are already in people's WhatsApp, so `master` cannot be
-put on it casually. Staging is the same application from the same repository, on a
+It exists because `live` does not have room for mistakes. That box is a public
+site carrying the real 19 September 2026 game, with the printed QR codes still
+in the street pointing at it, so `master` cannot be put on it casually. Staging is the same application from the same repository, on a
 container that costs nothing to break, with no real players on it: its
 database starts empty, and the sample game is made on demand from a seed.
 
@@ -14,16 +14,16 @@ database starts empty, and the sample game is made on demand from a seed.
 
 ## The two deployments, side by side
 
-| | Live (droplet) | Staging (home lab) |
+| | Live (the public archive) | Staging (home lab) |
 | --- | --- | --- |
-| Where | DigitalOcean, `167.172.62.186` | CT 101 on `homeserver`, `10.0.1.30` |
-| Shape | Whole NixOS host (`nixosConfigurations.streetfight-cloud`) | LXC template (`.#proxmoxLxcTemplate`) |
+| Where | CT 124 on `homeserver`, `10.0.1.48` | CT 101 on `homeserver`, `10.0.1.30` |
+| Shape | LXC template (`.#streetfight-archive`) | LXC template (`.#streetfight-staging`) |
 | Branch | `live` | `staging` |
-| Workflow | **Deploy to droplet** (`deploy.yml`) | **Deploy to staging** (`deploy-staging.yml`) |
-| What moves | the `live` ref; the host polls it | the `staging` ref; CI publishes a template release, the hypervisor polls that |
-| TLS | Caddy on the box, its own certificate | gardenfacer, on its `*.i.houseabsolute.co.uk` wildcard |
+| Workflow | **Deploy to archive** (`deploy.yml`) | **Deploy to staging** (`deploy-staging.yml`) |
+| What moves | the `live` ref; CI publishes a template release, the hypervisor polls that | the same, one branch along |
+| TLS | wallfacer, on its `*.houseabsolute.co.uk` wildcard | gardenfacer, on its `*.i.houseabsolute.co.uk` wildcard |
 | Reachable from | the internet | the house LAN and the tailnet, and nowhere else |
-| Database | real, irreplaceable | empty until somebody presses **Fire demo game** |
+| Database | the real 19 September game, irreplaceable | empty until somebody presses **Fire demo game** |
 
 **Merging to master deploys neither.** Both are a deliberate act, and the two
 branches are the whole gate.
@@ -99,27 +99,29 @@ protection. So the workflow ends by dispatching `build_images.yml` against
 check in the deploy run goes green, and no release is ever published - staging
 just quietly stays where it was. That is exactly how it failed on 30 Aug 2026.
 
-This is the one place staging is *not* the droplet's mirror image. Both gates are
-a hand-moved branch, but the two boxes watch different things:
+Both targets are cattle containers now, so both work the same way, and the gate
+is at the *producer* rather than the consumer: `build-template.yml` publishes a
+release only when `github.ref` is the branch it was told, so if that run never
+happens the artifact never exists at all and the hypervisor has nothing to fetch.
 
-| | Live (droplet) | Staging (LXC) |
+| | Live (the archive) | Staging (LXC) |
 | --- | --- | --- |
-| What the box polls | the git ref, `git ls-remote refs/heads/live` | the releases API, for a new asset |
-| So a deploy is due when | the ref moved | a new release asset appeared |
-| Where the build comes from | Cachix - content-addressed, so branch-agnostic | a release asset, published only from `staging` |
-| Needs a workflow to run on the deploy branch | no | **yes** |
+| Branch the deploy moves | `live` | `staging` |
+| Template attribute CI builds | `streetfight-archive` | `streetfight-staging` |
+| What the hypervisor polls | the releases API, for a new asset | the same |
+| Needs a workflow to run on the deploy branch | **yes** | **yes** |
 
-The droplet's gate is at the *consumer*: `nix/auto-deploy.nix` decides which ref
-to pull, and the closure is in Cachix whichever branch built it, so a swallowed
-push event costs it nothing. Staging's gate is at the *producer*:
-`build-template.yml` publishes a release only when `github.ref` is `staging`, so
-if that run never happens the artifact never exists at all.
+⚠️ Until 20 Sep 2026 `live` was a DigitalOcean droplet, whose gate genuinely
+*was* different — it polled the git ref and pulled its closure from Cachix,
+which is branch-agnostic, so a swallowed push event cost it nothing. That is
+no longer true of either target, and the "trigger the build explicitly" step
+below is now load-bearing on both.
 
-The asymmetry is forced rather than chosen. A cattle container is replaced
-wholesale by template filename - there is no in-place `switch` - so the artifact
-has to be a *file* the hypervisor can fetch; and `resolve_release` takes the
-newest release by publication time, so publishing from every branch and letting
-the consumer choose would just deploy master.
+The shape is forced rather than chosen. A cattle container is replaced wholesale
+by template filename - there is no in-place `switch` - so the artifact has to be
+a *file* the hypervisor can fetch; and `resolve_release` takes the newest release
+by publication time, so publishing from every branch and letting the consumer
+choose would just deploy master.
 
 The template filename *is* the deploy mechanism: Proxmox treats a container's
 template as ForceNew, so a new filename replaces the container. The mechanics live
@@ -128,9 +130,10 @@ in `homelab-infra` (`bin/cattle-deploy.sh`, `services.yaml`) and are documented 
 
 ### Why the workflow does not wait for it
 
-`deploy.yml` ends by polling the droplet's `/api/get_version` until it reports the
-new revision. This one cannot: staging answers on `10.0.1.34`, a private address a
-GitHub runner has no route to. The job therefore ends at the push and tells you
+`deploy.yml` ends by polling `streetfight.houseabsolute.co.uk/api/get_version`
+until it reports the new revision, which it can because the archive is on the
+public internet. This one cannot: staging answers on `10.0.1.30`, a private
+address a GitHub runner has no route to. The job therefore ends at the push and tells you
 where to look:
 
 - the *Build images* run on `staging`, which publishes the release asset;
@@ -252,9 +255,12 @@ streetfight-staging: {vm_id: 101, ip: 10.0.1.30, port: 80, repo: charlesbaynham/
 streetfight-staging: {service: streetfight-staging}
 ```
 
-The registry key has to match `cattle.name` in this repo's `flake.nix`
+The registry key has to match the template's name in this repo's `flake.nix`
 (`streetfight-staging`), because that is what names the release asset and how the
-deployer finds it. There is no `publish:` key, which is what keeps staging off the
+deployer finds it. ⚠️ The flake builds **two** templates now — this one and
+`streetfight-archive`, the public archive at
+[`deployment_archive.md`](deployment_archive.md) — so CI passes `attr:` to the
+reusable build workflow explicitly rather than relying on its default. There is no `publish:` key, which is what keeps staging off the
 public internet, and no DNS or certificate step at all - gardenfacer's wildcard
 already covers the name.
 

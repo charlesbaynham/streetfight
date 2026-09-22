@@ -129,10 +129,31 @@ jobs:
   # droplet's `live` ref. Every other branch, master included, still builds it:
   # that build is the check deploy-staging.yml gates on, and it publishes
   # nothing, so merging to master deploys nowhere.
+  # Two LXC templates, one per container. They differ only in the name baked
+  # into the artifact, and share their whole closure, so the second job is
+  # almost entirely Cachix hits.
+  #
+  # ⚠️ `attr` is required rather than decorative: this repo now builds more
+  # than one template, so the reusable workflow's default
+  # `proxmoxLxcTemplate` attribute no longer exists.
+  #
+  # Neither is path-filtered, unlike homelab-infra's equivalents: the build on
+  # a non-release branch is the check run the matching deploy workflow polls
+  # for before it moves the branch.
   build_lxc_template:
     permissions:
       contents: write
     uses: charlesbaynham/nix-proxmox-cattle/.github/workflows/build-template.yml@v1
     with:
+      attr: streetfight-staging
       release_branch: staging
+    secrets: inherit
+
+  build_lxc_template_archive:
+    permissions:
+      contents: write
+    uses: charlesbaynham/nix-proxmox-cattle/.github/workflows/build-template.yml@v1
+    with:
+      attr: streetfight-archive
+      release_branch: live
     secrets: inherit

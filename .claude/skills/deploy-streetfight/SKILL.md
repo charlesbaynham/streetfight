@@ -1,29 +1,35 @@
 ---
 name: deploy-streetfight
-description: Deploy streetfight to live (the DigitalOcean droplet) or staging (the home-lab LXC), check what a box is currently running, or roll one back. Use whenever someone asks to deploy, ship, release, put something live, put a branch on staging, or check which revision a deployment is on. Merging to master deploys nothing, so this is always a deliberate, separate act.
+description: Deploy streetfight to live (the public archive of the 19 September 2026 game) or staging (the box for trying a branch on a phone), check what a box is currently running, or roll one back. Use whenever someone asks to deploy, ship, release, put something live, put a branch on staging, or check which revision a deployment is on. Merging to master deploys nothing, so this is always a deliberate, separate act.
 ---
 
 # Deploying streetfight
 
 **Merging to master deploys nothing.** Both deployments are gated behind a
-manual workflow, because the droplet carries a real game whose join links are
-already in people's WhatsApp. Deploying is always a separate, deliberate act.
+manual workflow, because `live` is a public site carrying the real 19 September
+2026 game and the printed QR codes still in the street point at it. Deploying
+is always a separate, deliberate act.
 
 Neither workflow has a route into the box it deploys. All either one does is
-**force a branch ref** to the revision you chose; the target polls that ref and
-switches itself. Nothing on the internet holds credentials into either host.
+**force a branch ref** and dispatch the build; the hypervisor at home polls the
+releases API for the template that build publishes and replaces the container
+with it. Nothing on the internet holds credentials into either host.
 
-|  | Live (droplet) | Staging (home lab) |
+|  | Live (the archive) | Staging (home lab) |
 | --- | --- | --- |
-| Where | DigitalOcean, `167.172.62.186` | CT 101 on `homeserver`, `10.0.1.30` |
+| Where | CT 124 on `homeserver`, `10.0.1.48` | CT 101 on `homeserver`, `10.0.1.30` |
 | Public origin | `https://streetfight.houseabsolute.co.uk` | `https://streetfight-staging.i.houseabsolute.co.uk` |
-| Shape | whole NixOS host (`nixosConfigurations.streetfight-cloud`) | LXC template (`.#proxmoxLxcTemplate`) |
+| Shape | LXC template (`.#streetfight-archive`) | LXC template (`.#streetfight-staging`) |
 | Branch it polls | `live` | `staging` |
-| Workflow | **Deploy to droplet** (`deploy.yml`) | **Deploy to staging** (`deploy-staging.yml`) |
-| Picked up by | `nix/auto-deploy.nix` timer, a couple of minutes | cattle-deploy on the hypervisor, 15–25 minutes |
-| TLS | Caddy on the box, its own Let's Encrypt cert | gardenfacer's wildcard |
+| Workflow | **Deploy to archive** (`deploy.yml`) | **Deploy to staging** (`deploy-staging.yml`) |
+| Picked up by | cattle-deploy on the hypervisor, 15–25 minutes | the same |
+| TLS | wallfacer's wildcard | gardenfacer's wildcard |
 | Reachable from | the internet | the house LAN and the tailnet only |
-| Database | **real and irreplaceable** | empty on a fresh boot; the sample game is made by the **Fire demo game** button |
+| Database | **the real 19 September game**, restored by hand | empty on a fresh boot; the sample game is made by the **Fire demo game** button |
+
+⚠️ Until 20 Sep 2026 `live` was a DigitalOcean droplet. It was destroyed once
+the game was archived; `live` now moves CT 124 (the Street Fight archive) on
+the home lab. See `docs/deployment_archive.md`.
 
 ## Deploying
 
@@ -40,10 +46,9 @@ pull request too, written `pr/222`, `#222` or bare `222` (its head is fetched as
 `--skip-build-check`, since a fork head has no check run here). Master is the
 default, never a restriction: trying an unmerged branch is what staging is for.
 Live refuses a PR number, deliberately. The script wraps
-`gh workflow run`, watches the run, and afterwards reports what the droplet
-says it is running. `--skip-build-check` deploys even when the closure is not
-in Cachix (the box then builds it itself, slowly); `--no-wait` returns at the
-dispatch.
+`gh workflow run`, watches the run, and afterwards reports what the archive
+says it is running. `--skip-build-check` deploys without waiting for the
+template build to go green; `--no-wait` returns at the dispatch.
 
 Equivalently, by hand:
 
@@ -85,11 +90,13 @@ camera and geolocation APIs — which is the entire game.
 ## Rolling back
 
 **Live**: deploy an earlier revision the same way. The workflow force-pushes
-the ref, so going backwards works exactly like going forwards.
+the ref, so going backwards works exactly like going forwards — or name a
+generation directly on the hypervisor (three are kept per service).
 
 ```bash
 scripts/deploy.sh live <older-sha>
-nixos-rebuild switch --rollback     # on the box; there is no auto-rollback
+# ...or, on homeserver:
+/opt/homelab-infra/bin/cattle-deploy.sh streetfight-archive template-<date>-<sha7>
 ```
 
 **Staging**: the same way — `scripts/deploy.sh staging <older-sha>`. This used
@@ -107,30 +114,43 @@ Three generations are kept per service.
 
 ## When the workflow is not the right tool
 
-`nixos-rebuild switch --flake .#streetfight-cloud --target-host root@<ip>`
-builds locally and pushes the closure. Use it for the one deploy that cannot go
-through the workflow — the first after an install — for something not in the
-repository at all (an uncommitted fix at 11pm on a game night), or if Actions
-is down.
+There is no `nixos-rebuild --target-host` path to either box any more: both are
+cattle, replaced wholesale by template filename, so the artifact has to be
+built and published before anything can deploy. If Actions is down, nothing
+deploys — which is the intended trade, since the alternative is a hand-built
+container nothing can reproduce.
 
-Installing a droplet from scratch is `nix run .#install-cloud -- --target
-root@<ip> --secrets ./streetfight.env`. It is **destructive** — it reformats
-the disk. Do not skip its `--vm-test`: it is the only check that catches a
-system which installs cleanly and then never boots, and skipping it is exactly
-how the first two installs went dark. Full detail in
-`docs/deployment_droplet.md`.
+What you *can* do by hand, on `homeserver`, is re-point a container at a
+template that already exists:
+
+```bash
+/opt/homelab-infra/bin/cattle-deploy.sh streetfight-archive template-<date>-<sha7>
+touch /var/lib/homelab-infra/cattle/streetfight-archive.hold   # suspend deploys
+```
+
+The droplet's install-once procedure (`nix run .#install-cloud`) is kept in
+`docs/deployment_droplet.md` in case a cloud host is ever wanted again. The
+flake still carries `nixosConfigurations.streetfight-cloud` and CI still
+build-tests it, but no droplet exists.
 
 ## State, and what a deploy does not touch
 
-`/data` on the droplet (database, shot photos, secrets, logs) is an ordinary
-directory on the root disk — no block volume — so **the host is not
-disposable**. `nixos-rebuild` never touches `/data`; only destroying the
-droplet or re-running `nixos-anywhere` does.
+Both containers are **cattle**: every deploy destroys and recreates them. What
+survives is `/data`, a Proxmox volume owned by a reserved VMID that the
+container does not own — `usb-zfs:subvol-9124-disk-0` for the archive,
+`subvol-9101-disk-0` for staging. **Never delete either.** They hold the
+database, the shot photographs, the secrets and the logs.
 
-**Back up before a game, not after**: `rsync -a root@<ip>:/data/ ./backup-data/`.
-The shot photos and database are the labelled training data R1/R2 feed on.
+⚠️ The archive's `SECRET_KEY` must stay the live game's: it signs the session
+cookies players still hold, so rotating it locks every one of them out of
+their own history. It is escrowed on CT 118 (the Secret Server).
 
-Staging is backed up by nothing, deliberately, and wiping it is free — that is
+Neither is in the nightly backup, deliberately. The archive's database is
+re-seedable from the Nextcloud copy at
+`Archives/streetfight/streetfight-game-archive-2026-09-19/`; see
+`docs/deployment_archive.md`.
+
+Staging is backed up by nothing either, and wiping it is free — that is
 the fix for a model change the start-up column-adder cannot absorb
 (`database.add_missing_columns` can add a column to a live database but cannot
 drop or retype one).
@@ -150,7 +170,9 @@ a PR, an issue or a chat log.
 
 This skill is the operating summary. Where it and these disagree, they win:
 
-- `docs/deployment_droplet.md` — install, the manual gate, how the droplet
-  picks it up, state and backups, the cutover from the home LXC.
+- `docs/deployment_archive.md` — the public archive: what a stranger sees, the
+  registry entry, the state volume, re-seeding the database, the traps.
+- `docs/deployment_droplet.md` — **historical**: how the droplet was installed
+  and run, kept in case a cloud host is ever wanted again.
 - `docs/deployment_staging.md` — the two deployments side by side, the sample
   game, rollback, secrets rotation, the homelab-infra registry entries.
