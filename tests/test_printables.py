@@ -352,3 +352,34 @@ def test_printables_need_an_admin(api_client, log_to_tmp):
     response = api_client.post("/api/admin_pub_pages_pdf?count=1")
 
     assert response.status_code == 403
+
+
+def test_the_sandbox_medpack_poster_revives_a_knocked_out_player_every_time(
+    user_in_team,
+):
+    """Issue #302. The poster keeps the game's rule - a medpack is for a
+    knocked-out player, and a healthy one is told so - but for the player it
+    is for, it works as often as they are knocked down."""
+    from fastapi.exceptions import HTTPException
+
+    from backend.model import UserState
+    from backend.user_interface import UserInterface
+
+    from .shared_fixtures import strip_armour
+
+    (medpack,) = [
+        url for card, url in printables.sandbox_items() if card.itype == "medpack"
+    ]
+
+    strip_armour(user_in_team)
+    with pytest.raises(HTTPException, match="knocked-out"):
+        UserInterface(user_in_team).collect_item(medpack)
+
+    for _ in range(2):
+        UserInterface(user_in_team).hit(1)
+        assert (
+            UserInterface(user_in_team).get_user_model().state == UserState.KNOCKED_OUT
+        )
+
+        UserInterface(user_in_team).collect_item(medpack)
+        assert UserInterface(user_in_team).get_user_model().state == UserState.ALIVE

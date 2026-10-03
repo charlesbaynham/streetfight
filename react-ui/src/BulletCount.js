@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from "react";
 
 import TemporaryOverlay from "./TemporaryOverlay";
-import CollectItemFromQueryParam from "./CollectItemsFromQueryParams";
 import { ButtonAndScoreboard } from "./Scoreboard";
 import { ShotHistoryButton } from "./ShotHistory";
 import { TeamLeaderButton } from "./TeamLeaderPanel";
@@ -20,7 +19,11 @@ const make_n_images = (n, image) =>
     .fill()
     .map((_, i) => <img src={image} alt="" key={i} className={styles.icon} />);
 
-export default function BulletCount({ user }) {
+// `onPickupAnimating` is told whether a pickup overlay is showing, so that
+// UserMode can hold back the next `?d=` collection until it has played. The
+// collector itself lives in UserMode rather than here, because this HUD is
+// only shown to a living player and a medpack is for one who is not (#302).
+export default function BulletCount({ user, onPickupAnimating = () => {} }) {
   const [previousUser, setPreviousUser] = useState(null);
 
   const [showBulletAnim, setShowBulletAnim] = useState(false);
@@ -29,8 +32,17 @@ export default function BulletCount({ user }) {
 
   const [showGunPickup, setShowGunPickup] = useState(false);
 
-  const anyActive =
-    showBulletAnim | showArmourAnim | showMedpackAnim | showGunPickup;
+  const anyActive = Boolean(
+    showBulletAnim | showArmourAnim | showMedpackAnim | showGunPickup,
+  );
+
+  useEffect(() => {
+    onPickupAnimating(anyActive);
+  }, [anyActive, onPickupAnimating]);
+
+  // Unmounting mid-animation (the player was knocked out) must not leave
+  // collection held back for good.
+  useEffect(() => () => onPickupAnimating(false), [onPickupAnimating]);
 
   useEffect(() => {
     var timeoutHandle = null;
@@ -104,8 +116,6 @@ export default function BulletCount({ user }) {
       <TemporaryOverlay img={armour} appear={showArmourAnim} />
       <TemporaryOverlay img={medkit} appear={showMedpackAnim} />
       <TemporaryOverlay img={getGunImgFromUser(user)} appear={showGunPickup} />
-
-      <CollectItemFromQueryParam enabled={!anyActive} />
 
       <ButtonAndScoreboard />
       <ShotHistoryButton />
