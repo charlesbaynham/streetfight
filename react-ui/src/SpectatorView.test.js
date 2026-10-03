@@ -129,7 +129,7 @@ describe("the roster", () => {
   test("shows a knocked-out player's countdown instead of their stats", async () => {
     await renderScreen();
 
-    expect(screen.getByText(/back in \d+:\d\d/)).toBeInTheDocument();
+    expect(screen.getByText(/dead in \d+:\d\d/)).toBeInTheDocument();
   });
 });
 

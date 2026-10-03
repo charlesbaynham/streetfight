@@ -571,7 +571,7 @@ function Roster({ teams, players, scoreById, colourForTeam, letters, now }) {
               ) : (
                 <span className={styles.rosterState}>
                   {knockedOut && player.time_of_death
-                    ? `back in ${countdown(secondsUntil(player.time_of_death, now))}`
+                    ? `dead in ${countdown(secondsUntil(player.time_of_death, now))}`
                     : player.state}
                 </span>
               )}
