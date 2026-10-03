@@ -1101,9 +1101,12 @@ def test_forcing_still_waits_for_an_escalation_in_flight(
     assert shot_row(db_session, shot_from_user_in_team).checked is False
 
 
-def test_forcing_leaves_an_errored_escalation_to_the_admin(
+def test_forcing_falls_back_to_the_weak_ranking_when_the_escalation_errored(
     db_session, shot_from_user_in_team, target_with_slot
 ):
+    # Issue #310: an errored escalation is sticky, and resolution is head-only,
+    # so leaving it to the admin stalls every shot behind it. Forced, a second
+    # opinion that never came is treated like one that said "unsure".
     game_id = game_of(shot_from_user_in_team)
     force(game_id)
     store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
@@ -1111,7 +1114,33 @@ def test_forcing_leaves_an_errored_escalation_to_the_admin(
 
     shot_auto_actions.process_queue_head(game_id)
 
-    assert shot_row(db_session, shot_from_user_in_team).checked is False
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.result == "hit"
+    assert shot.target_user_id == target_with_slot
+
+
+def test_forcing_refunds_an_errored_escalation_the_weak_reading_cannot_settle(
+    db_session, shot_from_user_in_team
+):
+    # Nobody wears a slot, so the weak ranking names nobody. Rather than park
+    # the queue, the shot is refunded: nobody is hit, the shooter gets the
+    # bullet back, and the shots behind it drain.
+    game_id = game_of(shot_from_user_in_team)
+    force(game_id)
+    store_done_review(shot_from_user_in_team, partly_read_reply(("armbands",)))
+    store_escalation(shot_from_user_in_team, ai_shot_review.STATE_ERROR, "timed out")
+    shooter = shot_row(db_session, shot_from_user_in_team).user_id
+    bullets_before = db_session.query(User).filter_by(id=shooter).one().num_bullets
+
+    shot_auto_actions.process_queue_head(game_id)
+
+    shot = shot_row(db_session, shot_from_user_in_team)
+    assert shot.checked is True
+    assert shot.result == "refunded"
+    assert (
+        db_session.query(User).filter_by(id=shooter).one().num_bullets
+        == bullets_before + 1
+    )
 
 
 def test_forcing_acts_on_an_unconfident_escalated_player_verdict(

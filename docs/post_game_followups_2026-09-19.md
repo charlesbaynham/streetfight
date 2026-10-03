@@ -530,6 +530,13 @@ deciding at the same time rather than assuming:
 being played, it happened on the night, and the toggle Charles ticked to
 prevent exactly this does not cover it.
 
+**Status.** The errored case is fixed on `fix/310-escalation-block` (issue
+#310): with "resolve everything" on, an errored escalation falls back to
+`_forced_fallback`, and refunds the shot when the weak reading has nothing to
+say. Not merged, not deployed. The two open questions above — a deadline for a
+genuinely *pending* escalation, and whether strict ordering should hold in a
+showdown — are deliberately untouched and still want Charles's call.
+
 ---
 
 ## 10. Shot resolution is too slow to keep up with a showdown
