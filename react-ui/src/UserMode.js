@@ -7,6 +7,7 @@ import { FullScreen, useFullScreenHandle } from "react-full-screen";
 import { CrosshairImage, DeadImage, KnockedOutView } from "./GuideImages";
 import FireButton from "./FireButton";
 import BulletCount from "./BulletCount";
+import CollectItemFromQueryParam from "./CollectItemsFromQueryParams";
 import { sendAPIRequest } from "./utils";
 import WebcamView from "./WebcamView";
 import UpdateListener, { UpdateSSEConnection } from "./UpdateListener";
@@ -86,6 +87,7 @@ function GetView({ user }) {
   const [triggerPermissionsRecheck, setTriggerPermissionsRecheck] = useState(0);
 
   const [permissionsGranted, setPermissionsGranted] = useState(false);
+  const [pickupAnimating, setPickupAnimating] = useState(false);
 
   // Check if all the required permissions are granted
   useEffect(() => {
@@ -136,7 +138,7 @@ function GetView({ user }) {
       <RadarStrip user={user} />
       <div className={styles.monitorsContainer}>
         {isAlive ? (
-          <BulletCount user={user} />
+          <BulletCount user={user} onPickupAnimating={setPickupAnimating} />
         ) : (
           <div>
             <ButtonAndScoreboard standalone />
@@ -155,6 +157,12 @@ function GetView({ user }) {
       <ShotHistoryController />
       <ShotReceivedOverlay user={user} />
       <RefusedNotice />
+      {/* Here rather than in BulletCount, which only a living player is
+          shown: a medpack is for a knocked-out one, and a card opened with
+          the phone's own camera used to send nothing at all (#302). Not on
+          the onboarding page either, where RefusedNotice is not mounted to
+          say why a card was refused - the ?d= waits in the URL until now. */}
+      <CollectItemFromQueryParam enabled={!pickupAnimating} />
 
       {isAlive ? (
         <CrosshairImage />

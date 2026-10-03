@@ -4,7 +4,7 @@ import { MemoryRouter } from "react-router-dom";
 
 import BulletCount from "./BulletCount";
 import TemporaryOverlay from "./TemporaryOverlay";
-import { makeUser, installFetchMock, getAPICalls } from "./testUtils";
+import { makeUser } from "./testUtils";
 import { getGunImgFromUser } from "./utils";
 import styles from "./BulletCount.module.css";
 import prose from "./prose";
@@ -213,43 +213,31 @@ describe("pickup overlays", () => {
   });
 });
 
-describe("item collection alongside a pickup overlay", () => {
-  test("a collect_item request still fires shortly after a pickup, despite the overlay animation still playing", async () => {
-    jest.useFakeTimers();
-    installFetchMock({ collect_item: {} });
-
+describe("reporting a pickup animation to UserMode", () => {
+  // UserMode holds the `?d=` collector and gates it on this (#302).
+  test("says when a pickup overlay starts and stops, and stops on unmount", () => {
+    const onPickupAnimating = jest.fn();
     const user = makeUser({ num_bullets: 2 });
-    const { rerender } = renderBulletCount(user, ["/?d=SOME_CODE"]);
+    const { rerender, unmount } = render(
+      <MemoryRouter>
+        <BulletCount user={user} onPickupAnimating={onPickupAnimating} />
+      </MemoryRouter>,
+    );
+    rerender(
+      <MemoryRouter>
+        <BulletCount
+          user={{ ...user, num_bullets: 3 }}
+          onPickupAnimating={onPickupAnimating}
+        />
+      </MemoryRouter>,
+    );
 
-    act(() => {
-      jest.advanceTimersByTime(50);
-    });
-    rerenderBulletCount(rerender, { ...user, num_bullets: 3 }, [
-      "/?d=SOME_CODE",
-    ]);
+    const reported = onPickupAnimating.mock.calls.map(([active]) => active);
+    expect(reported).toContain(true);
+    expect(reported.at(-1)).toBe(false);
 
-    // No request yet - the debounce inside CollectItemFromQueryParam hasn't
-    // elapsed.
-    expect(getAPICalls("collect_item")).toHaveLength(0);
-
-    // BulletCount is meant to suppress collection via enabled={!anyActive}
-    // while a pickup overlay is showing, but per the bug documented above,
-    // anyActive only stays true for a single synchronous render - so the
-    // suppression window is effectively zero wall-clock time and the
-    // request still fires on its normal ~200ms debounce.
-    await act(async () => {
-      jest.advanceTimersByTime(250);
-      // Flush the microtasks in the collect_item promise chain (fetch ->
-      // sendAPIRequest's .then -> the component's own .then/.then/navigate).
-      await Promise.resolve();
-      await Promise.resolve();
-      await Promise.resolve();
-    });
-    expect(getAPICalls("collect_item")).toHaveLength(1);
-    expect(getAPICalls("collect_item")[0].body).toEqual({
-      data: "SOME_CODE",
-    });
-
-    jest.useRealTimers();
+    onPickupAnimating.mockClear();
+    unmount();
+    expect(onPickupAnimating).toHaveBeenLastCalledWith(false);
   });
 });
