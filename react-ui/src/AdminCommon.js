@@ -150,17 +150,32 @@ function AdminNavLink({ to, children, end = true }) {
   );
 }
 
-// Link to the shot queue with a live count of unchecked shots.
+// Link to the shot queue with a live count of everything waiting on an admin:
+// the unchecked shots plus the contested ones. The two lists are disjoint -
+// a contested shot is already checked, so it is never in the live queue - and
+// an open appeal is the most pressing thing on the page, so leaving it out of
+// the count would hide exactly what the admin most needs to see (issue #305).
 function ShotQueueLink() {
-  const [numShots, setNumShots] = useState(null);
+  const [numLive, setNumLive] = useState(null);
+  const [numContested, setNumContested] = useState(null);
 
   const update = useCallback(() => {
     sendAPIRequest("admin_get_shots_info", {}, "GET", (shot_ids) => {
-      setNumShots(shot_ids.length);
+      setNumLive(shot_ids.length);
     });
+    sendAPIRequest(
+      "admin_get_contested_shots_info",
+      null,
+      "GET",
+      (shot_ids) => {
+        setNumContested(shot_ids.length);
+      },
+    );
   }, []);
 
   useEffect(update, [update]);
+
+  const numShots = numLive === null ? null : numLive + (numContested ?? 0);
 
   return (
     <>

@@ -70,7 +70,12 @@ describe("AdminPage", () => {
   });
 
   test("renders the nav bar and children once authenticated", async () => {
-    installFetchMock({ admin_is_authed: true, admin_get_shots_info: [] });
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
+      admin_get_contested_shots_info: [],
+    });
 
     await actAndFlush(() =>
       render(
@@ -94,7 +99,12 @@ describe("AdminNav", () => {
   // the danger being "/" and "/admin", which prefix-match everything below
   // them and would otherwise light up on every admin page.
   async function renderNavAt(path) {
-    installFetchMock({ admin_is_authed: true, admin_get_shots_info: [] });
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
+      admin_get_contested_shots_info: [],
+    });
     await actAndFlush(() =>
       render(
         <MemoryRouter initialEntries={[path]}>
@@ -192,6 +202,7 @@ describe("AdminLoginForm", () => {
       admin_is_authed: false,
       admin_authenticate: true,
       admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
     });
 
     const { container } = render(
@@ -227,6 +238,7 @@ describe("AdminErrorLog", () => {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
       get_version: { version: "test-version" },
       admin_get_openrouter_balance: { configured: false },
     });
@@ -351,7 +363,12 @@ describe("AdminErrorLog", () => {
 
   test("unmounting deregisters the global error handler", async () => {
     const setHandlerSpy = jest.spyOn(utils, "setAPIErrorHandler");
-    installFetchMock({ admin_is_authed: true, admin_get_shots_info: [] });
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
+      admin_get_contested_shots_info: [],
+    });
 
     const { unmount } = await actAndFlush(() =>
       render(
@@ -377,6 +394,7 @@ describe("OpenRouterBalanceReadout (part of the admin footer)", () => {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: [],
+      admin_get_contested_shots_info: [],
       get_version: { version: "test-version" },
       admin_get_openrouter_balance: balance,
     });
@@ -472,6 +490,7 @@ describe("ShotQueueLink (part of the nav bar)", () => {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: ["s1", "s2"],
+      admin_get_contested_shots_info: [],
     });
 
     await actAndFlush(() =>
@@ -488,9 +507,41 @@ describe("ShotQueueLink (part of the nav bar)", () => {
     installFetchMock({
       admin_is_authed: true,
       admin_get_shots_info: ["s1"],
+      admin_get_contested_shots_info: [],
     });
     await actAndFlush(() => emitUpdate("shots"));
 
     expect(screen.getByText("Shot queue (1)")).toBeInTheDocument();
+  });
+
+  // Contested shots are already checked, so they are never in the live queue -
+  // but an open appeal is the thing most in need of the admin, so the count
+  // must include them (issue #305).
+  test("counts the contested queue as well as the live one, and refreshes both on a 'shots' update", async () => {
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: ["s1", "s2"],
+      admin_get_contested_shots_info: ["c1"],
+    });
+
+    await actAndFlush(() =>
+      render(
+        <MemoryRouter>
+          <AdminPage>
+            <p>Page content</p>
+          </AdminPage>
+        </MemoryRouter>,
+      ),
+    );
+    expect(screen.getByText("Shot queue (3)")).toBeInTheDocument();
+
+    installFetchMock({
+      admin_is_authed: true,
+      admin_get_shots_info: ["s1", "s2"],
+      admin_get_contested_shots_info: ["c1", "c2", "c3"],
+    });
+    await actAndFlush(() => emitUpdate("shots"));
+
+    expect(screen.getByText("Shot queue (5)")).toBeInTheDocument();
   });
 });
