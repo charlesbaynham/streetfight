@@ -1348,9 +1348,15 @@ explicitly. The name must equal the registry key in `homelab-infra`'s
   — but only once escalation is out of the picture, since a second
   opinion that is actually coming beats a forced guess. It never forces a
   resolution with nothing to resolve *from* — no usable review, an
-  inconsistent reading, no ranking at all, an errored escalation — since with
-  nobody to notify, nobody can appeal; strict queue ordering is untouched
-  either way. A vision call that errors or answers off-schema is retried
+  inconsistent reading, no ranking at all — since with nobody to notify,
+  nobody can appeal; strict queue ordering is untouched either way. The one
+  exception is an **errored escalation** (issue #310): that state is sticky
+  and the queue is head-only, so one failing escalation used to stall every
+  shot behind it. Forced, it falls back to the weak reading's best guess, and
+  when that has nothing to say the shot is **refunded**
+  (`AdminInterface.refund_shot`) — a refund names nobody and gives the bullet
+  back, so there is nothing to appeal (appeals treat `refunded` as no
+  verdict). A *pending* escalation still blocks, forced or not. A vision call that errors or answers off-schema is retried
   automatically (`ai_shot_review.REVIEW_ATTEMPTS`, 3 attempts) before it is
   stored as an error, since that is what pressing "re-run review" did by hand.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so

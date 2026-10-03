@@ -50,7 +50,11 @@ appeals that make that safe -- an automatic error stops being silent and final
 and becomes loud and recoverable. Three things are never forced, because
 forcing them would produce a verdict nobody can appeal or nobody deserves: a
 head with no completed review, a ranking the reading itself contradicts, and a
-hit that ranks nobody at all (nobody to notify means nobody to complain).
+hit that ranks nobody at all (nobody to notify means nobody to complain). The
+one exception is a head whose escalation *errored*: that state is sticky, so
+rather than park the queue behind it the shot is **refunded** when the weak
+reading cannot settle it -- a refund names nobody, so there is nothing to
+appeal and nobody to wrong (issue #310).
 
 **Strict queue order.** Only the oldest unchecked shot of a game is ever acted
 on. Resolving a shot can invalidate the shots behind it (a knockout refunds the
@@ -85,6 +89,7 @@ from fastapi import HTTPException
 from .identity.config import DEFAULT_THRESHOLDS
 from .identity.config import default_scheme
 from .model import AI_REVIEW_STATE_DONE
+from .model import AI_REVIEW_STATE_ERROR
 from .shot_identification import rank_candidates
 from .shot_vision import HIT_BYSTANDER
 from .shot_vision import HIT_PLAYER
@@ -104,6 +109,7 @@ _MISS = "miss"
 _BYSTANDER = "bystander"
 _HIT = "hit"
 _ESCALATE = "escalate"
+_REFUND = "refund"
 
 
 def process_queue_head(game_id: UUID) -> None:
@@ -167,6 +173,13 @@ def process_queue_head(game_id: UUID) -> None:
                     target_id,
                 )
                 AdminInterface().hit_user(head.id, target_id)
+            elif action == _REFUND:
+                logger.info(
+                    "Auto-refund: shot %s's escalation failed and nothing else"
+                    " settles it",
+                    head.id,
+                )
+                AdminInterface().refund_shot(head.id)
             elif action == _BYSTANDER:
                 logger.info(
                     "Auto-bystander: shot %s confidently hit nobody playing", head.id
@@ -431,10 +444,14 @@ def _decide_escalated(
 
     Never escalated -> escalate now, in both modes: a second opinion that is
     actually coming beats a forced guess. Pending -> wait, blocking the queue
-    behind it exactly as an ambiguous head does. Errored -> the admin's (a
-    re-run of the weak review clears it, see
-    AdminInterface.store_shot_ai_review); neither of those is ever forced, one
-    being a verdict still coming and the other a verdict that never came.
+    behind it exactly as an ambiguous head does, and never forced: a verdict
+    is still coming. Errored -> the admin's (a re-run of the weak review clears
+    it, see AdminInterface.store_shot_ai_review) -- unless forced, when the
+    error is sticky and the queue is head-only, so waiting for a human would
+    stall every shot behind it (issue #310). Forced, the weak reading's best
+    guess stands in, and when it has nothing to say the shot is refunded: a
+    refund names nobody and costs the shooter nothing, so there is nothing to
+    appeal and nobody harmed by the queue moving on.
     Done -> whatever backend.shot_escalation makes of the verdict,
     re-validated here against the roster because the escalation may have
     finished minutes ago. That re-validation asks only whether the named player
@@ -447,6 +464,8 @@ def _decide_escalated(
     state = head.ai_escalation_state
     if state is None:
         return (_ESCALATE, None)
+    if state == AI_REVIEW_STATE_ERROR and resolve_everything:
+        return _forced_fallback(head, game_id) or (_REFUND, None)
     if state != AI_REVIEW_STATE_DONE or not head.ai_escalation:
         return None
 
