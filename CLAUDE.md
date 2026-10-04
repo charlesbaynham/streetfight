@@ -260,7 +260,8 @@ Four things from it that are worth knowing even if you never call the agent:
     without spending a vision call when the photo holds a *signature-valid*
     item or join code. Somebody else's QR in the background - or a forged
     one - counts for nothing, and a shot an admin has already ruled on is left
-    alone. Like the rest of the review it only runs where recognition is on.
+    alone. The reason is written into the shot's `admin_notes`
+    (`shot_qr.refund_note`), which is where the queue shows it. Like the rest of the review it only runs where recognition is on.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who

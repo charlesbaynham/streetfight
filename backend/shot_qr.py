@@ -8,6 +8,7 @@ Only a code this game signed counts: somebody else's QR in the background of a
 real shot - a pub's wifi, a poster - is no evidence the shooter was scanning.
 """
 
+import json
 import logging
 from typing import Optional
 
@@ -21,12 +22,32 @@ from .utils import parse_code_or_none
 logger = logging.getLogger(__name__)
 
 
-def _is_streetfight_code(text: str) -> bool:
+def _signed_code(text: str):
+    """The item or join code ``text`` is, or None unless the game signed it."""
     for parser in (ItemModel.from_base64, JoinCodeModel.from_base64):
         code = parse_code_or_none(parser, text)
         if code is not None and code.validate_signature() is None:
-            return True
-    return False
+            return code
+    return None
+
+
+def _is_streetfight_code(text: str) -> bool:
+    return _signed_code(text) is not None
+
+
+def refund_note(text: str) -> str:
+    """Why the shot was refunded, in the admin's notes on it."""
+    code = _signed_code(text)
+    if isinstance(code, ItemModel):
+        what = f"{code.itype.value} item code {json.dumps(code.data)}"
+        if code.batch:
+            what += f", batch {code.batch!r}"
+    else:
+        what = "join code"
+    return (
+        f"Refunded automatically: the photo shows one of the game's QR codes "
+        f"({what}), so the player was most likely trying to scan it."
+    )
 
 
 def streetfight_code_in(image_base64: str) -> Optional[str]:

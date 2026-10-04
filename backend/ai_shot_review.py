@@ -235,6 +235,7 @@ async def _refund_if_scanning(shot_id: UUID, image_base64: str) -> bool:
     logger.info("Shot %s is of a game QR code; refunding: %s", shot_id, code[:200])
     try:
         AdminInterface().refund_shot(shot_id)
+        AdminInterface().set_shot_notes(shot_id, shot_qr.refund_note(code))
         game_id = AdminInterface().get_shot_model(shot_id).game_id
     except Exception:
         # Most likely an admin ruled on it first, which is their call to make

@@ -73,6 +73,12 @@ def test_a_join_code_is_found(db_session, one_game, test_image_string):
     assert shot_qr.streetfight_code_in(photo_with_qr(test_image_string, url)) == url
 
 
+def test_the_refund_note_says_what_the_code_was(db_session, one_game):
+    note = shot_qr.refund_note(an_item_url())
+    assert "ammo" in note and '"num": 5' in note
+    assert "join code" in shot_qr.refund_note(make_game_join_url(one_game))
+
+
 def test_somebody_elses_qr_code_is_not_ours(test_image_string):
     image = photo_with_qr(test_image_string, "https://example.com/pub-wifi")
     assert shot_qr.streetfight_code_in(image) is None
@@ -106,6 +112,8 @@ async def test_a_shot_of_a_game_code_is_refunded_without_asking_the_model(
     assert shot.checked
     assert shot.result == "refunded"
     assert bullets(db_session, user_in_team) == 1
+    # The admin can see why in the queue, under the photograph
+    assert "QR code" in AdminInterface().get_shot_notes(shot_id)
 
 
 @pytest.mark.asyncio
