@@ -1416,7 +1416,9 @@ describe("contested shots", () => {
 
   test("switching to Contested sources the list from the contested endpoint", async () => {
     await renderQueue();
-    expect(getAPICalls("admin_get_contested_shots_info")).toHaveLength(0);
+    // The nav bar's queue count reads the contested list too, so count from
+    // whatever it has already asked for rather than from zero.
+    const callsBefore = getAPICalls("admin_get_contested_shots_info").length;
 
     await actAndFlush(() =>
       userEvent.click(screen.getByLabelText("Contested")),
@@ -1425,7 +1427,7 @@ describe("contested shots", () => {
     await waitFor(() =>
       expect(
         getAPICalls("admin_get_contested_shots_info").length,
-      ).toBeGreaterThan(0),
+      ).toBeGreaterThan(callsBefore),
     );
     await screen.findByText("By Shooter of shot-1");
   });

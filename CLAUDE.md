@@ -354,7 +354,11 @@ Four things from it that are worth knowing even if you never call the agent:
     numbers are not free: `num` picks the drawing as well as the amount, which
     is why the ammunition poster is five bullets (there is an `ammo_5.png` and
     no `ammo_20.png`) and why `tests/test_printables.py` checks every sandbox
-    card has artwork. The page's last panel prints nothing: **Withdraw codes**
+    card has artwork. "Unlimited" lifts the duplicate check and nothing else:
+    every poster still obeys its item's game rule, so the medpack poster only
+    revives a knocked-out player and the level-2 armour poster refuses anybody
+    already wearing level 2 — each refusal saying so, through the notice below
+    (issue #302). The page's last panel prints nothing: **Withdraw codes**
     (`RevokedBatch` in `model.py`, `AdminInterface.withdraw_batch` /
     `restore_batch`) is the recall a whole print run has, since a card
     cannot be un-printed and rotating `SECRET_KEY` would take the team cards
@@ -1348,9 +1352,15 @@ explicitly. The name must equal the registry key in `homelab-infra`'s
   — but only once escalation is out of the picture, since a second
   opinion that is actually coming beats a forced guess. It never forces a
   resolution with nothing to resolve *from* — no usable review, an
-  inconsistent reading, no ranking at all, an errored escalation — since with
-  nobody to notify, nobody can appeal; strict queue ordering is untouched
-  either way. A vision call that errors or answers off-schema is retried
+  inconsistent reading, no ranking at all — since with nobody to notify,
+  nobody can appeal; strict queue ordering is untouched either way. The one
+  exception is an **errored escalation** (issue #310): that state is sticky
+  and the queue is head-only, so one failing escalation used to stall every
+  shot behind it. Forced, it falls back to the weak reading's best guess, and
+  when that has nothing to say the shot is **refunded**
+  (`AdminInterface.refund_shot`) — a refund names nobody and gives the bullet
+  back, so there is nothing to appeal (appeals treat `refunded` as no
+  verdict). A *pending* escalation still blocks, forced or not. A vision call that errors or answers off-schema is retried
   automatically (`ai_shot_review.REVIEW_ATTEMPTS`, 3 attempts) before it is
   stored as an error, since that is what pressing "re-run review" did by hand.
   `OPENROUTER_MODEL` is a placeholder awaiting a trial against real photos, so
@@ -1495,7 +1505,11 @@ explicitly. The name must equal the registry key in `homelab-infra`'s
   `RefusedNotice.js` carry the server's reason for anything it turned down,
   and three things publish to them: `MyWebcam.js` (a shot), `QRParser.js` (a
   code read by the in-game scanner) and `CollectItemsFromQueryParams.js` (a
-  code opened as a URL by the player's own phone camera). The callers build
+  code opened as a URL by the player's own phone camera — mounted in
+  `UserMode.js`'s in-game view for every player state, not in the alive-only
+  `BulletCount`, since a medpack is for a knocked-out player (#302);
+  `BulletCount` still holds it back while a pickup overlay plays, through
+  `onPickupAnimating`). The callers build
   the finished sentence from `prose.js` — the frame differs by what was
   refused — and the notice renders it and chooses nothing. Two things about
   the scanner half are load-bearing. `collect_item` answers a 403 with a

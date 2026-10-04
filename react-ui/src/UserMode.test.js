@@ -230,6 +230,50 @@ test("a knocked-out player gets the knocked-out view, no fire button, and standa
   await flushPendingEffects();
 });
 
+// Issue #302: a medpack is the one card that is *for* a knocked-out player,
+// and the collector used to live inside BulletCount, which only an alive
+// player is shown - so opening the card's URL with the phone's own camera
+// sent nothing at all.
+test("a knocked-out player who opens a card's URL still collects it", async () => {
+  grantAllPermissions();
+  installFetchMock({
+    user_info: readyUser({
+      state: "knocked out",
+      time_of_death: Date.now() / 1000 + 60,
+    }),
+    user_shots: [],
+    collect_item: { ok: true },
+  });
+  await actAndFlush(() => renderUserMode("/?d=MEDPACK_POSTER"));
+
+  await waitFor(() => expect(getAPICalls("collect_item")).toHaveLength(1));
+  expect(getAPICalls("collect_item")[0].body).toEqual({
+    data: "MEDPACK_POSTER",
+  });
+  await flushPendingEffects();
+});
+
+test("a card's URL is not collected while the player is still onboarding", async () => {
+  grantAllPermissions();
+  installFetchMock({
+    user_info: readyUser({ active: false }),
+    user_shots: [],
+    collect_item: { ok: true },
+  });
+  await actAndFlush(() => renderUserMode("/?d=SOME_CARD"));
+
+  await waitFor(() =>
+    expect(
+      screen.getByPlaceholderText(prose.onboardingView.namePlaceholder),
+    ).toBeInTheDocument(),
+  );
+  await act(async () => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
+  });
+  expect(getAPICalls("collect_item")).toHaveLength(0);
+  await flushPendingEffects();
+});
+
 test("a dead player gets the dead image, no fire button, and standalone scoreboard/shot-history buttons", async () => {
   grantAllPermissions();
   installFetchMock({
