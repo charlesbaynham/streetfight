@@ -254,6 +254,13 @@ Four things from it that are worth knowing even if you never call the agent:
     that out reads the wall as evidence in both directions. Its verdict
     re-enters the auto-action gate, with "unsure" landing the shot back with
     the admin.
+  - `shot_qr.py` — a shot photograph of one of the game's own QR codes is a
+    player who meant to scan it, not shoot it. `ai_shot_review.review_shot`
+    asks it first (zxing-cpp, off the event loop) and **refunds** the shot
+    without spending a vision call when the photo holds a *signature-valid*
+    item or join code. Somebody else's QR in the background - or a forged
+    one - counts for nothing, and a shot an admin has already ruled on is left
+    alone. Like the rest of the review it only runs where recognition is on.
   - `reference_photos.py` — the kit check at the door (roadmap R7): the admin's
     photo of a player, put through the *same* vision path a shot takes
     (`ai_shot_review._review_image_data`) and then scored against everyone who

@@ -27,6 +27,7 @@ dependencies = [
   "tzdata",
   "uvicorn",
   "wsproto",
+  "zxing-cpp>=3.1.1",
 ]
 
 [project.scripts]

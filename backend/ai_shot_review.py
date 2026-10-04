@@ -19,6 +19,7 @@ from typing import Optional
 from uuid import UUID
 
 from . import shot_auto_actions
+from . import shot_qr
 from . import shot_vision
 from .asyncio_triggers import trigger_update_event
 from .image_processing import draw_aim_marker
@@ -214,6 +215,39 @@ async def _review_with_retries(
             )
 
 
+async def _refund_if_scanning(shot_id: UUID, image_base64: str) -> bool:
+    """Refund a shot whose photograph is one of the game's own QR codes: the
+    player meant to scan it, and no vision call is spent finding that out.
+
+    True if the shot was refunded or was already ruled on, so there is nothing
+    left to review. Never raises.
+    """
+    from .admin_interface import AdminInterface
+
+    try:
+        code = await asyncio.to_thread(shot_qr.streetfight_code_in, image_base64)
+    except Exception:
+        logger.exception("QR scan of shot %s failed", shot_id)
+        return False
+    if code is None:
+        return False
+
+    logger.info("Shot %s is of a game QR code; refunding: %s", shot_id, code[:200])
+    try:
+        AdminInterface().refund_shot(shot_id)
+        game_id = AdminInterface().get_shot_model(shot_id).game_id
+    except Exception:
+        # Most likely an admin ruled on it first, which is their call to make
+        logger.warning("Could not refund shot %s", shot_id, exc_info=True)
+        return True
+
+    try:
+        shot_auto_actions.process_queue_head(game_id)
+    except Exception:
+        logger.exception("Auto-action drain after refunding shot %s failed", shot_id)
+    return True
+
+
 async def review_shot(shot_id: UUID, client=None) -> None:
     """Review one shot and store the result. Never raises."""
     from .admin_interface import AdminInterface
@@ -223,10 +257,18 @@ async def review_shot(shot_id: UUID, client=None) -> None:
         return
 
     try:
-        AdminInterface().store_shot_ai_review(shot_id, STATE_PENDING)
         image_base64 = AdminInterface().get_shot_model(shot_id).image_base64
     except Exception:
         logger.exception("Could not load shot %s for review", shot_id)
+        return
+
+    if await _refund_if_scanning(shot_id, image_base64):
+        return
+
+    try:
+        AdminInterface().store_shot_ai_review(shot_id, STATE_PENDING)
+    except Exception:
+        logger.exception("Could not mark shot %s as under review", shot_id)
         return
 
     state = STATE_DONE
